@@ -11,7 +11,8 @@ import (
 )
 
 type RunOncePayload struct {
-	State string `json:"state"`
+	State  string `json:"state"`
+	Handle string `json:"handle"`
 }
 
 var _ = Describe("RunOnce", func() {
@@ -33,16 +34,16 @@ var _ = Describe("RunOnce", func() {
 	})
 
 	Context("when /run_once/{guid} is created", func() {
-		It("eventually is claimed by an executor", func() {
-			err := store.Set([]storeadapter.StoreNode{
-				{
-					Key:   "/run_once/abc",
-					Value: []byte(`{"state":"PENDING"}`),
-				},
+		BeforeEach(func() {
+			err := store.Create(storeadapter.StoreNode{
+				Key:   "/run_once/abc",
+				Value: []byte(`{"state":"PENDING"}`),
 			})
 
 			Expect(err).ToNot(HaveOccurred())
+		})
 
+		It("eventually is claimed by an executor", func() {
 			Eventually(func() string {
 				response, err := store.Get("/run_once/abc")
 				Expect(err).ToNot(HaveOccurred())
@@ -54,6 +55,27 @@ var _ = Describe("RunOnce", func() {
 
 				return payload.State
 			}).Should(Equal("RUNNING"))
+		})
+
+		It("results in a container in the Warden server", func() {
+			var payload RunOncePayload
+
+			Eventually(func() string {
+				response, err := store.Get("/run_once/abc")
+				Expect(err).ToNot(HaveOccurred())
+
+				err = json.Unmarshal(response.Value, &payload)
+				Expect(err).ToNot(HaveOccurred())
+
+				return payload.State
+			}).Should(Equal("RUNNING"))
+
+			Expect(payload.Handle).ToNot(BeEmpty())
+
+			listResponse, err := wardenClient.List()
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(listResponse.GetHandles()).To(ContainElement(payload.Handle))
 		})
 	})
 })

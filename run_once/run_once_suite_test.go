@@ -8,9 +8,11 @@ import (
 	"github.com/cloudfoundry/storeadapter/storerunner"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/vito/gordon"
 )
 
 var etcdRunner *storerunner.ETCDClusterRunner
+var wardenClient *gordon.Client
 
 func TestRun_once(t *testing.T) {
 	registerSignalHandler()
@@ -19,7 +21,23 @@ func TestRun_once(t *testing.T) {
 	etcdRunner = storerunner.NewETCDClusterRunner(5001, 1)
 	etcdRunner.Start()
 
-	RunSpecs(t, "Run_once Suite")
+	wardenNetwork := os.Getenv("WARDEN_NETWORK")
+	wardenAddr := os.Getenv("WARDEN_ADDR")
+
+	if wardenNetwork == "" || wardenAddr == "" {
+		println("WARDEN_NETWORK and/or WARDEN_ADDR not defined; skipping.")
+		return
+	}
+
+	wardenClient = gordon.NewClient(&gordon.ConnectionInfo{
+		Network: wardenNetwork,
+		Addr:    wardenAddr,
+	})
+
+	err := wardenClient.Connect()
+	Expect(err).ToNot(HaveOccurred())
+
+	RunSpecs(t, "RunOnce Suite")
 
 	etcdRunner.Stop()
 }
