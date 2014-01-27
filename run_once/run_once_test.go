@@ -3,8 +3,8 @@ package run_once_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	Bbs "github.com/pivotal-cf-experimental/runtime-schema/bbs"
-	"github.com/pivotal-cf-experimental/runtime-schema/models"
+	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
 var _ = Describe("RunOnce", func() {

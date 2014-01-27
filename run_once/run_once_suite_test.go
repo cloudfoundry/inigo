@@ -1,6 +1,7 @@
 package run_once_test
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"testing"
@@ -11,13 +12,15 @@ import (
 	"github.com/vito/cmdtest"
 	"github.com/vito/gordon"
 
-	"github.com/pivotal-cf-experimental/inigo/executor_runner"
+	"github.com/cloudfoundry-incubator/inigo/executor_runner"
+	"github.com/cloudfoundry-incubator/inigo/garden_runner"
 )
 
 var etcdRunner *storerunner.ETCDClusterRunner
 var wardenClient gordon.Client
 var executor *cmdtest.Session
 
+var gardenRunner *garden_runner.GardenRunner
 var runner *executor_runner.ExecutorRunner
 
 var wardenNetwork, wardenAddr string
@@ -32,15 +35,45 @@ func TestRun_once(t *testing.T) {
 	wardenNetwork = os.Getenv("WARDEN_NETWORK")
 	wardenAddr = os.Getenv("WARDEN_ADDR")
 
-	if wardenNetwork == "" || wardenAddr == "" {
-		println("WARDEN_NETWORK and/or WARDEN_ADDR not defined; skipping.")
+	gardenRoot := os.Getenv("GARDEN_ROOT")
+	gardenRootfs := os.Getenv("GARDEN_ROOTFS")
+
+	if (wardenNetwork == "" || wardenAddr == "") && (gardenRoot == "" || gardenRootfs == "") {
+		println("Please define either WARDEN_NETWORK and WARDEN_ADDR (for a running Warden), or")
+		println("GARDEN_ROOT and GARDEN_ROOTFS (for the tests to start it)")
+		println("")
+		println("Skipping!")
 		return
 	}
 
-	wardenClient = gordon.NewClient(&gordon.ConnectionInfo{
-		Network: wardenNetwork,
-		Addr:    wardenAddr,
-	})
+	if gardenRoot != "" && gardenRootfs != "" {
+		var err error
+
+		gardenRunner, err = garden_runner.New(
+			gardenRoot,
+			gardenRootfs,
+		)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		gardenRunner.SnapshotsPath = ""
+
+		err = gardenRunner.Start()
+		if err != nil {
+			panic(err.Error())
+		}
+
+		wardenClient = gardenRunner.NewClient()
+
+		wardenNetwork = "tcp"
+		wardenAddr = fmt.Sprintf("127.0.0.1:%d", gardenRunner.Port)
+	} else {
+		wardenClient = gordon.NewClient(&gordon.ConnectionInfo{
+			Network: wardenNetwork,
+			Addr:    wardenAddr,
+		})
+	}
 
 	err := wardenClient.Connect()
 	if err != nil {
@@ -49,7 +82,7 @@ func TestRun_once(t *testing.T) {
 		return
 	}
 
-	executorPath, err := cmdtest.Build("github.com/pivotal-cf-experimental/executor")
+	executorPath, err := cmdtest.Build("github.com/cloudfoundry-incubator/executor")
 	if err != nil {
 		println("failed to compile!")
 		os.Exit(1)
@@ -66,23 +99,13 @@ func TestRun_once(t *testing.T) {
 	RunSpecs(t, "RunOnce Suite")
 
 	etcdRunner.Stop()
+	gardenRunner.Stop()
 }
 
 var _ = BeforeEach(func() {
 	etcdRunner.Reset()
-	nukeAllWardenContainers()
+	gardenRunner.DestroyContainers()
 })
-
-func nukeAllWardenContainers() {
-	listResponse, err := wardenClient.List()
-	Ω(err).ShouldNot(HaveOccurred())
-
-	handles := listResponse.GetHandles()
-	for _, handle := range handles {
-		_, err := wardenClient.Destroy(handle)
-		Ω(err).ShouldNot(HaveOccurred())
-	}
-}
 
 func registerSignalHandler() {
 	go func() {
@@ -92,7 +115,8 @@ func registerSignalHandler() {
 		select {
 		case <-c:
 			etcdRunner.Stop()
-			os.Exit(0)
+			gardenRunner.Stop()
+			os.Exit(1)
 		}
 	}()
 }
