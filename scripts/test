@@ -14,8 +14,10 @@ gvm use go1.2
 export GOPATH=$WORKSPACE/go
 export PATH=$GOPATH/bin:$PATH
 
+go get github.com/vito/gocart
+
 pushd $GOPATH/src/github.com/cloudfoundry-incubator/inigo
-  gocart || true
+  gocart
 popd
 
 pushd $GOPATH/src/github.com/pivotal-cf-experimental/garden
