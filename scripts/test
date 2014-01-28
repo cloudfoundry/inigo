@@ -43,7 +43,7 @@ pushd "$ROOTFS_INSTALL_DIR"
   fi
 
   mkdir -p ./rootfs
-  #sudo tar zxf ${ROOTFS_FN} -C ./rootfs
+  sudo tar zxf ${ROOTFS_FN} -C ./rootfs
 popd
 
 pushd $GOPATH/src/github.com/coreos/etcd
