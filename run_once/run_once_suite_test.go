@@ -6,6 +6,8 @@ import (
 	"os/signal"
 	"testing"
 
+	"github.com/cloudfoundry/hm9000/testhelpers/natsrunner"
+
 	"github.com/cloudfoundry/storeadapter/storerunner"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -21,7 +23,8 @@ var wardenClient gordon.Client
 var executor *cmdtest.Session
 
 var gardenRunner *garden_runner.GardenRunner
-var runner *executor_runner.ExecutorRunner
+var executorRunner *executor_runner.ExecutorRunner
+var natsRunner *natsrunner.NATSRunner
 
 var wardenNetwork, wardenAddr string
 
@@ -89,23 +92,48 @@ func TestRun_once(t *testing.T) {
 		return
 	}
 
-	runner = executor_runner.New(
+	executorRunner = executor_runner.New(
 		executorPath,
 		wardenNetwork,
 		wardenAddr,
 		etcdRunner.NodeURLS(),
 	)
 
+	natsRunner = natsrunner.NewNATSRunner(4222)
+
 	RunSpecs(t, "RunOnce Suite")
 
 	etcdRunner.Stop()
-	gardenRunner.Stop()
+
+	if gardenRunner != nil {
+		gardenRunner.Stop()
+	}
+
+	natsRunner.Stop()
 }
 
 var _ = BeforeEach(func() {
 	etcdRunner.Reset()
-	gardenRunner.DestroyContainers()
+
+	if gardenRunner != nil {
+		// local
+		gardenRunner.DestroyContainers()
+	} else {
+		// remove
+		nukeAllWardenContainers()
+	}
 })
+
+func nukeAllWardenContainers() {
+	listResponse, err := wardenClient.List()
+	Ω(err).ShouldNot(HaveOccurred())
+
+	handles := listResponse.GetHandles()
+	for _, handle := range handles {
+		_, err := wardenClient.Destroy(handle)
+		Ω(err).ShouldNot(HaveOccurred())
+	}
+}
 
 func registerSignalHandler() {
 	go func() {
