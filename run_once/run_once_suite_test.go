@@ -16,6 +16,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/inigo/executor_runner"
 	"github.com/cloudfoundry-incubator/inigo/garden_runner"
+	"github.com/cloudfoundry-incubator/inigo/stager_runner"
 )
 
 var etcdRunner *storerunner.ETCDClusterRunner
@@ -25,6 +26,7 @@ var executor *cmdtest.Session
 var gardenRunner *garden_runner.GardenRunner
 var executorRunner *executor_runner.ExecutorRunner
 var natsRunner *natsrunner.NATSRunner
+var stagerRunner *stager_runner.StagerRunner
 
 var wardenNetwork, wardenAddr string
 
@@ -87,7 +89,7 @@ func TestRun_once(t *testing.T) {
 
 	executorPath, err := cmdtest.Build("github.com/cloudfoundry-incubator/executor")
 	if err != nil {
-		println("failed to compile!")
+		println("failed to compile executor!")
 		os.Exit(1)
 		return
 	}
@@ -96,6 +98,18 @@ func TestRun_once(t *testing.T) {
 		executorPath,
 		wardenNetwork,
 		wardenAddr,
+		etcdRunner.NodeURLS(),
+	)
+
+	stagerPath, err := cmdtest.Build("github.com/cloudfoundry-incubator/stager")
+	if err != nil {
+		println("failed to compile stager!")
+		os.Exit(1)
+		return
+	}
+
+	stagerRunner = stager_runner.New(
+		stagerPath,
 		etcdRunner.NodeURLS(),
 	)
 
@@ -144,6 +158,7 @@ func registerSignalHandler() {
 		case <-c:
 			etcdRunner.Stop()
 			gardenRunner.Stop()
+			stagerRunner.Stop()
 			os.Exit(1)
 		}
 	}()

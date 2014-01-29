@@ -4,44 +4,33 @@ import (
 	"fmt"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	stgr "github.com/cloudfoundry-incubator/stager/stager"
-	steno "github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/yagnats"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"log"
-	"os"
 )
 
 var _ = Describe("RunOnce", func() {
-	// var bbs *Bbs.BBS
-	var stager stgr.Stager
 	var natsClient *yagnats.Client
 	var bbs *Bbs.BBS
 
 	BeforeEach(func() {
 		executorRunner.Start()
 		natsRunner.Start()
+		stagerRunner.Start()
 
 		bbs = Bbs.New(etcdRunner.Adapter())
+
 		natsClient = yagnats.NewClient()
 		err := natsClient.Connect(&yagnats.ConnectionInfo{"127.0.0.1:4222", "nats", "nats"})
 		if err != nil {
 			log.Fatalf("Error connecting: %s\n", err)
 		}
-
-		steno.Init(&steno.Config{
-			Sinks: []steno.Sink{
-				steno.NewIOSink(os.Stdout),
-			},
-		})
-
-		stager = stgr.NewStager(bbs)
-		stgr.Listen(natsClient, stager, steno.NewLogger("Stager"))
 	})
 
 	AfterEach(func() {
 		executorRunner.Stop()
+		stagerRunner.Stop()
 	})
 
 	Context("when the stager receives a staging message", func() {
