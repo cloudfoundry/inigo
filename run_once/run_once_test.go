@@ -1,7 +1,6 @@
 package run_once_test
 
 import (
-	"fmt"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/yagnats"

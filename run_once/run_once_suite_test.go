@@ -6,9 +6,9 @@ import (
 	"os/signal"
 	"testing"
 
-	"github.com/cloudfoundry/hm9000/testhelpers/natsrunner"
+	"github.com/cloudfoundry/gunk/natsrunner"
 
-	"github.com/cloudfoundry/storeadapter/storerunner"
+	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/vito/cmdtest"
@@ -19,7 +19,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
 )
 
-var etcdRunner *storerunner.ETCDClusterRunner
+var etcdRunner *etcdstorerunner.ETCDClusterRunner
 var wardenClient gordon.Client
 var executor *cmdtest.Session
 
@@ -34,7 +34,7 @@ func TestRun_once(t *testing.T) {
 	registerSignalHandler()
 	RegisterFailHandler(Fail)
 
-	etcdRunner = storerunner.NewETCDClusterRunner(5001, 1)
+	etcdRunner = etcdstorerunner.NewETCDClusterRunner(5001, 1)
 	etcdRunner.Start()
 
 	wardenNetwork = os.Getenv("WARDEN_NETWORK")
