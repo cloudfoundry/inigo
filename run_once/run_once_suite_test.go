@@ -133,7 +133,7 @@ var _ = BeforeEach(func() {
 		// local
 		gardenRunner.DestroyContainers()
 	} else {
-		// remove
+		// remote
 		nukeAllWardenContainers()
 	}
 })

@@ -54,7 +54,6 @@ var _ = Describe("RunOnce", func() {
 			runOnces, _ := bbs.GetAllStartingRunOnces()
 			runOnce := runOnces[0]
 
-			fmt.Printf("runonce: %#v\n", runOnce)
 			Expect(runOnce.Guid).To(Equal("some-app-guid-some-task-id"))
 			Expect(runOnce.ContainerHandle).ToNot(BeEmpty())
 
