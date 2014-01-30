@@ -50,7 +50,9 @@ func (r *ExecutorRunner) Start() {
 }
 
 func (r *ExecutorRunner) Stop() {
-	r.executorSession.Cmd.Process.Signal(syscall.SIGTERM)
+	if r.executorSession != nil {
+		r.executorSession.Cmd.Process.Signal(syscall.SIGTERM)
+	}
 }
 
 func teeToStdout(out io.Writer) io.Writer {

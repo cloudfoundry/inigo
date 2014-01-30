@@ -14,7 +14,6 @@ var _ = Describe("RunOnce", func() {
 	var bbs *Bbs.BBS
 
 	BeforeEach(func() {
-		executorRunner.Start()
 		natsRunner.Start()
 		stagerRunner.Start()
 
@@ -30,36 +29,69 @@ var _ = Describe("RunOnce", func() {
 	AfterEach(func() {
 		executorRunner.Stop()
 		stagerRunner.Stop()
+		natsClient.Disconnect()
 	})
 
 	Context("when the stager receives a staging message", func() {
-		It("eventually is running on an executor", func(done Done) {
-			natsClient.Subscribe("stager-test", func(message *yagnats.Message) {
-				// seeing the response at all is enough for now;
-				// this will make the test complete successfully
-
-				// but it has to be done  up here so that we subscribe before we publish
-				close(done)
+		Context("when the executors are listening", func() {
+			BeforeEach(func() {
+				executorRunner.Start()
 			})
 
-			err := natsClient.PublishWithReplyTo("diego.staging.start", "stager-test", []byte(`{"app_id": "some-app-guid", "task_id": "some-task-id"}`))
-			Ω(err).ShouldNot(HaveOccurred())
+			It("eventually is running on an executor", func(done Done) {
+				err := natsClient.PublishWithReplyTo("diego.staging.start", "stager-test", []byte(`{"app_id": "some-app-guid", "task_id": "some-task-id"}`))
+				Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(func() []models.RunOnce {
+				Eventually(func() []models.RunOnce {
+					runOnces, _ := bbs.GetAllStartingRunOnces()
+					return runOnces
+				}, 5).Should(HaveLen(1))
+
 				runOnces, _ := bbs.GetAllStartingRunOnces()
-				return runOnces
-			}, 5).Should(HaveLen(1))
+				runOnce := runOnces[0]
 
-			runOnces, _ := bbs.GetAllStartingRunOnces()
-			runOnce := runOnces[0]
+				Expect(runOnce.Guid).To(Equal("some-app-guid-some-task-id"))
+				Expect(runOnce.ContainerHandle).ToNot(BeEmpty())
 
-			Expect(runOnce.Guid).To(Equal("some-app-guid-some-task-id"))
-			Expect(runOnce.ContainerHandle).ToNot(BeEmpty())
+				listResponse, err := wardenClient.List()
+				Expect(err).ToNot(HaveOccurred())
 
-			listResponse, err := wardenClient.List()
-			Expect(err).ToNot(HaveOccurred())
+				Expect(listResponse.GetHandles()).To(ContainElement(runOnce.ContainerHandle))
+				close(done)
+			}, 5.0)
+		})
 
-			Expect(listResponse.GetHandles()).To(ContainElement(runOnce.ContainerHandle))
-		}, 5.0)
+		Context("when the executors are not listening", func() {
+			It("still runs the staging process when the executors start listening again", func(done Done) {
+				received := make(chan bool)
+				natsClient.Subscribe("stager-test", func(message *yagnats.Message) {
+					received <- true
+				})
+				err := natsClient.PublishWithReplyTo("diego.staging.start", "stager-test", []byte(`{"app_id": "some-app-guid", "task_id": "some-task-id"}`))
+				Ω(err).ShouldNot(HaveOccurred())
+
+				<-received
+
+				executorRunner.Start()
+
+				Eventually(func() []models.RunOnce {
+					runOnces, _ := bbs.GetAllStartingRunOnces()
+					return runOnces
+				}, 5).Should(HaveLen(1))
+
+				runOnces, _ := bbs.GetAllStartingRunOnces()
+				runOnce := runOnces[0]
+
+				Expect(runOnce.Guid).To(Equal("some-app-guid-some-task-id"))
+				Expect(runOnce.ContainerHandle).ToNot(BeEmpty())
+
+				listResponse, err := wardenClient.List()
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(listResponse.GetHandles()).To(ContainElement(runOnce.ContainerHandle))
+
+				close(done)
+			}, 5.0)
+		})
 	})
 })
