@@ -26,6 +26,7 @@ pushd $GOPATH/src/github.com/pivotal-cf-experimental/garden
 popd
 
 go install github.com/pivotal-cf-experimental/garden
+go install github.com/apcera/gnatsd
 
 ROOTFS_FN=lucid64.dev.tgz
 ROOTFS_URI=http://cfstacks.s3.amazonaws.com/${ROOTFS_FN}
