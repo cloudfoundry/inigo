@@ -11,6 +11,6 @@ github.com/nu7hatch/gouuid	179d4d0c4d8d407a32af483c2354df1d2c91e6c3
 github.com/samuel/go-zookeeper	897888e14f7bd6c1c9a70e2973d0f5fbdb28bde0
 github.com/cloudfoundry-incubator/stager	a11757d043f219e9db8a38fb8e85522a921c6f41
 code.google.com/p/gogoprotobuf	5ad34ffef55c3655a6ca3f46adf798484c3e1e2e
-github.com/cloudfoundry-incubator/executor	27783f44b8ffa355ed02d4053b617dc1066f91a3
+github.com/cloudfoundry-incubator/executor	bc4cfdd32cdede3d50feb6a05d97e1a1e8c571cc
 github.com/coreos/etcd	1b00c449a5b0ea26b6877278b278da9b3a9e6651
 github.com/apcera/gnatsd	6eb1dd247c4ca8217c3f060f07eef4e0ab42c625
