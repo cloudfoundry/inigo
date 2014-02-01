@@ -6,7 +6,6 @@ import (
 	"github.com/cloudfoundry/yagnats"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"log"
 )
 
 var _ = Describe("RunOnce", func() {
@@ -20,10 +19,9 @@ var _ = Describe("RunOnce", func() {
 		bbs = Bbs.New(etcdRunner.Adapter())
 
 		natsClient = yagnats.NewClient()
+
 		err := natsClient.Connect(&yagnats.ConnectionInfo{"127.0.0.1:4222", "nats", "nats"})
-		if err != nil {
-			log.Fatalf("Error connecting: %s\n", err)
-		}
+		Ω(err).ShouldNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
@@ -64,13 +62,22 @@ var _ = Describe("RunOnce", func() {
 		Context("when the executors are not listening", func() {
 			It("still runs the staging process when the executors start listening again", func(done Done) {
 				received := make(chan bool)
+
 				natsClient.Subscribe("stager-test", func(message *yagnats.Message) {
 					received <- true
 				})
-				err := natsClient.PublishWithReplyTo("diego.staging.start", "stager-test", []byte(`{"app_id": "some-app-guid", "task_id": "some-task-id"}`))
+
+				err := natsClient.PublishWithReplyTo(
+					"diego.staging.start",
+					"stager-test",
+					[]byte(`{"app_id": "some-app-guid", "task_id": "some-task-id", "stack": "some-stack", "download_uri": "http://example.com"}`),
+				)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				<-received
+				Eventually(func() []models.RunOnce {
+					runOnces, _ := bbs.GetAllPendingRunOnces()
+					return runOnces
+				}, 5).Should(HaveLen(1))
 
 				executorRunner.Start()
 
@@ -79,16 +86,7 @@ var _ = Describe("RunOnce", func() {
 					return runOnces
 				}, 5).Should(HaveLen(1))
 
-				runOnces, _ := bbs.GetAllStartingRunOnces()
-				runOnce := runOnces[0]
-
-				Expect(runOnce.Guid).To(Equal("some-app-guid-some-task-id"))
-				Expect(runOnce.ContainerHandle).ToNot(BeEmpty())
-
-				listResponse, err := wardenClient.List()
-				Expect(err).ToNot(HaveOccurred())
-
-				Expect(listResponse.GetHandles()).To(ContainElement(runOnce.ContainerHandle))
+				<-received
 
 				close(done)
 			}, 5.0)
