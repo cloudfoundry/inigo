@@ -14,9 +14,16 @@ gvm use go1.2
 export GOPATH=$WORKSPACE/go
 export PATH=$GOPATH/bin:$PATH
 
-go get github.com/vito/gocart
+source_root=$GOPATH/src/github.com/cloudfoundry-incubator/inigo
 
-pushd $GOPATH/src/github.com/cloudfoundry-incubator/inigo
+pushd $GOPATH
+  git clone https://github.com/cloudfoundry-incubator/diego-workspace
+  cp ./diego-workspace/Cartridge.lock $source_root
+popd
+
+go get -v github.com/vito/gocart
+
+pushd $source_root
   gocart
 popd
 
