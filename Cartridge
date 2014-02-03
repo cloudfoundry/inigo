@@ -8,9 +8,9 @@ github.com/cloudfoundry-incubator/stager *
 github.com/cloudfoundry-incubator/executor *
 github.com/onsi/ginkgo *
 github.com/onsi/gomega *
-code.google.com/p/gogoprotobuf origin/master
-github.com/coreos/etcd origin/master
-github.com/apcera/gnatsd origin/master
-github.com/coreos/go-etcd origin/master
-github.com/nu7hatch/gouuid origin/master
-github.com/samuel/go-zookeeper origin/master
+code.google.com/p/gogoprotobuf/proto *
+github.com/coreos/etcd *
+github.com/apcera/gnatsd *
+github.com/coreos/go-etcd/etcd *
+github.com/nu7hatch/gouuid *
+github.com/samuel/go-zookeeper/zk *
