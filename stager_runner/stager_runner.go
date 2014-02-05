@@ -1,11 +1,10 @@
 package stager_runner
 
 import (
+	"github.com/cloudfoundry-incubator/inigo/runner_support"
 	. "github.com/onsi/gomega"
 	"github.com/vito/cmdtest"
 	. "github.com/vito/cmdtest/matchers"
-	"io"
-	"os"
 	"os/exec"
 	"strings"
 	"syscall"
@@ -32,8 +31,8 @@ func (r *StagerRunner) Start() {
 			r.stagerBin,
 			"-etcdMachines", strings.Join(r.etcdMachines, ","),
 		),
-		teeToStdout,
-		teeToStdout,
+		runner_support.TeeIfVerbose,
+		runner_support.TeeIfVerbose,
 	)
 	Ω(err).ShouldNot(HaveOccurred())
 	Ω(stagerSession).Should(SayWithTimeout("Listening for staging requests!", 1*time.Second))
@@ -42,9 +41,4 @@ func (r *StagerRunner) Start() {
 
 func (r *StagerRunner) Stop() {
 	r.stagerSession.Cmd.Process.Signal(syscall.SIGTERM)
-}
-
-//copy-pasta from executor runner.  maybe this should be somewhere else?
-func teeToStdout(out io.Writer) io.Writer {
-	return io.MultiWriter(out, os.Stdout)
 }

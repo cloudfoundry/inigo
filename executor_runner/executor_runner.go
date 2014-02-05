@@ -2,8 +2,8 @@ package executor_runner
 
 import (
 	"fmt"
+	"github.com/cloudfoundry-incubator/inigo/runner_support"
 	"github.com/onsi/ginkgo/config"
-	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -51,8 +51,8 @@ func (r *ExecutorRunner) StartWithoutCheck(memoryMB int, diskMB int, snapshotFil
 			"-diskMB", fmt.Sprintf("%d", diskMB),
 			"-registrySnapshotFile", snapshotFile,
 		),
-		teeToStdout,
-		teeToStdout,
+		runner_support.TeeIfVerbose,
+		runner_support.TeeIfVerbose,
 	)
 	Ω(err).ShouldNot(HaveOccurred())
 	r.snapshotFile = snapshotFile
@@ -64,8 +64,4 @@ func (r *ExecutorRunner) Stop() {
 		r.Session.Cmd.Process.Signal(syscall.SIGTERM)
 		os.Remove(r.snapshotFile)
 	}
-}
-
-func teeToStdout(out io.Writer) io.Writer {
-	return io.MultiWriter(out, os.Stdout)
 }
