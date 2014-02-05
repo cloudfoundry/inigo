@@ -1,4 +1,4 @@
-package run_once_test
+package inigo_test
 
 import (
 	"fmt"

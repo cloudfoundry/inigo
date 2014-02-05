@@ -1,4 +1,4 @@
-package run_once_test
+package inigo_test
 
 import (
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
@@ -33,7 +33,7 @@ var _ = Describe("RunOnce", func() {
 	Context("when the stager receives a staging message", func() {
 		Context("when the executors are listening", func() {
 			BeforeEach(func() {
-				executorRunner.Start()
+				executorRunner.Start(1024, 1024)
 			})
 
 			It("eventually is running on an executor", func(done Done) {
@@ -79,7 +79,7 @@ var _ = Describe("RunOnce", func() {
 					return runOnces
 				}, 5).Should(HaveLen(1))
 
-				executorRunner.Start()
+				executorRunner.Start(1024, 1024)
 
 				Eventually(func() []models.RunOnce {
 					runOnces, _ := bbs.GetAllStartingRunOnces()

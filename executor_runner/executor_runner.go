@@ -1,6 +1,8 @@
 package executor_runner
 
 import (
+	"fmt"
+	"github.com/onsi/ginkgo/config"
 	"io"
 	"os"
 	"os/exec"
@@ -18,8 +20,9 @@ type ExecutorRunner struct {
 	wardenNetwork string
 	wardenAddr    string
 	etcdMachines  []string
+	snapshotFile  string
 
-	executorSession *cmdtest.Session
+	Session *cmdtest.Session
 }
 
 func New(executorBin, wardenNetwork, wardenAddr string, etcdMachines []string) *ExecutorRunner {
@@ -31,27 +34,35 @@ func New(executorBin, wardenNetwork, wardenAddr string, etcdMachines []string) *
 	}
 }
 
-func (r *ExecutorRunner) Start() {
+func (r *ExecutorRunner) Start(memoryMB int, diskMB int) {
+	r.StartWithoutCheck(memoryMB, diskMB, fmt.Sprintf("/tmp/executor_registry_%d", config.GinkgoConfig.ParallelNode))
+
+	Ω(r.Session).Should(SayWithTimeout("Watching for RunOnces!", 1*time.Second))
+}
+
+func (r *ExecutorRunner) StartWithoutCheck(memoryMB int, diskMB int, snapshotFile string) {
 	executorSession, err := cmdtest.StartWrapped(
 		exec.Command(
 			r.executorBin,
 			"-wardenNetwork", r.wardenNetwork,
 			"-wardenAddr", r.wardenAddr,
 			"-etcdMachines", strings.Join(r.etcdMachines, ","),
+			"-memoryMB", fmt.Sprintf("%d", memoryMB),
+			"-diskMB", fmt.Sprintf("%d", diskMB),
+			"-registrySnapshotFile", snapshotFile,
 		),
 		teeToStdout,
 		teeToStdout,
 	)
 	Ω(err).ShouldNot(HaveOccurred())
-
-	Ω(executorSession).Should(SayWithTimeout("Watching for RunOnces!", 1*time.Second))
-
-	r.executorSession = executorSession
+	r.snapshotFile = snapshotFile
+	r.Session = executorSession
 }
 
 func (r *ExecutorRunner) Stop() {
-	if r.executorSession != nil {
-		r.executorSession.Cmd.Process.Signal(syscall.SIGTERM)
+	if r.Session != nil {
+		r.Session.Cmd.Process.Signal(syscall.SIGTERM)
+		os.Remove(r.snapshotFile)
 	}
 }
 
