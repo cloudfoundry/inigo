@@ -4,8 +4,6 @@ set -e -x
 
 FIRST_GOPATH=`echo $GOPATH | cut -d':' -f1`
 
-export PATH=$FIRST_GOPATH/bin:$PATH
-
 pushd $FIRST_GOPATH/src/github.com/pivotal-cf-experimental/garden
   make # compile wshd/etc.
   export GARDEN_ROOT=$PWD/root
@@ -38,5 +36,5 @@ popd
 export GARDEN_ROOTFS="${ROOTFS_INSTALL_DIR}/rootfs"
 
 pushd $FIRST_GOPATH/src/github.com/cloudfoundry-incubator/inigo
-  ginkgo -r -i -skipMeasurements -randomizeAllSpecs "$@"
+  go test -v ./...
 popd
