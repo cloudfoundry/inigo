@@ -10,7 +10,11 @@
 			"Rev": "5ad34ffef55c3655a6ca3f46adf798484c3e1e2e"
 		},
 		{
-			"ImportPath": "github.com/cloudfoundry-incubator/executor",
+			"ImportPath": "github.com/cloudfoundry-incubator/executor/executor",
+			"Rev": "669f29f3b87ab42b6512253b6882a0e70d413743"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry-incubator/executor/taskregistry",
 			"Rev": "669f29f3b87ab42b6512253b6882a0e70d413743"
 		},
 		{
@@ -22,7 +26,7 @@
 			"Rev": "1e9121a18bc75499731ef0f4ebe3ef4bd883ee6e"
 		},
 		{
-			"ImportPath": "github.com/cloudfoundry-incubator/stager",
+			"ImportPath": "github.com/cloudfoundry-incubator/stager/stager",
 			"Rev": "edd91663f59d3816c7184045781375f7a5891c42"
 		},
 		{
@@ -60,8 +64,8 @@
 			"Rev": "eb4854fbb3636f8ca054586384addf7f1b048466"
 		},
 		{
-			"ImportPath": "github.com/pivotal-cf-experimental/garden",
-			"Rev": "a2061d72a81fe33df2d8fec41f2b241bc6d93418"
+			"ImportPath": "github.com/pivotal-cf-experimental/garden/drain",
+			"Rev": "c128ea0dcc8ed3748d9cb5eb12bbb77df45ca61f"
 		},
 		{
 			"ImportPath": "github.com/vito/cmdtest",

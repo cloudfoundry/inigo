@@ -18,9 +18,10 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/garden_runner"
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
 
-	_ "github.com/cloudfoundry-incubator/executor"
-	_ "github.com/cloudfoundry-incubator/stager"
-	_ "github.com/pivotal-cf-experimental/garden"
+	// hack these in so Godep sees that we're using them
+	_ "github.com/cloudfoundry-incubator/executor/executor"
+	_ "github.com/cloudfoundry-incubator/stager/stager"
+	_ "github.com/pivotal-cf-experimental/garden/drain"
 )
 
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
