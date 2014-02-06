@@ -14,13 +14,11 @@ gvm use go1.2
 export GOPATH=$WORKSPACE/go
 export PATH=$GOPATH/bin:$PATH
 
+export GODEPS=$GOPATH/src/github.com/cloudfoundry-incubator/inigo/Godeps/_workspace
+
 go get github.com/kr/godep
 
-pushd $GOPATH/src/github.com/cloudfoundry-incubator/inigo
-  godep get
-popd
-
-pushd $GOPATH/src/github.com/pivotal-cf-experimental/garden
+pushd $GODEPS/src/github.com/pivotal-cf-experimental/garden
   make # compile wshd/etc.
   export GARDEN_ROOT=$PWD/root
 popd
@@ -47,14 +45,14 @@ pushd "$ROOTFS_INSTALL_DIR"
   sudo tar zxf ${ROOTFS_FN} -C ./rootfs
 popd
 
+go get -d -v github.com/coreos/etcd
+
 pushd $GOPATH/src/github.com/coreos/etcd
   ./build
   cp bin/etcd $GOPATH/bin
 popd
 
 export GARDEN_ROOTFS="${ROOTFS_INSTALL_DIR}/rootfs"
-
-godep go install github.com/onsi/ginkgo/ginkgo
 
 pushd $GOPATH/src/github.com/cloudfoundry-incubator/inigo
   godep go test -v ./...
