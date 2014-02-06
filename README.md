@@ -6,7 +6,7 @@
 ```
 VirtualBox
 export WARDEN_NETWORK=tcp
-  export WARDEN_ADDR=192.168.50.1:7031
+export WARDEN_ADDR=192.168.50.1:7031
 ```
 1. Install gnatsd  
   go install github.com/apcera/gnatsd
