@@ -2,14 +2,14 @@ package executor_runner
 
 import (
 	"fmt"
-	"github.com/cloudfoundry-incubator/inigo/runner_support"
-	"github.com/onsi/ginkgo/config"
 	"os"
 	"os/exec"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/cloudfoundry-incubator/inigo/runner_support"
+	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/vito/cmdtest"
 	. "github.com/vito/cmdtest/matchers"

@@ -14,10 +14,10 @@ gvm use go1.2
 export GOPATH=$WORKSPACE/go
 export PATH=$GOPATH/bin:$PATH
 
-go get github.com/vito/gocart
+go get github.com/kr/godep
 
 pushd $GOPATH/src/github.com/cloudfoundry-incubator/inigo
-  gocart
+  godep get
 popd
 
 pushd $GOPATH/src/github.com/pivotal-cf-experimental/garden
@@ -25,8 +25,8 @@ pushd $GOPATH/src/github.com/pivotal-cf-experimental/garden
   export GARDEN_ROOT=$PWD/root
 popd
 
-go install github.com/pivotal-cf-experimental/garden
-go install github.com/apcera/gnatsd
+godep go install github.com/pivotal-cf-experimental/garden
+godep go install github.com/apcera/gnatsd
 
 ROOTFS_FN=lucid64.dev.tgz
 ROOTFS_URI=http://cfstacks.s3.amazonaws.com/${ROOTFS_FN}
@@ -54,8 +54,8 @@ popd
 
 export GARDEN_ROOTFS="${ROOTFS_INSTALL_DIR}/rootfs"
 
-go install github.com/onsi/ginkgo/ginkgo
+godep go install github.com/onsi/ginkgo/ginkgo
 
 pushd $GOPATH/src/github.com/cloudfoundry-incubator/inigo
-  ginkgo -r -i -skipMeasurements -randomizeAllSpecs "$@"
+  godep go test -v ./...
 popd

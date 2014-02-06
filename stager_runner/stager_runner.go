@@ -1,14 +1,15 @@
 package stager_runner
 
 import (
-	"github.com/cloudfoundry-incubator/inigo/runner_support"
-	. "github.com/onsi/gomega"
-	"github.com/vito/cmdtest"
-	. "github.com/vito/cmdtest/matchers"
 	"os/exec"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/cloudfoundry-incubator/inigo/runner_support"
+	. "github.com/onsi/gomega"
+	"github.com/vito/cmdtest"
+	. "github.com/vito/cmdtest/matchers"
 )
 
 type StagerRunner struct {

@@ -1,17 +1,17 @@
 package inigo_test
 
 import (
+	"fmt"
+	"io/ioutil"
+	"os"
+	"time"
+
 	"github.com/cloudfoundry-incubator/executor/taskregistry"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	. "github.com/vito/cmdtest/matchers"
-
-	"fmt"
-	"io/ioutil"
-	"os"
-	"time"
 )
 
 var _ = Describe("Executor", func() {

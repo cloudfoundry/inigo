@@ -1,10 +1,11 @@
 package runner_support
 
 import (
-	"github.com/onsi/ginkgo/config"
 	"io"
 	"io/ioutil"
 	"os"
+
+	"github.com/onsi/ginkgo/config"
 )
 
 func TeeIfVerbose(out io.Writer) io.Writer {
