@@ -9,9 +9,6 @@ pushd $FIRST_GOPATH/src/github.com/pivotal-cf-experimental/garden
   export GARDEN_ROOT=$PWD/root
 popd
 
-go get -u -v github.com/apcera/gnatsd
-go get -u -v github.com/coreos/etcd
-
 go install github.com/onsi/ginkgo/ginkgo
 
 ROOTFS_FN=lucid64.dev.tgz
