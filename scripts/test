@@ -2,21 +2,19 @@
 
 set -e -x
 
-export PATH=$GOPATH/bin:$PATH
+FIRST_GOPATH=`echo $GOPATH | cut -d':' -f1`
 
-pushd $GOPATH/src/github.com/pivotal-cf-experimental/garden
+export PATH=$FIRST_GOPATH/bin:$PATH
+
+pushd $FIRST_GOPATH/src/github.com/pivotal-cf-experimental/garden
   make # compile wshd/etc.
   export GARDEN_ROOT=$PWD/root
 popd
 
-go get -u github.com/apcera/gnatsd
+go get -u -v github.com/apcera/gnatsd
+go get -u -v github.com/coreos/etcd
 
-go get -d -v github.com/coreos/etcd
-
-pushd $GOPATH/src/github.com/coreos/etcd
-  ./build
-  cp bin/etcd $GOPATH/bin
-popd
+go install github.com/onsi/ginkgo/ginkgo
 
 ROOTFS_FN=lucid64.dev.tgz
 ROOTFS_URI=http://cfstacks.s3.amazonaws.com/${ROOTFS_FN}
@@ -39,8 +37,6 @@ popd
 
 export GARDEN_ROOTFS="${ROOTFS_INSTALL_DIR}/rootfs"
 
-go install github.com/onsi/ginkgo/ginkgo
-
-pushd $GOPATH/src/github.com/cloudfoundry-incubator/inigo
+pushd $FIRST_GOPATH/src/github.com/cloudfoundry-incubator/inigo
   ginkgo -r -i -skipMeasurements -randomizeAllSpecs "$@"
 popd
