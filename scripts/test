@@ -2,29 +2,21 @@
 
 set -e -x
 
-if [ -z "$WORKSPACE" ]; then
-  echo "This script assumes it's running in Jenkins."
-  echo "You probably want to just run 'ginkgo'."
-  exit 1
-fi
-
-. /usr/local/share/gvm/scripts/gvm
-gvm use go1.2
-
-export GOPATH=$WORKSPACE/go
 export PATH=$GOPATH/bin:$PATH
 
-export GODEPS=$GOPATH/src/github.com/cloudfoundry-incubator/inigo/Godeps/_workspace
-
-go get github.com/kr/godep
-
-pushd $GODEPS/src/github.com/pivotal-cf-experimental/garden
+pushd $GOPATH/src/github.com/pivotal-cf-experimental/garden
   make # compile wshd/etc.
   export GARDEN_ROOT=$PWD/root
 popd
 
-godep go install github.com/pivotal-cf-experimental/garden
-godep go install github.com/apcera/gnatsd
+go get -u github.com/apcera/gnatsd
+
+go get -d -v github.com/coreos/etcd
+
+pushd $GOPATH/src/github.com/coreos/etcd
+  ./build
+  cp bin/etcd $GOPATH/bin
+popd
 
 ROOTFS_FN=lucid64.dev.tgz
 ROOTFS_URI=http://cfstacks.s3.amazonaws.com/${ROOTFS_FN}
@@ -45,15 +37,10 @@ pushd "$ROOTFS_INSTALL_DIR"
   sudo tar zxf ${ROOTFS_FN} -C ./rootfs
 popd
 
-go get -d -v github.com/coreos/etcd
-
-pushd $GOPATH/src/github.com/coreos/etcd
-  ./build
-  cp bin/etcd $GOPATH/bin
-popd
-
 export GARDEN_ROOTFS="${ROOTFS_INSTALL_DIR}/rootfs"
 
+go install github.com/onsi/ginkgo/ginkgo
+
 pushd $GOPATH/src/github.com/cloudfoundry-incubator/inigo
-  godep go test -v ./...
+  ginkgo -r -i -skipMeasurements -randomizeAllSpecs "$@"
 popd
