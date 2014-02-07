@@ -16,6 +16,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/inigo/executor_runner"
 	"github.com/cloudfoundry-incubator/inigo/garden_runner"
+	"github.com/cloudfoundry-incubator/inigo/inigolistener"
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
 )
 
@@ -128,7 +129,6 @@ func TestRun_once(t *testing.T) {
 
 var _ = BeforeEach(func() {
 	etcdRunner.Reset()
-
 	if gardenRunner != nil {
 		// local
 		gardenRunner.DestroyContainers()
@@ -136,6 +136,7 @@ var _ = BeforeEach(func() {
 		// remote
 		nukeAllWardenContainers()
 	}
+	startInigoListener(wardenClient)
 })
 
 func nukeAllWardenContainers() {
@@ -144,8 +145,7 @@ func nukeAllWardenContainers() {
 
 	handles := listResponse.GetHandles()
 	for _, handle := range handles {
-		_, err := wardenClient.Destroy(handle)
-		Ω(err).ShouldNot(HaveOccurred())
+		wardenClient.Destroy(handle)
 	}
 }
 
@@ -162,4 +162,12 @@ func registerSignalHandler() {
 			os.Exit(1)
 		}
 	}()
+}
+
+func startInigoListener(wardenClient gordon.Client) {
+	inigolistener.Start(wardenClient)
+}
+
+func stopInigoListener(wardenClient gordon.Client) {
+	inigolistener.Stop(wardenClient)
 }

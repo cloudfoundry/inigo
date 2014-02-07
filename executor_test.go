@@ -7,7 +7,10 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/executor/taskregistry"
+	"github.com/cloudfoundry-incubator/inigo/inigolistener"
+	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
@@ -15,6 +18,8 @@ import (
 )
 
 var _ = Describe("Executor", func() {
+	var bbs *Bbs.BBS
+
 	Describe("starting without a snaphsot", func() {
 		It("should come up, just fine", func() {
 			executorRunner.Start(1024, 1024)
@@ -83,6 +88,31 @@ var _ = Describe("Executor", func() {
 				Ω(executorRunner.Session).Should(SayWithTimeout("corrupt registry", time.Second))
 				Ω(executorRunner.Session).Should(ExitWith(1))
 			})
+		})
+	})
+
+	Describe("Resource limits", func() {
+		BeforeEach(func() {
+			bbs = Bbs.New(etcdRunner.Adapter())
+			executorRunner.Start(1024, 1024)
+		})
+
+		AfterEach(func() {
+			executorRunner.Stop()
+		})
+
+		It("should only pick up tasks if it has capacity", func() {
+			firstGuyGuid := factories.GenerateGuid()
+			secondGuyGuid := factories.GenerateGuid()
+			firstGuyRunOnce := factories.BuildRunOnceWithRunAction(1024, 1024, inigolistener.CurlCommand(firstGuyGuid)+"; sleep 5")
+			bbs.DesireRunOnce(firstGuyRunOnce)
+
+			Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(firstGuyGuid))
+
+			secondGuyRunOnce := factories.BuildRunOnceWithRunAction(1024, 1024, inigolistener.CurlCommand(secondGuyGuid))
+			bbs.DesireRunOnce(secondGuyRunOnce)
+
+			Consistently(inigolistener.ReportingGuids, 2.0).ShouldNot(ContainElement(secondGuyGuid))
 		})
 	})
 })

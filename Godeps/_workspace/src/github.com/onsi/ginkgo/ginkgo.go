@@ -157,7 +157,7 @@ func Describe(text string, body func()) bool {
 }
 
 //You can focus the tests within a describe block using FDescribe
-func FDescribe(text string, body func()) bool {
+func Describe(text string, body func()) bool {
 	globalSuite.pushContainerNode(text, body, flagTypeFocused, types.GenerateCodeLocation(1))
 	return true
 }
@@ -186,7 +186,7 @@ func Context(text string, body func()) bool {
 }
 
 //You can focus the tests within a describe block using FContext
-func FContext(text string, body func()) bool {
+func Context(text string, body func()) bool {
 	globalSuite.pushContainerNode(text, body, flagTypeFocused, types.GenerateCodeLocation(1))
 	return true
 }
@@ -214,7 +214,7 @@ func It(text string, body interface{}, timeout ...float64) bool {
 }
 
 //You can focus individual Its using FIt
-func FIt(text string, body interface{}, timeout ...float64) bool {
+func It(text string, body interface{}, timeout ...float64) bool {
 	globalSuite.pushItNode(text, body, flagTypeFocused, types.GenerateCodeLocation(1), parseTimeout(timeout...))
 	return true
 }
@@ -239,7 +239,7 @@ func Measure(text string, body func(Benchmarker), samples int) bool {
 }
 
 //You can focus individual Measures using FMeasure
-func FMeasure(text string, body func(Benchmarker), samples int) bool {
+func Measure(text string, body func(Benchmarker), samples int) bool {
 	globalSuite.pushMeasureNode(text, body, flagTypeFocused, types.GenerateCodeLocation(1), samples)
 	return true
 }
