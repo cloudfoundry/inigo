@@ -33,5 +33,5 @@ popd
 export GARDEN_ROOTFS="${ROOTFS_INSTALL_DIR}/rootfs"
 
 pushd $FIRST_GOPATH/src/github.com/cloudfoundry-incubator/inigo
-  go test -v ./...
+  ginkgo -r -failOnPending -randomizeAllSpecs "$@"
 popd
