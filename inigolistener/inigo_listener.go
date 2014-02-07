@@ -50,7 +50,6 @@ func Start(wardenClient gordon.Client) {
 	}
 
 	handle = createResponse.GetHandle()
-	println("listener " + handle)
 
 	netResponse, err := wardenClient.NetIn(handle)
 	if err != nil {

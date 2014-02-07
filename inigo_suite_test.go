@@ -31,7 +31,7 @@ var stagerRunner *stager_runner.StagerRunner
 
 var wardenNetwork, wardenAddr string
 
-func TestRun_once(t *testing.T) {
+func TestInigo(t *testing.T) {
 	registerSignalHandler()
 	RegisterFailHandler(Fail)
 
@@ -116,7 +116,7 @@ func TestRun_once(t *testing.T) {
 
 	natsRunner = natsrunner.NewNATSRunner(4222)
 
-	RunSpecs(t, "RunOnce Suite")
+	RunSpecs(t, "Inigo Integration Suite")
 
 	etcdRunner.Stop()
 
