@@ -1,6 +1,7 @@
 package inigo_test
 
 import (
+	"github.com/cloudfoundry-incubator/inigo/executor_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigolistener"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -34,7 +35,7 @@ var _ = Describe("RunOnce", func() {
 
 	Context("when the stager receives a staging message", func() {
 		BeforeEach(func() {
-			executorRunner.Start(1024, 1024)
+			executorRunner.Start()
 		})
 
 		It("eventually is running on an executor", func(done Done) {
@@ -66,9 +67,44 @@ var _ = Describe("RunOnce", func() {
 			runOnce := factories.BuildRunOnceWithRunAction(1, 1, inigolistener.CurlCommand(guid))
 			bbs.DesireRunOnce(runOnce)
 
-			executorRunner.Start(1024, 1024)
+			executorRunner.Start()
 
 			Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(guid))
+		})
+	})
+
+	Context("when an executor disappears", func() {
+		var secondExecutor *executor_runner.ExecutorRunner
+		BeforeEach(func() {
+			secondExecutor = executor_runner.New(
+				executorPath,
+				wardenNetwork,
+				wardenAddr,
+				etcdRunner.NodeURLS(),
+			)
+
+			executorRunner.Start(executor_runner.Config{MemoryMB: 3, DiskMB: 3, ConvergenceInterval: 1})
+			secondExecutor.Start(executor_runner.Config{ConvergenceInterval: 1, HeartbeatInterval: 1})
+		})
+
+		It("eventually marks jobs running on that executor as failed", func() {
+			guid := factories.GenerateGuid()
+			runOnce := factories.BuildRunOnceWithRunAction(1024, 1024, inigolistener.CurlCommand(guid)+"; sleep 10")
+			bbs.DesireRunOnce(runOnce)
+
+			Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(guid))
+
+			secondExecutor.KillWithFire()
+
+			Eventually(func() interface{} {
+				runOnces, _ := bbs.GetAllCompletedRunOnces()
+				return runOnces
+			}, 5).Should(HaveLen(1))
+			runOnces, _ := bbs.GetAllCompletedRunOnces()
+
+			completedRunOnce := runOnces[0]
+			Ω(completedRunOnce.Guid).Should(Equal(runOnce.Guid))
+			Ω(completedRunOnce.Failed).To(BeTrue())
 		})
 	})
 })

@@ -26,6 +26,7 @@ var executor *cmdtest.Session
 
 var gardenRunner *garden_runner.GardenRunner
 var executorRunner *executor_runner.ExecutorRunner
+var executorPath string
 var natsRunner *natsrunner.NATSRunner
 var stagerRunner *stager_runner.StagerRunner
 
@@ -88,7 +89,7 @@ func TestInigo(t *testing.T) {
 		return
 	}
 
-	executorPath, err := cmdtest.Build("github.com/cloudfoundry-incubator/executor")
+	executorPath, err = cmdtest.Build("github.com/cloudfoundry-incubator/executor")
 	if err != nil {
 		println("failed to compile executor!")
 		os.Exit(1)
