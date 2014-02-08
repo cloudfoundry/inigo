@@ -10,10 +10,6 @@
 			"Rev": "5ad34ffef55c3655a6ca3f46adf798484c3e1e2e"
 		},
 		{
-			"ImportPath": "github.com/cloudfoundry-incubator/executor/taskregistry",
-			"Rev": "447df34256f27719720cd0e79b335f69f49906b6"
-		},
-		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
 			"Rev": "29c262d5dadf3a5d42eac0d5f8d162e3f2d1b096"
 		},
