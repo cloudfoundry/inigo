@@ -151,10 +151,9 @@ func nukeAllWardenContainers() {
 }
 
 func registerSignalHandler() {
-	go func() {
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt, os.Kill)
+	c := make(chan os.Signal, 1)
 
+	go func() {
 		select {
 		case <-c:
 			etcdRunner.Stop()
@@ -163,6 +162,8 @@ func registerSignalHandler() {
 			os.Exit(1)
 		}
 	}()
+
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 }
 
 func startInigoListener(wardenClient gordon.Client) {
