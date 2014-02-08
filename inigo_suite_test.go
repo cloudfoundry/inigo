@@ -120,17 +120,12 @@ func TestInigo(t *testing.T) {
 
 	RunSpecs(t, "Inigo Integration Suite")
 
-	etcdRunner.Stop()
-
-	if gardenRunner != nil {
-		gardenRunner.Stop()
-	}
-
-	natsRunner.Stop()
+	cleanup()
 }
 
 var _ = BeforeEach(func() {
 	etcdRunner.Reset()
+
 	if gardenRunner != nil {
 		// local
 		gardenRunner.DestroyContainers()
@@ -138,6 +133,7 @@ var _ = BeforeEach(func() {
 		// remote
 		nukeAllWardenContainers()
 	}
+
 	startInigoListener(wardenClient)
 })
 
@@ -151,15 +147,30 @@ func nukeAllWardenContainers() {
 	}
 }
 
+func cleanup() {
+	println("stopping etcd")
+	etcdRunner.Stop()
+
+	if gardenRunner != nil {
+		println("stopping garden")
+		gardenRunner.Stop()
+	}
+
+	println("stopping stager")
+	stagerRunner.Stop()
+}
+
 func registerSignalHandler() {
 	c := make(chan os.Signal, 1)
 
 	go func() {
 		select {
 		case <-c:
-			etcdRunner.Stop()
-			gardenRunner.Stop()
-			stagerRunner.Stop()
+			println("cleaning up!")
+
+			cleanup()
+
+			println("goodbye!")
 			os.Exit(1)
 		}
 	}()

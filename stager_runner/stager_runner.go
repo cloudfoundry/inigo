@@ -35,11 +35,18 @@ func (r *StagerRunner) Start() {
 		runner_support.TeeIfVerbose,
 		runner_support.TeeIfVerbose,
 	)
+
 	Ω(err).ShouldNot(HaveOccurred())
-	Ω(stagerSession).Should(SayWithTimeout("Listening for staging requests!", 1*time.Second))
+	Ω(stagerSession).Should(SayWithTimeout(
+		"Listening for staging requests!",
+		1*time.Second,
+	))
+
 	r.stagerSession = stagerSession
 }
 
 func (r *StagerRunner) Stop() {
-	r.stagerSession.Cmd.Process.Signal(syscall.SIGTERM)
+	if r.stagerSession != nil {
+		r.stagerSession.Cmd.Process.Signal(syscall.SIGTERM)
+	}
 }
