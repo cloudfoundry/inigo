@@ -1,19 +1,16 @@
 package inigo_test
 
 import (
-	"fmt"
-	"github.com/cloudfoundry-incubator/inigo/executor_runner"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"time"
 
-	"github.com/cloudfoundry-incubator/executor/taskregistry"
+	"github.com/cloudfoundry-incubator/inigo/executor_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigolistener"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	. "github.com/vito/cmdtest/matchers"
 )
@@ -36,52 +33,91 @@ var _ = Describe("Executor", func() {
 		})
 	})
 
-	Describe("starting with a snapshot", func() {
-		Context("when the stapshot is valid", func() {
-			var registrySnapshotFile string
+	Describe("when restarted with running tasks", func() {
+		var tmpdir string
+		var registrySnapshotFile string
+		var executorConfig executor_runner.Config
 
-			BeforeEach(func() {
-				registrySnapshotFile = fmt.Sprintf("/tmp/inigo_executor_registry_%d", config.GinkgoConfig.ParallelNode)
+		BeforeEach(func() {
+			tmpdir, err := ioutil.TempDir(os.TempDir(), "executor-registry")
+			Ω(err).ShouldNot(HaveOccurred())
 
-				registry := taskregistry.NewTaskRegistry(registrySnapshotFile, 256, 1024)
-				runOnce := models.RunOnce{
-					Guid:     "a guid",
-					MemoryMB: 256,
-					DiskMB:   1024,
-				}
-				registry.AddRunOnce(runOnce)
+			registrySnapshotFile = filepath.Join(tmpdir, "snapshot.json")
 
-				err := registry.WriteToDisk()
-				Ω(err).ShouldNot(HaveOccurred())
-			})
+			bbs = Bbs.New(etcdRunner.Adapter())
 
-			AfterEach(func() {
-				os.Remove(registrySnapshotFile)
-			})
+			executorConfig = executor_runner.Config{
+				MemoryMB:     1024,
+				DiskMB:       1024,
+				SnapshotFile: registrySnapshotFile,
+			}
 
-			It("starts up happily", func() {
-				executorRunner.Start()
-				executorRunner.Stop()
-			})
+			executorRunner.Start(executorConfig)
 
-			Context("when the existing apps in the snapshot don't fit within the memory limits", func() {
-				It("should exit with failure", func() {
-					executorRunner.StartWithoutCheck(executor_runner.Config{
-						MemoryMB:     255,
-						DiskMB:       1024,
-						SnapshotFile: registrySnapshotFile})
-					Ω(executorRunner.Session).Should(SayWithTimeout("memory requirements in snapshot exceed", time.Second))
+			existingGuid := factories.GenerateGuid()
+
+			existingRunOnce := factories.BuildRunOnceWithRunAction(
+				1024,
+				1024,
+				inigolistener.CurlCommand(existingGuid)+"; sleep 60",
+			)
+
+			bbs.DesireRunOnce(existingRunOnce)
+
+			Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(existingGuid))
+
+			executorRunner.Stop()
+		})
+
+		AfterEach(func() {
+			executorRunner.Stop()
+
+			os.RemoveAll(tmpdir)
+		})
+
+		It("retains their resource usage", func() {
+			executorRunner.Start(executorConfig)
+
+			cantFitGuid := factories.GenerateGuid()
+
+			cantFitRunOnce := factories.BuildRunOnceWithRunAction(
+				1024,
+				1024,
+				inigolistener.CurlCommand(cantFitGuid)+"; sleep 60",
+			)
+
+			bbs.DesireRunOnce(cantFitRunOnce)
+
+			Consistently(inigolistener.ReportingGuids, 5.0).ShouldNot(ContainElement(cantFitGuid))
+		})
+
+		Context("and we were previously running more than we can now handle", func() {
+			Context("of memory", func() {
+				It("fails to start with a helpful message", func() {
+					executorConfig.MemoryMB = 512
+
+					executorRunner.StartWithoutCheck(executorConfig)
+
+					Ω(executorRunner.Session).Should(SayWithTimeout(
+						"memory requirements in snapshot exceed",
+						time.Second,
+					))
+
 					Ω(executorRunner.Session).Should(ExitWith(1))
 				})
 			})
 
-			Context("when the existing apps in the snapshot don't fit within the disk limits", func() {
-				It("should exit with failure", func() {
-					executorRunner.StartWithoutCheck(executor_runner.Config{
-						MemoryMB:     256,
-						DiskMB:       1023,
-						SnapshotFile: registrySnapshotFile})
-					Ω(executorRunner.Session).Should(SayWithTimeout("disk requirements in snapshot exceed", time.Second))
+			Context("of disk", func() {
+				It("fails to start with a helpful message", func() {
+					executorConfig.DiskMB = 512
+
+					executorRunner.StartWithoutCheck(executorConfig)
+
+					Ω(executorRunner.Session).Should(SayWithTimeout(
+						"disk requirements in snapshot exceed",
+						time.Second,
+					))
+
 					Ω(executorRunner.Session).Should(ExitWith(1))
 				})
 			})
@@ -89,9 +125,16 @@ var _ = Describe("Executor", func() {
 
 		Context("when the snapshot is corrupted", func() {
 			It("should exit with failure", func() {
-				registryFileName := "/tmp/bad_registry"
-				ioutil.WriteFile(registryFileName, []byte("ß"), os.ModePerm)
-				executorRunner.StartWithoutCheck(executor_runner.Config{SnapshotFile: registryFileName})
+				file, err := ioutil.TempFile(os.TempDir(), "executor-invalid-snapshot")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				_, err = file.Write([]byte("ß"))
+				Ω(err).ShouldNot(HaveOccurred())
+
+				executorConfig.SnapshotFile = file.Name()
+
+				executorRunner.StartWithoutCheck(executorConfig)
+
 				Ω(executorRunner.Session).Should(SayWithTimeout("corrupt registry", time.Second))
 				Ω(executorRunner.Session).Should(ExitWith(1))
 			})
