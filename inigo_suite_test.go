@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"syscall"
 	"testing"
 
 	"github.com/cloudfoundry/gunk/natsrunner"
