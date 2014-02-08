@@ -41,8 +41,7 @@ func TestInigo(t *testing.T) {
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(5001, 1)
 
 	if _, err := net.Dial("tcp", "127.0.0.1:5001"); err == nil {
-		println("!!!!! Another etcd is already running! !!!!!")
-		os.Exit(1)
+		failFast("another etcd is already running")
 	}
 
 	etcdRunner.Start()
@@ -69,14 +68,14 @@ func TestInigo(t *testing.T) {
 			gardenRootfs,
 		)
 		if err != nil {
-			panic(err.Error())
+			failFast("garden failed to initialize: " + err.Error())
 		}
 
 		gardenRunner.SnapshotsPath = ""
 
 		err = gardenRunner.Start()
 		if err != nil {
-			panic(err.Error())
+			failFast("garden failed to start: " + err.Error())
 		}
 
 		wardenClient = gardenRunner.NewClient()
@@ -92,16 +91,13 @@ func TestInigo(t *testing.T) {
 
 	err := wardenClient.Connect()
 	if err != nil {
-		println("warden is not up!")
-		os.Exit(1)
+		failFast("warden is not up")
 		return
 	}
 
 	executorPath, err = cmdtest.Build("github.com/cloudfoundry-incubator/executor")
 	if err != nil {
-		println("failed to compile executor!")
-		os.Exit(1)
-		return
+		failFast("failed to compile executor")
 	}
 
 	executorRunner = executor_runner.New(
@@ -113,9 +109,7 @@ func TestInigo(t *testing.T) {
 
 	stagerPath, err := cmdtest.Build("github.com/cloudfoundry-incubator/stager")
 	if err != nil {
-		println("failed to compile stager!")
-		os.Exit(1)
-		return
+		failFast("failed to compile stager")
 	}
 
 	stagerRunner = stager_runner.New(
@@ -154,17 +148,27 @@ func nukeAllWardenContainers() {
 	}
 }
 
+func failFast(msg string) {
+	println("!!!!! " + msg + " !!!!!")
+	cleanup()
+	os.Exit(1)
+}
+
 func cleanup() {
-	println("stopping etcd")
-	etcdRunner.Stop()
+	if etcdRunner != nil {
+		println("stopping etcd")
+		etcdRunner.Stop()
+	}
 
 	if gardenRunner != nil {
 		println("stopping garden")
 		gardenRunner.Stop()
 	}
 
-	println("stopping stager")
-	stagerRunner.Stop()
+	if stagerRunner != nil {
+		println("stopping stager")
+		stagerRunner.Stop()
+	}
 }
 
 func registerSignalHandler() {
