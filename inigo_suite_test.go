@@ -2,6 +2,7 @@ package inigo_test
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -38,6 +39,12 @@ func TestInigo(t *testing.T) {
 	RegisterFailHandler(Fail)
 
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(5001, 1)
+
+	if _, err := net.Dial("tcp", "127.0.0.1:5001"); err == nil {
+		println("!!!!! Another etcd is already running! !!!!!")
+		os.Exit(1)
+	}
+
 	etcdRunner.Start()
 
 	wardenNetwork = os.Getenv("WARDEN_NETWORK")
