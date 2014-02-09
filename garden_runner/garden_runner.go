@@ -130,6 +130,7 @@ func (r *GardenRunner) Stop() error {
 
 	select {
 	case <-stopped:
+		r.gardenCmd.Wait()
 		r.gardenCmd = nil
 		return nil
 	case <-time.After(timeout):
