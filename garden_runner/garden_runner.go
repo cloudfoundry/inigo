@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cloudfoundry-incubator/inigo/runner_support"
 	"github.com/onsi/ginkgo/config"
 	"github.com/vito/cmdtest"
 	"github.com/vito/gordon"
@@ -22,8 +23,8 @@ type GardenRunner struct {
 	RootFSPath    string
 	SnapshotsPath string
 
-	gardenBin string
-	gardenCmd *exec.Cmd
+	gardenBin     string
+	gardenSession *cmdtest.Session
 
 	tmpdir string
 }
@@ -79,12 +80,11 @@ func (r *GardenRunner) Start(argv ...string) error {
 		"--debug",
 	)
 
-	garden := r.cmd("sudo", append([]string{r.gardenBin}, gardenArgs...)...)
-
-	garden.Stdout = os.Stdout
-	garden.Stderr = os.Stderr
-
-	err := garden.Start()
+	garden, err := cmdtest.StartWrapped(
+		r.cmd("sudo", append([]string{r.gardenBin}, gardenArgs...)...),
+		runner_support.TeeIfVerbose,
+		runner_support.TeeIfVerbose,
+	)
 	if err != nil {
 		return err
 	}
@@ -94,9 +94,9 @@ func (r *GardenRunner) Start(argv ...string) error {
 
 	go r.waitForStart(started, stop)
 
-	timeout := 1 * time.Minute
+	timeout := 30 * time.Second
 
-	r.gardenCmd = garden
+	r.gardenSession = garden
 
 	select {
 	case <-started:
@@ -108,11 +108,11 @@ func (r *GardenRunner) Start(argv ...string) error {
 }
 
 func (r *GardenRunner) Stop() error {
-	if r.gardenCmd == nil {
+	if r.gardenSession == nil {
 		return nil
 	}
 
-	stopCmd := exec.Command("sudo", "kill", fmt.Sprintf("%d", r.gardenCmd.Process.Pid))
+	stopCmd := exec.Command("sudo", "kill", fmt.Sprintf("%d", r.gardenSession.Cmd.Process.Pid))
 	stopCmd.Stderr = os.Stderr
 	stopCmd.Stdout = os.Stdout
 
@@ -130,8 +130,7 @@ func (r *GardenRunner) Stop() error {
 
 	select {
 	case <-stopped:
-		r.gardenCmd.Wait()
-		r.gardenCmd = nil
+		r.gardenSession = nil
 		return nil
 	case <-time.After(timeout):
 		stop <- true
