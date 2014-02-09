@@ -80,7 +80,6 @@ func (r *ExecutorRunner) StartWithoutCheck(config ...Config) {
 func (r *ExecutorRunner) Stop() {
 	if r.Session != nil {
 		r.Session.Cmd.Process.Signal(syscall.SIGTERM)
-		os.Remove(r.snapshotFile)
 	}
 }
 
