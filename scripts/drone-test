@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -e -x
+
+FIRST_GOPATH=`echo $GOPATH | cut -d':' -f1`
+
+pushd $FIRST_GOPATH/src/github.com/pivotal-cf-experimental/garden
+  make # compile wshd/etc.
+  export GARDEN_ROOT=$PWD/root
+popd
+
+go install github.com/onsi/ginkgo/ginkgo
+
+export GARDEN_ROOTFS=/opt/warden/rootfs
+
+pushd $FIRST_GOPATH/src/github.com/cloudfoundry-incubator/inigo
+  ginkgo -r -failOnPending -randomizeAllSpecs "$@"
+popd
