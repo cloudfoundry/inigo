@@ -78,6 +78,7 @@ func (r *GardenRunner) Start(argv ...string) error {
 		"--rootfs", r.RootFSPath,
 		"--snapshots", r.SnapshotsPath,
 		"--debug",
+		"--disableQuotas",
 	)
 
 	garden, err := cmdtest.StartWrapped(
