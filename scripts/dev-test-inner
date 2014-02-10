@@ -1,0 +1,23 @@
+#!/bin/bash
+
+GOPATH_ROOT=$PWD
+
+export GOPATH=$GOPATH_ROOT
+export PATH=$GOPATH_ROOT/bin:$PATH
+
+# grab and set up our components
+for package in \
+    github.com/cloudfoundry-incubator/inigo \
+    github.com/cloudfoundry-incubator/executor \
+    github.com/cloudfoundry-incubator/stager \
+    github.com/pivotal-cf-experimental/garden; do
+  export GOPATH=${GOPATH}:${GOPATH_ROOT}/src/$package/Godeps/_workspace
+  export PATH=${PATH}:${GOPATH_ROOT}/src/$package/Godeps/_workspace/bin
+done
+
+# install application dependencies
+for package in github.com/coreos/etcd github.com/apcera/gnatsd; do
+  go install $package
+done
+
+$(dirname $0)/drone-test

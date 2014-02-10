@@ -2,6 +2,9 @@
 
 set -e -x
 
+# we run Garden with sudo which isn't totally necessary; fix later
+apt-get -y install sudo
+
 FIRST_GOPATH=`echo $GOPATH | cut -d':' -f1`
 
 pushd $FIRST_GOPATH/src/github.com/pivotal-cf-experimental/garden
@@ -14,5 +17,5 @@ go install github.com/onsi/ginkgo/ginkgo
 export GARDEN_ROOTFS=/opt/warden/rootfs
 
 pushd $FIRST_GOPATH/src/github.com/cloudfoundry-incubator/inigo
-  ginkgo -r -failOnPending -randomizeAllSpecs "$@"
+  ginkgo -r -failOnPending -randomizeAllSpecs -v "$@"
 popd

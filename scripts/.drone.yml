@@ -1,0 +1,7 @@
+image: vito/garden-lucid64
+
+env:
+  - GOROOT=/usr/local/go
+
+script:
+  - ./src/github.com/cloudfoundry-incubator/inigo/scripts/dev-test-inner

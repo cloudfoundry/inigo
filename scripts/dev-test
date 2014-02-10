@@ -1,0 +1,30 @@
+#!/bin/bash
+
+set -e -x
+
+DEV_GOPATH=$(cd ${1:-$HOME/go} && pwd)
+
+TMP_GOPATH=$(mktemp -d /tmp/diego-release-gopath.XXXXX)
+
+cp $(dirname $0)/.drone.yml ${TMP_GOPATH}/.drone.yml
+
+function copy_to_gopath {
+  mkdir -p ${TMP_GOPATH}/src/$(dirname $1)
+  cp -a ${DEV_GOPATH}/src/${1} ${TMP_GOPATH}/src/${1}
+}
+
+# grab and set up our components
+for package in \
+    github.com/cloudfoundry-incubator/inigo \
+    github.com/cloudfoundry-incubator/executor \
+    github.com/cloudfoundry-incubator/stager \
+    github.com/pivotal-cf-experimental/garden; do
+  copy_to_gopath $package
+done
+
+# install application dependencies
+for package in github.com/coreos/etcd github.com/apcera/gnatsd; do
+  copy_to_gopath $package
+done
+
+drone build $TMP_GOPATH
