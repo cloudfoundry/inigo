@@ -31,6 +31,7 @@ type Config struct {
 	SnapshotFile        string
 	ConvergenceInterval int
 	HeartbeatInterval   int
+	Stack               string
 }
 
 var defaultConfig = Config{
@@ -38,6 +39,7 @@ var defaultConfig = Config{
 	DiskMB:              1024,
 	ConvergenceInterval: 30,
 	HeartbeatInterval:   60,
+	Stack:               "default",
 }
 
 func New(executorBin, wardenNetwork, wardenAddr string, etcdMachines []string) *ExecutorRunner {
@@ -68,6 +70,7 @@ func (r *ExecutorRunner) StartWithoutCheck(config ...Config) {
 			"-registrySnapshotFile", configToUse.SnapshotFile,
 			"-convergenceInterval", fmt.Sprintf("%d", configToUse.ConvergenceInterval),
 			"-heartbeatInterval", fmt.Sprintf("%d", configToUse.HeartbeatInterval),
+			"-stack", configToUse.Stack,
 		),
 		runner_support.TeeIfVerbose,
 		runner_support.TeeIfVerbose,
@@ -115,6 +118,9 @@ func (r *ExecutorRunner) generateConfig(config ...Config) Config {
 	}
 	if givenConfig.HeartbeatInterval != 0 {
 		configToReturn.HeartbeatInterval = givenConfig.HeartbeatInterval
+	}
+	if givenConfig.Stack != "" {
+		configToReturn.Stack = givenConfig.Stack
 	}
 
 	return configToReturn

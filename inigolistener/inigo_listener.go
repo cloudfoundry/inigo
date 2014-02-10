@@ -3,6 +3,7 @@ package inigolistener
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/vito/gordon"
 	"io/ioutil"
@@ -65,9 +66,19 @@ func Start(wardenClient gordon.Client) {
 	}
 	ipAddress = infoResponse.GetContainerIp()
 
-	_, err = wardenClient.Spawn(handle, fmt.Sprintf("PORT=%d %s", containerPort, amazingRubyServer), true)
+	spawnResponse, err := wardenClient.Spawn(handle, fmt.Sprintf("PORT=%d %s", containerPort, amazingRubyServer), true)
 	if err != nil {
 		panic(err)
+	}
+
+	channel, err := wardenClient.Stream(handle, spawnResponse.GetJobId())
+
+	if config.DefaultReporterConfig.Verbose {
+		go func() {
+			for response := range channel {
+				fmt.Printf("[InigoListener]: %s", response.GetData())
+			}
+		}()
 	}
 
 	Eventually(func() error {

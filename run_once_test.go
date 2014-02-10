@@ -28,8 +28,6 @@ var _ = Describe("RunOnce", func() {
 	})
 
 	AfterEach(func() {
-		executorRunner.Stop()
-		stagerRunner.Stop()
 		natsClient.Disconnect()
 	})
 
@@ -52,11 +50,6 @@ var _ = Describe("RunOnce", func() {
 
 			Expect(runOnce.Guid).To(Equal("some-app-guid-some-task-id"))
 			Expect(runOnce.ContainerHandle).ToNot(BeEmpty())
-
-			listResponse, err := wardenClient.List()
-			Expect(err).ToNot(HaveOccurred())
-
-			Expect(listResponse.GetHandles()).To(ContainElement(runOnce.ContainerHandle))
 			close(done)
 		}, 5.0)
 	})
@@ -91,7 +84,6 @@ var _ = Describe("RunOnce", func() {
 			guid := factories.GenerateGuid()
 			runOnce := factories.BuildRunOnceWithRunAction(1024, 1024, inigolistener.CurlCommand(guid)+"; sleep 10")
 			bbs.DesireRunOnce(runOnce)
-
 			Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(guid))
 
 			secondExecutor.KillWithFire()
@@ -99,7 +91,7 @@ var _ = Describe("RunOnce", func() {
 			Eventually(func() interface{} {
 				runOnces, _ := bbs.GetAllCompletedRunOnces()
 				return runOnces
-			}, 5).Should(HaveLen(1))
+			}, 5.0).Should(HaveLen(1))
 			runOnces, _ := bbs.GetAllCompletedRunOnces()
 
 			completedRunOnce := runOnces[0]

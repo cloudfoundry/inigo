@@ -150,8 +150,6 @@ var _ = Describe("Executor", func() {
 				executors, _ := bbs.GetAllExecutors()
 				return executors
 			}).Should(HaveLen(1))
-
-			executorRunner.Stop()
 		})
 	})
 
@@ -159,10 +157,6 @@ var _ = Describe("Executor", func() {
 		BeforeEach(func() {
 			bbs = Bbs.New(etcdRunner.Adapter())
 			executorRunner.Start()
-		})
-
-		AfterEach(func() {
-			executorRunner.Stop()
 		})
 
 		It("should only pick up tasks if it has capacity", func() {
@@ -177,6 +171,29 @@ var _ = Describe("Executor", func() {
 			bbs.DesireRunOnce(secondGuyRunOnce)
 
 			Consistently(inigolistener.ReportingGuids, 2.0).ShouldNot(ContainElement(secondGuyGuid))
+		})
+	})
+
+	Describe("Stack", func() {
+		BeforeEach(func() {
+			bbs = Bbs.New(etcdRunner.Adapter())
+			executorRunner.Start(executor_runner.Config{Stack: "penguin"})
+		})
+
+		It("should only pick up tasks if the stacks match", func() {
+			matchingGuid := factories.GenerateGuid()
+			matchingRunOnce := factories.BuildRunOnceWithRunAction(1, 1, inigolistener.CurlCommand(matchingGuid)+"; sleep 10")
+			matchingRunOnce.Stack = "penguin"
+
+			nonMatchingGuid := factories.GenerateGuid()
+			nonMatchingRunOnce := factories.BuildRunOnceWithRunAction(1, 1, inigolistener.CurlCommand(nonMatchingGuid)+"; sleep 10")
+			nonMatchingRunOnce.Stack = "lion"
+
+			bbs.DesireRunOnce(matchingRunOnce)
+			bbs.DesireRunOnce(nonMatchingRunOnce)
+
+			Consistently(inigolistener.ReportingGuids, 2.0).ShouldNot(ContainElement(nonMatchingGuid), "Did not expect to see this app running, as it has the wrong stack.")
+			Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(matchingGuid))
 		})
 	})
 })

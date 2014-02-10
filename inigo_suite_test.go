@@ -138,6 +138,11 @@ var _ = BeforeEach(func() {
 	startInigoListener(wardenClient)
 })
 
+var _ = AfterEach(func() {
+	executorRunner.Stop()
+	stagerRunner.Stop()
+})
+
 func nukeAllWardenContainers() {
 	listResponse, err := wardenClient.List()
 	Ω(err).ShouldNot(HaveOccurred())
