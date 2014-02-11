@@ -31,6 +31,7 @@ var executorRunner *executor_runner.ExecutorRunner
 var executorPath string
 var natsRunner *natsrunner.NATSRunner
 var stagerRunner *stager_runner.StagerRunner
+var stagerPath string
 
 var wardenNetwork, wardenAddr string
 
@@ -107,7 +108,7 @@ func TestInigo(t *testing.T) {
 		etcdRunner.NodeURLS(),
 	)
 
-	stagerPath, err := cmdtest.Build("github.com/cloudfoundry-incubator/stager")
+	stagerPath, err = cmdtest.Build("github.com/cloudfoundry-incubator/stager")
 	if err != nil {
 		failFast("failed to compile stager")
 	}
@@ -125,6 +126,7 @@ func TestInigo(t *testing.T) {
 }
 
 var _ = BeforeEach(func() {
+	natsRunner.Start()
 	etcdRunner.Reset()
 
 	if gardenRunner != nil {
@@ -141,6 +143,7 @@ var _ = BeforeEach(func() {
 var _ = AfterEach(func() {
 	executorRunner.Stop()
 	stagerRunner.Stop()
+	natsRunner.Stop()
 })
 
 func nukeAllWardenContainers() {
@@ -174,6 +177,8 @@ func cleanup() {
 		println("stopping stager")
 		stagerRunner.Stop()
 	}
+
+	natsRunner.Stop()
 }
 
 func registerSignalHandler() {
