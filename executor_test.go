@@ -1,6 +1,7 @@
 package inigo_test
 
 import (
+	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -194,6 +195,33 @@ var _ = Describe("Executor", func() {
 
 			Consistently(inigolistener.ReportingGuids, 2.0).ShouldNot(ContainElement(nonMatchingGuid), "Did not expect to see this app running, as it has the wrong stack.")
 			Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(matchingGuid))
+		})
+	})
+
+	Describe("Running a downloaded file", func() {
+		var guid string
+		BeforeEach(func() {
+			bbs = Bbs.New(etcdRunner.Adapter())
+			executorRunner.Start()
+
+			guid = factories.GenerateGuid()
+			inigolistener.UploadFileString("curling.sh", inigolistener.CurlCommand(guid))
+		})
+
+		It("downloads the file", func() {
+			runOnce := models.RunOnce{
+				Guid:     factories.GenerateGuid(),
+				MemoryMB: 1024,
+				DiskMB:   1024,
+				Actions: []models.ExecutorAction{
+					{Action: models.DownloadAction{From: inigolistener.DownloadUrl("curling.sh"), To: "curling.sh", Extract: false}},
+					{Action: models.RunAction{Script: "bash curling.sh"}},
+				},
+			}
+
+			bbs.DesireRunOnce(runOnce)
+
+			Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(guid))
 		})
 	})
 })

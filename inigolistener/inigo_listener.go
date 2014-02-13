@@ -8,6 +8,7 @@ import (
 	"github.com/vito/gordon"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 )
 
 const amazingRubyServer = `ruby <<END_MAGIC_SERVER
@@ -17,6 +18,7 @@ require 'json'
 server = WEBrick::HTTPServer.new :Port => ENV['PORT']
 
 registered = []
+files = {}
 
 server.mount_proc '/register' do |req, res|
   registered << req.query['guid']
@@ -27,9 +29,18 @@ server.mount_proc '/registrations' do |req, res|
     res.body = JSON.generate(registered)
 end
 
-server.mount_proc '/reset' do |req, res|
-    registered = []
-    res.status = 200
+server.mount_proc '/upload' do |req, res|
+	files[req.query['name']] = req.query['body']
+	res.status = 200
+end
+
+server.mount_proc '/file' do |req, res|
+	if files[req.query['name']]
+		res.body = files[req.query['name']]
+		res.status = 200
+	else
+		res.status = 404
+	end
 end
 
 trap('INT') {
@@ -92,6 +103,25 @@ func Stop(wardenClient gordon.Client) {
 func CurlCommand(guid string) string {
 	curlCommand := fmt.Sprintf("curl http://%s:%d/register?guid=%s", ipAddress, hostPort, guid)
 	return curlCommand
+}
+
+func DownloadUrl(filename string) string {
+	return fmt.Sprintf("http://%s:%d/file?name=%s", ipAddress, hostPort, filename)
+}
+
+func UploadFileString(filename string, body string) {
+	q := url.Values{}
+	q.Add("name", filename)
+	q.Add("body", body)
+
+	u := &url.URL{
+		Scheme:   "http",
+		Host:     fmt.Sprintf("%s:%d", ipAddress, hostPort),
+		Path:     "upload",
+		RawQuery: q.Encode(),
+	}
+
+	http.Get(u.String())
 }
 
 func ReportingGuids() []string {
