@@ -25,7 +25,12 @@ var _ = Describe("RunOnce", func() {
 		"failed":true,
 		"failure_reason":"because i said so",
 		"memory_mb":256,
-		"disk_mb":1024
+		"disk_mb":1024,
+		"log": {
+			"guid": "123",
+			"type": "APP",
+			"index": 42
+		}
 	}`
 
 	BeforeEach(func() {
@@ -42,6 +47,11 @@ var _ = Describe("RunOnce", func() {
 						Compress: true,
 					},
 				},
+			},
+			Log: LogConfig{
+				Guid:  "123",
+				Type:  "APP",
+				Index: 42,
 			},
 			ExecutorID:      "executor",
 			ContainerHandle: "17fgsafdfcvc",

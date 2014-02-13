@@ -11,15 +11,19 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "3dd337ad5759002b5ab7cc30940bf603210e1d24"
+			"Rev": "dff08bc38530e8361374653773459c826f7db778"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "3dd337ad5759002b5ab7cc30940bf603210e1d24"
+			"Rev": "dff08bc38530e8361374653773459c826f7db778"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
-			"Rev": "b548667c85230c2ab374dc53fa1e6528ad23817b"
+			"Rev": "75ec5629e6db2e08d290a3b0a8f8d26cd34c17aa"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/gunk/runner_support",
+			"Rev": "75ec5629e6db2e08d290a3b0a8f8d26cd34c17aa"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
@@ -40,11 +44,15 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Rev": "5aab1d47f591b3d773ec676e6232df7d799af9ee"
+			"Rev": "3bafcec253f65271566c4d05cb3e3f3b1a6cb2d1"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Rev": "96f78f1eec17555a416b86839fe5a3c1c2086c8a"
+			"Rev": "930b4522e0d3027320b5d56f8a375796f2e376e5"
+		},
+		{
+			"ImportPath": "github.com/pivotal-cf-experimental/garden/integration/garden_runner",
+			"Rev": "21d3b4882ca3fa0e6ec564a69e982b4b7464e398"
 		},
 		{
 			"ImportPath": "github.com/vito/cmdtest",
@@ -52,7 +60,7 @@
 		},
 		{
 			"ImportPath": "github.com/vito/gordon",
-			"Rev": "efbfec342dbbba9ab2c661a2c29efa9009f6ba6d"
+			"Rev": "9f15c2c9992a7b684ea52b45b16986001d5ee967"
 		}
 	]
 }

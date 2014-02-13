@@ -2,9 +2,6 @@
 
 set -e -x
 
-# we run Garden with sudo which isn't totally necessary; fix later
-apt-get -y install sudo
-
 FIRST_GOPATH=`echo $GOPATH | cut -d':' -f1`
 
 pushd $FIRST_GOPATH/src/github.com/pivotal-cf-experimental/garden

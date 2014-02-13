@@ -6,29 +6,17 @@ import (
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
-	"github.com/cloudfoundry/yagnats"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("RunOnce", func() {
-	var natsClient *yagnats.Client
 	var bbs *Bbs.BBS
 
 	BeforeEach(func() {
-		natsRunner.Start()
 		stagerRunner.Start()
 
 		bbs = Bbs.New(etcdRunner.Adapter())
-
-		natsClient = yagnats.NewClient()
-
-		err := natsClient.Connect(&yagnats.ConnectionInfo{"127.0.0.1:4222", "nats", "nats"})
-		Ω(err).ShouldNot(HaveOccurred())
-	})
-
-	AfterEach(func() {
-		natsClient.Disconnect()
 	})
 
 	Context("when the stager receives a staging message", func() {
@@ -37,7 +25,7 @@ var _ = Describe("RunOnce", func() {
 		})
 
 		It("eventually is running on an executor", func(done Done) {
-			err := natsClient.PublishWithReplyTo("diego.staging.start", "stager-test", []byte(`{"app_id": "some-app-guid", "task_id": "some-task-id"}`))
+			err := natsRunner.MessageBus.PublishWithReplyTo("diego.staging.start", "stager-test", []byte(`{"app_id": "some-app-guid", "task_id": "some-task-id"}`))
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(func() []models.RunOnce {

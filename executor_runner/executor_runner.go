@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cloudfoundry-incubator/inigo/runner_support"
+	"github.com/cloudfoundry/gunk/runner_support"
 	. "github.com/onsi/gomega"
 	"github.com/vito/cmdtest"
 	. "github.com/vito/cmdtest/matchers"

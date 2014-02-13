@@ -6,23 +6,25 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cloudfoundry-incubator/inigo/runner_support"
+	"github.com/cloudfoundry/gunk/runner_support"
 	. "github.com/onsi/gomega"
 	"github.com/vito/cmdtest"
 	. "github.com/vito/cmdtest/matchers"
 )
 
 type StagerRunner struct {
-	stagerBin    string
-	etcdMachines []string
+	stagerBin     string
+	etcdMachines  []string
+	natsAddresses []string
 
 	stagerSession *cmdtest.Session
 }
 
-func New(stagerBin string, etcdMachines []string) *StagerRunner {
+func New(stagerBin string, etcdMachines []string, natsAddresses []string) *StagerRunner {
 	return &StagerRunner{
-		stagerBin:    stagerBin,
-		etcdMachines: etcdMachines,
+		stagerBin:     stagerBin,
+		etcdMachines:  etcdMachines,
+		natsAddresses: natsAddresses,
 	}
 }
 
@@ -31,6 +33,7 @@ func (r *StagerRunner) Start() {
 		exec.Command(
 			r.stagerBin,
 			"-etcdMachines", strings.Join(r.etcdMachines, ","),
+			"-natsAddresses", strings.Join(r.natsAddresses, ","),
 		),
 		runner_support.TeeIfVerbose,
 		runner_support.TeeIfVerbose,

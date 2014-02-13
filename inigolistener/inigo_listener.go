@@ -66,16 +66,14 @@ func Start(wardenClient gordon.Client) {
 	}
 	ipAddress = infoResponse.GetContainerIp()
 
-	spawnResponse, err := wardenClient.Spawn(handle, fmt.Sprintf("PORT=%d %s", containerPort, amazingRubyServer), true)
+	_, stream, err := wardenClient.Run(handle, fmt.Sprintf("PORT=%d %s", containerPort, amazingRubyServer))
 	if err != nil {
 		panic(err)
 	}
 
-	channel, err := wardenClient.Stream(handle, spawnResponse.GetJobId())
-
 	if config.DefaultReporterConfig.Verbose {
 		go func() {
-			for response := range channel {
+			for response := range stream {
 				fmt.Printf("[InigoListener]: %s", response.GetData())
 			}
 		}()

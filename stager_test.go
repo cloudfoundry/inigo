@@ -1,6 +1,8 @@
 package inigo_test
 
 import (
+	"fmt"
+
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
 	"github.com/cloudfoundry/yagnats"
 	. "github.com/onsi/ginkgo"
@@ -17,6 +19,7 @@ var _ = Describe("Stager", func() {
 			otherStagerRunner = stager_runner.New(
 				stagerPath,
 				etcdRunner.NodeURLS(),
+				[]string{fmt.Sprintf("127.0.0.1:%d", natsPort)},
 			)
 			otherStagerRunner.Start()
 		})

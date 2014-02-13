@@ -2,11 +2,13 @@ package inigo_test
 
 import (
 	"fmt"
+	"github.com/onsi/ginkgo/config"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/cloudfoundry/gunk/natsrunner"
 
@@ -17,9 +19,9 @@ import (
 	"github.com/vito/gordon"
 
 	"github.com/cloudfoundry-incubator/inigo/executor_runner"
-	"github.com/cloudfoundry-incubator/inigo/garden_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigolistener"
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
+	"github.com/pivotal-cf-experimental/garden/integration/garden_runner"
 )
 
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
@@ -29,6 +31,7 @@ var executor *cmdtest.Session
 var gardenRunner *garden_runner.GardenRunner
 var executorRunner *executor_runner.ExecutorRunner
 var executorPath string
+var natsPort int
 var natsRunner *natsrunner.NATSRunner
 var stagerRunner *stager_runner.StagerRunner
 var stagerPath string
@@ -39,7 +42,7 @@ func TestInigo(t *testing.T) {
 	registerSignalHandler()
 	RegisterFailHandler(Fail)
 
-	etcdRunner = etcdstorerunner.NewETCDClusterRunner(5001, 1)
+	etcdRunner = etcdstorerunner.NewETCDClusterRunner(5001+config.GinkgoConfig.ParallelNode, 1)
 
 	if _, err := net.Dial("tcp", "127.0.0.1:5001"); err == nil {
 		failFast("another etcd is already running")
@@ -67,6 +70,7 @@ func TestInigo(t *testing.T) {
 		gardenRunner, err = garden_runner.New(
 			gardenRoot,
 			gardenRootfs,
+			"", // TODO purge
 		)
 		if err != nil {
 			failFast("garden failed to initialize: " + err.Error())
@@ -81,8 +85,8 @@ func TestInigo(t *testing.T) {
 
 		wardenClient = gardenRunner.NewClient()
 
-		wardenNetwork = "tcp"
-		wardenAddr = fmt.Sprintf("127.0.0.1:%d", gardenRunner.Port)
+		wardenNetwork = gardenRunner.Network
+		wardenAddr = gardenRunner.Addr
 	} else {
 		wardenClient = gordon.NewClient(&gordon.ConnectionInfo{
 			Network: wardenNetwork,
@@ -113,12 +117,15 @@ func TestInigo(t *testing.T) {
 		failFast("failed to compile stager")
 	}
 
+	natsPort = 4222 + config.GinkgoConfig.ParallelNode
+
+	natsRunner = natsrunner.NewNATSRunner(natsPort)
+
 	stagerRunner = stager_runner.New(
 		stagerPath,
 		etcdRunner.NodeURLS(),
+		[]string{fmt.Sprintf("127.0.0.1:%d", natsPort)},
 	)
-
-	natsRunner = natsrunner.NewNATSRunner(4222)
 
 	RunSpecs(t, "Inigo Integration Suite")
 
@@ -143,7 +150,10 @@ var _ = BeforeEach(func() {
 var _ = AfterEach(func() {
 	executorRunner.Stop()
 	stagerRunner.Stop()
-	natsRunner.Stop()
+
+	if natsRunner != nil {
+		natsRunner.Stop()
+	}
 })
 
 func nukeAllWardenContainers() {
