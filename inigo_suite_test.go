@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"syscall"
 	"testing"
-	"time"
 
 	"github.com/cloudfoundry/gunk/natsrunner"
 

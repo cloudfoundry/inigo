@@ -27,7 +27,13 @@
     goto drone/drone
     make deps
     make
-    export PATH=$PWD/bin:$PATH
+    mv $PWD/bin/* $GOPATH/bin
+    ```
+
+4. Get protoc
+
+    ```
+    go get code.google.com/p/gogoprotobuf/{proto,protoc-gen-gogo,gogoproto}
     ```
 
 4. Run the tests

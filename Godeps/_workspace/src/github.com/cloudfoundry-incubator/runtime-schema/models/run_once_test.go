@@ -17,8 +17,8 @@ var _ = Describe("RunOnce", func() {
 		"executor_id":"executor",
 		"actions":[
 			{
-				"action":"copy",
-				"args":{"from":"old_location","to":"new_location","extract":true,"compress":true}
+				"action":"download",
+				"args":{"from":"old_location","to":"new_location","extract":true}
 			}
 		],
 		"container_handle":"17fgsafdfcvc",
@@ -40,11 +40,10 @@ var _ = Describe("RunOnce", func() {
 			Stack:   "some-stack",
 			Actions: []ExecutorAction{
 				{
-					Action: CopyAction{
-						From:     "old_location",
-						To:       "new_location",
-						Extract:  true,
-						Compress: true,
+					Action: DownloadAction{
+						From:    "old_location",
+						To:      "new_location",
+						Extract: true,
 					},
 				},
 			},

@@ -11,11 +11,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "dff08bc38530e8361374653773459c826f7db778"
+			"Rev": "b6d89b48a122d2f53d2d4c7c61514c6d140df09c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "dff08bc38530e8361374653773459c826f7db778"
+			"Rev": "b6d89b48a122d2f53d2d4c7c61514c6d140df09c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
@@ -44,7 +44,7 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Rev": "3bafcec253f65271566c4d05cb3e3f3b1a6cb2d1"
+			"Rev": "d71f32f5dc46c47cafde0b96a628e3594e96b75a"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
