@@ -227,6 +227,34 @@ var _ = Describe("Executor", func() {
 		})
 	})
 
+	Describe("Uploading a file", func() {
+		var guid string
+		BeforeEach(func() {
+			bbs = Bbs.New(etcdRunner.Adapter())
+			executorRunner.Start()
+
+			guid = factories.GenerateGuid()
+		})
+
+		It("uploads the file", func() {
+			runOnce := models.RunOnce{
+				Guid:     factories.GenerateGuid(),
+				MemoryMB: 1024,
+				DiskMB:   1024,
+				Actions: []models.ExecutorAction{
+					{Action: models.RunAction{Script: `echo "tasty thingy" > thingy`}},
+					{Action: models.UploadAction{From: "thingy", To: inigolistener.UploadUrl("thingy")}},
+					{Action: models.RunAction{Script: inigolistener.CurlCommand(guid)}},
+				},
+			}
+
+			bbs.DesireRunOnce(runOnce)
+
+			Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(guid))
+			Ω(inigolistener.DownloadFileString("thingy")).Should(Equal("tasty thingy\n"))
+		})
+	})
+
 	Describe("A RunOnce with logging configured", func() {
 		BeforeEach(func() {
 			bbs = Bbs.New(etcdRunner.Adapter())

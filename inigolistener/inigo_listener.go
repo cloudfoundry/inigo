@@ -8,7 +8,7 @@ import (
 	"github.com/vito/gordon"
 	"io/ioutil"
 	"net/http"
-	"net/url"
+	"strings"
 )
 
 const amazingRubyServer = `ruby <<END_MAGIC_SERVER
@@ -30,17 +30,25 @@ server.mount_proc '/registrations' do |req, res|
 end
 
 server.mount_proc '/upload' do |req, res|
-	files[req.query['name']] = req.query['body']
-	res.status = 200
+    filename = req.request_uri.to_s.split('/').last
+    STDERR.write "UPLOADING A FILE\n"
+    STDERR.write "FILENAME: #{filename}\n"
+    STDERR.write "BODY: #{req.body.inspect}\n"
+    files[filename] = req.body
+    res.status = 200
 end
 
 server.mount_proc '/file' do |req, res|
-	if files[req.query['name']]
-		res.body = files[req.query['name']]
-		res.status = 200
-	else
-		res.status = 404
-	end
+    filename = req.request_uri.to_s.split('/').last
+    STDERR.write "DOWNLOADING A FILE\n"
+    STDERR.write "FILENAME: #{filename}\n"
+    STDERR.write "BODY: #{files[filename].inspect}\n"
+    if files[filename]
+        res.body = files[filename]
+        res.status = 200
+    else
+        res.status = 404
+    end
 end
 
 trap('INT') {
@@ -106,22 +114,28 @@ func CurlCommand(guid string) string {
 }
 
 func DownloadUrl(filename string) string {
-	return fmt.Sprintf("http://%s:%d/file?name=%s", ipAddress, hostPort, filename)
+	return fmt.Sprintf("http://%s:%d/file/%s", ipAddress, hostPort, filename)
+}
+
+func UploadUrl(filename string) string {
+	return fmt.Sprintf("http://%s:%d/upload/%s", ipAddress, hostPort, filename)
+}
+
+func DownloadFileString(filename string) string {
+	resp, err := http.Get(DownloadUrl(filename))
+	Ω(err).ShouldNot(HaveOccurred())
+
+	body, err := ioutil.ReadAll(resp.Body)
+	Ω(err).ShouldNot(HaveOccurred())
+
+	resp.Body.Close()
+
+	return string(body)
 }
 
 func UploadFileString(filename string, body string) {
-	q := url.Values{}
-	q.Add("name", filename)
-	q.Add("body", body)
-
-	u := &url.URL{
-		Scheme:   "http",
-		Host:     fmt.Sprintf("%s:%d", ipAddress, hostPort),
-		Path:     "upload",
-		RawQuery: q.Encode(),
-	}
-
-	http.Get(u.String())
+	_, err := http.Post(UploadUrl(filename), "application/octet-stream", strings.NewReader(body))
+	Ω(err).ShouldNot(HaveOccurred())
 }
 
 func ReportingGuids() []string {
