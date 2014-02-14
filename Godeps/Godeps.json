@@ -7,7 +7,7 @@
 	"Deps": [
 		{
 			"ImportPath": "code.google.com/p/gogoprotobuf/proto",
-			"Rev": "eff0d2905679f25d60800dda2d6fde3ffa634103"
+			"Rev": "5ad34ffef55c3655a6ca3f46adf798484c3e1e2e"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
@@ -64,7 +64,7 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-cf-experimental/garden/integration/garden_runner",
-			"Rev": "21d3b4882ca3fa0e6ec564a69e982b4b7464e398"
+			"Rev": "0bf9df6a0c430f6074d01f5487cb2fc01a824d38"
 		},
 		{
 			"ImportPath": "github.com/vito/cmdtest",
