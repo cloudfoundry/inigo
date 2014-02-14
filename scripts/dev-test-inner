@@ -2,6 +2,9 @@
 
 set -e -x
 
+# for protoc
+apt-get install protobuf-compiler
+
 GOPATH_ROOT=$PWD
 
 export GOPATH=$GOPATH_ROOT
