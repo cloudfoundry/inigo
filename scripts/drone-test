@@ -5,6 +5,9 @@ set -e -x
 FIRST_GOPATH=`echo $GOPATH | cut -d':' -f1`
 
 pushd $FIRST_GOPATH/src/github.com/pivotal-cf-experimental/garden
+  # for protoc
+  apt-get install --yes protobuf-compiler
+
   make # compile wshd/etc.
   export GARDEN_ROOT=$PWD/root
 popd
