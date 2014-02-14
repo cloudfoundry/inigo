@@ -19,6 +19,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/inigo/executor_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigolistener"
+	"github.com/cloudfoundry-incubator/inigo/loggregator_runner"
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
 	"github.com/pivotal-cf-experimental/garden/integration/garden_runner"
 )
@@ -29,6 +30,7 @@ var executor *cmdtest.Session
 
 var gardenRunner *garden_runner.GardenRunner
 var executorRunner *executor_runner.ExecutorRunner
+var loggregatorRunner *loggregator_runner.LoggregatorRunner
 var executorPath string
 var natsPort int
 var natsRunner *natsrunner.NATSRunner
@@ -104,11 +106,15 @@ func TestInigo(t *testing.T) {
 		failFast("failed to compile executor")
 	}
 
+	loggregatorPort := 3456 + config.GinkgoConfig.ParallelNode
+
 	executorRunner = executor_runner.New(
 		executorPath,
 		wardenNetwork,
 		wardenAddr,
 		etcdRunner.NodeURLS(),
+		fmt.Sprintf("127.0.0.1:%d", loggregatorPort),
+		"conspiracy",
 	)
 
 	stagerPath, err = cmdtest.Build("github.com/cloudfoundry-incubator/stager")
@@ -126,6 +132,30 @@ func TestInigo(t *testing.T) {
 		[]string{fmt.Sprintf("127.0.0.1:%d", natsPort)},
 	)
 
+	// HACK
+	originalGopath := os.Getenv("GOPATH")
+
+	os.Setenv("GOPATH", os.Getenv("LOGGREGATOR_GOPATH"))
+
+	loggregatorPath, err := cmdtest.Build("loggregator/loggregator")
+	if err != nil {
+		failFast("failed to compile loggregator")
+	}
+
+	os.Setenv("GOPATH", originalGopath)
+
+	loggregatorRunner = loggregator_runner.New(
+		loggregatorPath,
+		loggregator_runner.Config{
+			IncomingPort:           loggregatorPort,
+			OutgoingPort:           8083 + config.GinkgoConfig.ParallelNode,
+			MaxRetainedLogMessages: 1000,
+			SharedSecret:           "conspiracy",
+			NatsHost:               "127.0.0.1",
+			NatsPort:               natsPort,
+		},
+	)
+
 	RunSpecs(t, "Inigo Integration Suite")
 
 	cleanup()
@@ -134,6 +164,7 @@ func TestInigo(t *testing.T) {
 var _ = BeforeEach(func() {
 	natsRunner.Start()
 	etcdRunner.Reset()
+	loggregatorRunner.Start()
 
 	if gardenRunner != nil {
 		// local
@@ -152,6 +183,10 @@ var _ = AfterEach(func() {
 
 	if natsRunner != nil {
 		natsRunner.Stop()
+	}
+
+	if loggregatorRunner != nil {
+		loggregatorRunner.Stop()
 	}
 })
 
@@ -187,7 +222,15 @@ func cleanup() {
 		stagerRunner.Stop()
 	}
 
-	natsRunner.Stop()
+	if natsRunner != nil {
+		println("stopping nats")
+		natsRunner.Stop()
+	}
+
+	if loggregatorRunner != nil {
+		println("stopping loggregator")
+		loggregatorRunner.Stop()
+	}
 }
 
 func registerSignalHandler() {

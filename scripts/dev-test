@@ -27,4 +27,6 @@ for package in github.com/coreos/etcd github.com/apcera/gnatsd; do
   copy_to_gopath $package
 done
 
+cp -a ~/workspace/loggregator ${TMP_GOPATH}/loggregator
+
 drone build $TMP_GOPATH

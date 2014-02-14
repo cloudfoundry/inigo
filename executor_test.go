@@ -1,7 +1,6 @@
 package inigo_test
 
 import (
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -9,8 +8,11 @@ import (
 
 	"github.com/cloudfoundry-incubator/inigo/executor_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigolistener"
+	"github.com/cloudfoundry-incubator/inigo/loggredile"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
+	"github.com/cloudfoundry/loggregatorlib/logmessage"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/vito/cmdtest/matchers"
@@ -223,5 +225,50 @@ var _ = Describe("Executor", func() {
 
 			Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(guid))
 		})
+	})
+
+	Describe("A RunOnce with logging configured", func() {
+		BeforeEach(func() {
+			bbs = Bbs.New(etcdRunner.Adapter())
+			executorRunner.Start()
+		})
+
+		It("has its stdout and stderr emitted to Loggregator", func(done Done) {
+			logGuid := factories.GenerateGuid()
+
+			messages, stop := loggredile.StreamMessages(
+				loggregatorRunner.Config.OutgoingPort,
+				"/tail/?app="+logGuid,
+			)
+
+			runOnce := factories.BuildRunOnceWithRunAction(
+				1024,
+				1024,
+				"echo out A; echo out B; echo out C; echo err A 1>&2; echo err B 1>&2; echo err C 1>&2",
+			)
+			runOnce.Log.Guid = logGuid
+			runOnce.Log.SourceName = "APP"
+
+			bbs.DesireRunOnce(runOnce)
+
+			outStream := []string{}
+			errStream := []string{}
+
+			for i := 0; i < 6; i++ {
+				message := <-messages
+				switch message.GetMessageType() {
+				case logmessage.LogMessage_OUT:
+					outStream = append(outStream, string(message.GetMessage()))
+				case logmessage.LogMessage_ERR:
+					errStream = append(errStream, string(message.GetMessage()))
+				}
+			}
+
+			Ω(outStream).Should(Equal([]string{"out A", "out B", "out C"}))
+			Ω(errStream).Should(Equal([]string{"err A", "err B", "err C"}))
+
+			close(stop)
+			close(done)
+		}, 10.0)
 	})
 })

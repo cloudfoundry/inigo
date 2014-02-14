@@ -56,12 +56,15 @@ var _ = Describe("RunOnce", func() {
 
 	Context("when an executor disappears", func() {
 		var secondExecutor *executor_runner.ExecutorRunner
+
 		BeforeEach(func() {
 			secondExecutor = executor_runner.New(
 				executorPath,
 				wardenNetwork,
 				wardenAddr,
 				etcdRunner.NodeURLS(),
+				"",
+				"",
 			)
 
 			executorRunner.Start(executor_runner.Config{MemoryMB: 3, DiskMB: 3, ConvergenceInterval: 1})

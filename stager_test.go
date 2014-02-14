@@ -38,11 +38,11 @@ var _ = Describe("Stager", func() {
 
 			Eventually(func() int {
 				return messages
-			}, 2.0).Should(Equal(2))
+			}, 2.0).Should(Equal(1))
 
 			Consistently(func() int {
 				return messages
-			}, 2.0).Should(Equal(2))
+			}, 2.0).Should(Equal(1))
 		})
 	})
 })

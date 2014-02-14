@@ -22,6 +22,9 @@ type ExecutorRunner struct {
 	etcdMachines  []string
 	snapshotFile  string
 
+	loggregatorServer string
+	loggregatorSecret string
+
 	Session *cmdtest.Session
 }
 
@@ -44,12 +47,15 @@ var defaultConfig = Config{
 	TempDir:             "/tmp",
 }
 
-func New(executorBin, wardenNetwork, wardenAddr string, etcdMachines []string) *ExecutorRunner {
+func New(executorBin, wardenNetwork, wardenAddr string, etcdMachines []string, loggregatorServer string, loggregatorSecret string) *ExecutorRunner {
 	return &ExecutorRunner{
 		executorBin:   executorBin,
 		wardenNetwork: wardenNetwork,
 		wardenAddr:    wardenAddr,
 		etcdMachines:  etcdMachines,
+
+		loggregatorServer: loggregatorServer,
+		loggregatorSecret: loggregatorSecret,
 	}
 }
 
@@ -73,7 +79,9 @@ func (r *ExecutorRunner) StartWithoutCheck(config ...Config) {
 			"-convergenceInterval", fmt.Sprintf("%d", configToUse.ConvergenceInterval),
 			"-heartbeatInterval", fmt.Sprintf("%d", configToUse.HeartbeatInterval),
 			"-stack", configToUse.Stack,
-			"--tempDir", configToUse.TempDir,
+			"-loggregatorServer", r.loggregatorServer,
+			"-loggregatorSecret", r.loggregatorSecret,
+			"-tempDir", configToUse.TempDir,
 		),
 		runner_support.TeeIfVerbose,
 		runner_support.TeeIfVerbose,

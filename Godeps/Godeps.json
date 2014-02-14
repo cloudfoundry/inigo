@@ -7,15 +7,15 @@
 	"Deps": [
 		{
 			"ImportPath": "code.google.com/p/gogoprotobuf/proto",
-			"Rev": "5ad34ffef55c3655a6ca3f46adf798484c3e1e2e"
+			"Rev": "eff0d2905679f25d60800dda2d6fde3ffa634103"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "b6d89b48a122d2f53d2d4c7c61514c6d140df09c"
+			"Rev": "95edbb936e82847e11717a9689d4e82443f30977"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "b6d89b48a122d2f53d2d4c7c61514c6d140df09c"
+			"Rev": "95edbb936e82847e11717a9689d4e82443f30977"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
@@ -24,6 +24,14 @@
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/runner_support",
 			"Rev": "75ec5629e6db2e08d290a3b0a8f8d26cd34c17aa"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/loggregatorlib/logmessage",
+			"Rev": "9b676e7cd8a5724651a954e2b4639dc20fe48729"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/loggregatorlib/signature",
+			"Rev": "9b676e7cd8a5724651a954e2b4639dc20fe48729"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
@@ -37,6 +45,10 @@
 			"ImportPath": "github.com/coreos/go-etcd/etcd",
 			"Comment": "v0.2.0-rc1-75-g5c0151c",
 			"Rev": "5c0151c64399ff9a8087c2e29ae96145ede7cfc2"
+		},
+		{
+			"ImportPath": "github.com/gorilla/websocket",
+			"Rev": "92334662baa9cbebc2e6e68b8d56bc1233f85a4c"
 		},
 		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
@@ -60,7 +72,7 @@
 		},
 		{
 			"ImportPath": "github.com/vito/gordon",
-			"Rev": "9f15c2c9992a7b684ea52b45b16986001d5ee967"
+			"Rev": "22f5a6af42d928e4d4f110a9da564210f5db3f58"
 		}
 	]
 }

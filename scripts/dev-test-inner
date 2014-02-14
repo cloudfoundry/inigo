@@ -22,4 +22,6 @@ for package in github.com/coreos/etcd github.com/apcera/gnatsd; do
   go install $package
 done
 
+export LOGGREGATOR_GOPATH=${GOPATH_ROOT}/loggregator
+
 $(dirname $0)/drone-test
