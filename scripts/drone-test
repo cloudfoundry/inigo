@@ -8,6 +8,8 @@ pushd $FIRST_GOPATH/src/github.com/pivotal-cf-experimental/garden
   # for protoc
   apt-get install --yes protobuf-compiler
 
+  go get code.google.com/p/gogoprotobuf/protoc-gen-gogo
+
   make # compile wshd/etc.
   export GARDEN_ROOT=$PWD/root
 popd
