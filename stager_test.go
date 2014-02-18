@@ -69,7 +69,7 @@ var _ = Describe("Stager", func() {
 			natsRunner.MessageBus.PublishWithReplyTo(
 				"diego.staging.start",
 				"two-stagers-test",
-				[]byte(`{"app_id": "some-app-guid", "task_id": "some-task-id", "stack": "default"}`))
+				[]byte(`{"app_id": "some-app-guid", "task_id": "some-task-id", "stack": "default", "admin_buildpacks" : [{"key": "ruby", "url": "ruby-url"}]}`))
 
 			Eventually(func() int {
 				return successMessages
