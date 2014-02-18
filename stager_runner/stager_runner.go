@@ -34,6 +34,7 @@ func (r *StagerRunner) Start() {
 			r.stagerBin,
 			"-etcdMachines", strings.Join(r.etcdMachines, ","),
 			"-natsAddresses", strings.Join(r.natsAddresses, ","),
+			"-compilers", `{"default":"http://hello"}`,
 		),
 		runner_support.TeeIfVerbose,
 		runner_support.TeeIfVerbose,

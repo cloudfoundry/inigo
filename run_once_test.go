@@ -25,7 +25,10 @@ var _ = Describe("RunOnce", func() {
 		})
 
 		It("eventually is running on an executor", func(done Done) {
-			err := natsRunner.MessageBus.PublishWithReplyTo("diego.staging.start", "stager-test", []byte(`{"app_id": "some-app-guid", "task_id": "some-task-id"}`))
+			err := natsRunner.MessageBus.PublishWithReplyTo(
+				"diego.staging.start",
+				"stager-test",
+				[]byte(`{"app_id": "some-app-guid", "task_id": "some-task-id", "stack": "default"}`))
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(func() []models.RunOnce {
