@@ -8,6 +8,7 @@ import (
 	"github.com/vito/gordon"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -54,7 +55,7 @@ end
 trap('INT') {
     server.shutdown
 }
- 
+
 server.start
 END_MAGIC_SERVER
 `
@@ -135,6 +136,13 @@ func DownloadFileString(filename string) string {
 
 func UploadFileString(filename string, body string) {
 	_, err := http.Post(UploadUrl(filename), "application/octet-stream", strings.NewReader(body))
+	Ω(err).ShouldNot(HaveOccurred())
+}
+
+func UploadFile(filename string, filepath string) {
+	file, err := os.Open(filepath)
+	Ω(err).ShouldNot(HaveOccurred())
+	_, err = http.Post(UploadUrl(filename), "application/octet-stream", file)
 	Ω(err).ShouldNot(HaveOccurred())
 }
 

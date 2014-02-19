@@ -1,6 +1,7 @@
 package stager_runner
 
 import (
+	"fmt"
 	"os/exec"
 	"strings"
 	"syscall"
@@ -18,6 +19,7 @@ type StagerRunner struct {
 	natsAddresses []string
 
 	stagerSession *cmdtest.Session
+	CompilerUrl   string
 }
 
 func New(stagerBin string, etcdMachines []string, natsAddresses []string) *StagerRunner {
@@ -25,6 +27,7 @@ func New(stagerBin string, etcdMachines []string, natsAddresses []string) *Stage
 		stagerBin:     stagerBin,
 		etcdMachines:  etcdMachines,
 		natsAddresses: natsAddresses,
+		CompilerUrl:   "compiler-url",
 	}
 }
 
@@ -34,7 +37,7 @@ func (r *StagerRunner) Start() {
 			r.stagerBin,
 			"-etcdMachines", strings.Join(r.etcdMachines, ","),
 			"-natsAddresses", strings.Join(r.natsAddresses, ","),
-			"-compilers", `{"default":"http://hello"}`,
+			"-compilers", fmt.Sprintf(`{"default":"%s"}`, r.CompilerUrl),
 		),
 		runner_support.TeeIfVerbose,
 		runner_support.TeeIfVerbose,
