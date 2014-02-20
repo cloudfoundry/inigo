@@ -59,8 +59,7 @@ var _ = Describe("Stager", func() {
 			outputGuid = factories.GenerateGuid()
 
 			var compilerFiles = []zipper.ZipFile{
-				{"run", fmt.Sprintf(`echo %s && %s && $APP_DIR/run && $BUILDPACKS_DIR/test/run`,
-					outputGuid,
+				{"run", fmt.Sprintf(`echo $FOO && %s && $APP_DIR/run && $BUILDPACKS_DIR/test/run`,
 					inigolistener.CurlCommand(compilerGuid),
 				)},
 			}
@@ -100,10 +99,12 @@ var _ = Describe("Stager", func() {
 							"task_id": "some-task-id",
 							"stack": "default",
 							"download_uri": "%s",
-							"admin_buildpacks" : [{ "key" : "test", "url": "%s" }]
+							"admin_buildpacks" : [{ "key" : "test", "url": "%s" }],
+							"environment": [["FOO", "%s"]]
 						}`,
 						inigolistener.DownloadUrl("app.zip"),
 						inigolistener.DownloadUrl("admin_buildpack.zip"),
+						outputGuid,
 					),
 				),
 			)
@@ -149,7 +150,7 @@ var _ = Describe("Stager", func() {
 
 			Eventually(func() int {
 				return messages
-			}, 2.0).Should(Equal(1))
+			}, 5.0).Should(Equal(1))
 
 			Consistently(func() int {
 				return messages
