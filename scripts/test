@@ -6,7 +6,7 @@ FIRST_GOPATH=`echo $GOPATH | cut -d':' -f1`
 
 pushd $FIRST_GOPATH/src/github.com/pivotal-cf-experimental/garden
   make # compile wshd/etc.
-  export GARDEN_ROOT=$PWD/root
+  export GARDEN_BINPATH=$PWD/linux_backend/bin
 popd
 
 go install github.com/onsi/ginkgo/ginkgo

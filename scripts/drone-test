@@ -5,13 +5,8 @@ set -e -x
 FIRST_GOPATH=`echo $GOPATH | cut -d':' -f1`
 
 pushd $FIRST_GOPATH/src/github.com/pivotal-cf-experimental/garden
-  # for protoc
-  apt-get install --yes protobuf-compiler
-
-  go get code.google.com/p/gogoprotobuf/protoc-gen-gogo
-
   make # compile wshd/etc.
-  export GARDEN_ROOT=$PWD/root
+  export GARDEN_BINPATH=$PWD/linux_backend/bin
 popd
 
 go install github.com/onsi/ginkgo/ginkgo

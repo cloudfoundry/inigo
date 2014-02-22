@@ -4,7 +4,6 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/executor_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigolistener"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -14,35 +13,21 @@ var _ = Describe("RunOnce", func() {
 	var bbs *Bbs.BBS
 
 	BeforeEach(func() {
-		stagerRunner.Start()
-
 		bbs = Bbs.New(etcdRunner.Adapter())
 	})
 
-	Context("when the stager receives a staging message", func() {
+	Context("when there is an executor running and a RunOnce is registered", func() {
 		BeforeEach(func() {
 			executorRunner.Start()
 		})
 
-		It("eventually is running on an executor", func(done Done) {
-			err := natsRunner.MessageBus.PublishWithReplyTo(
-				"diego.staging.start",
-				"stager-test",
-				[]byte(`{"app_id": "some-app-guid", "task_id": "some-task-id", "stack": "default"}`))
-			Ω(err).ShouldNot(HaveOccurred())
+		It("eventually runs the RunOnce", func() {
+			guid := factories.GenerateGuid()
+			runOnce := factories.BuildRunOnceWithRunAction(1, 1, inigolistener.CurlCommand(guid))
+			bbs.DesireRunOnce(runOnce)
 
-			Eventually(func() []models.RunOnce {
-				runOnces, _ := bbs.GetAllStartingRunOnces()
-				return runOnces
-			}, 5).Should(HaveLen(1))
-
-			runOnces, _ := bbs.GetAllStartingRunOnces()
-			runOnce := runOnces[0]
-
-			Expect(runOnce.Guid).To(Equal("some-app-guid-some-task-id"))
-			Expect(runOnce.ContainerHandle).ToNot(BeEmpty())
-			close(done)
-		}, 5.0)
+			Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(guid))
+		})
 	})
 
 	Context("when there are no executors listening when a RunOnce is registered", func() {

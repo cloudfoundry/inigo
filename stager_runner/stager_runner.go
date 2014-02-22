@@ -1,7 +1,6 @@
 package stager_runner
 
 import (
-	"fmt"
 	"os/exec"
 	"strings"
 	"syscall"
@@ -27,17 +26,17 @@ func New(stagerBin string, etcdMachines []string, natsAddresses []string) *Stage
 		stagerBin:     stagerBin,
 		etcdMachines:  etcdMachines,
 		natsAddresses: natsAddresses,
-		CompilerUrl:   "compiler-url",
 	}
 }
 
-func (r *StagerRunner) Start() {
+func (r *StagerRunner) Start(args ...string) {
 	stagerSession, err := cmdtest.StartWrapped(
 		exec.Command(
 			r.stagerBin,
-			"-etcdMachines", strings.Join(r.etcdMachines, ","),
-			"-natsAddresses", strings.Join(r.natsAddresses, ","),
-			"-compilers", fmt.Sprintf(`{"default":"%s"}`, r.CompilerUrl),
+			append([]string{
+				"-etcdMachines", strings.Join(r.etcdMachines, ","),
+				"-natsAddresses", strings.Join(r.natsAddresses, ","),
+			}, args...)...,
 		),
 		runner_support.TeeIfVerbose,
 		runner_support.TeeIfVerbose,

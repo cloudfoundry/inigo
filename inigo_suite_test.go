@@ -54,25 +54,21 @@ func TestInigo(t *testing.T) {
 	wardenNetwork = os.Getenv("WARDEN_NETWORK")
 	wardenAddr = os.Getenv("WARDEN_ADDR")
 
-	gardenRoot := os.Getenv("GARDEN_ROOT")
+	gardenBinPath := os.Getenv("GARDEN_BINPATH")
 	gardenRootfs := os.Getenv("GARDEN_ROOTFS")
 
-	if (wardenNetwork == "" || wardenAddr == "") && (gardenRoot == "" || gardenRootfs == "") {
+	if (wardenNetwork == "" || wardenAddr == "") && (gardenBinPath == "" || gardenRootfs == "") {
 		println("Please define either WARDEN_NETWORK and WARDEN_ADDR (for a running Warden), or")
-		println("GARDEN_ROOT and GARDEN_ROOTFS (for the tests to start it)")
+		println("GARDEN_BINPATH and GARDEN_ROOTFS (for the tests to start it)")
 		println("")
 		println("Skipping!")
 		return
 	}
 
-	if gardenRoot != "" && gardenRootfs != "" {
+	if gardenBinPath != "" && gardenRootfs != "" {
 		var err error
 
-		gardenRunner, err = garden_runner.New(
-			gardenRoot,
-			gardenRootfs,
-			"", // TODO purge
-		)
+		gardenRunner, err = garden_runner.New(gardenBinPath, gardenRootfs)
 		if err != nil {
 			failFast("garden failed to initialize: " + err.Error())
 		}
