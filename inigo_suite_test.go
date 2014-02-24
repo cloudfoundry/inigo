@@ -3,7 +3,6 @@ package inigo_test
 import (
 	"fmt"
 	"github.com/onsi/ginkgo/config"
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,6 +17,7 @@ import (
 	"github.com/vito/gordon"
 
 	"github.com/cloudfoundry-incubator/inigo/executor_runner"
+	"github.com/cloudfoundry-incubator/inigo/fileserver_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigolistener"
 	"github.com/cloudfoundry-incubator/inigo/loggregator_runner"
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
@@ -29,13 +29,20 @@ var wardenClient gordon.Client
 var executor *cmdtest.Session
 
 var gardenRunner *garden_runner.GardenRunner
-var executorRunner *executor_runner.ExecutorRunner
 var loggregatorRunner *loggregator_runner.LoggregatorRunner
+
+var executorRunner *executor_runner.ExecutorRunner
 var executorPath string
-var natsPort int
+
 var natsRunner *natsrunner.NATSRunner
+var natsPort int
+
 var stagerRunner *stager_runner.StagerRunner
 var stagerPath string
+
+var fileServerRunner *fileserver_runner.FileServerRunner
+var fileServerPath string
+var fileServerPort int
 
 var wardenNetwork, wardenAddr string
 
@@ -44,11 +51,6 @@ func TestInigo(t *testing.T) {
 	RegisterFailHandler(Fail)
 
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(5001+config.GinkgoConfig.ParallelNode, 1)
-
-	if _, err := net.Dial("tcp", "127.0.0.1:5001"); err == nil {
-		failFast("another etcd is already running")
-	}
-
 	etcdRunner.Start()
 
 	wardenNetwork = os.Getenv("WARDEN_NETWORK")
@@ -113,13 +115,19 @@ func TestInigo(t *testing.T) {
 		"conspiracy",
 	)
 
+	fileServerPath, err = cmdtest.Build("github.com/cloudfoundry-incubator/file-server")
+	if err != nil {
+		failFast("failed to compile file server")
+	}
+	fileServerPort = 12760 + config.GinkgoConfig.ParallelNode
+	fileServerRunner = fileserver_runner.New(fileServerPath, fileServerPort, etcdRunner.NodeURLS())
+
 	stagerPath, err = cmdtest.Build("github.com/cloudfoundry-incubator/stager")
 	if err != nil {
 		failFast("failed to compile stager")
 	}
 
 	natsPort = 4222 + config.GinkgoConfig.ParallelNode
-
 	natsRunner = natsrunner.NewNATSRunner(natsPort)
 
 	stagerRunner = stager_runner.New(
@@ -176,6 +184,7 @@ var _ = BeforeEach(func() {
 var _ = AfterEach(func() {
 	executorRunner.Stop()
 	stagerRunner.Stop()
+	fileServerRunner.Stop()
 
 	if natsRunner != nil {
 		natsRunner.Stop()
@@ -226,6 +235,11 @@ func cleanup() {
 	if loggregatorRunner != nil {
 		println("stopping loggregator")
 		loggregatorRunner.Stop()
+	}
+
+	if fileServerRunner != nil {
+		println("stopping file-server")
+		fileServerRunner.Stop()
 	}
 }
 

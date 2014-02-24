@@ -62,19 +62,22 @@ var _ = Describe("Stager", func() {
 		var stagingMessage []byte
 
 		BeforeEach(func() {
+			fileServerRunner.Start()
+			executorRunner.Start()
+
 			compilerGuid = factories.GenerateGuid()
 			appGuid = factories.GenerateGuid()
 			adminBuildpackGuid = factories.GenerateGuid()
 			outputGuid = factories.GenerateGuid()
 
-			//make and upload a compiler
+			//make and provide a compiler via the file-server
 			var compilerFiles = []zipper.ZipFile{
 				{"run", fmt.Sprintf(`echo $FOO && %s && $APP_DIR/run && $BUILDPACKS_DIR/test/run`,
 					inigolistener.CurlCommand(compilerGuid),
 				)},
 			}
 			zipper.CreateZipFile("/tmp/compiler.zip", compilerFiles)
-			inigolistener.UploadFile("compiler.zip", "/tmp/compiler.zip")
+			fileServerRunner.ServeFile("compiler.zip", "/tmp/compiler.zip")
 
 			//make and upload an app
 			var appFiles = []zipper.ZipFile{
@@ -89,8 +92,6 @@ var _ = Describe("Stager", func() {
 			}
 			zipper.CreateZipFile("/tmp/admin_buildpack.zip", adminBuildpackFiles)
 			inigolistener.UploadFile("admin_buildpack.zip", "/tmp/admin_buildpack.zip")
-
-			executorRunner.Start()
 
 			stagingMessage = []byte(
 				fmt.Sprintf(
@@ -111,10 +112,10 @@ var _ = Describe("Stager", func() {
 
 		Context("with one stager running", func() {
 			BeforeEach(func() {
-				stagerRunner.Start("--compilers", fmt.Sprintf(`{"default":"%s"}`, inigolistener.DownloadUrl("compiler.zip")))
+				stagerRunner.Start("--compilers", `{"default":"compiler.zip"}`)
 			})
 
-			It("runs the compiler on executor with the correct environment variables, bits and log tag", func() {
+			It("runs the compiler on executor with the correct environment variables, bits and log tag", func(done Done) {
 				messages, stop := loggredile.StreamMessages(
 					loggregatorRunner.Config.OutgoingPort,
 					"/tail/?app=some-app-guid",
@@ -135,13 +136,14 @@ var _ = Describe("Stager", func() {
 				Ω(string(message.GetMessage())).To(Equal(outputGuid))
 
 				close(stop)
-			})
+				close(done)
+			}, 20)
 		})
 
 		Context("with two stagers running", func() {
 			BeforeEach(func() {
-				stagerRunner.Start("--compilers", fmt.Sprintf(`{"default":"%s"}`, inigolistener.DownloadUrl("compiler.zip")))
-				otherStagerRunner.Start("--compilers", fmt.Sprintf(`{"default":"%s"}`, inigolistener.DownloadUrl("compiler.zip")))
+				stagerRunner.Start("--compilers", `{"default":"compiler.zip"}`)
+				otherStagerRunner.Start("--compilers", `{"default":"compiler.zip"}`)
 			})
 
 			AfterEach(func() {

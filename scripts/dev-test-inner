@@ -12,6 +12,7 @@ for package in \
     github.com/cloudfoundry-incubator/inigo \
     github.com/cloudfoundry-incubator/executor \
     github.com/cloudfoundry-incubator/stager \
+    github.com/cloudfoundry-incubator/file-server \
     github.com/pivotal-cf-experimental/garden; do
   export GOPATH=${GOPATH}:${GOPATH_ROOT}/src/$package/Godeps/_workspace
   export PATH=${PATH}:${GOPATH_ROOT}/src/$package/Godeps/_workspace/bin

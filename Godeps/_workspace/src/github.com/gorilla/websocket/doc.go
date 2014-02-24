@@ -11,7 +11,7 @@
 // Conn:
 //
 //  func handler(w http.ResponseWriter, r *http.Request) {
-//      conn, err := websocket.Upgrade(w, r, nil, 1024, 1024)
+//      ws, err := websocket.Upgrade(w, r, nil, 1024, 1024)
 //      if _, ok := err.(websocket.HandshakeError); ok {
 //          http.Error(w, "Not a websocket handshake", 400)
 //          return
