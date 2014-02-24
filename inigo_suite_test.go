@@ -25,17 +25,19 @@ import (
 )
 
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
-var wardenClient gordon.Client
-var executor *cmdtest.Session
 
 var gardenRunner *garden_runner.GardenRunner
-var loggregatorRunner *loggregator_runner.LoggregatorRunner
-
-var executorRunner *executor_runner.ExecutorRunner
-var executorPath string
+var wardenClient gordon.Client
 
 var natsRunner *natsrunner.NATSRunner
 var natsPort int
+
+var loggregatorRunner *loggregator_runner.LoggregatorRunner
+var loggregatorPort int
+var loggregatorSharedSecret string
+
+var executorRunner *executor_runner.ExecutorRunner
+var executorPath string
 
 var stagerRunner *stager_runner.StagerRunner
 var stagerPath string
@@ -44,99 +46,92 @@ var fileServerRunner *fileserver_runner.FileServerRunner
 var fileServerPath string
 var fileServerPort int
 
-var wardenNetwork, wardenAddr string
-
 func TestInigo(t *testing.T) {
 	registerSignalHandler()
 	RegisterFailHandler(Fail)
 
-	etcdRunner = etcdstorerunner.NewETCDClusterRunner(5001+config.GinkgoConfig.ParallelNode, 1)
+	setUpEtcd()
+	startGarden()
+	setUpNats()
+	setUpLoggregator()
+	setUpExecutor()
+	setUpStager()
+	setUpFileServer()
+
+	RunSpecs(t, "Inigo Integration Suite")
+
+	cleanup()
+}
+
+var _ = BeforeEach(func() {
 	etcdRunner.Start()
+	natsRunner.Start()
+	loggregatorRunner.Start()
 
-	wardenNetwork = os.Getenv("WARDEN_NETWORK")
-	wardenAddr = os.Getenv("WARDEN_ADDR")
+	gardenRunner.DestroyContainers()
 
+	inigolistener.Start(wardenClient)
+})
+
+var _ = AfterEach(func() {
+	executorRunner.Stop()
+	stagerRunner.Stop()
+	fileServerRunner.Stop()
+
+	loggregatorRunner.Stop()
+	natsRunner.Stop()
+	etcdRunner.Stop()
+})
+
+func setUpEtcd() {
+	etcdRunner = etcdstorerunner.NewETCDClusterRunner(5001+config.GinkgoConfig.ParallelNode, 1)
+}
+
+func startGarden() {
 	gardenBinPath := os.Getenv("GARDEN_BINPATH")
 	gardenRootfs := os.Getenv("GARDEN_ROOTFS")
 
-	if (wardenNetwork == "" || wardenAddr == "") && (gardenBinPath == "" || gardenRootfs == "") {
+	if gardenBinPath == "" || gardenRootfs == "" {
 		println("Please define either WARDEN_NETWORK and WARDEN_ADDR (for a running Warden), or")
 		println("GARDEN_BINPATH and GARDEN_ROOTFS (for the tests to start it)")
 		println("")
-		println("Skipping!")
+		failFast("garden is not set up")
 		return
 	}
 
-	if gardenBinPath != "" && gardenRootfs != "" {
-		var err error
+	var err error
 
-		gardenRunner, err = garden_runner.New(gardenBinPath, gardenRootfs)
-		if err != nil {
-			failFast("garden failed to initialize: " + err.Error())
-		}
-
-		gardenRunner.SnapshotsPath = ""
-
-		err = gardenRunner.Start()
-		if err != nil {
-			failFast("garden failed to start: " + err.Error())
-		}
-
-		wardenClient = gardenRunner.NewClient()
-
-		wardenNetwork = gardenRunner.Network
-		wardenAddr = gardenRunner.Addr
-	} else {
-		wardenClient = gordon.NewClient(&gordon.ConnectionInfo{
-			Network: wardenNetwork,
-			Addr:    wardenAddr,
-		})
+	gardenRunner, err = garden_runner.New(gardenBinPath, gardenRootfs)
+	if err != nil {
+		failFast("garden failed to initialize: " + err.Error())
 	}
 
-	err := wardenClient.Connect()
+	gardenRunner.SnapshotsPath = ""
+
+	err = gardenRunner.Start()
+	if err != nil {
+		failFast("garden failed to start: " + err.Error())
+	}
+
+	wardenClient = gardenRunner.NewClient()
+
+	err = wardenClient.Connect()
 	if err != nil {
 		failFast("warden is not up")
 		return
 	}
+}
 
-	executorPath, err = cmdtest.Build("github.com/cloudfoundry-incubator/executor")
-	if err != nil {
-		failFast("failed to compile executor")
-	}
-
-	loggregatorPort := 3456 + config.GinkgoConfig.ParallelNode
-
-	executorRunner = executor_runner.New(
-		executorPath,
-		wardenNetwork,
-		wardenAddr,
-		etcdRunner.NodeURLS(),
-		fmt.Sprintf("127.0.0.1:%d", loggregatorPort),
-		"conspiracy",
-	)
-
-	fileServerPath, err = cmdtest.Build("github.com/cloudfoundry-incubator/file-server")
-	if err != nil {
-		failFast("failed to compile file server")
-	}
-	fileServerPort = 12760 + config.GinkgoConfig.ParallelNode
-	fileServerRunner = fileserver_runner.New(fileServerPath, fileServerPort, etcdRunner.NodeURLS())
-
-	stagerPath, err = cmdtest.Build("github.com/cloudfoundry-incubator/stager")
-	if err != nil {
-		failFast("failed to compile stager")
-	}
-
+func setUpNats() {
 	natsPort = 4222 + config.GinkgoConfig.ParallelNode
 	natsRunner = natsrunner.NewNATSRunner(natsPort)
+}
 
-	stagerRunner = stager_runner.New(
-		stagerPath,
-		etcdRunner.NodeURLS(),
-		[]string{fmt.Sprintf("127.0.0.1:%d", natsPort)},
-	)
+func setUpLoggregator() {
+	loggregatorPort = 3456 + config.GinkgoConfig.ParallelNode
+	loggregatorSharedSecret = "conspiracy"
 
-	// HACK
+	// hack around GOPATH to compile loggregator
 	originalGopath := os.Getenv("GOPATH")
 
 	os.Setenv("GOPATH", os.Getenv("LOGGREGATOR_GOPATH"))
@@ -154,37 +149,62 @@ func TestInigo(t *testing.T) {
 			IncomingPort:           loggregatorPort,
 			OutgoingPort:           8083 + config.GinkgoConfig.ParallelNode,
 			MaxRetainedLogMessages: 1000,
-			SharedSecret:           "conspiracy",
+			SharedSecret:           loggregatorSharedSecret,
 			NatsHost:               "127.0.0.1",
 			NatsPort:               natsPort,
 		},
 	)
-
-	RunSpecs(t, "Inigo Integration Suite")
-
-	cleanup()
 }
 
-var _ = BeforeEach(func() {
-	natsRunner.Start()
-	etcdRunner.Reset()
-	loggregatorRunner.Start()
-
-	if gardenRunner != nil {
-		// local
-		gardenRunner.DestroyContainers()
-	} else {
-		// remote
-		nukeAllWardenContainers()
+func setUpExecutor() {
+	var err error
+	executorPath, err = cmdtest.Build("github.com/cloudfoundry-incubator/executor")
+	if err != nil {
+		failFast("failed to compile executor")
 	}
 
-	startInigoListener(wardenClient)
-})
+	executorRunner = executor_runner.New(
+		executorPath,
+		gardenRunner.Network,
+		gardenRunner.Addr,
+		etcdRunner.NodeURLS(),
+		fmt.Sprintf("127.0.0.1:%d", loggregatorPort),
+		loggregatorSharedSecret,
+	)
+}
 
-var _ = AfterEach(func() {
-	executorRunner.Stop()
-	stagerRunner.Stop()
-	fileServerRunner.Stop()
+func setUpStager() {
+	var err error
+	stagerPath, err = cmdtest.Build("github.com/cloudfoundry-incubator/stager")
+	if err != nil {
+		failFast("failed to compile stager")
+	}
+
+	stagerRunner = stager_runner.New(
+		stagerPath,
+		etcdRunner.NodeURLS(),
+		[]string{fmt.Sprintf("127.0.0.1:%d", natsPort)},
+	)
+}
+
+func setUpFileServer() {
+	var err error
+	fileServerPath, err = cmdtest.Build("github.com/cloudfoundry-incubator/file-server")
+	if err != nil {
+		failFast("failed to compile file server")
+	}
+	fileServerPort = 12760 + config.GinkgoConfig.ParallelNode
+	fileServerRunner = fileserver_runner.New(fileServerPath, fileServerPort, etcdRunner.NodeURLS())
+}
+
+func cleanup() {
+	if etcdRunner != nil {
+		etcdRunner.Stop()
+	}
+
+	if gardenRunner != nil {
+		gardenRunner.Stop()
+	}
 
 	if natsRunner != nil {
 		natsRunner.Stop()
@@ -193,15 +213,17 @@ var _ = AfterEach(func() {
 	if loggregatorRunner != nil {
 		loggregatorRunner.Stop()
 	}
-})
 
-func nukeAllWardenContainers() {
-	listResponse, err := wardenClient.List()
-	Ω(err).ShouldNot(HaveOccurred())
+	if executorRunner != nil {
+		executorRunner.Stop()
+	}
 
-	handles := listResponse.GetHandles()
-	for _, handle := range handles {
-		wardenClient.Destroy(handle)
+	if stagerRunner != nil {
+		stagerRunner.Stop()
+	}
+
+	if fileServerRunner != nil {
+		fileServerRunner.Stop()
 	}
 }
 
@@ -209,38 +231,6 @@ func failFast(msg string) {
 	println("!!!!! " + msg + " !!!!!")
 	cleanup()
 	os.Exit(1)
-}
-
-func cleanup() {
-	if etcdRunner != nil {
-		println("stopping etcd")
-		etcdRunner.Stop()
-	}
-
-	if gardenRunner != nil {
-		println("stopping garden")
-		gardenRunner.Stop()
-	}
-
-	if stagerRunner != nil {
-		println("stopping stager")
-		stagerRunner.Stop()
-	}
-
-	if natsRunner != nil {
-		println("stopping nats")
-		natsRunner.Stop()
-	}
-
-	if loggregatorRunner != nil {
-		println("stopping loggregator")
-		loggregatorRunner.Stop()
-	}
-
-	if fileServerRunner != nil {
-		println("stopping file-server")
-		fileServerRunner.Stop()
-	}
 }
 
 func registerSignalHandler() {
@@ -259,12 +249,4 @@ func registerSignalHandler() {
 	}()
 
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
-}
-
-func startInigoListener(wardenClient gordon.Client) {
-	inigolistener.Start(wardenClient)
-}
-
-func stopInigoListener(wardenClient gordon.Client) {
-	inigolistener.Stop(wardenClient)
 }

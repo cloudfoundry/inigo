@@ -48,8 +48,8 @@ var _ = Describe("RunOnce", func() {
 		BeforeEach(func() {
 			secondExecutor = executor_runner.New(
 				executorPath,
-				wardenNetwork,
-				wardenAddr,
+				gardenRunner.Network,
+				gardenRunner.Addr,
 				etcdRunner.NodeURLS(),
 				"",
 				"",
