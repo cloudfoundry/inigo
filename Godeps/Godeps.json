@@ -19,11 +19,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
-			"Rev": "75ec5629e6db2e08d290a3b0a8f8d26cd34c17aa"
+			"Rev": "a9926dd26379b0650e99d96ce60e841dfc7ade71"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/runner_support",
-			"Rev": "75ec5629e6db2e08d290a3b0a8f8d26cd34c17aa"
+			"Rev": "a9926dd26379b0650e99d96ce60e841dfc7ade71"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/loggregatorlib/logmessage",
