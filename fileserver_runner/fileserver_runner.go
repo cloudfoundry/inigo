@@ -3,17 +3,16 @@ package fileserver_runner
 import (
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/cloudfoundry/gunk/runner_support"
 	. "github.com/onsi/gomega"
 	"github.com/vito/cmdtest"
-	. "github.com/vito/cmdtest/matchers"
 )
 
 type FileServerRunner struct {
@@ -25,17 +24,19 @@ type FileServerRunner struct {
 }
 
 func New(fileServerBin string, port int, etcdMachines []string) *FileServerRunner {
-	tempDir, err := ioutil.TempDir("", "inigo-file-server")
-	Ω(err).ShouldNot(HaveOccurred())
 	return &FileServerRunner{
 		fileServerBin: fileServerBin,
 		etcdMachines:  etcdMachines,
 		port:          port,
-		dir:           tempDir,
 	}
 }
 
 func (r *FileServerRunner) Start() {
+	tempDir, err := ioutil.TempDir("", "inigo-file-server")
+	Ω(err).ShouldNot(HaveOccurred())
+	r.dir = tempDir
+	ioutil.WriteFile(filepath.Join(r.dir, "ready"), []byte("ready"), os.ModePerm)
+
 	executorSession, err := cmdtest.StartWrapped(
 		exec.Command(
 			r.fileServerBin,
@@ -50,8 +51,14 @@ func (r *FileServerRunner) Start() {
 	Ω(err).ShouldNot(HaveOccurred())
 	r.Session = executorSession
 
-	Ω(r.Session).Should(SayWithTimeout("Serving files on", 1*time.Second))
-	time.Sleep(10 * time.Millisecond)
+	Eventually(func() int {
+		resp, _ := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ready", r.port))
+		if resp != nil {
+			return resp.StatusCode
+		} else {
+			return 0
+		}
+	}).Should(Equal(http.StatusOK))
 }
 
 func (r *FileServerRunner) ServeFile(name string, path string) {

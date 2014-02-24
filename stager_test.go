@@ -127,7 +127,7 @@ var _ = Describe("Stager", func() {
 					stagingMessage,
 				)
 				Ω(err).ShouldNot(HaveOccurred())
-				Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(compilerGuid))
+				Eventually(inigolistener.ReportingGuids, 10.0).Should(ContainElement(compilerGuid))
 				Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(appGuid))
 				Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(adminBuildpackGuid))
 
@@ -164,7 +164,7 @@ var _ = Describe("Stager", func() {
 
 				Eventually(func() int {
 					return messages
-				}, 5.0).Should(Equal(1))
+				}, 10.0).Should(Equal(1))
 
 				Consistently(func() int {
 					return messages
