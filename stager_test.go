@@ -31,7 +31,7 @@ var _ = Describe("Stager", func() {
 			stagerRunner.Start()
 		})
 
-		It("returns an error", func() {
+		It("returns an error", func(done Done) {
 			errorMessages := 0
 			natsRunner.MessageBus.Subscribe("compiler-stagers-test", func(message *yagnats.Message) {
 				if strings.Contains(string(message.Payload), "error") {
@@ -51,7 +51,7 @@ var _ = Describe("Stager", func() {
 			Consistently(func() int {
 				return errorMessages
 			}, 2.0).Should(Equal(1))
-		})
+		}, 10.0)
 	})
 
 	Describe("Staging", func() {
@@ -60,6 +60,7 @@ var _ = Describe("Stager", func() {
 		var adminBuildpackGuid string
 		var outputGuid string
 		var stagingMessage []byte
+		var compilerExitStatus int
 
 		BeforeEach(func() {
 			fileServerRunner.Start()
@@ -72,8 +73,31 @@ var _ = Describe("Stager", func() {
 
 			//make and provide a compiler via the file-server
 			var compilerFiles = []zipper.ZipFile{
-				{"run", fmt.Sprintf(`echo $FOO && %s && $APP_DIR/run && $BUILDPACKS_DIR/test/run`,
+				{"run", fmt.Sprintf(`#!/bin/bash
+
+set -e
+
+# use an environment variable provided for staging
+echo $SOME_STAGING_ENV
+
+# tell the listener we're here
+%s
+
+# tell the listener the app's bits are here
+$APP_DIR/run
+
+# tell the listener the buildpacks are here
+$BUILDPACKS_DIR/test/run
+
+# write a staging result
+mkdir -p $RESULT_DIR
+echo '%s' > $RESULT_DIR/result.json
+
+# inject success/failure
+exit $COMPILER_EXIT_STATUS
+`,
 					inigolistener.CurlCommand(compilerGuid),
+					`{"detected_buildpack":"Test Buildpack"}`,
 				)},
 			}
 			zipper.CreateZipFile("/tmp/compiler.zip", compilerFiles)
@@ -93,6 +117,9 @@ var _ = Describe("Stager", func() {
 			zipper.CreateZipFile("/tmp/admin_buildpack.zip", adminBuildpackFiles)
 			inigolistener.UploadFile("admin_buildpack.zip", "/tmp/admin_buildpack.zip")
 
+		})
+
+		JustBeforeEach(func() {
 			stagingMessage = []byte(
 				fmt.Sprintf(
 					`{
@@ -101,11 +128,12 @@ var _ = Describe("Stager", func() {
 						"stack": "default",
 						"download_uri": "%s",
 						"admin_buildpacks" : [{ "key": "test", "url": "%s" }],
-						"environment": [["FOO", "%s"]]
+						"environment": [["SOME_STAGING_ENV", "%s"], ["COMPILER_EXIT_STATUS", "%d"]]
 					}`,
 					inigolistener.DownloadUrl("app.zip"),
 					inigolistener.DownloadUrl("admin_buildpack.zip"),
 					outputGuid,
+					compilerExitStatus,
 				),
 			)
 		})
@@ -115,11 +143,20 @@ var _ = Describe("Stager", func() {
 				stagerRunner.Start("--compilers", `{"default":"compiler.zip"}`)
 			})
 
-			It("runs the compiler on executor with the correct environment variables, bits and log tag", func(done Done) {
+			It("runs the compiler on the executor with the correct environment variables, bits and log tag, and responds with the detected buildpack", func(done Done) {
+				defer close(done)
+
+				payloads := make(chan []byte)
+
+				natsRunner.MessageBus.Subscribe("stager-test", func(msg *yagnats.Message) {
+					payloads <- msg.Payload
+				})
+
 				messages, stop := loggredile.StreamMessages(
 					loggregatorRunner.Config.OutgoingPort,
 					"/tail/?app=some-app-guid",
 				)
+				defer close(stop)
 
 				err := natsRunner.MessageBus.PublishWithReplyTo(
 					"diego.staging.start",
@@ -135,9 +172,48 @@ var _ = Describe("Stager", func() {
 				Ω(message.GetSourceName()).To(Equal("STG"))
 				Ω(string(message.GetMessage())).To(Equal(outputGuid))
 
-				close(stop)
-				close(done)
-			}, 20)
+				payload := <-payloads
+				Ω(string(payload)).Should(Equal(`{"detected_buildpack":"Test Buildpack"}`))
+			}, 20.0)
+
+			Context("when compilation fails", func() {
+				BeforeEach(func() {
+					compilerExitStatus = 42
+				})
+
+				It("responds with the error, and no detected buildpack present", func(done Done) {
+					defer close(done)
+
+					payloads := make(chan []byte)
+
+					natsRunner.MessageBus.Subscribe("stager-test", func(msg *yagnats.Message) {
+						payloads <- msg.Payload
+					})
+
+					messages, stop := loggredile.StreamMessages(
+						loggregatorRunner.Config.OutgoingPort,
+						"/tail/?app=some-app-guid",
+					)
+					defer close(stop)
+
+					err := natsRunner.MessageBus.PublishWithReplyTo(
+						"diego.staging.start",
+						"stager-test",
+						stagingMessage,
+					)
+					Ω(err).ShouldNot(HaveOccurred())
+					Eventually(inigolistener.ReportingGuids, 10.0).Should(ContainElement(compilerGuid))
+					Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(appGuid))
+					Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(adminBuildpackGuid))
+
+					message := <-messages
+					Ω(message.GetSourceName()).To(Equal("STG"))
+					Ω(string(message.GetMessage())).To(Equal(outputGuid))
+
+					payload := <-payloads
+					Ω(string(payload)).Should(Equal(`{"error":"Process returned with exit value: 42"}`))
+				}, 20.0)
+			})
 		})
 
 		Context("with two stagers running", func() {
@@ -150,7 +226,9 @@ var _ = Describe("Stager", func() {
 				otherStagerRunner.Stop()
 			})
 
-			It("only one returns a staging completed response", func() {
+			It("only one returns a staging completed response", func(done Done) {
+				defer close(done)
+
 				messages := 0
 				natsRunner.MessageBus.Subscribe("two-stagers-test", func(message *yagnats.Message) {
 					messages++
@@ -169,7 +247,7 @@ var _ = Describe("Stager", func() {
 				Consistently(func() int {
 					return messages
 				}, 2.0).Should(Equal(1))
-			})
+			}, 10.0)
 		})
 	})
 })
