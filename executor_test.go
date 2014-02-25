@@ -21,6 +21,10 @@ import (
 var _ = Describe("Executor", func() {
 	var bbs *Bbs.BBS
 
+	BeforeEach(func() {
+		bbs = Bbs.New(etcdRunner.Adapter())
+	})
+
 	Describe("starting without a snaphsot", func() {
 		It("should come up, just fine", func() {
 			executorRunner.Start()
@@ -46,8 +50,6 @@ var _ = Describe("Executor", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			registrySnapshotFile = filepath.Join(tmpdir, "snapshot.json")
-
-			bbs = Bbs.New(etcdRunner.Adapter())
 
 			executorConfig = executor_runner.Config{
 				MemoryMB:     1024,
@@ -146,7 +148,6 @@ var _ = Describe("Executor", func() {
 
 	Describe("Heartbeating", func() {
 		It("should heartbeat its presence", func() {
-			bbs = Bbs.New(etcdRunner.Adapter())
 			executorRunner.Start()
 
 			Eventually(func() interface{} {
@@ -158,7 +159,6 @@ var _ = Describe("Executor", func() {
 
 	Describe("Resource limits", func() {
 		BeforeEach(func() {
-			bbs = Bbs.New(etcdRunner.Adapter())
 			executorRunner.Start()
 		})
 
@@ -179,7 +179,6 @@ var _ = Describe("Executor", func() {
 
 	Describe("Stack", func() {
 		BeforeEach(func() {
-			bbs = Bbs.New(etcdRunner.Adapter())
 			executorRunner.Start(executor_runner.Config{Stack: "penguin"})
 		})
 
@@ -203,7 +202,6 @@ var _ = Describe("Executor", func() {
 	Describe("Running a downloaded file", func() {
 		var guid string
 		BeforeEach(func() {
-			bbs = Bbs.New(etcdRunner.Adapter())
 			executorRunner.Start()
 
 			guid = factories.GenerateGuid()
@@ -230,7 +228,6 @@ var _ = Describe("Executor", func() {
 	Describe("Uploading a file", func() {
 		var guid string
 		BeforeEach(func() {
-			bbs = Bbs.New(etcdRunner.Adapter())
 			executorRunner.Start()
 
 			guid = factories.GenerateGuid()
@@ -255,9 +252,33 @@ var _ = Describe("Executor", func() {
 		})
 	})
 
+	Describe("Fetching results", func() {
+		BeforeEach(func() {
+			executorRunner.Start()
+		})
+
+		It("should fetch the contents of the requested file and provide the content in the completed RunOnce", func() {
+			runOnce := models.RunOnce{
+				Guid:     factories.GenerateGuid(),
+				MemoryMB: 1024,
+				DiskMB:   1024,
+				Actions: []models.ExecutorAction{
+					{Action: models.RunAction{Script: `echo "tasty thingy" > thingy`}},
+					{Action: models.FetchResultAction{File: "thingy"}},
+				},
+			}
+
+			bbs.DesireRunOnce(runOnce)
+
+			Eventually(bbs.GetAllCompletedRunOnces, 5.0).Should(HaveLen(1))
+
+			runOnces, _ := bbs.GetAllCompletedRunOnces()
+			Ω(runOnces[0].Result).Should(Equal("tasty thingy\n"))
+		})
+	})
+
 	Describe("A RunOnce with logging configured", func() {
 		BeforeEach(func() {
-			bbs = Bbs.New(etcdRunner.Adapter())
 			executorRunner.Start()
 		})
 
