@@ -2,6 +2,9 @@
 
 FROM mischief/docker-golang
 
+# generate locales to shut perl up
+RUN locale-gen en_US.UTF-8
+
 # pull in dependencies for the Garden server
 RUN apt-get -y install iptables quota rsync net-tools protobuf-compiler
 
