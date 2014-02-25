@@ -199,6 +199,63 @@ var _ = Describe("Executor", func() {
 		})
 	})
 
+	Describe("Running a command", func() {
+		var guid string
+		BeforeEach(func() {
+			executorRunner.Start()
+			guid = factories.GenerateGuid()
+		})
+
+		It("should run the command with the provided environment", func() {
+			env := [][]string{
+				{"FOO", "BAR"},
+				{"BAZ", "WIBBLE"},
+				{"FOO", "$FOO-$BAZ"},
+			}
+			runOnce := models.RunOnce{
+				Guid:     factories.GenerateGuid(),
+				MemoryMB: 1024,
+				DiskMB:   1024,
+				Actions: []models.ExecutorAction{
+					{Action: models.RunAction{Script: `echo $FOO > out`, Env: env}},
+					{Action: models.UploadAction{From: "out", To: inigolistener.UploadUrl("out")}},
+					{Action: models.RunAction{Script: inigolistener.CurlCommand(guid)}},
+				},
+			}
+
+			bbs.DesireRunOnce(runOnce)
+
+			Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(guid))
+			Ω(inigolistener.DownloadFileString("out")).Should(Equal("BAR-WIBBLE\n"))
+
+			Eventually(bbs.GetAllCompletedRunOnces, 5.0).Should(HaveLen(1))
+			runOnces, _ := bbs.GetAllCompletedRunOnces()
+			Ω(runOnces[0].Failed).Should(BeFalse())
+		})
+
+		Context("when the command times out", func() {
+			It("should fail the RunOnce", func() {
+				runOnce := models.RunOnce{
+					Guid:     factories.GenerateGuid(),
+					MemoryMB: 1024,
+					DiskMB:   1024,
+					Actions: []models.ExecutorAction{
+						{Action: models.RunAction{Script: inigolistener.CurlCommand(guid)}},
+						{Action: models.RunAction{Script: `sleep 0.8`, Timeout: 500 * time.Millisecond}},
+					},
+				}
+
+				bbs.DesireRunOnce(runOnce)
+
+				Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(guid))
+				Eventually(bbs.GetAllCompletedRunOnces, 5.0).Should(HaveLen(1))
+				runOnces, _ := bbs.GetAllCompletedRunOnces()
+				Ω(runOnces[0].Failed).Should(BeTrue())
+				Ω(runOnces[0].FailureReason).Should(ContainSubstring("timed out"))
+			})
+		})
+	})
+
 	Describe("Running a downloaded file", func() {
 		var guid string
 		BeforeEach(func() {
