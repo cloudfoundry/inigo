@@ -42,6 +42,31 @@ var _ = Describe("RunOnce", func() {
 		})
 	})
 
+	Context("when no one picks up the RunOnce", func() {
+		BeforeEach(func() {
+			executorRunner.Start(executor_runner.Config{
+				Stack:                "mickey-mouse",
+				TimeToClaimInSeconds: 1,
+				ConvergenceInterval:  1,
+			})
+		})
+
+		It("should be marked as failed, eventually", func() {
+			guid := factories.GenerateGuid()
+			runOnce := factories.BuildRunOnceWithRunAction(1, 1, inigolistener.CurlCommand(guid))
+			runOnce.Stack = "donald-duck"
+			bbs.DesireRunOnce(runOnce)
+
+			Eventually(bbs.GetAllCompletedRunOnces, 5).Should(HaveLen(1))
+			runOnces, err := bbs.GetAllCompletedRunOnces()
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(runOnces[0].Failed).Should(BeTrue(), "RunOnce should have failed")
+			Ω(runOnces[0].FailureReason).Should(ContainSubstring("not claimed within time limit"))
+
+			Ω(inigolistener.ReportingGuids()).Should(BeEmpty())
+		})
+	})
+
 	Context("when an executor disappears", func() {
 		var secondExecutor *executor_runner.ExecutorRunner
 

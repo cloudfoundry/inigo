@@ -2,7 +2,7 @@
 	"ImportPath": "github.com/cloudfoundry-incubator/inigo",
 	"GoVersion": "go1.2",
 	"Packages": [
-		"./...."
+		"./..."
 	],
 	"Deps": [
 		{

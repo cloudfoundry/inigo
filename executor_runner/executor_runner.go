@@ -29,22 +29,24 @@ type ExecutorRunner struct {
 }
 
 type Config struct {
-	MemoryMB            int
-	DiskMB              int
-	SnapshotFile        string
-	ConvergenceInterval int
-	HeartbeatInterval   int
-	Stack               string
-	TempDir             string
+	MemoryMB             int
+	DiskMB               int
+	SnapshotFile         string
+	ConvergenceInterval  int
+	HeartbeatInterval    int
+	Stack                string
+	TempDir              string
+	TimeToClaimInSeconds int
 }
 
 var defaultConfig = Config{
-	MemoryMB:            1024,
-	DiskMB:              1024,
-	ConvergenceInterval: 30,
-	HeartbeatInterval:   60,
-	Stack:               "default",
-	TempDir:             "/tmp",
+	MemoryMB:             1024,
+	DiskMB:               1024,
+	ConvergenceInterval:  30,
+	HeartbeatInterval:    60,
+	Stack:                "default",
+	TempDir:              "/tmp",
+	TimeToClaimInSeconds: 30 * 60,
 }
 
 func New(executorBin, wardenNetwork, wardenAddr string, etcdMachines []string, loggregatorServer string, loggregatorSecret string) *ExecutorRunner {
@@ -82,6 +84,7 @@ func (r *ExecutorRunner) StartWithoutCheck(config ...Config) {
 			"-loggregatorServer", r.loggregatorServer,
 			"-loggregatorSecret", r.loggregatorSecret,
 			"-tempDir", configToUse.TempDir,
+			"-timeToClaimRunOnce", fmt.Sprintf("%d", configToUse.TimeToClaimInSeconds),
 		),
 		runner_support.TeeToGinkgoWriter,
 		runner_support.TeeToGinkgoWriter,
@@ -135,6 +138,9 @@ func (r *ExecutorRunner) generateConfig(config ...Config) Config {
 	}
 	if givenConfig.TempDir != "" {
 		configToReturn.TempDir = givenConfig.TempDir
+	}
+	if givenConfig.TimeToClaimInSeconds != 0 {
+		configToReturn.TimeToClaimInSeconds = givenConfig.TimeToClaimInSeconds
 	}
 
 	return configToReturn
