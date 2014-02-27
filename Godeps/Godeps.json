@@ -11,11 +11,16 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "efc91d2270210f2b167cbb819b051afdae00b1f3"
+			"Rev": "c2c67b3b02a55e2c0be99b35a31d2ce4b6601592"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "efc91d2270210f2b167cbb819b051afdae00b1f3"
+			"Rev": "c2c67b3b02a55e2c0be99b35a31d2ce4b6601592"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/gosteno",
+			"Comment": "scotty_09012012-37-gb73889e",
+			"Rev": "b73889e1b4e9e2c99103929016324ccf4f1d00ce"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
@@ -64,7 +69,7 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-cf-experimental/garden/integration/garden_runner",
-			"Rev": "75b2e9bc3cfbfaee0399115f16e3075f7382b67a"
+			"Rev": "210d50f644711cdb23d1d0904ed984467ba4a4c1"
 		},
 		{
 			"ImportPath": "github.com/vito/cmdtest",
@@ -72,7 +77,7 @@
 		},
 		{
 			"ImportPath": "github.com/vito/gordon",
-			"Rev": "22f5a6af42d928e4d4f110a9da564210f5db3f58"
+			"Rev": "7a09817eeb4006d9c8b07eb63ede3105b1997c77"
 		}
 	]
 }
