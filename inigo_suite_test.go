@@ -51,7 +51,7 @@ func TestInigo(t *testing.T) {
 	RegisterFailHandler(Fail)
 
 	setUpEtcd()
-	startGarden()
+	setUpGarden()
 	setUpNats()
 	setUpLoggregator()
 	setUpExecutor()
@@ -64,6 +64,7 @@ func TestInigo(t *testing.T) {
 }
 
 var _ = BeforeEach(func() {
+	startGarden()
 	etcdRunner.Start()
 	natsRunner.Start()
 	loggregatorRunner.Start()
@@ -87,7 +88,7 @@ func setUpEtcd() {
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(5001+config.GinkgoConfig.ParallelNode, 1)
 }
 
-func startGarden() {
+func setUpGarden() {
 	gardenBinPath := os.Getenv("GARDEN_BINPATH")
 	gardenRootfs := os.Getenv("GARDEN_ROOTFS")
 
@@ -107,8 +108,17 @@ func startGarden() {
 	}
 
 	gardenRunner.SnapshotsPath = ""
+}
 
-	err = gardenRunner.Start()
+var didStartGarden = false
+
+func startGarden() {
+	if didStartGarden {
+		return
+	}
+	didStartGarden = true
+
+	err := gardenRunner.Start()
 	if err != nil {
 		failFast("garden failed to start: " + err.Error())
 	}

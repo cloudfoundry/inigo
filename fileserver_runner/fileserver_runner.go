@@ -45,8 +45,8 @@ func (r *FileServerRunner) Start() {
 			"-etcdMachines", strings.Join(r.etcdMachines, ","),
 			"-directory", r.dir,
 		),
-		runner_support.TeeIfVerbose,
-		runner_support.TeeIfVerbose,
+		runner_support.TeeToGinkgoWriter,
+		runner_support.TeeToGinkgoWriter,
 	)
 	Ω(err).ShouldNot(HaveOccurred())
 	r.Session = executorSession

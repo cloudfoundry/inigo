@@ -38,8 +38,8 @@ func (r *StagerRunner) Start(args ...string) {
 				"-natsAddresses", strings.Join(r.natsAddresses, ","),
 			}, args...)...,
 		),
-		runner_support.TeeIfVerbose,
-		runner_support.TeeIfVerbose,
+		runner_support.TeeToGinkgoWriter,
+		runner_support.TeeToGinkgoWriter,
 	)
 
 	Ω(err).ShouldNot(HaveOccurred())

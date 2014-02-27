@@ -54,7 +54,7 @@ func (runner *LoggregatorRunner) Start() {
 		runner.loggregatorPath,
 		"--config", runner.configFile.Name(),
 		"--debug",
-	), runner_support.TeeIfVerbose, runner_support.TeeIfVerbose)
+	), runner_support.TeeToGinkgoWriter, runner_support.TeeToGinkgoWriter)
 	Ω(err).ShouldNot(HaveOccurred())
 
 	runner.loggregatorSession = sess

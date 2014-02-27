@@ -3,7 +3,6 @@ package inigo_test
 import (
 	"fmt"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
-	"strings"
 
 	"github.com/cloudfoundry-incubator/inigo/inigolistener"
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
@@ -31,12 +30,10 @@ var _ = Describe("Stager", func() {
 			stagerRunner.Start()
 		})
 
-		It("returns an error", func(done Done) {
-			errorMessages := 0
+		It("returns an error", func() {
+			receivedMessages := make(chan *yagnats.Message)
 			natsRunner.MessageBus.Subscribe("compiler-stagers-test", func(message *yagnats.Message) {
-				if strings.Contains(string(message.Payload), "error") {
-					errorMessages++
-				}
+				receivedMessages <- message
 			})
 
 			natsRunner.MessageBus.PublishWithReplyTo(
@@ -44,14 +41,11 @@ var _ = Describe("Stager", func() {
 				"compiler-stagers-test",
 				[]byte(`{"app_id": "some-app-guid", "task_id": "some-task-id", "stack": "no-compiler"}`))
 
-			Eventually(func() int {
-				return errorMessages
-			}, 2.0).Should(Equal(1))
-
-			Consistently(func() int {
-				return errorMessages
-			}, 2.0).Should(Equal(1))
-		}, 10.0)
+			var receivedMessage *yagnats.Message
+			Eventually(receivedMessages, 2.0).Should(Receive(&receivedMessage))
+			Ω(receivedMessage.Payload).Should(ContainSubstring("No compiler defined for requested stack"))
+			Consistently(receivedMessages, 2.0).ShouldNot(Receive())
+		})
 	})
 
 	Describe("Staging", func() {
@@ -70,6 +64,7 @@ var _ = Describe("Stager", func() {
 			appGuid = factories.GenerateGuid()
 			adminBuildpackGuid = factories.GenerateGuid()
 			outputGuid = factories.GenerateGuid()
+			compilerExitStatus = 0
 
 			//make and provide a compiler via the file-server
 			var compilerFiles = []zipper.ZipFile{

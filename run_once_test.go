@@ -31,7 +31,7 @@ var _ = Describe("RunOnce", func() {
 	})
 
 	Context("when there are no executors listening when a RunOnce is registered", func() {
-		It("eventually runs the RunOnce once a stager comes up", func() {
+		It("eventually runs the RunOnce once an executor comes up", func() {
 			guid := factories.GenerateGuid()
 			runOnce := factories.BuildRunOnceWithRunAction(1, 1, inigolistener.CurlCommand(guid))
 			bbs.DesireRunOnce(runOnce)

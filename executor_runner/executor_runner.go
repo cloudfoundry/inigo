@@ -83,8 +83,8 @@ func (r *ExecutorRunner) StartWithoutCheck(config ...Config) {
 			"-loggregatorSecret", r.loggregatorSecret,
 			"-tempDir", configToUse.TempDir,
 		),
-		runner_support.TeeIfVerbose,
-		runner_support.TeeIfVerbose,
+		runner_support.TeeToGinkgoWriter,
+		runner_support.TeeToGinkgoWriter,
 	)
 	Ω(err).ShouldNot(HaveOccurred())
 	r.snapshotFile = configToUse.SnapshotFile
