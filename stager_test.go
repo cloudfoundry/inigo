@@ -3,6 +3,7 @@ package inigo_test
 import (
 	"fmt"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
+	"github.com/cloudfoundry/loggregatorlib/logmessage"
 
 	"github.com/cloudfoundry-incubator/inigo/inigolistener"
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
@@ -88,6 +89,11 @@ $BUILDPACKS_DIR/test/run
 mkdir -p $RESULT_DIR
 echo '%s' > $RESULT_DIR/result.json
 
+# create a tarball
+
+mkdir -p $OUTPUT_DIR
+echo "the-droplet" > $OUTPUT_DIR/droplet.tgz
+
 # inject success/failure
 exit $COMPILER_EXIT_STATUS
 `,
@@ -122,10 +128,12 @@ exit $COMPILER_EXIT_STATUS
 						"task_id": "some-task-id",
 						"stack": "default",
 						"download_uri": "%s",
+						"upload_uri": "%s",
 						"admin_buildpacks" : [{ "key": "test", "url": "%s" }],
 						"environment": [["SOME_STAGING_ENV", "%s"], ["COMPILER_EXIT_STATUS", "%d"]]
 					}`,
 					inigolistener.DownloadUrl("app.zip"),
+					inigolistener.UploadUrl("droplet.tgz"),
 					inigolistener.DownloadUrl("admin_buildpack.zip"),
 					outputGuid,
 					compilerExitStatus,
@@ -138,9 +146,7 @@ exit $COMPILER_EXIT_STATUS
 				stagerRunner.Start("--compilers", `{"default":"compiler.zip"}`)
 			})
 
-			It("runs the compiler on the executor with the correct environment variables, bits and log tag, and responds with the detected buildpack", func(done Done) {
-				defer close(done)
-
+			It("runs the compiler on the executor with the correct environment variables, bits and log tag, and responds with the detected buildpack", func() {
 				payloads := make(chan []byte)
 
 				natsRunner.MessageBus.Subscribe("stager-test", func(msg *yagnats.Message) {
@@ -163,22 +169,24 @@ exit $COMPILER_EXIT_STATUS
 				Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(appGuid))
 				Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(adminBuildpackGuid))
 
-				message := <-messages
+				var message *logmessage.LogMessage
+				Eventually(messages, 5.0).Should(Receive(&message))
 				Ω(message.GetSourceName()).To(Equal("STG"))
 				Ω(string(message.GetMessage())).To(Equal(outputGuid))
 
-				payload := <-payloads
+				var payload []byte
+				Eventually(payloads, 5.0).Should(Receive(&payload))
 				Ω(string(payload)).Should(Equal(`{"detected_buildpack":"Test Buildpack"}`))
-			}, 20.0)
+
+				Ω(inigolistener.DownloadFileString("droplet.tgz")).Should(Equal("the-droplet\n"))
+			})
 
 			Context("when compilation fails", func() {
 				BeforeEach(func() {
 					compilerExitStatus = 42
 				})
 
-				It("responds with the error, and no detected buildpack present", func(done Done) {
-					defer close(done)
-
+				It("responds with the error, and no detected buildpack present", func() {
 					payloads := make(chan []byte)
 
 					natsRunner.MessageBus.Subscribe("stager-test", func(msg *yagnats.Message) {
@@ -201,13 +209,15 @@ exit $COMPILER_EXIT_STATUS
 					Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(appGuid))
 					Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(adminBuildpackGuid))
 
-					message := <-messages
+					var message *logmessage.LogMessage
+					Eventually(messages, 5.0).Should(Receive(&message))
 					Ω(message.GetSourceName()).To(Equal("STG"))
 					Ω(string(message.GetMessage())).To(Equal(outputGuid))
 
-					payload := <-payloads
+					var payload []byte
+					Eventually(payloads, 5.0).Should(Receive(&payload))
 					Ω(string(payload)).Should(Equal(`{"error":"Process returned with exit value: 42"}`))
-				}, 20.0)
+				})
 			})
 		})
 
@@ -221,12 +231,10 @@ exit $COMPILER_EXIT_STATUS
 				otherStagerRunner.Stop()
 			})
 
-			It("only one returns a staging completed response", func(done Done) {
-				defer close(done)
-
-				messages := 0
+			It("only one returns a staging completed response", func() {
+				received := make(chan bool)
 				natsRunner.MessageBus.Subscribe("two-stagers-test", func(message *yagnats.Message) {
-					messages++
+					received <- true
 				})
 
 				natsRunner.MessageBus.PublishWithReplyTo(
@@ -235,14 +243,9 @@ exit $COMPILER_EXIT_STATUS
 					stagingMessage,
 				)
 
-				Eventually(func() int {
-					return messages
-				}, 10.0).Should(Equal(1))
-
-				Consistently(func() int {
-					return messages
-				}, 2.0).Should(Equal(1))
-			}, 10.0)
+				Eventually(received, 10.0).Should(Receive())
+				Consistently(received, 2.0).ShouldNot(Receive())
+			})
 		})
 	})
 })
