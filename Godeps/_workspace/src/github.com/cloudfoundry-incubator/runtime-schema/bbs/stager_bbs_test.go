@@ -139,7 +139,7 @@ var _ = Describe("Stager BBS", func() {
 
 			Expect(<-events).To(Equal(runOnce))
 
-			bbs.ConvergeRunOnce() //should bump the completed key
+			bbs.ConvergeRunOnce(time.Second) //should bump the completed key
 
 			Expect(<-events).To(Equal(runOnce))
 
@@ -152,7 +152,7 @@ var _ = Describe("Stager BBS", func() {
 
 			Expect(<-events).To(Equal(runOnce))
 
-			bbs.ConvergeRunOnce() //should delete the key
+			bbs.ConvergeRunOnce(time.Second) //should delete the key
 
 			otherRunOnce := runOnce
 			otherRunOnce.Guid = runOnce.Guid + "1"

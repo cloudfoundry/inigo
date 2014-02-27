@@ -2,7 +2,7 @@
 	"ImportPath": "github.com/cloudfoundry-incubator/inigo",
 	"GoVersion": "go1.2",
 	"Packages": [
-		"./..."
+		"./...."
 	],
 	"Deps": [
 		{
@@ -11,11 +11,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "cbacaeeca29e0fa8cc34970da6412d184d8a9493"
+			"Rev": "13ce8cbf99421ed39d2fb35ec95e0c3cbd31d84e"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "cbacaeeca29e0fa8cc34970da6412d184d8a9493"
+			"Rev": "13ce8cbf99421ed39d2fb35ec95e0c3cbd31d84e"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
