@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 
@@ -77,6 +78,9 @@ var _ = BeforeEach(func() {
 	gardenRunner.DestroyContainers()
 
 	inigolistener.Start(wardenClient)
+
+	currentTestDescription := CurrentGinkgoTestDescription()
+	fmt.Fprintf(GinkgoWriter, "\n%s\n%s\n\n", strings.Repeat("~", 50), currentTestDescription.FullTestText)
 })
 
 var _ = AfterEach(func() {
