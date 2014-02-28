@@ -19,8 +19,8 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
-			"Comment": "scotty_09012012-37-gb73889e",
-			"Rev": "b73889e1b4e9e2c99103929016324ccf4f1d00ce"
+			"Comment": "scotty_09012012-38-g969c2c5",
+			"Rev": "969c2c565f5f1638b45702f3a07f6c39013bf375"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
@@ -52,6 +52,10 @@
 			"Rev": "ea119ebc0de7050995ab0d34f3b94e3f331f334c"
 		},
 		{
+			"ImportPath": "github.com/fraenkel/candiedyaml",
+			"Rev": "ed21d7678d04b5abe57f8cb12ded8c6c8211a710"
+		},
+		{
 			"ImportPath": "github.com/gorilla/websocket",
 			"Rev": "119002ce0495aa7a8f388544d740e1bdc8829513"
 		},
@@ -69,7 +73,7 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-cf-experimental/garden/integration/garden_runner",
-			"Rev": "309baeef117748f2209f352569f22ca6f3d4a1b0"
+			"Rev": "051dd256187e04790a9c4d8426187c21cc97c61b"
 		},
 		{
 			"ImportPath": "github.com/vito/cmdtest",

@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/onsi/ginkgo/config"
 	"os"
+	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"testing"
 
@@ -46,6 +48,8 @@ var fileServerRunner *fileserver_runner.FileServerRunner
 var fileServerPath string
 var fileServerPort int
 
+var smelterZipPath string
+
 func TestInigo(t *testing.T) {
 	registerSignalHandler()
 	RegisterFailHandler(Fail)
@@ -56,6 +60,7 @@ func TestInigo(t *testing.T) {
 	setUpLoggregator()
 	setUpExecutor()
 	setUpStager()
+	compileAndZipUpSmelter()
 	setUpFileServer()
 
 	RunSpecs(t, "Inigo Integration Suite")
@@ -197,6 +202,28 @@ func setUpStager() {
 	)
 }
 
+func compileAndZipUpSmelter() {
+	smelterPath, err := cmdtest.Build("github.com/cloudfoundry-incubator/linux-smelter")
+	if err != nil {
+		failFast("failed to compile smelter", err)
+	}
+
+	smelterDir := filepath.Dir(smelterPath)
+	err = os.Rename(smelterPath, filepath.Join(smelterDir, "run"))
+	if err != nil {
+		failFast("failed to move smelter", err)
+	}
+
+	cmd := exec.Command("zip", "smelter.zip", "run")
+	cmd.Dir = smelterDir
+	err = cmd.Run()
+	if err != nil {
+		failFast("failed to zip up smelter", err)
+	}
+
+	smelterZipPath = filepath.Join(smelterDir, "smelter.zip")
+}
+
 func setUpFileServer() {
 	var err error
 	fileServerPath, err = cmdtest.Build("github.com/cloudfoundry-incubator/file-server")
@@ -237,8 +264,11 @@ func cleanup() {
 	}
 }
 
-func failFast(msg string) {
+func failFast(msg string, errs ...error) {
 	println("!!!!! " + msg + " !!!!!")
+	if len(errs) > 0 {
+		println("error: " + errs[0].Error())
+	}
 	cleanup()
 	os.Exit(1)
 }

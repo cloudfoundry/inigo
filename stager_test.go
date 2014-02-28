@@ -1,9 +1,14 @@
 package inigo_test
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
-	"github.com/cloudfoundry/loggregatorlib/logmessage"
+	"github.com/fraenkel/candiedyaml"
+	"io"
+	"io/ioutil"
 
 	"github.com/cloudfoundry-incubator/inigo/inigolistener"
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
@@ -50,74 +55,56 @@ var _ = Describe("Stager", func() {
 	})
 
 	Describe("Staging", func() {
-		var compilerGuid string
-		var appGuid string
-		var adminBuildpackGuid string
 		var outputGuid string
 		var stagingMessage []byte
-		var compilerExitStatus int
+		var buildpackToUse string
 
 		BeforeEach(func() {
 			fileServerRunner.Start()
 			executorRunner.Start()
+			buildpackToUse = "admin_buildpack.zip"
 
-			compilerGuid = factories.GenerateGuid()
-			appGuid = factories.GenerateGuid()
-			adminBuildpackGuid = factories.GenerateGuid()
 			outputGuid = factories.GenerateGuid()
-			compilerExitStatus = 0
 
-			//make and provide a compiler via the file-server
-			var compilerFiles = []zipper.ZipFile{
-				{"run", fmt.Sprintf(`#!/bin/bash
-
-set -e
-
-# use an environment variable provided for staging
-echo $SOME_STAGING_ENV
-
-# tell the listener we're here
-%s
-
-# tell the listener the app's bits are here
-$APP_DIR/run
-
-# tell the listener the buildpacks are here
-$BUILDPACKS_DIR/test/run
-
-# write a staging result
-mkdir -p $RESULT_DIR
-echo '%s' > $RESULT_DIR/result.json
-
-# create a tarball
-
-mkdir -p $OUTPUT_DIR
-echo "the-droplet" > $OUTPUT_DIR/droplet.tgz
-
-# inject success/failure
-exit $COMPILER_EXIT_STATUS
-`,
-					inigolistener.CurlCommand(compilerGuid),
-					`{"detected_buildpack":"Test Buildpack"}`,
-				)},
-			}
-			zipper.CreateZipFile("/tmp/compiler.zip", compilerFiles)
-			fileServerRunner.ServeFile("compiler.zip", "/tmp/compiler.zip")
+			fileServerRunner.ServeFile("smelter.zip", smelterZipPath)
 
 			//make and upload an app
 			var appFiles = []zipper.ZipFile{
-				{"run", inigolistener.CurlCommand(appGuid)},
+				{"my-app", "scooby-doo"},
 			}
 			zipper.CreateZipFile("/tmp/app.zip", appFiles)
 			inigolistener.UploadFile("app.zip", "/tmp/app.zip")
 
 			//make and upload a buildpack
 			var adminBuildpackFiles = []zipper.ZipFile{
-				{"run", inigolistener.CurlCommand(adminBuildpackGuid)},
+				{"bin/detect", `#!/bin/bash
+				echo My Buildpack
+				`},
+				{"bin/compile", `#!/bin/bash
+				echo COMPILING BUILDPACK
+				echo $SOME_STAGING_ENV
+				touch $1/compiled
+				`},
+				{"bin/release", `#!/bin/bash
+cat <<EOF
+---
+default_process_types:
+  web: start-command
+EOF
+				`},
 			}
 			zipper.CreateZipFile("/tmp/admin_buildpack.zip", adminBuildpackFiles)
 			inigolistener.UploadFile("admin_buildpack.zip", "/tmp/admin_buildpack.zip")
 
+			var bustedAdminBuildpackFiles = []zipper.ZipFile{
+				{"bin/detect", `#!/bin/bash]
+				exit 1
+				`},
+				{"bin/compile", `#!/bin/bash`},
+				{"bin/release", `#!/bin/bash`},
+			}
+			zipper.CreateZipFile("/tmp/busted_admin_buildpack.zip", bustedAdminBuildpackFiles)
+			inigolistener.UploadFile("busted_admin_buildpack.zip", "/tmp/busted_admin_buildpack.zip")
 		})
 
 		JustBeforeEach(func() {
@@ -129,21 +116,20 @@ exit $COMPILER_EXIT_STATUS
 						"stack": "default",
 						"download_uri": "%s",
 						"upload_uri": "%s",
-						"admin_buildpacks" : [{ "key": "test", "url": "%s" }],
-						"environment": [["SOME_STAGING_ENV", "%s"], ["COMPILER_EXIT_STATUS", "%d"]]
+						"admin_buildpacks" : [{ "key": "test-buildpack", "url": "%s" }],
+						"environment": [["SOME_STAGING_ENV", "%s"]]
 					}`,
 					inigolistener.DownloadUrl("app.zip"),
 					inigolistener.UploadUrl("droplet.tgz"),
-					inigolistener.DownloadUrl("admin_buildpack.zip"),
+					inigolistener.DownloadUrl(buildpackToUse),
 					outputGuid,
-					compilerExitStatus,
 				),
 			)
 		})
 
 		Context("with one stager running", func() {
 			BeforeEach(func() {
-				stagerRunner.Start("--compilers", `{"default":"compiler.zip"}`)
+				stagerRunner.Start("--compilers", `{"default":"smelter.zip"}`)
 			})
 
 			It("runs the compiler on the executor with the correct environment variables, bits and log tag, and responds with the detected buildpack", func() {
@@ -159,31 +145,75 @@ exit $COMPILER_EXIT_STATUS
 				)
 				defer close(stop)
 
+				logOutput := ""
+				go func() {
+					for message := range messages {
+						Ω(message.GetSourceName()).To(Equal("STG"))
+						logOutput += string(message.GetMessage()) + "\n"
+					}
+				}()
+
 				err := natsRunner.MessageBus.PublishWithReplyTo(
 					"diego.staging.start",
 					"stager-test",
 					stagingMessage,
 				)
 				Ω(err).ShouldNot(HaveOccurred())
-				Eventually(inigolistener.ReportingGuids, 10.0).Should(ContainElement(compilerGuid))
-				Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(appGuid))
-				Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(adminBuildpackGuid))
-
-				var message *logmessage.LogMessage
-				Eventually(messages, 5.0).Should(Receive(&message))
-				Ω(message.GetSourceName()).To(Equal("STG"))
-				Ω(string(message.GetMessage())).To(Equal(outputGuid))
 
 				var payload []byte
-				Eventually(payloads, 5.0).Should(Receive(&payload))
-				Ω(string(payload)).Should(Equal(`{"detected_buildpack":"Test Buildpack"}`))
+				Eventually(payloads, 10.0).Should(Receive(&payload))
+				Ω(string(payload)).Should(Equal(`{"detected_buildpack":"My Buildpack"}`))
 
-				Ω(inigolistener.DownloadFileString("droplet.tgz")).Should(Equal("the-droplet\n"))
+				Eventually(func() string {
+					return logOutput
+				}).Should(ContainSubstring("COMPILING BUILDPACK"))
+				Ω(logOutput).Should(ContainSubstring(outputGuid))
+
+				dropletData := []byte(inigolistener.DownloadFileString("droplet.tgz"))
+				Ω(dropletData).ShouldNot(BeEmpty())
+
+				ungzippedDropletData, err := gzip.NewReader(bytes.NewReader(dropletData))
+				Ω(err).ShouldNot(HaveOccurred())
+
+				untarredDropletData := tar.NewReader(ungzippedDropletData)
+				dropletContents := map[string][]byte{}
+				for {
+					hdr, err := untarredDropletData.Next()
+					if err == io.EOF {
+						break
+					}
+					Ω(err).ShouldNot(HaveOccurred())
+
+					content, err := ioutil.ReadAll(untarredDropletData)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					dropletContents[hdr.Name] = content
+				}
+
+				Ω(dropletContents).Should(HaveKey("./"))
+				Ω(dropletContents).Should(HaveKey("./staging_info.yml"))
+				Ω(dropletContents).Should(HaveKey("./logs/"))
+				Ω(dropletContents).Should(HaveKey("./tmp/"))
+				Ω(dropletContents).Should(HaveKey("./app/"))
+				Ω(dropletContents).Should(HaveKey("./app/my-app"))
+				Ω(dropletContents).Should(HaveKey("./app/compiled"))
+
+				Ω(string(dropletContents["./app/my-app"])).Should(Equal("scooby-doo"))
+
+				yamlDecoder := candiedyaml.NewDecoder(bytes.NewReader(dropletContents["./staging_info.yml"]))
+				stagingInfo := map[string]string{}
+				err = yamlDecoder.Decode(&stagingInfo)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Ω(stagingInfo["detected_buildpack"]).Should(Equal("My Buildpack"))
+				Ω(stagingInfo["start_command"]).Should(Equal("start-command"))
+
+				Ω(dropletContents).Should(HaveLen(7))
 			})
 
 			Context("when compilation fails", func() {
 				BeforeEach(func() {
-					compilerExitStatus = 42
+					buildpackToUse = "busted_admin_buildpack.zip"
 				})
 
 				It("responds with the error, and no detected buildpack present", func() {
@@ -199,32 +229,36 @@ exit $COMPILER_EXIT_STATUS
 					)
 					defer close(stop)
 
+					logOutput := ""
+					go func() {
+						for message := range messages {
+							Ω(message.GetSourceName()).To(Equal("STG"))
+							logOutput += string(message.GetMessage()) + "\n"
+						}
+					}()
+
 					err := natsRunner.MessageBus.PublishWithReplyTo(
 						"diego.staging.start",
 						"stager-test",
 						stagingMessage,
 					)
 					Ω(err).ShouldNot(HaveOccurred())
-					Eventually(inigolistener.ReportingGuids, 10.0).Should(ContainElement(compilerGuid))
-					Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(appGuid))
-					Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(adminBuildpackGuid))
-
-					var message *logmessage.LogMessage
-					Eventually(messages, 5.0).Should(Receive(&message))
-					Ω(message.GetSourceName()).To(Equal("STG"))
-					Ω(string(message.GetMessage())).To(Equal(outputGuid))
 
 					var payload []byte
-					Eventually(payloads, 5.0).Should(Receive(&payload))
-					Ω(string(payload)).Should(Equal(`{"error":"Process returned with exit value: 42"}`))
+					Eventually(payloads, 10.0).Should(Receive(&payload))
+					Ω(string(payload)).Should(Equal(`{"error":"Process returned with exit value: 1"}`))
+
+					Eventually(func() string {
+						return logOutput
+					}, 5.0).Should(ContainSubstring("no buildpack detected"))
 				})
 			})
 		})
 
 		Context("with two stagers running", func() {
 			BeforeEach(func() {
-				stagerRunner.Start("--compilers", `{"default":"compiler.zip"}`)
-				otherStagerRunner.Start("--compilers", `{"default":"compiler.zip"}`)
+				stagerRunner.Start("--compilers", `{"default":"smelter.zip"}`)
+				otherStagerRunner.Start("--compilers", `{"default":"smelter.zip"}`)
 			})
 
 			AfterEach(func() {

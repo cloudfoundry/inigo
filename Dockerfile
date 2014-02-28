@@ -6,7 +6,7 @@ FROM mischief/docker-golang
 RUN locale-gen en_US.UTF-8
 
 # pull in dependencies for the Garden server
-RUN apt-get -y install iptables quota rsync net-tools protobuf-compiler
+RUN apt-get -y install iptables quota rsync net-tools protobuf-compiler zip
 
 # pull in the prebuilt rootfs
 ADD inigo-test-rootfs.tar /opt/warden/rootfs
