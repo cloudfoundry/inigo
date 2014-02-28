@@ -11,10 +11,10 @@ type executorBBS struct {
 	store storeadapter.StoreAdapter
 }
 
-func (self *executorBBS) MaintainExecutorPresence(heartbeatIntervalInSeconds uint64, executorId string) (PresenceInterface, chan error, error) {
+func (self *executorBBS) MaintainExecutorPresence(heartbeatIntervalInSeconds uint64, executorId string) (PresenceInterface, <-chan bool, error) {
 	presence := NewPresence(self.store, executorSchemaPath(executorId), []byte{})
-	errors, err := presence.Maintain(heartbeatIntervalInSeconds)
-	return presence, errors, err
+	lostLock, err := presence.Maintain(heartbeatIntervalInSeconds)
+	return presence, lostLock, err
 }
 
 func (self *executorBBS) WatchForDesiredRunOnce() (<-chan models.RunOnce, chan<- bool, <-chan error) {

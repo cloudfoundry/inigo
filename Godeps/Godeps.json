@@ -11,11 +11,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "13ce8cbf99421ed39d2fb35ec95e0c3cbd31d84e"
+			"Rev": "ff3267b22bfc868772053a14e1f166fa8fc71cd0"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "13ce8cbf99421ed39d2fb35ec95e0c3cbd31d84e"
+			"Rev": "ff3267b22bfc868772053a14e1f166fa8fc71cd0"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -40,7 +40,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
-			"Rev": "3bffe313636bb48c0ae2f7cc36c3d43a30e65e09"
+			"Rev": "ded5b3d319e7b7964689f503108902ed237c53d8"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/yagnats",
@@ -48,8 +48,8 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/go-etcd/etcd",
-			"Comment": "v0.2.0-rc1-91-gea119eb",
-			"Rev": "ea119ebc0de7050995ab0d34f3b94e3f331f334c"
+			"Comment": "v0.2.0-rc1-93-g1fa1168",
+			"Rev": "1fa1168dc7736bff27c58a850715db33411ae326"
 		},
 		{
 			"ImportPath": "github.com/fraenkel/candiedyaml",
@@ -77,7 +77,7 @@
 		},
 		{
 			"ImportPath": "github.com/vito/cmdtest",
-			"Rev": "fbd89b77403b5ed2f394946ec8debcc251b96815"
+			"Rev": "5073503e50f68b9c14d073ab261164965bffa872"
 		},
 		{
 			"ImportPath": "github.com/vito/gordon",

@@ -12,7 +12,7 @@ import (
 const SchemaRoot = "/v1/"
 
 type ExecutorBBS interface {
-	MaintainExecutorPresence(heartbeatIntervalInSeconds uint64, executorID string) (PresenceInterface, chan error, error)
+	MaintainExecutorPresence(heartbeatIntervalInSeconds uint64, executorID string) (presence PresenceInterface, disappeared <-chan bool, err error)
 	WatchForDesiredRunOnce() (<-chan models.RunOnce, chan<- bool, <-chan error) //filter out delete...
 
 	ClaimRunOnce(models.RunOnce) error
@@ -33,7 +33,7 @@ type StagerBBS interface {
 }
 
 type FileServerBBS interface {
-	MaintainFileServerPresence(heartbeatIntervalInSeconds uint64, fileServerURL string, fileServerId string) (PresenceInterface, chan error, error)
+	MaintainFileServerPresence(heartbeatIntervalInSeconds uint64, fileServerURL string, fileServerId string) (presence PresenceInterface, disappeared <-chan bool, err error)
 }
 
 func New(store storeadapter.StoreAdapter) *BBS {

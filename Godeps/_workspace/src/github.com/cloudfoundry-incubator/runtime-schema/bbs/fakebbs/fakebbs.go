@@ -11,9 +11,8 @@ type FakePresence struct {
 	Removed bool
 }
 
-func (p *FakePresence) Remove() error {
+func (p *FakePresence) Remove() {
 	p.Removed = true
-	return nil
 }
 
 type FakeExecutorBBS struct {
@@ -24,7 +23,7 @@ type FakeExecutorBBS struct {
 	MaintainingPresenceHeartbeatInterval uint64
 	MaintainingPresenceExecutorID        string
 	MaintainingPresencePresence          *FakePresence
-	MaintainingPresenceErrorChannel      chan error
+	MaintainingPresenceErrorChannel      chan bool
 	MaintainingPresenceError             error
 
 	ClaimedRunOnce  models.RunOnce
@@ -42,11 +41,11 @@ func NewFakeExecutorBBS() *FakeExecutorBBS {
 	return &FakeExecutorBBS{}
 }
 
-func (fakeBBS *FakeExecutorBBS) MaintainExecutorPresence(heartbeatIntervalInSeconds uint64, executorID string) (bbs.PresenceInterface, chan error, error) {
+func (fakeBBS *FakeExecutorBBS) MaintainExecutorPresence(heartbeatIntervalInSeconds uint64, executorID string) (bbs.PresenceInterface, <-chan bool, error) {
 	fakeBBS.MaintainingPresenceHeartbeatInterval = heartbeatIntervalInSeconds
 	fakeBBS.MaintainingPresenceExecutorID = executorID
 	fakeBBS.MaintainingPresencePresence = &FakePresence{}
-	fakeBBS.MaintainingPresenceErrorChannel = make(chan error)
+	fakeBBS.MaintainingPresenceErrorChannel = make(chan bool)
 
 	return fakeBBS.MaintainingPresencePresence, fakeBBS.MaintainingPresenceErrorChannel, fakeBBS.MaintainingPresenceError
 }
