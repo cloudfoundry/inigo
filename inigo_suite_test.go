@@ -150,17 +150,10 @@ func setUpLoggregator() {
 	loggregatorPort = 3456 + config.GinkgoConfig.ParallelNode
 	loggregatorSharedSecret = "conspiracy"
 
-	// hack around GOPATH to compile loggregator
-	originalGopath := os.Getenv("GOPATH")
-
-	os.Setenv("GOPATH", os.Getenv("LOGGREGATOR_GOPATH"))
-
-	loggregatorPath, err := cmdtest.Build("loggregator/loggregator")
+	loggregatorPath, err := cmdtest.BuildIn("loggregator/loggregator", os.Getenv("LOGGREGATOR_GOPATH"))
 	if err != nil {
 		failFast("failed to compile loggregator")
 	}
-
-	os.Setenv("GOPATH", originalGopath)
 
 	loggregatorRunner = loggregator_runner.New(
 		loggregatorPath,
@@ -177,7 +170,7 @@ func setUpLoggregator() {
 
 func setUpExecutor() {
 	var err error
-	executorPath, err = cmdtest.Build("github.com/cloudfoundry-incubator/executor")
+	executorPath, err = cmdtest.BuildIn("github.com/cloudfoundry-incubator/executor", os.Getenv("EXECUTOR_GOPATH"))
 	if err != nil {
 		failFast("failed to compile executor")
 	}
@@ -194,7 +187,7 @@ func setUpExecutor() {
 
 func setUpStager() {
 	var err error
-	stagerPath, err = cmdtest.Build("github.com/cloudfoundry-incubator/stager")
+	stagerPath, err = cmdtest.BuildIn("github.com/cloudfoundry-incubator/stager", os.Getenv("STAGER_GOPATH"))
 	if err != nil {
 		failFast("failed to compile stager")
 	}
@@ -207,7 +200,7 @@ func setUpStager() {
 }
 
 func compileAndZipUpSmelter() {
-	smelterPath, err := cmdtest.Build("github.com/cloudfoundry-incubator/linux-smelter")
+	smelterPath, err := cmdtest.BuildIn("github.com/cloudfoundry-incubator/linux-smelter", os.Getenv("LINUX_SMELTER_GOPATH"))
 	if err != nil {
 		failFast("failed to compile smelter", err)
 	}
@@ -230,7 +223,7 @@ func compileAndZipUpSmelter() {
 
 func setUpFileServer() {
 	var err error
-	fileServerPath, err = cmdtest.Build("github.com/cloudfoundry-incubator/file-server")
+	fileServerPath, err = cmdtest.BuildIn("github.com/cloudfoundry-incubator/file-server", os.Getenv("FILE_SERVER_GOPATH"))
 	if err != nil {
 		failFast("failed to compile file server")
 	}
