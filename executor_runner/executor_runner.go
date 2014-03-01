@@ -2,7 +2,6 @@ package executor_runner
 
 import (
 	"fmt"
-	"github.com/nu7hatch/gouuid"
 	"os"
 	"os/exec"
 	"strings"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry/gunk/runner_support"
+	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/gomega"
 	"github.com/vito/cmdtest"
 	. "github.com/vito/cmdtest/matchers"
@@ -29,24 +29,24 @@ type ExecutorRunner struct {
 }
 
 type Config struct {
-	MemoryMB             int
-	DiskMB               int
-	SnapshotFile         string
-	ConvergenceInterval  int
-	HeartbeatInterval    int
-	Stack                string
-	TempDir              string
-	TimeToClaimInSeconds int
+	MemoryMB            int
+	DiskMB              int
+	SnapshotFile        string
+	ConvergenceInterval time.Duration
+	HeartbeatInterval   time.Duration
+	Stack               string
+	TempDir             string
+	TimeToClaim         time.Duration
 }
 
 var defaultConfig = Config{
-	MemoryMB:             1024,
-	DiskMB:               1024,
-	ConvergenceInterval:  30,
-	HeartbeatInterval:    60,
-	Stack:                "default",
-	TempDir:              "/tmp",
-	TimeToClaimInSeconds: 30 * 60,
+	MemoryMB:            1024,
+	DiskMB:              1024,
+	ConvergenceInterval: 30 * time.Second,
+	HeartbeatInterval:   60 * time.Second,
+	Stack:               "default",
+	TempDir:             "/tmp",
+	TimeToClaim:         30 * 60 * time.Second,
 }
 
 func New(executorBin, wardenNetwork, wardenAddr string, etcdMachines []string, loggregatorServer string, loggregatorSecret string) *ExecutorRunner {
@@ -78,13 +78,13 @@ func (r *ExecutorRunner) StartWithoutCheck(config ...Config) {
 			"-memoryMB", fmt.Sprintf("%d", configToUse.MemoryMB),
 			"-diskMB", fmt.Sprintf("%d", configToUse.DiskMB),
 			"-registrySnapshotFile", configToUse.SnapshotFile,
-			"-convergenceInterval", fmt.Sprintf("%d", configToUse.ConvergenceInterval),
-			"-heartbeatInterval", fmt.Sprintf("%d", configToUse.HeartbeatInterval),
+			"-convergenceInterval", fmt.Sprintf("%s", configToUse.ConvergenceInterval),
+			"-heartbeatInterval", fmt.Sprintf("%s", configToUse.HeartbeatInterval),
 			"-stack", configToUse.Stack,
 			"-loggregatorServer", r.loggregatorServer,
 			"-loggregatorSecret", r.loggregatorSecret,
 			"-tempDir", configToUse.TempDir,
-			"-timeToClaimRunOnce", fmt.Sprintf("%d", configToUse.TimeToClaimInSeconds),
+			"-timeToClaimRunOnce", fmt.Sprintf("%s", configToUse.TimeToClaim),
 		),
 		runner_support.TeeToGinkgoWriter,
 		runner_support.TeeToGinkgoWriter,
@@ -139,8 +139,8 @@ func (r *ExecutorRunner) generateConfig(config ...Config) Config {
 	if givenConfig.TempDir != "" {
 		configToReturn.TempDir = givenConfig.TempDir
 	}
-	if givenConfig.TimeToClaimInSeconds != 0 {
-		configToReturn.TimeToClaimInSeconds = givenConfig.TimeToClaimInSeconds
+	if givenConfig.TimeToClaim != 0 {
+		configToReturn.TimeToClaim = givenConfig.TimeToClaim
 	}
 
 	return configToReturn

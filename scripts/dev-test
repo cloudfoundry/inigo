@@ -31,4 +31,4 @@ done
 
 cp -a ~/workspace/loggregator ${TMP_GOPATH}/loggregator
 
-drone build $TMP_GOPATH
+drone -privileged build $TMP_GOPATH

@@ -1,6 +1,8 @@
 package inigo_test
 
 import (
+	"time"
+
 	"github.com/cloudfoundry-incubator/inigo/executor_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigolistener"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
@@ -45,9 +47,9 @@ var _ = Describe("RunOnce", func() {
 	Context("when no one picks up the RunOnce", func() {
 		BeforeEach(func() {
 			executorRunner.Start(executor_runner.Config{
-				Stack:                "mickey-mouse",
-				TimeToClaimInSeconds: 1,
-				ConvergenceInterval:  1,
+				Stack:               "mickey-mouse",
+				TimeToClaim:         1 * time.Second,
+				ConvergenceInterval: 1 * time.Second,
 			})
 		})
 
@@ -80,8 +82,8 @@ var _ = Describe("RunOnce", func() {
 				"",
 			)
 
-			executorRunner.Start(executor_runner.Config{MemoryMB: 3, DiskMB: 3, ConvergenceInterval: 1})
-			secondExecutor.Start(executor_runner.Config{ConvergenceInterval: 1, HeartbeatInterval: 1})
+			executorRunner.Start(executor_runner.Config{MemoryMB: 3, DiskMB: 3, ConvergenceInterval: 1 * time.Second})
+			secondExecutor.Start(executor_runner.Config{ConvergenceInterval: 1 * time.Second, HeartbeatInterval: 1 * time.Second})
 		})
 
 		It("eventually marks jobs running on that executor as failed", func() {
