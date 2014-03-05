@@ -2,21 +2,16 @@
 
 #### Setup for tests
 
-1. Start Docker listening on port 4243
-
-    ```
-    go get github.com/coreos/docker
-    goto docker
-    export FORWARD_PORTS=4243
-    vagrant up
-    vagrant reload
-    vagrant ssh -c 'sudo service docker stop; sudo /usr/bin/docker -d -H tcp://0.0.0.0:4243'
-    ```
+1. Start Docker (via boot2docker)
 
 2. Grab the fork of Drone that runs as privileged user
 
     ```
     go get -d github.com/vito/drone
+    pushd $GOPATH/src/github.com/vito/drone
+    git fetch -all
+    git checkout privileged-builds
+    popd
     mkdir -p $GOPATH/src/github.com/drone
     mv $GOPATH/src/github.com/vito/drone !$/drone
     ```
@@ -30,15 +25,44 @@
     mv $PWD/bin/* $GOPATH/bin
     ```
 
-4. Get protoc
+4. Make sure you have the latest inigo-ci image:
 
     ```
-    go get code.google.com/p/gogoprotobuf/{proto,protoc-gen-gogo,gogoproto}
+    docker pull cloudfoundry/inigo-ci
     ```
 
-4. Run the tests
+5. Run the tests
 
     ```
     goto inigo
     ./scripts/dev-test
     ```
+
+
+#### Updating the inigo-ci image
+
+To update the root-fs that the containers use:
+
+    ```
+    git clone https://github.com/cloudfoundry/stacks
+    pushd stacks
+    git checkout docker
+    popd
+    ```
+
+And follow the instructions in `stacks/README.md`
+
+These also include instructions for updating the inigo-ci docker image.  These are reproduced here:
+
+    ```
+    goto inigo
+    make
+    /scripts/dev-test
+    docker push cloudfoundry/inigo-ci
+    ```
+
+To modify what goes into the docker image update the `Dockerfile` in the inigo repo.
+
+#### Adding a new component to the tests
+
+Walk through `./scripts/*` and patern-match your way to victory

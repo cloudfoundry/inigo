@@ -7,7 +7,6 @@ import (
 	"github.com/cloudfoundry/storeadapter/workerpool"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"runtime"
 	"time"
 )
 
@@ -526,32 +525,6 @@ var _ = Describe("ETCD Store Adapter", func() {
 				_, err = adapter.Get(uniqueStoreNodeForThisTest.Key)
 				Ω(err).Should(HaveOccurred())
 			}, 5.0)
-		})
-
-		Context("when the lock is unavailable", func() {
-			It("should block until the lock becomes available", func(done Done) {
-				_, releaseLock, err := adapter.MaintainNode(uniqueStoreNodeForThisTest)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				didRun := make(chan bool)
-				go func() {
-					_, _, err := adapter.MaintainNode(uniqueStoreNodeForThisTest)
-					Ω(err).ShouldNot(HaveOccurred())
-					close(didRun)
-				}()
-
-				runtime.Gosched()
-
-				Ω(didRun).ShouldNot(BeClosed())
-
-				releasedLock := make(chan bool)
-				releaseLock <- releasedLock
-				<-releasedLock
-
-				Eventually(didRun, 3).Should(BeClosed())
-
-				close(done)
-			}, 10.0)
 		})
 	})
 

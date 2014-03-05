@@ -23,6 +23,7 @@ var _ = Describe("Stager", func() {
 	var otherStagerRunner *stager_runner.StagerRunner
 
 	BeforeEach(func() {
+		fileServerRunner.Start()
 		otherStagerRunner = stager_runner.New(
 			stagerPath,
 			etcdRunner.NodeURLS(),
@@ -60,10 +61,9 @@ var _ = Describe("Stager", func() {
 		var buildpackToUse string
 
 		BeforeEach(func() {
-			fileServerRunner.Start()
 			executorRunner.Start()
-			buildpackToUse = "admin_buildpack.zip"
 
+			buildpackToUse = "admin_buildpack.zip"
 			outputGuid = factories.GenerateGuid()
 
 			fileServerRunner.ServeFile("smelter.zip", smelterZipPath)
@@ -115,12 +115,10 @@ EOF
 						"task_id": "some-task-id",
 						"stack": "default",
 						"download_uri": "%s",
-						"upload_uri": "%s",
 						"admin_buildpacks" : [{ "key": "test-buildpack", "url": "%s" }],
 						"environment": [["SOME_STAGING_ENV", "%s"]]
 					}`,
 					inigolistener.DownloadUrl("app.zip"),
-					inigolistener.UploadUrl("droplet.tgz"),
 					inigolistener.DownloadUrl(buildpackToUse),
 					outputGuid,
 				),
@@ -133,12 +131,14 @@ EOF
 			})
 
 			It("runs the compiler on the executor with the correct environment variables, bits and log tag, and responds with the detected buildpack", func() {
+				//listen for NATS response
 				payloads := make(chan []byte)
 
 				natsRunner.MessageBus.Subscribe("stager-test", func(msg *yagnats.Message) {
 					payloads <- msg.Payload
 				})
 
+				//stream logs
 				messages, stop := loggredile.StreamMessages(
 					loggregatorRunner.Config.OutgoingPort,
 					"/tail/?app=some-app-guid",
@@ -153,6 +153,7 @@ EOF
 					}
 				}()
 
+				//publish the staging message
 				err := natsRunner.MessageBus.PublishWithReplyTo(
 					"diego.staging.start",
 					"stager-test",
@@ -160,21 +161,29 @@ EOF
 				)
 				Ω(err).ShouldNot(HaveOccurred())
 
+				//wait for staging to complete
 				var payload []byte
 				Eventually(payloads, 10.0).Should(Receive(&payload))
+
+				//Assert on the staging output (detected buildpack)
 				Ω(string(payload)).Should(Equal(`{"detected_buildpack":"My Buildpack"}`))
 
+				//Asser the user saw reasonable output
 				Eventually(func() string {
 					return logOutput
 				}).Should(ContainSubstring("COMPILING BUILDPACK"))
 				Ω(logOutput).Should(ContainSubstring(outputGuid))
 
-				dropletData := []byte(inigolistener.DownloadFileString("droplet.tgz"))
+				//Fetch the compiled droplet from the fakeCC
+				dropletData, ok := fakeCC.UploadedDroplets["some-app-guid"]
+				Ω(ok).Should(BeTrue())
 				Ω(dropletData).ShouldNot(BeEmpty())
 
+				//Unzip the droplet
 				ungzippedDropletData, err := gzip.NewReader(bytes.NewReader(dropletData))
 				Ω(err).ShouldNot(HaveOccurred())
 
+				//Untar the droplet
 				untarredDropletData := tar.NewReader(ungzippedDropletData)
 				dropletContents := map[string][]byte{}
 				for {
@@ -190,6 +199,7 @@ EOF
 					dropletContents[hdr.Name] = content
 				}
 
+				//Assert the droplet has the right files in it
 				Ω(dropletContents).Should(HaveKey("./"))
 				Ω(dropletContents).Should(HaveKey("./staging_info.yml"))
 				Ω(dropletContents).Should(HaveKey("./logs/"))
@@ -198,8 +208,10 @@ EOF
 				Ω(dropletContents).Should(HaveKey("./app/my-app"))
 				Ω(dropletContents).Should(HaveKey("./app/compiled"))
 
+				//Assert the files contain the right content
 				Ω(string(dropletContents["./app/my-app"])).Should(Equal("scooby-doo"))
 
+				//In particular, staging_info.yml should have the correct detected_buildpack and start_command
 				yamlDecoder := candiedyaml.NewDecoder(bytes.NewReader(dropletContents["./staging_info.yml"]))
 				stagingInfo := map[string]string{}
 				err = yamlDecoder.Decode(&stagingInfo)
@@ -208,6 +220,7 @@ EOF
 				Ω(stagingInfo["detected_buildpack"]).Should(Equal("My Buildpack"))
 				Ω(stagingInfo["start_command"]).Should(Equal("start-command"))
 
+				//Assert nothing else crept into the droplet
 				Ω(dropletContents).Should(HaveLen(7))
 			})
 

@@ -21,13 +21,19 @@ type FileServerRunner struct {
 	dir           string
 	port          int
 	Session       *cmdtest.Session
+	ccAddress     string
+	ccUsername    string
+	ccPassword    string
 }
 
-func New(fileServerBin string, port int, etcdMachines []string) *FileServerRunner {
+func New(fileServerBin string, port int, etcdMachines []string, ccAddress, ccUsername, ccPassword string) *FileServerRunner {
 	return &FileServerRunner{
 		fileServerBin: fileServerBin,
 		etcdMachines:  etcdMachines,
 		port:          port,
+		ccAddress:     ccAddress,
+		ccUsername:    ccUsername,
+		ccPassword:    ccPassword,
 	}
 }
 
@@ -43,7 +49,11 @@ func (r *FileServerRunner) Start() {
 			"-address", "127.0.0.1",
 			"-port", fmt.Sprintf("%d", r.port),
 			"-etcdMachines", strings.Join(r.etcdMachines, ","),
-			"-directory", r.dir,
+			"-staticDirectory", r.dir,
+			"-ccJobPollingInterval", "100ms",
+			"-ccAddress", r.ccAddress,
+			"-ccUsername", r.ccUsername,
+			"-ccPassword", r.ccPassword,
 		),
 		runner_support.TeeToGinkgoWriter,
 		runner_support.TeeToGinkgoWriter,
@@ -52,7 +62,7 @@ func (r *FileServerRunner) Start() {
 	r.Session = executorSession
 
 	Eventually(func() int {
-		resp, _ := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ready", r.port))
+		resp, _ := http.Get(fmt.Sprintf("http://127.0.0.1:%d/static/ready", r.port))
 		if resp != nil {
 			return resp.StatusCode
 		} else {

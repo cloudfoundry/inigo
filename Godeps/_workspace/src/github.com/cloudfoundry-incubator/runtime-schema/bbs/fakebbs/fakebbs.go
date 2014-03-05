@@ -17,10 +17,14 @@ func (p *FakePresence) Remove() {
 
 type FakeExecutorBBS struct {
 	CallsToConverge int
-	LockIsGrabbable bool
-	ErrorOnGrabLock error
 
-	MaintainingPresenceHeartbeatInterval uint64
+	MaintainConvergeInterval    time.Duration
+	MaintainConvergeExecutorID  string
+	MaintainConvergeLostChannel <-chan bool
+	MaintainConvergeStopChannel chan<- chan bool
+	MaintainConvergeLockError   error
+
+	MaintainingPresenceHeartbeatInterval time.Duration
 	MaintainingPresenceExecutorID        string
 	MaintainingPresencePresence          *FakePresence
 	MaintainingPresenceErrorChannel      chan bool
@@ -41,8 +45,8 @@ func NewFakeExecutorBBS() *FakeExecutorBBS {
 	return &FakeExecutorBBS{}
 }
 
-func (fakeBBS *FakeExecutorBBS) MaintainExecutorPresence(heartbeatIntervalInSeconds uint64, executorID string) (bbs.PresenceInterface, <-chan bool, error) {
-	fakeBBS.MaintainingPresenceHeartbeatInterval = heartbeatIntervalInSeconds
+func (fakeBBS *FakeExecutorBBS) MaintainExecutorPresence(heartbeatInterval time.Duration, executorID string) (bbs.PresenceInterface, <-chan bool, error) {
+	fakeBBS.MaintainingPresenceHeartbeatInterval = heartbeatInterval
 	fakeBBS.MaintainingPresenceExecutorID = executorID
 	fakeBBS.MaintainingPresencePresence = &FakePresence{}
 	fakeBBS.MaintainingPresenceErrorChannel = make(chan bool)
@@ -74,8 +78,12 @@ func (fakeBBS *FakeExecutorBBS) ConvergeRunOnce(timeToClaim time.Duration) {
 	fakeBBS.CallsToConverge++
 }
 
-func (fakeBBS *FakeExecutorBBS) GrabRunOnceLock(time.Duration) (bool, error) {
-	return fakeBBS.LockIsGrabbable, fakeBBS.ErrorOnGrabLock
+func (fakeBBS *FakeExecutorBBS) MaintainConvergeLock(interval time.Duration, executorID string) (<-chan bool, chan<- chan bool, error) {
+	fakeBBS.MaintainConvergeInterval = interval
+	fakeBBS.MaintainConvergeExecutorID = executorID
+	fakeBBS.MaintainConvergeLostChannel = make(chan bool)
+	fakeBBS.MaintainConvergeStopChannel = make(chan chan bool)
+	return fakeBBS.MaintainConvergeLostChannel, fakeBBS.MaintainConvergeStopChannel, fakeBBS.MaintainConvergeLockError
 }
 
 type FakeStagerBBS struct {

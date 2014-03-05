@@ -20,6 +20,7 @@ import (
 	"github.com/vito/gordon"
 
 	"github.com/cloudfoundry-incubator/inigo/executor_runner"
+	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/inigo/fileserver_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigolistener"
 	"github.com/cloudfoundry-incubator/inigo/loggregator_runner"
@@ -45,6 +46,9 @@ var executorPath string
 var stagerRunner *stager_runner.StagerRunner
 var stagerPath string
 
+var fakeCC *fake_cc.FakeCC
+var fakeCCAddress string
+
 var fileServerRunner *fileserver_runner.FileServerRunner
 var fileServerPath string
 var fileServerPort int
@@ -55,6 +59,7 @@ func TestInigo(t *testing.T) {
 	registerSignalHandler()
 	RegisterFailHandler(Fail)
 
+	startUpFakeCC()
 	setUpEtcd()
 	setUpGarden()
 	setUpNats()
@@ -70,6 +75,7 @@ func TestInigo(t *testing.T) {
 }
 
 var _ = BeforeEach(func() {
+	fakeCC.Reset()
 	startGarden()
 	etcdRunner.Start()
 	natsRunner.Start()
@@ -92,6 +98,11 @@ var _ = AfterEach(func() {
 	natsRunner.Stop()
 	etcdRunner.Stop()
 })
+
+func startUpFakeCC() {
+	fakeCC = fake_cc.New()
+	fakeCCAddress = fakeCC.Start()
+}
 
 func setUpEtcd() {
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(5001+config.GinkgoConfig.ParallelNode, 1)
@@ -228,7 +239,7 @@ func setUpFileServer() {
 		failFast("failed to compile file server")
 	}
 	fileServerPort = 12760 + config.GinkgoConfig.ParallelNode
-	fileServerRunner = fileserver_runner.New(fileServerPath, fileServerPort, etcdRunner.NodeURLS())
+	fileServerRunner = fileserver_runner.New(fileServerPath, fileServerPort, etcdRunner.NodeURLS(), fakeCCAddress, fake_cc.CC_USERNAME, fake_cc.CC_PASSWORD)
 }
 
 func cleanup() {

@@ -17,7 +17,7 @@ var _ = Describe("Executor BBS", func() {
 	var timeToClaim time.Duration
 
 	BeforeEach(func() {
-		timeToClaim = (1 * time.Second)
+		timeToClaim = 1 * time.Second
 		bbs = New(store)
 		runOnce = models.RunOnce{
 			Guid:            "some-guid",
@@ -119,7 +119,7 @@ var _ = Describe("Executor BBS", func() {
 
 					JustBeforeEach(func() {
 						var err error
-						presence, _, err = bbs.MaintainExecutorPresence(10, runOnce.ExecutorID)
+						presence, _, err = bbs.MaintainExecutorPresence(10*time.Second, runOnce.ExecutorID)
 						Ω(err).ShouldNot(HaveOccurred())
 					})
 
@@ -177,7 +177,7 @@ var _ = Describe("Executor BBS", func() {
 
 					JustBeforeEach(func() {
 						var err error
-						presence, _, err = bbs.MaintainExecutorPresence(10, runOnce.ExecutorID)
+						presence, _, err = bbs.MaintainExecutorPresence(10*time.Second, runOnce.ExecutorID)
 						Ω(err).ShouldNot(HaveOccurred())
 					})
 
@@ -278,6 +278,74 @@ var _ = Describe("Executor BBS", func() {
 
 				_, err = store.Get("/v1/run_once/completed/some-guid")
 				Ω(err).Should(HaveOccurred())
+			})
+		})
+	})
+
+	Context("MaintainConvergeLock", func() {
+		Describe("Maintain the converge lock", func() {
+
+			Context("when the lock is available", func() {
+				It("should return immediately", func() {
+					lostLock, releaseLock, err := bbs.MaintainConvergeLock(1*time.Minute, "my_id")
+
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(lostLock).ShouldNot(BeNil())
+					Ω(releaseLock).ShouldNot(BeNil())
+				})
+
+				It("should maintain the lock in the background", func() {
+					_, releaseLock, err := bbs.MaintainConvergeLock(1*time.Minute, "my_id2")
+					Ω(err).ShouldNot(HaveOccurred())
+					defer func() {
+						releasedLock := make(chan bool)
+						releaseLock <- releasedLock
+						<-releasedLock
+					}()
+
+					secondConvergeDidGrabLock := false
+					go func() {
+						bbs.MaintainConvergeLock(1*time.Minute, "my_id2")
+						secondConvergeDidGrabLock = true
+					}()
+
+					Consistently(secondConvergeDidGrabLock, 3.0).Should(BeFalse())
+				})
+
+				Context("when the lock disappears after it has been acquired (e.g. ETCD store is reset)", func() {
+					It("should send a notification down the lostLockChannel", func() {
+						lostLock, _, err := bbs.MaintainConvergeLock(1*time.Second, "my_id")
+						Ω(err).ShouldNot(HaveOccurred())
+
+						etcdRunner.Stop()
+
+						Eventually(lostLock).Should(Receive())
+					})
+				})
+			})
+
+			Context("when releasing the lock", func() {
+				It("makes it available for others trying to acquire it", func() {
+					_, releaseLock, err := bbs.MaintainConvergeLock(1*time.Minute, "my_id")
+					Ω(err).ShouldNot(HaveOccurred())
+
+					gotLock := make(chan bool)
+					go func() {
+						_, newRelease, err := bbs.MaintainConvergeLock(1*time.Minute, "my_id")
+						Ω(err).ShouldNot(HaveOccurred())
+
+						releaseLock = newRelease
+						close(gotLock)
+					}()
+
+					Consistently(gotLock, 1.0).ShouldNot(Receive())
+
+					releasedLock := make(chan bool)
+					releaseLock <- releasedLock
+
+					Eventually(releasedLock).Should(BeClosed())
+					Eventually(gotLock, 2.0).Should(BeClosed())
+				})
 			})
 		})
 	})
