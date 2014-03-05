@@ -14,17 +14,17 @@ import (
 
 type StagerRunner struct {
 	stagerBin     string
-	etcdMachines  []string
+	etcdCluster   []string
 	natsAddresses []string
 
 	stagerSession *cmdtest.Session
 	CompilerUrl   string
 }
 
-func New(stagerBin string, etcdMachines []string, natsAddresses []string) *StagerRunner {
+func New(stagerBin string, etcdCluster []string, natsAddresses []string) *StagerRunner {
 	return &StagerRunner{
 		stagerBin:     stagerBin,
-		etcdMachines:  etcdMachines,
+		etcdCluster:   etcdCluster,
 		natsAddresses: natsAddresses,
 	}
 }
@@ -34,7 +34,7 @@ func (r *StagerRunner) Start(args ...string) {
 		exec.Command(
 			r.stagerBin,
 			append([]string{
-				"-etcdMachines", strings.Join(r.etcdMachines, ","),
+				"-etcdCluster", strings.Join(r.etcdCluster, ","),
 				"-natsAddresses", strings.Join(r.natsAddresses, ","),
 			}, args...)...,
 		),
