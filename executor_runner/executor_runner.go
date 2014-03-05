@@ -19,7 +19,7 @@ type ExecutorRunner struct {
 	executorBin   string
 	wardenNetwork string
 	wardenAddr    string
-	etcdMachines  []string
+	etcdCluster   []string
 	snapshotFile  string
 
 	loggregatorServer string
@@ -49,12 +49,12 @@ var defaultConfig = Config{
 	TimeToClaim:         30 * 60 * time.Second,
 }
 
-func New(executorBin, wardenNetwork, wardenAddr string, etcdMachines []string, loggregatorServer string, loggregatorSecret string) *ExecutorRunner {
+func New(executorBin, wardenNetwork, wardenAddr string, etcdCluster []string, loggregatorServer string, loggregatorSecret string) *ExecutorRunner {
 	return &ExecutorRunner{
 		executorBin:   executorBin,
 		wardenNetwork: wardenNetwork,
 		wardenAddr:    wardenAddr,
-		etcdMachines:  etcdMachines,
+		etcdCluster:   etcdCluster,
 
 		loggregatorServer: loggregatorServer,
 		loggregatorSecret: loggregatorSecret,
@@ -74,7 +74,7 @@ func (r *ExecutorRunner) StartWithoutCheck(config ...Config) {
 			r.executorBin,
 			"-wardenNetwork", r.wardenNetwork,
 			"-wardenAddr", r.wardenAddr,
-			"-etcdMachines", strings.Join(r.etcdMachines, ","),
+			"-etcdCluster", strings.Join(r.etcdCluster, ","),
 			"-memoryMB", fmt.Sprintf("%d", configToUse.MemoryMB),
 			"-diskMB", fmt.Sprintf("%d", configToUse.DiskMB),
 			"-registrySnapshotFile", configToUse.SnapshotFile,

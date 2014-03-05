@@ -17,7 +17,7 @@ import (
 
 type FileServerRunner struct {
 	fileServerBin string
-	etcdMachines  []string
+	etcdCluster   []string
 	dir           string
 	port          int
 	Session       *cmdtest.Session
@@ -29,7 +29,7 @@ type FileServerRunner struct {
 func New(fileServerBin string, port int, etcdMachines []string, ccAddress, ccUsername, ccPassword string) *FileServerRunner {
 	return &FileServerRunner{
 		fileServerBin: fileServerBin,
-		etcdMachines:  etcdMachines,
+		etcdCluster:   etcdCluster,
 		port:          port,
 		ccAddress:     ccAddress,
 		ccUsername:    ccUsername,
