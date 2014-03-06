@@ -26,7 +26,7 @@ type FileServerRunner struct {
 	ccPassword    string
 }
 
-func New(fileServerBin string, port int, etcdMachines []string, ccAddress, ccUsername, ccPassword string) *FileServerRunner {
+func New(fileServerBin string, port int, etcdCluster []string, ccAddress, ccUsername, ccPassword string) *FileServerRunner {
 	return &FileServerRunner{
 		fileServerBin: fileServerBin,
 		etcdCluster:   etcdCluster,
@@ -48,7 +48,7 @@ func (r *FileServerRunner) Start() {
 			r.fileServerBin,
 			"-address", "127.0.0.1",
 			"-port", fmt.Sprintf("%d", r.port),
-			"-etcdMachines", strings.Join(r.etcdMachines, ","),
+			"-etcdCluster", strings.Join(r.etcdCluster, ","),
 			"-staticDirectory", r.dir,
 			"-ccJobPollingInterval", "100ms",
 			"-ccAddress", r.ccAddress,
