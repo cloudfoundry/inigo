@@ -9,7 +9,7 @@
     ```
     go get -d github.com/vito/drone
     pushd $GOPATH/src/github.com/vito/drone
-    git fetch -all
+    git fetch --all
     git checkout privileged-builds
     popd
     mkdir -p $GOPATH/src/github.com/drone

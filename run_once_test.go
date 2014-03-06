@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/inigo/executor_runner"
-	"github.com/cloudfoundry-incubator/inigo/inigolistener"
+	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	. "github.com/onsi/ginkgo"
@@ -25,22 +25,22 @@ var _ = Describe("RunOnce", func() {
 
 		It("eventually runs the RunOnce", func() {
 			guid := factories.GenerateGuid()
-			runOnce := factories.BuildRunOnceWithRunAction(1, 1, inigolistener.CurlCommand(guid))
+			runOnce := factories.BuildRunOnceWithRunAction(1, 1, inigoserver.CurlCommand(guid))
 			bbs.DesireRunOnce(runOnce)
 
-			Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(guid))
+			Eventually(inigoserver.ReportingGuids, 5.0).Should(ContainElement(guid))
 		})
 	})
 
 	Context("when there are no executors listening when a RunOnce is registered", func() {
 		It("eventually runs the RunOnce once an executor comes up", func() {
 			guid := factories.GenerateGuid()
-			runOnce := factories.BuildRunOnceWithRunAction(1, 1, inigolistener.CurlCommand(guid))
+			runOnce := factories.BuildRunOnceWithRunAction(1, 1, inigoserver.CurlCommand(guid))
 			bbs.DesireRunOnce(runOnce)
 
 			executorRunner.Start()
 
-			Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(guid))
+			Eventually(inigoserver.ReportingGuids, 5.0).Should(ContainElement(guid))
 		})
 	})
 
@@ -55,7 +55,7 @@ var _ = Describe("RunOnce", func() {
 
 		It("should be marked as failed, eventually", func() {
 			guid := factories.GenerateGuid()
-			runOnce := factories.BuildRunOnceWithRunAction(1, 1, inigolistener.CurlCommand(guid))
+			runOnce := factories.BuildRunOnceWithRunAction(1, 1, inigoserver.CurlCommand(guid))
 			runOnce.Stack = "donald-duck"
 			bbs.DesireRunOnce(runOnce)
 
@@ -65,7 +65,7 @@ var _ = Describe("RunOnce", func() {
 			Ω(runOnces[0].Failed).Should(BeTrue(), "RunOnce should have failed")
 			Ω(runOnces[0].FailureReason).Should(ContainSubstring("not claimed within time limit"))
 
-			Ω(inigolistener.ReportingGuids()).Should(BeEmpty())
+			Ω(inigoserver.ReportingGuids()).Should(BeEmpty())
 		})
 	})
 
@@ -88,9 +88,9 @@ var _ = Describe("RunOnce", func() {
 
 		It("eventually marks jobs running on that executor as failed", func() {
 			guid := factories.GenerateGuid()
-			runOnce := factories.BuildRunOnceWithRunAction(1024, 1024, inigolistener.CurlCommand(guid)+"; sleep 10")
+			runOnce := factories.BuildRunOnceWithRunAction(1024, 1024, inigoserver.CurlCommand(guid)+"; sleep 10")
 			bbs.DesireRunOnce(runOnce)
-			Eventually(inigolistener.ReportingGuids, 5.0).Should(ContainElement(guid))
+			Eventually(inigoserver.ReportingGuids, 5.0).Should(ContainElement(guid))
 
 			secondExecutor.KillWithFire()
 

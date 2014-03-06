@@ -1,4 +1,4 @@
-package inigolistener
+package inigoserver
 
 import (
 	"encoding/json"

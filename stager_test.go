@@ -10,7 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/cloudfoundry-incubator/inigo/inigolistener"
+	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
 	"github.com/cloudfoundry-incubator/inigo/zipper"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
@@ -73,7 +73,7 @@ var _ = Describe("Stager", func() {
 				{"my-app", "scooby-doo"},
 			}
 			zipper.CreateZipFile("/tmp/app.zip", appFiles)
-			inigolistener.UploadFile("app.zip", "/tmp/app.zip")
+			inigoserver.UploadFile("app.zip", "/tmp/app.zip")
 
 			//make and upload a buildpack
 			var adminBuildpackFiles = []zipper.ZipFile{
@@ -94,7 +94,7 @@ EOF
 				`},
 			}
 			zipper.CreateZipFile("/tmp/admin_buildpack.zip", adminBuildpackFiles)
-			inigolistener.UploadFile("admin_buildpack.zip", "/tmp/admin_buildpack.zip")
+			inigoserver.UploadFile("admin_buildpack.zip", "/tmp/admin_buildpack.zip")
 
 			var bustedAdminBuildpackFiles = []zipper.ZipFile{
 				{"bin/detect", `#!/bin/bash]
@@ -104,7 +104,7 @@ EOF
 				{"bin/release", `#!/bin/bash`},
 			}
 			zipper.CreateZipFile("/tmp/busted_admin_buildpack.zip", bustedAdminBuildpackFiles)
-			inigolistener.UploadFile("busted_admin_buildpack.zip", "/tmp/busted_admin_buildpack.zip")
+			inigoserver.UploadFile("busted_admin_buildpack.zip", "/tmp/busted_admin_buildpack.zip")
 		})
 
 		JustBeforeEach(func() {
@@ -118,8 +118,8 @@ EOF
 						"admin_buildpacks" : [{ "key": "test-buildpack", "url": "%s" }],
 						"environment": [["SOME_STAGING_ENV", "%s"]]
 					}`,
-					inigolistener.DownloadUrl("app.zip"),
-					inigolistener.DownloadUrl(buildpackToUse),
+					inigoserver.DownloadUrl("app.zip"),
+					inigoserver.DownloadUrl(buildpackToUse),
 					outputGuid,
 				),
 			)

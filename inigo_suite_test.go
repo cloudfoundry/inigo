@@ -22,7 +22,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/executor_runner"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/inigo/fileserver_runner"
-	"github.com/cloudfoundry-incubator/inigo/inigolistener"
+	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/inigo/loggregator_runner"
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
 	"github.com/pivotal-cf-experimental/garden/integration/garden_runner"
@@ -83,7 +83,7 @@ var _ = BeforeEach(func() {
 
 	gardenRunner.DestroyContainers()
 
-	inigolistener.Start(wardenClient)
+	inigoserver.Start(wardenClient)
 
 	currentTestDescription := CurrentGinkgoTestDescription()
 	fmt.Fprintf(GinkgoWriter, "\n%s\n%s\n\n", strings.Repeat("~", 50), currentTestDescription.FullTestText)
