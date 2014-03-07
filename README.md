@@ -65,4 +65,4 @@ To modify what goes into the docker image update the `Dockerfile` in the inigo r
 
 #### Adding a new component to the tests
 
-Walk through `./scripts/*` and patern-match your way to victory
+Walk through `./scripts/*` and pattern-match your way to victory
