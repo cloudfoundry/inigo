@@ -4,20 +4,16 @@ set -e -x
 
 GOPATH_ROOT=$PWD
 
-export GOPATH=$GOPATH_ROOT
-export PATH=$GOPATH_ROOT/bin:$PATH
-
-# set up inigo's own dependencies
-export GOPATH=${GOPATH}:${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/inigo/Godeps/_workspace
-export PATH=${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/inigo/Godeps/_workspace/bin:${PATH}
+export GOPATH=${GOPATH_ROOT}
+export PATH=${GOPATH_ROOT}/bin:${PATH}
 
 # set up compile-time $GOPATHs for each component
 export LOGGREGATOR_GOPATH=${GOPATH_ROOT}/loggregator
-export EXECUTOR_GOPATH=${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/executor/Godeps/_workspace:${GOPATH_ROOT}
-export STAGER_GOPATH=${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/stager/Godeps/_workspace:${GOPATH_ROOT}
-export FILE_SERVER_GOPATH=${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/file-server/Godeps/_workspace:${GOPATH_ROOT}
-export LINUX_SMELTER_GOPATH=${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/linux-smelter/Godeps/_workspace:${GOPATH_ROOT}
-export GARDEN_GOPATH=${GOPATH_ROOT}/src/github.com/pivotal-cf-experimental/garden/Godeps/_workspace:${GOPATH_ROOT}
+export EXECUTOR_GOPATH=${GOPATH_ROOT}
+export STAGER_GOPATH=${GOPATH_ROOT}
+export FILE_SERVER_GOPATH=${GOPATH_ROOT}
+export LINUX_SMELTER_GOPATH=${GOPATH_ROOT}
+export GARDEN_GOPATH=${GOPATH_ROOT}
 
 # install application dependencies
 for package in github.com/coreos/etcd github.com/apcera/gnatsd; do
