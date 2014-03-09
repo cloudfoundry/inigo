@@ -47,7 +47,7 @@ for package in github.com/coreos/etcd github.com/apcera/gnatsd; do
   copy_to_gopath $package &
 done
 
-rsync -a ~/workspace/loggregator ${TMP_GOPATH}/loggregator &
+rsync -a ~/workspace/loggregator/ ${TMP_GOPATH}/loggregator/ &
 
 wait
 
