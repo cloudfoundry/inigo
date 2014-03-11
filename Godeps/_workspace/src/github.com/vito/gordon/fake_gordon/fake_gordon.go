@@ -16,7 +16,8 @@ type FakeGordon struct {
 	createdHandles []string
 	CreateError    error
 
-	StopError error
+	stoppedHandles []string
+	StopError      error
 
 	destroyedHandles []string
 	DestroyError     error
@@ -27,11 +28,13 @@ type FakeGordon struct {
 
 	NetInError error
 
-	LimitMemoryError error
+	memoryLimits     []Limit
+	limitMemoryError error
 
 	GetMemoryLimitError error
 
-	LimitDiskError error
+	diskLimits     []Limit
+	limitDiskError error
 
 	GetDiskLimitError error
 
@@ -77,6 +80,11 @@ type CopiedOut struct {
 	Owner  string
 }
 
+type Limit struct {
+	Handle string
+	Limit  uint64
+}
+
 func New() *FakeGordon {
 	f := &FakeGordon{}
 	f.Reset()
@@ -91,6 +99,7 @@ func (f *FakeGordon) Reset() {
 	f.createdHandles = []string{}
 	f.CreateError = nil
 
+	f.stoppedHandles = []string{}
 	f.StopError = nil
 
 	f.destroyedHandles = []string{}
@@ -99,13 +108,16 @@ func (f *FakeGordon) Reset() {
 	f.SpawnError = nil
 	f.LinkError = nil
 	f.NetInError = nil
-	f.LimitMemoryError = nil
 	f.GetMemoryLimitError = nil
-	f.LimitDiskError = nil
 	f.GetDiskLimitError = nil
 	f.ListError = nil
 	f.InfoError = nil
 	f.AttachError = nil
+
+	f.limitMemoryError = nil
+	f.limitDiskError = nil
+	f.memoryLimits = []Limit{}
+	f.diskLimits = []Limit{}
 
 	f.scriptsThatRan = make([]*RunningScript, 0)
 	f.runCallbacks = make(map[*RunningScript]RunCallback)
@@ -151,8 +163,22 @@ func (f *FakeGordon) CreatedHandles() []string {
 }
 
 func (f *FakeGordon) Stop(handle string, background, kill bool) (*warden.StopResponse, error) {
-	panic("NOOP!")
-	return nil, f.StopError
+	f.lock.Lock()
+	defer f.lock.Unlock()
+	if f.StopError != nil {
+		return nil, f.StopError
+	}
+
+	f.stoppedHandles = append(f.stoppedHandles, handle)
+
+	return &warden.StopResponse{}, nil
+}
+
+func (f *FakeGordon) StoppedHandles() []string {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	return f.stoppedHandles
 }
 
 func (f *FakeGordon) Destroy(handle string) (*warden.DestroyResponse, error) {
@@ -179,9 +205,30 @@ func (f *FakeGordon) NetIn(handle string) (*warden.NetInResponse, error) {
 	return nil, f.NetInError
 }
 
+func (f *FakeGordon) MemoryLimits() []Limit {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	return f.memoryLimits
+}
+
+func (f *FakeGordon) SetLimitMemoryError(err error) {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	f.limitMemoryError = err
+}
+
 func (f *FakeGordon) LimitMemory(handle string, limit uint64) (*warden.LimitMemoryResponse, error) {
-	panic("NOOP!")
-	return nil, f.LimitMemoryError
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	f.memoryLimits = append(f.memoryLimits, Limit{
+		Handle: handle,
+		Limit:  limit,
+	})
+
+	return nil, f.limitMemoryError
 }
 
 func (f *FakeGordon) GetMemoryLimit(handle string) (uint64, error) {
@@ -189,9 +236,30 @@ func (f *FakeGordon) GetMemoryLimit(handle string) (uint64, error) {
 	return 0, f.GetMemoryLimitError
 }
 
+func (f *FakeGordon) DiskLimits() []Limit {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	return f.diskLimits
+}
+
+func (f *FakeGordon) SetLimitDiskError(err error) {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	f.limitDiskError = err
+}
+
 func (f *FakeGordon) LimitDisk(handle string, limit uint64) (*warden.LimitDiskResponse, error) {
-	panic("NOOP!")
-	return nil, f.LimitDiskError
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	f.diskLimits = append(f.diskLimits, Limit{
+		Handle: handle,
+		Limit:  limit,
+	})
+
+	return nil, f.limitDiskError
 }
 
 func (f *FakeGordon) GetDiskLimit(handle string) (uint64, error) {
@@ -311,15 +379,16 @@ func (f *FakeGordon) WhenRunning(handle string, script string, callback RunCallb
 
 func (f *FakeGordon) Run(handle string, script string) (uint32, <-chan *warden.ProcessPayload, error) {
 	f.lock.Lock()
-	defer f.lock.Unlock()
 
 	f.scriptsThatRan = append(f.scriptsThatRan, &RunningScript{
 		Handle: handle,
 		Script: script,
 	})
 
+	f.lock.Unlock()
+
 	for ro, cb := range f.runCallbacks {
-		if ro.Handle == handle && ro.Script == script {
+		if (ro.Handle == "" || ro.Handle == handle) && ro.Script == script {
 			return cb()
 		}
 	}

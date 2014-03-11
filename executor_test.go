@@ -184,11 +184,11 @@ var _ = Describe("Executor", func() {
 
 		It("should only pick up tasks if the stacks match", func() {
 			matchingGuid := factories.GenerateGuid()
-			matchingRunOnce := factories.BuildRunOnceWithRunAction(1, 1, inigoserver.CurlCommand(matchingGuid)+"; sleep 10")
+			matchingRunOnce := factories.BuildRunOnceWithRunAction(100, 100, inigoserver.CurlCommand(matchingGuid)+"; sleep 10")
 			matchingRunOnce.Stack = "penguin"
 
 			nonMatchingGuid := factories.GenerateGuid()
-			nonMatchingRunOnce := factories.BuildRunOnceWithRunAction(1, 1, inigoserver.CurlCommand(nonMatchingGuid)+"; sleep 10")
+			nonMatchingRunOnce := factories.BuildRunOnceWithRunAction(100, 100, inigoserver.CurlCommand(nonMatchingGuid)+"; sleep 10")
 			nonMatchingRunOnce.Stack = "lion"
 
 			bbs.DesireRunOnce(matchingRunOnce)
@@ -231,6 +231,35 @@ var _ = Describe("Executor", func() {
 			Eventually(bbs.GetAllCompletedRunOnces, 5.0).Should(HaveLen(1))
 			runOnces, _ := bbs.GetAllCompletedRunOnces()
 			Ω(runOnces[0].Failed).Should(BeFalse())
+		})
+
+		Context("when the command exceeds its memory limit", func() {
+			var otherGuid string
+
+			It("should fail the RunOnce", func() {
+				otherGuid = factories.GenerateGuid()
+				runOnce := models.RunOnce{
+					Guid:     factories.GenerateGuid(),
+					MemoryMB: 10,
+					DiskMB:   1024,
+					Actions: []models.ExecutorAction{
+						{Action: models.RunAction{Script: inigoserver.CurlCommand(guid)}},
+						{Action: models.RunAction{Script: `ruby -e 'arr = "m"*1024*1024*100'`}},
+						{Action: models.RunAction{Script: inigoserver.CurlCommand(otherGuid)}},
+					},
+				}
+
+				bbs.DesireRunOnce(runOnce)
+
+				Eventually(inigoserver.ReportingGuids, 5.0).Should(ContainElement(guid))
+
+				Eventually(bbs.GetAllCompletedRunOnces, 5.0).Should(HaveLen(1))
+				runOnces, _ := bbs.GetAllCompletedRunOnces()
+				Ω(runOnces[0].Failed).Should(BeTrue())
+				Ω(runOnces[0].FailureReason).Should(ContainSubstring("137"))
+
+				Ω(inigoserver.ReportingGuids()).ShouldNot(ContainElement(otherGuid))
+			})
 		})
 
 		Context("when the command times out", func() {

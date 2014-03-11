@@ -113,6 +113,8 @@ EOF
 					`{
 						"app_id": "some-app-guid",
 						"task_id": "some-task-id",
+						"memoryMB": 128,
+						"diskMB": 128,
 						"stack": "default",
 						"download_uri": "%s",
 						"admin_buildpacks" : [{ "key": "test-buildpack", "url": "%s" }],
