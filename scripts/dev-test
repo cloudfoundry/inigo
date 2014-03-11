@@ -11,13 +11,17 @@ cp $(dirname $0)/.drone.yml ${TMP_GOPATH}/.drone.yml
 
 function copy_to_gopath {
   mkdir -p ${TMP_GOPATH}/src/${1}
-  rsync -a ${DEV_GOPATH}/src/${1}/ ${TMP_GOPATH}/src/${1}/
+  rsync --exclude '.*' -a ${DEV_GOPATH}/src/${1}/ ${TMP_GOPATH}/src/${1}/
 }
 
-(
-  set -e -x
-
-  cd $TMP_GOPATH
+pushd $TMP_GOPATH
+  go get \
+    github.com/cloudfoundry-incubator/inigo/...\
+    github.com/cloudfoundry-incubator/executor/... \
+    github.com/cloudfoundry-incubator/stager/... \
+    github.com/cloudfoundry-incubator/file-server/... \
+    github.com/cloudfoundry-incubator/linux-smelter/... \
+    github.com/pivotal-cf-experimental/garden/...
 
   godep save \
     github.com/cloudfoundry-incubator/inigo/...\
@@ -27,9 +31,9 @@ function copy_to_gopath {
     github.com/cloudfoundry-incubator/linux-smelter/... \
     github.com/pivotal-cf-experimental/garden/...
 
-  mv Godeps/_workspace/src src
+  rsync --exclude '.*' -a Godeps/_workspace/src/ src/
   rm -rf Godeps
-)
+popd
 
 # grab and set up our components
 for package in \
@@ -47,7 +51,7 @@ for package in github.com/coreos/etcd github.com/apcera/gnatsd; do
   copy_to_gopath $package &
 done
 
-rsync -a ~/workspace/loggregator/ ${TMP_GOPATH}/loggregator/ &
+rsync --exclude '.*' -a ~/workspace/loggregator/ ${TMP_GOPATH}/loggregator/ &
 
 wait
 
