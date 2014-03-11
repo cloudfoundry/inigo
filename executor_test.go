@@ -262,6 +262,27 @@ var _ = Describe("Executor", func() {
 			})
 		})
 
+		Context("when the command exceeds its file descriptor limit", func() {
+			It("should fail the RunOnce", func() {
+				runOnce := models.RunOnce{
+					Guid:            factories.GenerateGuid(),
+					MemoryMB:        10,
+					DiskMB:          1024,
+					FileDescriptors: 1,
+					Actions: []models.ExecutorAction{
+						{Action: models.RunAction{Script: `ruby -e '10.times.each { |x| File.open("#{x}","w") }'`}},
+					},
+				}
+
+				bbs.DesireRunOnce(runOnce)
+
+				Eventually(bbs.GetAllCompletedRunOnces, 5.0).Should(HaveLen(1))
+				runOnces, _ := bbs.GetAllCompletedRunOnces()
+				Ω(runOnces[0].Failed).Should(BeTrue())
+				Ω(runOnces[0].FailureReason).Should(ContainSubstring("127"))
+			})
+		})
+
 		Context("when the command times out", func() {
 			It("should fail the RunOnce", func() {
 				runOnce := models.RunOnce{

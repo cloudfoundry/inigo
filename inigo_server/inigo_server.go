@@ -86,7 +86,7 @@ func Start(wardenClient gordon.Client) {
 	}
 	ipAddress = infoResponse.GetContainerIp()
 
-	_, stream, err := wardenClient.Run(handle, fmt.Sprintf("PORT=%d %s", containerPort, amazingRubyServer))
+	_, stream, err := wardenClient.Run(handle, fmt.Sprintf("PORT=%d %s", containerPort, amazingRubyServer), gordon.ResourceLimits{})
 	if err != nil {
 		panic(err)
 	}
