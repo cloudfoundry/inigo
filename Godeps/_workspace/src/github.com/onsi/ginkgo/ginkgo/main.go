@@ -249,7 +249,15 @@ type compiler struct {
 }
 
 func (c *compiler) compile() {
-	c.compilationError <- c.runner.Compile()
+	retries := 0
+
+	err := c.runner.Compile()
+	for err != nil && retries < 5 { //We retry because Go sometimes steps on itself when multiple compiles happen in parallel.  This is ugly, but should help resolve flakiness...
+		err = c.runner.Compile()
+		retries++
+	}
+
+	c.compilationError <- err
 }
 
 func runTestSuites() bool {
@@ -267,7 +275,8 @@ func runTestSuites() bool {
 	}
 
 	compilerChannel := make(chan *compiler)
-	for i := 0; i < runtime.NumCPU(); i++ {
+	numCompilers := runtime.NumCPU()
+	for i := 0; i < numCompilers; i++ {
 		go func() {
 			for compiler := range compilerChannel {
 				compiler.compile()
