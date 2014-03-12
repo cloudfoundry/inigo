@@ -80,54 +80,6 @@ var _ = Describe("Executor", func() {
 			os.RemoveAll(tmpdir)
 		})
 
-		It("retains their resource usage", func() {
-			executorRunner.Start(executorConfig)
-
-			cantFitGuid := factories.GenerateGuid()
-
-			cantFitRunOnce := factories.BuildRunOnceWithRunAction(
-				1024,
-				1024,
-				inigoserver.CurlCommand(cantFitGuid)+"; sleep 60",
-			)
-
-			bbs.DesireRunOnce(cantFitRunOnce)
-
-			Consistently(inigoserver.ReportingGuids, 5.0).ShouldNot(ContainElement(cantFitGuid))
-		})
-
-		Context("and we were previously running more than we can now handle", func() {
-			Context("of memory", func() {
-				It("fails to start with a helpful message", func() {
-					executorConfig.MemoryMB = 512
-
-					executorRunner.StartWithoutCheck(executorConfig)
-
-					Ω(executorRunner.Session).Should(SayWithTimeout(
-						"memory requirements in snapshot exceed",
-						time.Second,
-					))
-
-					Ω(executorRunner.Session).Should(ExitWith(1))
-				})
-			})
-
-			Context("of disk", func() {
-				It("fails to start with a helpful message", func() {
-					executorConfig.DiskMB = 512
-
-					executorRunner.StartWithoutCheck(executorConfig)
-
-					Ω(executorRunner.Session).Should(SayWithTimeout(
-						"disk requirements in snapshot exceed",
-						time.Second,
-					))
-
-					Ω(executorRunner.Session).Should(ExitWith(1))
-				})
-			})
-		})
-
 		Context("when the snapshot is corrupted", func() {
 			It("should exit with failure", func() {
 				file, err := ioutil.TempFile(os.TempDir(), "executor-invalid-snapshot")
