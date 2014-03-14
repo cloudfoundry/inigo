@@ -243,6 +243,8 @@ func setUpFileServer() {
 }
 
 func cleanup() {
+	defer GinkgoRecover()
+
 	if etcdRunner != nil {
 		etcdRunner.Stop()
 	}
