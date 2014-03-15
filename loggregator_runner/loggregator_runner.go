@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/cloudfoundry/gunk/runner_support"
 	. "github.com/onsi/gomega"
@@ -15,7 +16,7 @@ type LoggregatorRunner struct {
 	loggregatorPath string
 	configFile      *os.File
 
-	loggregatorSession *cmdtest.Session
+	session *cmdtest.Session
 
 	Config
 }
@@ -57,10 +58,18 @@ func (runner *LoggregatorRunner) Start() {
 	), runner_support.TeeToGinkgoWriter, runner_support.TeeToGinkgoWriter)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	runner.loggregatorSession = sess
+	runner.session = sess
 }
 
 func (runner *LoggregatorRunner) Stop() {
-	err := runner.loggregatorSession.Cmd.Process.Signal(os.Interrupt)
-	Ω(err).ShouldNot(HaveOccurred())
+	if runner.session != nil {
+		runner.session.Cmd.Process.Signal(os.Interrupt)
+		processState := runner.session.Cmd.ProcessState
+		if processState != nil && processState.Exited() {
+			return
+		}
+
+		runner.session.Wait(5 * time.Second)
+		Ω(runner.session.Cmd.ProcessState.Exited()).Should(BeTrue())
+	}
 }
