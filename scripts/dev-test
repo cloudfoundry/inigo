@@ -11,7 +11,7 @@ cp $(dirname $0)/.drone.yml ${TMP_GOPATH}/.drone.yml
 
 function copy_to_gopath {
   mkdir -p ${TMP_GOPATH}/src/${1}
-  rsync --exclude '.*' -a ${DEV_GOPATH}/src/${1}/ ${TMP_GOPATH}/src/${1}/
+  rsync --del --exclude '.*' -a ${DEV_GOPATH}/src/${1}/ ${TMP_GOPATH}/src/${1}/
 }
 
 pushd $TMP_GOPATH
@@ -31,7 +31,7 @@ pushd $TMP_GOPATH
     github.com/cloudfoundry-incubator/linux-smelter/... \
     github.com/pivotal-cf-experimental/garden/...
 
-  rsync --exclude '.*' -a Godeps/_workspace/src/ src/
+  rsync --del --exclude '.*' -a Godeps/_workspace/src/ src/
   rm -rf Godeps
 popd
 
@@ -51,7 +51,7 @@ for package in github.com/coreos/etcd github.com/apcera/gnatsd; do
   copy_to_gopath $package &
 done
 
-rsync --exclude '.*' -a ~/workspace/loggregator/ ${TMP_GOPATH}/loggregator/ &
+rsync --del --exclude '.*' -a ~/workspace/loggregator/ ${TMP_GOPATH}/loggregator/ &
 
 wait
 
