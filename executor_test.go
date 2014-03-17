@@ -208,7 +208,7 @@ var _ = Describe("Executor", func() {
 				Eventually(bbs.GetAllCompletedRunOnces, 5.0).Should(HaveLen(1))
 				runOnces, _ := bbs.GetAllCompletedRunOnces()
 				Ω(runOnces[0].Failed).Should(BeTrue())
-				Ω(runOnces[0].FailureReason).Should(ContainSubstring("137"))
+				Ω(runOnces[0].FailureReason).Should(ContainSubstring("out of memory"))
 
 				Ω(inigoserver.ReportingGuids()).ShouldNot(ContainElement(otherGuid))
 			})
