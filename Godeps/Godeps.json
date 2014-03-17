@@ -7,15 +7,15 @@
 	"Deps": [
 		{
 			"ImportPath": "code.google.com/p/gogoprotobuf/proto",
-			"Rev": "46df3e5f3adade891be131e6759b3a7bb889d42d"
+			"Rev": "2395ecf872ff63554aca750519f302cba92261d8"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "2f37a37c7b40da7b867bf423d12577e8e7a6ba6d"
+			"Rev": "966b7294741b34b9d44e7caa3b30be3f8769a296"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "2f37a37c7b40da7b867bf423d12577e8e7a6ba6d"
+			"Rev": "966b7294741b34b9d44e7caa3b30be3f8769a296"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -24,27 +24,27 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
-			"Rev": "8cee4c081e1c113fa53893216334ddb6f9a11c74"
+			"Rev": "0ab08c4a0d1b32c0db1ecd53b55603662de9e767"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/runner_support",
-			"Rev": "8cee4c081e1c113fa53893216334ddb6f9a11c74"
+			"Rev": "0ab08c4a0d1b32c0db1ecd53b55603662de9e767"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/test_server",
-			"Rev": "8cee4c081e1c113fa53893216334ddb6f9a11c74"
+			"Rev": "0ab08c4a0d1b32c0db1ecd53b55603662de9e767"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/loggregatorlib/logmessage",
-			"Rev": "56381e1c33a6c755b9730f7856d159ed723e01af"
+			"Rev": "feb1e919de2e2a2b3855400e667655e4a39ca804"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/loggregatorlib/signature",
-			"Rev": "56381e1c33a6c755b9730f7856d159ed723e01af"
+			"Rev": "feb1e919de2e2a2b3855400e667655e4a39ca804"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
-			"Rev": "d1dd2005d9ffb25d53a2c5291f7c1acd2c7188a6"
+			"Rev": "418d1fc3ccde9cc96674ae18ebf885bc592ca10f"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/yagnats",
@@ -77,15 +77,15 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-cf-experimental/garden/integration/garden_runner",
-			"Rev": "289347dce56f784408c0c7ad68c1d6dd490d7cdf"
+			"Rev": "051dd256187e04790a9c4d8426187c21cc97c61b"
 		},
 		{
 			"ImportPath": "github.com/vito/cmdtest",
-			"Rev": "5073503e50f68b9c14d073ab261164965bffa872"
+			"Rev": "ccd51cbbf3154a39d1ad8861e7711dfdf4ee5719"
 		},
 		{
 			"ImportPath": "github.com/vito/gordon",
-			"Rev": "aff093ee8aa2b2213cb02539bf4a2c4a0e4eb6b5"
+			"Rev": "abe24aba708d3b78e5a85b7d6da037a53ecebdcc"
 		}
 	]
 }
