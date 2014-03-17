@@ -57,7 +57,7 @@
 		},
 		{
 			"ImportPath": "github.com/fraenkel/candiedyaml",
-			"Rev": "ed21d7678d04b5abe57f8cb12ded8c6c8211a710"
+			"Rev": "a6b7568d88e42b0f7d7cf5d127d667e6d4562486"
 		},
 		{
 			"ImportPath": "github.com/gorilla/websocket",
