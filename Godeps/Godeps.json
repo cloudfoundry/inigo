@@ -11,11 +11,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "def980fb323eb684bdd0d0e1850c36c133dcf215"
+			"Rev": "ef16887c315aea3271be34d0c65ec1b364e9028e"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "def980fb323eb684bdd0d0e1850c36c133dcf215"
+			"Rev": "ef16887c315aea3271be34d0c65ec1b364e9028e"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -65,7 +65,7 @@
 		},
 		{
 			"ImportPath": "github.com/gorilla/websocket",
-			"Rev": "119002ce0495aa7a8f388544d740e1bdc8829513"
+			"Rev": "4ec58d24a41ce51bb0a5dc474885a290b5cd2800"
 		},
 		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
@@ -81,7 +81,7 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-cf-experimental/garden/integration/garden_runner",
-			"Rev": "6f427da36c09cf7fc75455300739fa2b0cfdde8a"
+			"Rev": "87aa5f2ee8f4dff7a2acae30ed15c3b1ff07c67e"
 		},
 		{
 			"ImportPath": "github.com/vito/cmdtest",
