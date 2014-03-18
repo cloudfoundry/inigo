@@ -26,7 +26,7 @@ var _ = Describe("RunOnce", func() {
 
 		It("eventually runs the RunOnce", func() {
 			guid := factories.GenerateGuid()
-			runOnce := factories.BuildRunOnceWithRunAction(100, 100, inigoserver.CurlCommand(guid))
+			runOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 100, 100, inigoserver.CurlCommand(guid))
 			bbs.DesireRunOnce(runOnce)
 
 			Eventually(inigoserver.ReportingGuids, 5.0).Should(ContainElement(guid))
@@ -36,7 +36,7 @@ var _ = Describe("RunOnce", func() {
 	Context("when there are no executors listening when a RunOnce is registered", func() {
 		It("eventually runs the RunOnce once an executor comes up", func() {
 			guid := factories.GenerateGuid()
-			runOnce := factories.BuildRunOnceWithRunAction(100, 100, inigoserver.CurlCommand(guid))
+			runOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 100, 100, inigoserver.CurlCommand(guid))
 			bbs.DesireRunOnce(runOnce)
 
 			executorRunner.Start()
@@ -56,7 +56,7 @@ var _ = Describe("RunOnce", func() {
 
 		It("should be marked as failed, eventually", func() {
 			guid := factories.GenerateGuid()
-			runOnce := factories.BuildRunOnceWithRunAction(100, 100, inigoserver.CurlCommand(guid))
+			runOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 100, 100, inigoserver.CurlCommand(guid))
 			runOnce.Stack = "donald-duck"
 			bbs.DesireRunOnce(runOnce)
 
@@ -89,7 +89,7 @@ var _ = Describe("RunOnce", func() {
 
 		It("eventually marks jobs running on that executor as failed", func() {
 			guid := factories.GenerateGuid()
-			runOnce := factories.BuildRunOnceWithRunAction(1024, 1024, inigoserver.CurlCommand(guid)+"; sleep 10")
+			runOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 1024, 1024, inigoserver.CurlCommand(guid)+"; sleep 10")
 			bbs.DesireRunOnce(runOnce)
 			Eventually(inigoserver.ReportingGuids, 5.0).Should(ContainElement(guid))
 

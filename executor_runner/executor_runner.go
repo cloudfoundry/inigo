@@ -26,6 +26,7 @@ type ExecutorRunner struct {
 	loggregatorSecret string
 
 	Session *cmdtest.Session
+	Config  Config
 }
 
 type Config struct {
@@ -91,6 +92,7 @@ func (r *ExecutorRunner) StartWithoutCheck(config ...Config) {
 	)
 	Ω(err).ShouldNot(HaveOccurred())
 	r.snapshotFile = configToUse.SnapshotFile
+	r.Config = configToUse
 	r.Session = executorSession
 }
 

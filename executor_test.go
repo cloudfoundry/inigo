@@ -63,6 +63,7 @@ var _ = Describe("Executor", func() {
 			existingGuid := factories.GenerateGuid()
 
 			existingRunOnce := factories.BuildRunOnceWithRunAction(
+				executorRunner.Config.Stack,
 				1024,
 				1024,
 				inigoserver.CurlCommand(existingGuid)+"; sleep 60",
@@ -118,12 +119,12 @@ var _ = Describe("Executor", func() {
 		It("should only pick up tasks if it has capacity", func() {
 			firstGuyGuid := factories.GenerateGuid()
 			secondGuyGuid := factories.GenerateGuid()
-			firstGuyRunOnce := factories.BuildRunOnceWithRunAction(1024, 1024, inigoserver.CurlCommand(firstGuyGuid)+"; sleep 5")
+			firstGuyRunOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 1024, 1024, inigoserver.CurlCommand(firstGuyGuid)+"; sleep 5")
 			bbs.DesireRunOnce(firstGuyRunOnce)
 
 			Eventually(inigoserver.ReportingGuids, 5.0).Should(ContainElement(firstGuyGuid))
 
-			secondGuyRunOnce := factories.BuildRunOnceWithRunAction(1024, 1024, inigoserver.CurlCommand(secondGuyGuid))
+			secondGuyRunOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 1024, 1024, inigoserver.CurlCommand(secondGuyGuid))
 			bbs.DesireRunOnce(secondGuyRunOnce)
 
 			Consistently(inigoserver.ReportingGuids, 2.0).ShouldNot(ContainElement(secondGuyGuid))
@@ -137,11 +138,11 @@ var _ = Describe("Executor", func() {
 
 		It("should only pick up tasks if the stacks match", func() {
 			matchingGuid := factories.GenerateGuid()
-			matchingRunOnce := factories.BuildRunOnceWithRunAction(100, 100, inigoserver.CurlCommand(matchingGuid)+"; sleep 10")
+			matchingRunOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 100, 100, inigoserver.CurlCommand(matchingGuid)+"; sleep 10")
 			matchingRunOnce.Stack = "penguin"
 
 			nonMatchingGuid := factories.GenerateGuid()
-			nonMatchingRunOnce := factories.BuildRunOnceWithRunAction(100, 100, inigoserver.CurlCommand(nonMatchingGuid)+"; sleep 10")
+			nonMatchingRunOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 100, 100, inigoserver.CurlCommand(nonMatchingGuid)+"; sleep 10")
 			nonMatchingRunOnce.Stack = "lion"
 
 			bbs.DesireRunOnce(matchingRunOnce)
@@ -167,6 +168,7 @@ var _ = Describe("Executor", func() {
 			}
 			runOnce := &models.RunOnce{
 				Guid:     factories.GenerateGuid(),
+				Stack:    executorRunner.Config.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
@@ -193,6 +195,7 @@ var _ = Describe("Executor", func() {
 				otherGuid = factories.GenerateGuid()
 				runOnce := &models.RunOnce{
 					Guid:     factories.GenerateGuid(),
+					Stack:    executorRunner.Config.Stack,
 					MemoryMB: 10,
 					DiskMB:   1024,
 					Actions: []models.ExecutorAction{
@@ -219,6 +222,7 @@ var _ = Describe("Executor", func() {
 			It("should fail the RunOnce", func() {
 				runOnce := &models.RunOnce{
 					Guid:            factories.GenerateGuid(),
+					Stack:           executorRunner.Config.Stack,
 					MemoryMB:        10,
 					DiskMB:          1024,
 					FileDescriptors: 1,
@@ -240,6 +244,7 @@ var _ = Describe("Executor", func() {
 			It("should fail the RunOnce", func() {
 				runOnce := &models.RunOnce{
 					Guid:     factories.GenerateGuid(),
+					Stack:    executorRunner.Config.Stack,
 					MemoryMB: 1024,
 					DiskMB:   1024,
 					Actions: []models.ExecutorAction{
@@ -271,6 +276,7 @@ var _ = Describe("Executor", func() {
 		It("downloads the file", func() {
 			runOnce := &models.RunOnce{
 				Guid:     factories.GenerateGuid(),
+				Stack:    executorRunner.Config.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
@@ -296,6 +302,7 @@ var _ = Describe("Executor", func() {
 		It("uploads the file", func() {
 			runOnce := &models.RunOnce{
 				Guid:     factories.GenerateGuid(),
+				Stack:    executorRunner.Config.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
@@ -320,6 +327,7 @@ var _ = Describe("Executor", func() {
 		It("should fetch the contents of the requested file and provide the content in the completed RunOnce", func() {
 			runOnce := &models.RunOnce{
 				Guid:     factories.GenerateGuid(),
+				Stack:    executorRunner.Config.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
@@ -351,6 +359,7 @@ var _ = Describe("Executor", func() {
 			)
 
 			runOnce := factories.BuildRunOnceWithRunAction(
+				executorRunner.Config.Stack,
 				1024,
 				1024,
 				"echo out A; echo out B; echo out C; echo err A 1>&2; echo err B 1>&2; echo err C 1>&2",
