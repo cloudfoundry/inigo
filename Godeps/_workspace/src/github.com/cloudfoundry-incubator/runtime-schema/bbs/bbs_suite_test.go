@@ -2,7 +2,7 @@ package bbs_test
 
 import (
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fake_bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/fakebbs"
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/onsi/ginkgo/config"
 	"os"
@@ -38,11 +38,11 @@ var _ = BeforeEach(func() {
 
 var _ = It("should have a valid fake", func() {
 	var fakeExecutorBBS bbs.ExecutorBBS
-	fakeExecutorBBS = fake_bbs.NewFakeExecutorBBS()
+	fakeExecutorBBS = fakebbs.NewFakeExecutorBBS()
 	Ω(fakeExecutorBBS).ShouldNot(BeNil())
 
 	var fakeStagerBBS bbs.StagerBBS
-	fakeStagerBBS = fake_bbs.NewFakeStagerBBS()
+	fakeStagerBBS = fakebbs.NewFakeStagerBBS()
 	Ω(fakeStagerBBS).ShouldNot(BeNil())
 })
 

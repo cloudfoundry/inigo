@@ -1,6 +1,7 @@
 package inigo_test
 
 import (
+	"github.com/cloudfoundry/gunk/timeprovider"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -22,7 +23,7 @@ var _ = Describe("Executor", func() {
 	var bbs *Bbs.BBS
 
 	BeforeEach(func() {
-		bbs = Bbs.New(etcdRunner.Adapter())
+		bbs = Bbs.New(etcdRunner.Adapter(), timeprovider.NewTimeProvider())
 	})
 
 	Describe("starting without a snaphsot", func() {
@@ -164,7 +165,7 @@ var _ = Describe("Executor", func() {
 				{"BAZ", "WIBBLE"},
 				{"FOO", "$FOO-$BAZ"},
 			}
-			runOnce := models.RunOnce{
+			runOnce := &models.RunOnce{
 				Guid:     factories.GenerateGuid(),
 				MemoryMB: 1024,
 				DiskMB:   1024,
@@ -190,7 +191,7 @@ var _ = Describe("Executor", func() {
 
 			It("should fail the RunOnce", func() {
 				otherGuid = factories.GenerateGuid()
-				runOnce := models.RunOnce{
+				runOnce := &models.RunOnce{
 					Guid:     factories.GenerateGuid(),
 					MemoryMB: 10,
 					DiskMB:   1024,
@@ -216,7 +217,7 @@ var _ = Describe("Executor", func() {
 
 		Context("when the command exceeds its file descriptor limit", func() {
 			It("should fail the RunOnce", func() {
-				runOnce := models.RunOnce{
+				runOnce := &models.RunOnce{
 					Guid:            factories.GenerateGuid(),
 					MemoryMB:        10,
 					DiskMB:          1024,
@@ -237,7 +238,7 @@ var _ = Describe("Executor", func() {
 
 		Context("when the command times out", func() {
 			It("should fail the RunOnce", func() {
-				runOnce := models.RunOnce{
+				runOnce := &models.RunOnce{
 					Guid:     factories.GenerateGuid(),
 					MemoryMB: 1024,
 					DiskMB:   1024,
@@ -268,7 +269,7 @@ var _ = Describe("Executor", func() {
 		})
 
 		It("downloads the file", func() {
-			runOnce := models.RunOnce{
+			runOnce := &models.RunOnce{
 				Guid:     factories.GenerateGuid(),
 				MemoryMB: 1024,
 				DiskMB:   1024,
@@ -293,7 +294,7 @@ var _ = Describe("Executor", func() {
 		})
 
 		It("uploads the file", func() {
-			runOnce := models.RunOnce{
+			runOnce := &models.RunOnce{
 				Guid:     factories.GenerateGuid(),
 				MemoryMB: 1024,
 				DiskMB:   1024,
@@ -317,7 +318,7 @@ var _ = Describe("Executor", func() {
 		})
 
 		It("should fetch the contents of the requested file and provide the content in the completed RunOnce", func() {
-			runOnce := models.RunOnce{
+			runOnce := &models.RunOnce{
 				Guid:     factories.GenerateGuid(),
 				MemoryMB: 1024,
 				DiskMB:   1024,

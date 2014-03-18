@@ -1,6 +1,7 @@
 package inigo_test
 
 import (
+	"github.com/cloudfoundry/gunk/timeprovider"
 	"time"
 
 	"github.com/cloudfoundry-incubator/inigo/executor_runner"
@@ -15,7 +16,7 @@ var _ = Describe("RunOnce", func() {
 	var bbs *Bbs.BBS
 
 	BeforeEach(func() {
-		bbs = Bbs.New(etcdRunner.Adapter())
+		bbs = Bbs.New(etcdRunner.Adapter(), timeprovider.NewTimeProvider())
 	})
 
 	Context("when there is an executor running and a RunOnce is registered", func() {
