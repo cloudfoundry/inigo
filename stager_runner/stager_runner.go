@@ -17,8 +17,8 @@ type StagerRunner struct {
 	etcdCluster   []string
 	natsAddresses []string
 
-	stagerSession *cmdtest.Session
-	CompilerUrl   string
+	session     *cmdtest.Session
+	CompilerUrl string
 }
 
 func New(stagerBin string, etcdCluster []string, natsAddresses []string) *StagerRunner {
@@ -48,11 +48,18 @@ func (r *StagerRunner) Start(args ...string) {
 		1*time.Second,
 	))
 
-	r.stagerSession = stagerSession
+	r.session = stagerSession
 }
 
 func (r *StagerRunner) Stop() {
-	if r.stagerSession != nil {
-		r.stagerSession.Cmd.Process.Signal(syscall.SIGTERM)
+	if r.session != nil {
+		r.session.Cmd.Process.Signal(syscall.SIGTERM)
+		processState := r.session.Cmd.ProcessState
+		if processState != nil && processState.Exited() {
+			return
+		}
+
+		r.session.Wait(5 * time.Second)
+		Ω(r.session.Cmd.ProcessState.Exited()).Should(BeTrue())
 	}
 }

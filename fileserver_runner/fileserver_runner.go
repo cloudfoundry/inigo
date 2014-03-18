@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/cloudfoundry/gunk/runner_support"
 	. "github.com/onsi/gomega"
@@ -78,8 +79,14 @@ func (r *FileServerRunner) ServeFile(name string, path string) {
 }
 
 func (r *FileServerRunner) Stop() {
-	os.RemoveAll(r.dir)
 	if r.Session != nil {
 		r.Session.Cmd.Process.Signal(syscall.SIGTERM)
+		processState := r.Session.Cmd.ProcessState
+		if processState != nil && processState.Exited() {
+			return
+		}
+
+		r.Session.Wait(5 * time.Second)
+		Ω(r.Session.Cmd.ProcessState.Exited()).Should(BeTrue())
 	}
 }
