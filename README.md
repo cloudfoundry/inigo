@@ -4,34 +4,19 @@
 
 1. Start Docker (via boot2docker)
 
-2. Grab the fork of Drone that runs as privileged user
+1. Grab the Drone CLI
 
     ```
-    go get -d github.com/vito/drone
-    pushd $GOPATH/src/github.com/vito/drone
-    git fetch --all
-    git checkout privileged-builds
-    popd
-    mkdir -p $GOPATH/src/github.com/drone
-    mv $GOPATH/src/github.com/vito/drone !$/drone
+    go get github.com/drone/drone/cmd/drone
     ```
 
-3. Build drone
-
-    ```
-    goto drone/drone
-    make deps
-    make
-    mv $PWD/bin/* $GOPATH/bin
-    ```
-
-4. Make sure you have the latest inigo-ci image:
+1. Make sure you have the latest inigo-ci image:
 
     ```
     docker pull cloudfoundry/inigo-ci
     ```
 
-5. Run the tests
+1. Run the tests
 
     ```
     goto inigo
