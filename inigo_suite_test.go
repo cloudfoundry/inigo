@@ -3,6 +3,7 @@ package inigo_test
 import (
 	"fmt"
 	"github.com/onsi/ginkgo/config"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/cloudfoundry/gunk/natsrunner"
 
@@ -31,6 +33,7 @@ import (
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
 
 var gardenRunner *garden_runner.GardenRunner
+var gardenAddr = filepath.Join(os.TempDir(), "garden-temp-socker", "warden.sock")
 var wardenClient gordon.Client
 
 var natsRunner *natsrunner.NATSRunner
@@ -61,7 +64,7 @@ func TestInigo(t *testing.T) {
 
 	startUpFakeCC()
 	setUpEtcd()
-	setUpGarden()
+	setupGarden()
 	setUpNats()
 	setUpLoggregator()
 	setUpExecutor()
@@ -71,17 +74,21 @@ func TestInigo(t *testing.T) {
 
 	RunSpecs(t, "Inigo Integration Suite")
 
+	if config.GinkgoConfig.ParallelNode == 1 && config.GinkgoConfig.ParallelTotal > 1 {
+		waitForOtherGinkgoNodes()
+	}
+
+	notifyFinished()
+
 	cleanup()
 }
 
 var _ = BeforeEach(func() {
 	fakeCC.Reset()
-	startGarden()
+	connectToGarden()
 	etcdRunner.Start()
 	natsRunner.Start()
 	loggregatorRunner.Start()
-
-	gardenRunner.DestroyContainers()
 
 	inigoserver.Start(wardenClient)
 
@@ -97,6 +104,8 @@ var _ = AfterEach(func() {
 	loggregatorRunner.Stop()
 	natsRunner.Stop()
 	etcdRunner.Stop()
+
+	inigoserver.Stop(wardenClient)
 })
 
 func startUpFakeCC() {
@@ -108,7 +117,7 @@ func setUpEtcd() {
 	etcdRunner = etcdstorerunner.NewETCDClusterRunner(5001+config.GinkgoConfig.ParallelNode, 1)
 }
 
-func setUpGarden() {
+func setupGarden() {
 	gardenBinPath := os.Getenv("GARDEN_BINPATH")
 	gardenRootfs := os.Getenv("GARDEN_ROOTFS")
 
@@ -119,10 +128,14 @@ func setUpGarden() {
 		failFast("garden is not set up")
 		return
 	}
-
 	var err error
 
-	gardenRunner, err = garden_runner.New(gardenBinPath, gardenRootfs)
+	err = os.MkdirAll(filepath.Dir(gardenAddr), 0700)
+	if err != nil {
+		failFast(err.Error())
+	}
+
+	gardenRunner, err = garden_runner.New(gardenBinPath, gardenRootfs, "unix", gardenAddr)
 	if err != nil {
 		failFast("garden failed to initialize: " + err.Error())
 	}
@@ -130,15 +143,21 @@ func setUpGarden() {
 	gardenRunner.SnapshotsPath = ""
 }
 
-var didStartGarden = false
+var didConnectToGarden = false
 
-func startGarden() {
-	if didStartGarden {
+func connectToGarden() {
+	if didConnectToGarden {
 		return
 	}
-	didStartGarden = true
+	didConnectToGarden = true
 
-	err := gardenRunner.Start()
+	var err error
+	if config.GinkgoConfig.ParallelNode == 1 {
+		err = gardenRunner.Start()
+	} else {
+		err = gardenRunner.WaitForStart()
+	}
+
 	if err != nil {
 		failFast("garden failed to start: " + err.Error())
 	}
@@ -249,8 +268,11 @@ func cleanup() {
 		etcdRunner.Stop()
 	}
 
-	if gardenRunner != nil {
-		gardenRunner.Stop()
+	if config.GinkgoConfig.ParallelNode == 1 {
+		if gardenRunner != nil {
+			gardenRunner.TearDown()
+			gardenRunner.Stop()
+		}
 	}
 
 	if natsRunner != nil {
@@ -281,6 +303,26 @@ func failFast(msg string, errs ...error) {
 	}
 	cleanup()
 	os.Exit(1)
+}
+
+func waitForOtherGinkgoNodes() {
+	for {
+		found := true
+		for i := 2; i <= config.GinkgoConfig.ParallelTotal; i++ {
+			_, err := os.Stat(fmt.Sprintf("/tmp/ginkgo-%d", i))
+			if err != nil {
+				found = false
+			}
+		}
+		if found {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+func notifyFinished() {
+	ioutil.WriteFile(fmt.Sprintf("/tmp/ginkgo-%d", config.GinkgoConfig.ParallelNode), []byte("done"), 0777)
 }
 
 func registerSignalHandler() {
