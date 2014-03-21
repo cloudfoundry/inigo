@@ -84,6 +84,7 @@ func Start(wardenClient gordon.Client) {
 	if err != nil {
 		panic(err)
 	}
+
 	ipAddress = infoResponse.GetContainerIp()
 
 	_, stream, err := wardenClient.Run(handle, fmt.Sprintf("PORT=%d %s", containerPort, amazingRubyServer), gordon.ResourceLimits{})
@@ -107,6 +108,9 @@ func Start(wardenClient gordon.Client) {
 
 func Stop(wardenClient gordon.Client) {
 	wardenClient.Destroy(handle)
+	handle = ""
+	hostPort = 0
+	ipAddress = ""
 }
 
 func CurlCommand(guid string) string {
