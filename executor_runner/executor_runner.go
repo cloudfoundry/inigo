@@ -59,6 +59,8 @@ func New(executorBin, wardenNetwork, wardenAddr string, etcdCluster []string, lo
 
 		loggregatorServer: loggregatorServer,
 		loggregatorSecret: loggregatorSecret,
+
+		Config: defaultConfig,
 	}
 }
 
