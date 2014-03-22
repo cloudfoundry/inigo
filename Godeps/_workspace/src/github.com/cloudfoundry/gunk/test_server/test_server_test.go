@@ -43,8 +43,7 @@ var _ = Describe("TestServer", func() {
 		})
 
 		It("should record the requests", func() {
-			Ω(s.ReceivedRequests).Should(HaveLen(1))
-			Ω(s.ReceivedRequests[0].URL.String()).Should(Equal("/foo"))
+			Ω(s.ReceivedRequestsCount()).Should(Equal(1))
 		})
 	})
 

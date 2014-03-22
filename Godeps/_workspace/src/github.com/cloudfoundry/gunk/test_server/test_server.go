@@ -7,22 +7,24 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 )
 
-func New() *Server {
-	s := &Server{
+func new() *Server {
+	return &Server{
 		AllowUnhandledRequests:     false,
 		UnhandledRequestStatusCode: http.StatusInternalServerError,
+		writeLock:                  &sync.Mutex{},
 	}
+}
+func New() *Server {
+	s := new()
 	s.HTTPTestServer = httptest.NewServer(s)
 	return s
 }
 
 func NewTLS() *Server {
-	s := &Server{
-		AllowUnhandledRequests:     false,
-		UnhandledRequestStatusCode: http.StatusInternalServerError,
-	}
+	s := new()
 	s.HTTPTestServer = httptest.NewTLSServer(s)
 	return s
 }
@@ -30,13 +32,13 @@ func NewTLS() *Server {
 type Server struct {
 	HTTPTestServer *httptest.Server
 
-	ReceivedRequests []*http.Request
-	RequestHandlers  []http.HandlerFunc
+	receivedRequests []*http.Request
+	requestHandlers  []http.HandlerFunc
 
 	AllowUnhandledRequests     bool
 	UnhandledRequestStatusCode int
-
-	calls int
+	writeLock                  *sync.Mutex
+	calls                      int
 }
 
 func (s *Server) URL() string {
@@ -50,8 +52,11 @@ func (s *Server) Close() {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if s.calls < len(s.RequestHandlers) {
-		s.RequestHandlers[s.calls](w, req)
+	s.writeLock.Lock()
+	defer s.writeLock.Unlock()
+
+	if s.calls < len(s.requestHandlers) {
+		s.requestHandlers[s.calls](w, req)
 	} else {
 		if s.AllowUnhandledRequests {
 			ioutil.ReadAll(req.Body)
@@ -61,20 +66,36 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			ginkgo.Fail(fmt.Sprintf("Received unhandled request:\n%s", format.Object(req, 1)))
 		}
 	}
-	s.ReceivedRequests = append(s.ReceivedRequests, req)
+	s.receivedRequests = append(s.receivedRequests, req)
 	s.calls++
 }
 
+func (s *Server) ReceivedRequestsCount() int {
+	s.writeLock.Lock()
+	defer s.writeLock.Unlock()
+
+	return len(s.receivedRequests)
+}
+
 func (s *Server) Append(handlers ...http.HandlerFunc) {
-	s.RequestHandlers = append(s.RequestHandlers, handlers...)
+	s.writeLock.Lock()
+	defer s.writeLock.Unlock()
+
+	s.requestHandlers = append(s.requestHandlers, handlers...)
 }
 
 func (s *Server) Set(index int, handler http.HandlerFunc) {
-	s.RequestHandlers[index] = handler
+	s.writeLock.Lock()
+	defer s.writeLock.Unlock()
+
+	s.requestHandlers[index] = handler
 }
 
 func (s *Server) Get(index int) http.HandlerFunc {
-	return s.RequestHandlers[index]
+	s.writeLock.Lock()
+	defer s.writeLock.Unlock()
+
+	return s.requestHandlers[index]
 }
 
 func (s *Server) Wrap(index int, handler http.HandlerFunc) {

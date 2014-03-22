@@ -24,19 +24,19 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
-			"Rev": "0ab08c4a0d1b32c0db1ecd53b55603662de9e767"
+			"Rev": "0dfce73f2060a23c01134f5880295b70cc325e14"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/runner_support",
-			"Rev": "0ab08c4a0d1b32c0db1ecd53b55603662de9e767"
+			"Rev": "0dfce73f2060a23c01134f5880295b70cc325e14"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/test_server",
-			"Rev": "0ab08c4a0d1b32c0db1ecd53b55603662de9e767"
+			"Rev": "0dfce73f2060a23c01134f5880295b70cc325e14"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/timeprovider",
-			"Rev": "0ab08c4a0d1b32c0db1ecd53b55603662de9e767"
+			"Rev": "0dfce73f2060a23c01134f5880295b70cc325e14"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/loggregatorlib/logmessage",
@@ -73,7 +73,7 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Rev": "5f27c85969c8a7a2ba9c277115563d5ae2d1f6b4"
+			"Rev": "16fad02eaa84166bf43945c944c60154621f5fdf"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
@@ -81,7 +81,7 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-cf-experimental/garden/integration/garden_runner",
-			"Rev": "9cc47b0e665fb82fbb57d480b3faf705752225e8"
+			"Rev": "c3ff2b2b801eb68abd29044097aae1069404cd80"
 		},
 		{
 			"ImportPath": "github.com/vito/cmdtest",
