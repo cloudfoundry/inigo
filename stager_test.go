@@ -117,8 +117,8 @@ EOF
 						"disk_mb": 128,
 						"file_descriptors": 1024,
 						"stack": "default",
-						"download_uri": "%s",
-						"admin_buildpacks" : [{ "key": "test-buildpack", "url": "%s" }],
+						"app_bits_download_uri": "%s",
+						"buildpacks" : [{ "key": "test-buildpack", "url": "%s" }],
 						"environment": [["SOME_STAGING_ENV", "%s"]]
 					}`,
 					inigoserver.DownloadUrl("app.zip"),

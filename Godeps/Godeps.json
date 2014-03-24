@@ -11,11 +11,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "cf1272e3fc2019a02d6b5342f9910e7cf67128c5"
+			"Rev": "dd5c07f6e0fe610412712037abcfff7997c31199"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "cf1272e3fc2019a02d6b5342f9910e7cf67128c5"
+			"Rev": "dd5c07f6e0fe610412712037abcfff7997c31199"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -48,7 +48,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
-			"Rev": "43bc76b1720da62d74c7ff9025f27b38949ea7f9"
+			"Rev": "40121f26551acde4dceb9556b5cd106f2b5143d6"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/yagnats",
