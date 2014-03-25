@@ -50,7 +50,7 @@ var _ = Describe("Stager", func() {
 
 			var receivedMessage *yagnats.Message
 			Eventually(receivedMessages, 2.0).Should(Receive(&receivedMessage))
-			Ω(receivedMessage.Payload).Should(ContainSubstring("No compiler defined for requested stack"))
+			Ω(receivedMessage.Payload).Should(ContainSubstring("no compiler defined for requested stack"))
 			Consistently(receivedMessages, 2.0).ShouldNot(Receive())
 		})
 	})
@@ -262,7 +262,7 @@ EOF
 
 					var payload []byte
 					Eventually(payloads, 10.0).Should(Receive(&payload))
-					Ω(string(payload)).Should(Equal(`{"error":"Process returned with exit value: 1"}`))
+					Ω(string(payload)).Should(Equal(`{"error":"process exited with status 1"}`))
 
 					Eventually(func() string {
 						return logOutput
