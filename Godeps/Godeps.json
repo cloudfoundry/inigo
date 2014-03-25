@@ -65,7 +65,7 @@
 		},
 		{
 			"ImportPath": "github.com/gorilla/websocket",
-			"Rev": "4ec58d24a41ce51bb0a5dc474885a290b5cd2800"
+			"Rev": "03206ef31ebe44a6db9e66f3b466e05a31790631"
 		},
 		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
@@ -73,11 +73,11 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Rev": "16fad02eaa84166bf43945c944c60154621f5fdf"
+			"Rev": "3632cbe0b58a9005513942e9d4c4920e375d6778"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Rev": "fe2fcb6a77de16300f1c3e803de5d39b7ae5b8d3"
+			"Rev": "bad854a45453ec22d99c8bd982e2302f64d3fc37"
 		},
 		{
 			"ImportPath": "github.com/pivotal-cf-experimental/garden/integration/garden_runner",
