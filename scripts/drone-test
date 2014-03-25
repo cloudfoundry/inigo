@@ -14,5 +14,5 @@ go install github.com/onsi/ginkgo/ginkgo
 export GARDEN_ROOTFS=/opt/warden/rootfs
 
 pushd $FIRST_GOPATH/src/github.com/cloudfoundry-incubator/inigo
-  ginkgo -r -failOnPending -randomizeAllSpecs -nodes=4 "$@"
+  ginkgo -r -failOnPending -randomizeAllSpecs -nodes=4 -stream "$@"
 popd
