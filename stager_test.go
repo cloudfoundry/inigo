@@ -46,7 +46,13 @@ var _ = Describe("Stager", func() {
 			natsRunner.MessageBus.PublishWithReplyTo(
 				"diego.staging.start",
 				"compiler-stagers-test",
-				[]byte(`{"app_id": "some-app-guid", "task_id": "some-task-id", "stack": "no-compiler"}`))
+				[]byte(`{
+					"app_id": "some-app-guid",
+					"task_id": "some-task-id",
+					"app_bits_download_uri": "some-download-uri",
+					"stack": "no-compiler"
+				}`),
+			)
 
 			var receivedMessage *yagnats.Message
 			Eventually(receivedMessages, 2.0).Should(Receive(&receivedMessage))
