@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
 	"github.com/fraenkel/candiedyaml"
+	"github.com/vito/cmdtest"
 	"io"
 	"io/ioutil"
+	"time"
 
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
@@ -251,11 +253,12 @@ EOF
 					)
 					defer close(stop)
 
-					logOutput := ""
+					logOutput := new(bytes.Buffer)
 					go func() {
 						for message := range messages {
 							Ω(message.GetSourceName()).To(Equal("STG"))
-							logOutput += string(message.GetMessage()) + "\n"
+							logOutput.Write(message.GetMessage())
+							logOutput.Write([]byte{'\n'})
 						}
 					}()
 
@@ -270,9 +273,9 @@ EOF
 					Eventually(payloads, 10.0).Should(Receive(&payload))
 					Ω(string(payload)).Should(Equal(`{"error":"process exited with status 1"}`))
 
-					Eventually(func() string {
-						return logOutput
-					}, 5.0).Should(ContainSubstring("no buildpack detected"))
+					expector := cmdtest.NewExpector(logOutput, 5*time.Second)
+					err = expector.Expect("no buildpack detected")
+					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})
 		})
