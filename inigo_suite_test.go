@@ -135,7 +135,12 @@ func setupGarden() {
 		failFast(err.Error())
 	}
 
-	gardenRunner, err = garden_runner.New(gardenBinPath, gardenRootfs, "unix", gardenAddr)
+	gardenPath, err := cmdtest.BuildIn(os.Getenv("GARDEN_GOPATH"), "github.com/pivotal-cf-experimental/garden", "-race")
+	if err != nil {
+		failFast("failed to compile garden:", err)
+	}
+
+	gardenRunner, err = garden_runner.New(gardenPath, gardenBinPath, gardenRootfs, "unix", gardenAddr)
 	if err != nil {
 		failFast("garden failed to initialize: " + err.Error())
 	}
@@ -180,9 +185,9 @@ func setUpLoggregator() {
 	loggregatorPort = 3456 + config.GinkgoConfig.ParallelNode
 	loggregatorSharedSecret = "conspiracy"
 
-	loggregatorPath, err := cmdtest.BuildIn("loggregator/loggregator", os.Getenv("LOGGREGATOR_GOPATH"))
+	loggregatorPath, err := cmdtest.BuildIn(os.Getenv("LOGGREGATOR_GOPATH"), "loggregator/loggregator", "-race")
 	if err != nil {
-		failFast("failed to compile loggregator")
+		failFast("failed to compile loggregator:", err)
 	}
 
 	loggregatorRunner = loggregator_runner.New(
@@ -200,9 +205,9 @@ func setUpLoggregator() {
 
 func setUpExecutor() {
 	var err error
-	executorPath, err = cmdtest.BuildIn("github.com/cloudfoundry-incubator/executor", os.Getenv("EXECUTOR_GOPATH"))
+	executorPath, err = cmdtest.BuildIn(os.Getenv("EXECUTOR_GOPATH"), "github.com/cloudfoundry-incubator/executor", "-race")
 	if err != nil {
-		failFast("failed to compile executor")
+		failFast("failed to compile executor:", err)
 	}
 
 	executorRunner = executor_runner.New(
@@ -217,9 +222,9 @@ func setUpExecutor() {
 
 func setUpStager() {
 	var err error
-	stagerPath, err = cmdtest.BuildIn("github.com/cloudfoundry-incubator/stager", os.Getenv("STAGER_GOPATH"))
+	stagerPath, err = cmdtest.BuildIn(os.Getenv("STAGER_GOPATH"), "github.com/cloudfoundry-incubator/stager", "-race")
 	if err != nil {
-		failFast("failed to compile stager")
+		failFast("failed to compile stager:", err)
 	}
 
 	stagerRunner = stager_runner.New(
@@ -230,7 +235,7 @@ func setUpStager() {
 }
 
 func compileAndZipUpSmelter() {
-	smelterPath, err := cmdtest.BuildIn("github.com/cloudfoundry-incubator/linux-smelter", os.Getenv("LINUX_SMELTER_GOPATH"))
+	smelterPath, err := cmdtest.BuildIn(os.Getenv("LINUX_SMELTER_GOPATH"), "github.com/cloudfoundry-incubator/linux-smelter", "-race")
 	if err != nil {
 		failFast("failed to compile smelter", err)
 	}
@@ -253,10 +258,11 @@ func compileAndZipUpSmelter() {
 
 func setUpFileServer() {
 	var err error
-	fileServerPath, err = cmdtest.BuildIn("github.com/cloudfoundry-incubator/file-server", os.Getenv("FILE_SERVER_GOPATH"))
+	fileServerPath, err = cmdtest.BuildIn(os.Getenv("FILE_SERVER_GOPATH"), "github.com/cloudfoundry-incubator/file-server", "-race")
 	if err != nil {
-		failFast("failed to compile file server")
+		failFast("failed to compile file server:", err)
 	}
+
 	fileServerPort = 12760 + config.GinkgoConfig.ParallelNode
 	fileServerRunner = fileserver_runner.New(fileServerPath, fileServerPort, etcdRunner.NodeURLS(), fakeCCAddress, fake_cc.CC_USERNAME, fake_cc.CC_PASSWORD)
 }
