@@ -11,16 +11,16 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "dd5c07f6e0fe610412712037abcfff7997c31199"
+			"Rev": "25c02e2862c3a2d69fb678e75960d2024aeb97c2"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "dd5c07f6e0fe610412712037abcfff7997c31199"
+			"Rev": "25c02e2862c3a2d69fb678e75960d2024aeb97c2"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
-			"Comment": "scotty_09012012-38-g969c2c5",
-			"Rev": "969c2c565f5f1638b45702f3a07f6c39013bf375"
+			"Comment": "scotty_09012012-40-g5eb8c6e",
+			"Rev": "5eb8c6e554f0dfc39d6468813b8ac19ec28fe74f"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
@@ -48,11 +48,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
-			"Rev": "40121f26551acde4dceb9556b5cd106f2b5143d6"
+			"Rev": "93681214aa36bc47abcdd378aa532de78a687350"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/yagnats",
-			"Rev": "e039737afcd17e94e2f411a9d9f2056fd4d99fe7"
+			"Rev": "8bf15e48f3abf6db1765ff908ee678a6f347ce0a"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-etcd/etcd",
@@ -85,7 +85,7 @@
 		},
 		{
 			"ImportPath": "github.com/vito/cmdtest",
-			"Rev": "ccd51cbbf3154a39d1ad8861e7711dfdf4ee5719"
+			"Rev": "5e0e5e15bffd98bd919e7507a97cd87c8ce78225"
 		},
 		{
 			"ImportPath": "github.com/vito/gordon",
