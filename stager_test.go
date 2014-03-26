@@ -253,12 +253,12 @@ EOF
 					)
 					defer close(stop)
 
-					logOutput := new(bytes.Buffer)
+					logIn, logOut := io.Pipe()
 					go func() {
 						for message := range messages {
 							Ω(message.GetSourceName()).To(Equal("STG"))
-							logOutput.Write(message.GetMessage())
-							logOutput.Write([]byte{'\n'})
+							logOut.Write(message.GetMessage())
+							logOut.Write([]byte{'\n'})
 						}
 					}()
 
@@ -273,7 +273,7 @@ EOF
 					Eventually(payloads, 10.0).Should(Receive(&payload))
 					Ω(string(payload)).Should(Equal(`{"error":"process exited with status 1"}`))
 
-					expector := cmdtest.NewExpector(logOutput, 5*time.Second)
+					expector := cmdtest.NewExpector(logIn, 5*time.Second)
 					err = expector.Expect("no buildpack detected")
 					Ω(err).ShouldNot(HaveOccurred())
 				})
