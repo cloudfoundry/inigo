@@ -81,11 +81,11 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-cf-experimental/garden/integration/garden_runner",
-			"Rev": "c3ff2b2b801eb68abd29044097aae1069404cd80"
+			"Rev": "a22cdd03e40190482a3de1fc625b42f107ea2b74"
 		},
 		{
 			"ImportPath": "github.com/vito/cmdtest",
-			"Rev": "5e0e5e15bffd98bd919e7507a97cd87c8ce78225"
+			"Rev": "c56fe40f700cbe87257137c14ae739c59897fc6b"
 		},
 		{
 			"ImportPath": "github.com/vito/gordon",
