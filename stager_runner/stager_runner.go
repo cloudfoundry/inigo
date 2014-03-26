@@ -54,12 +54,7 @@ func (r *StagerRunner) Start(args ...string) {
 func (r *StagerRunner) Stop() {
 	if r.session != nil {
 		r.session.Cmd.Process.Signal(syscall.SIGTERM)
-		processState := r.session.Cmd.ProcessState
-		if processState != nil && processState.Exited() {
-			return
-		}
-
-		r.session.Wait(5 * time.Second)
-		Ω(r.session.Cmd.ProcessState.Exited()).Should(BeTrue())
+		_, err := r.session.Wait(5 * time.Second)
+		Ω(err).ShouldNot(HaveOccurred())
 	}
 }

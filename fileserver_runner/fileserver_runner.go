@@ -81,12 +81,7 @@ func (r *FileServerRunner) ServeFile(name string, path string) {
 func (r *FileServerRunner) Stop() {
 	if r.Session != nil {
 		r.Session.Cmd.Process.Signal(syscall.SIGTERM)
-		processState := r.Session.Cmd.ProcessState
-		if processState != nil && processState.Exited() {
-			return
-		}
-
-		r.Session.Wait(5 * time.Second)
-		Ω(r.Session.Cmd.ProcessState.Exited()).Should(BeTrue())
+		_, err := r.Session.Wait(5 * time.Second)
+		Ω(err).ShouldNot(HaveOccurred())
 	}
 }

@@ -64,12 +64,7 @@ func (runner *LoggregatorRunner) Start() {
 func (runner *LoggregatorRunner) Stop() {
 	if runner.session != nil {
 		runner.session.Cmd.Process.Signal(os.Interrupt)
-		processState := runner.session.Cmd.ProcessState
-		if processState != nil && processState.Exited() {
-			return
-		}
-
-		runner.session.Wait(5 * time.Second)
-		Ω(runner.session.Cmd.ProcessState.Exited()).Should(BeTrue())
+		_, err := runner.session.Wait(5 * time.Second)
+		Ω(err).ShouldNot(HaveOccurred())
 	}
 }
