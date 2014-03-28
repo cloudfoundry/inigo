@@ -185,7 +185,7 @@ func setUpLoggregator() {
 	loggregatorPort = 3456 + config.GinkgoConfig.ParallelNode
 	loggregatorSharedSecret = "conspiracy"
 
-	loggregatorPath, err := cmdtest.BuildIn(os.Getenv("LOGGREGATOR_GOPATH"), "loggregator/loggregator", "-race")
+	loggregatorPath, err := cmdtest.BuildIn(os.Getenv("LOGGREGATOR_GOPATH"), "loggregator/loggregator")
 	if err != nil {
 		failFast("failed to compile loggregator:", err)
 	}
