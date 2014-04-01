@@ -71,6 +71,7 @@ func TestInigo(t *testing.T) {
 	setUpStager()
 	compileAndZipUpSmelter()
 	setUpFileServer()
+	connectToGarden()
 
 	RunSpecs(t, "Inigo Integration Suite")
 
@@ -85,7 +86,6 @@ func TestInigo(t *testing.T) {
 
 var _ = BeforeEach(func() {
 	fakeCC.Reset()
-	connectToGarden()
 	etcdRunner.Start()
 	natsRunner.Start()
 	loggregatorRunner.Start()
@@ -148,14 +148,7 @@ func setupGarden() {
 	gardenRunner.SnapshotsPath = ""
 }
 
-var didConnectToGarden = false
-
 func connectToGarden() {
-	if didConnectToGarden {
-		return
-	}
-	didConnectToGarden = true
-
 	var err error
 	if config.GinkgoConfig.ParallelNode == 1 {
 		err = gardenRunner.Start()
@@ -171,7 +164,7 @@ func connectToGarden() {
 
 	err = wardenClient.Connect()
 	if err != nil {
-		failFast("warden is not up")
+		failFast("warden is not up: " + err.Error())
 		return
 	}
 }
