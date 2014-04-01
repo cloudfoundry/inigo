@@ -12,9 +12,9 @@ import (
 	"io/ioutil"
 	"time"
 
+	"github.com/cloudfoundry-incubator/inigo/archiver"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
-	"github.com/cloudfoundry-incubator/inigo/zipper"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	"github.com/cloudfoundry/yagnats"
 	. "github.com/onsi/ginkgo"
@@ -52,6 +52,8 @@ var _ = Describe("Stager", func() {
 					"app_id": "some-app-guid",
 					"task_id": "some-task-id",
 					"app_bits_download_uri": "some-download-uri",
+					"build_artifacts_cache_download_uri": "artifacts-download-uri",
+					"build_artifacts_cache_upload_uri": "artifacts-upload-uri",
 					"stack": "no-compiler"
 				}`),
 			)
@@ -77,14 +79,15 @@ var _ = Describe("Stager", func() {
 			fileServerRunner.ServeFile("smelter.zip", smelterZipPath)
 
 			//make and upload an app
-			var appFiles = []zipper.ZipFile{
+			var appFiles = []archiver.ArchiveFile{
 				{"my-app", "scooby-doo"},
 			}
-			zipper.CreateZipFile("/tmp/app.zip", appFiles)
+
+			archiver.CreateZipArchive("/tmp/app.zip", appFiles)
 			inigoserver.UploadFile("app.zip", "/tmp/app.zip")
 
 			//make and upload a buildpack
-			var adminBuildpackFiles = []zipper.ZipFile{
+			var adminBuildpackFiles = []archiver.ArchiveFile{
 				{"bin/detect", `#!/bin/bash
 				echo My Buildpack
 				`},
@@ -101,18 +104,26 @@ default_process_types:
 EOF
 				`},
 			}
-			zipper.CreateZipFile("/tmp/admin_buildpack.zip", adminBuildpackFiles)
+			archiver.CreateZipArchive("/tmp/admin_buildpack.zip", adminBuildpackFiles)
 			inigoserver.UploadFile("admin_buildpack.zip", "/tmp/admin_buildpack.zip")
 
-			var bustedAdminBuildpackFiles = []zipper.ZipFile{
+			var bustedAdminBuildpackFiles = []archiver.ArchiveFile{
 				{"bin/detect", `#!/bin/bash]
 				exit 1
 				`},
 				{"bin/compile", `#!/bin/bash`},
 				{"bin/release", `#!/bin/bash`},
 			}
-			zipper.CreateZipFile("/tmp/busted_admin_buildpack.zip", bustedAdminBuildpackFiles)
+
+			archiver.CreateZipArchive("/tmp/busted_admin_buildpack.zip", bustedAdminBuildpackFiles)
 			inigoserver.UploadFile("busted_admin_buildpack.zip", "/tmp/busted_admin_buildpack.zip")
+
+			var buildArtifacts = []archiver.ArchiveFile{
+				{"a", "some contents for a"},
+			}
+
+			archiver.CreateTarGZArchive("/tmp/build_artifacts.tar.gz", buildArtifacts)
+			inigoserver.UploadFile("build_artifacts.tar.gz", "/tmp/build_artifacts.tar.gz")
 		})
 
 		JustBeforeEach(func() {
@@ -126,10 +137,14 @@ EOF
 						"file_descriptors": 1024,
 						"stack": "default",
 						"app_bits_download_uri": "%s",
+						"build_artifacts_cache_download_uri": "%s",
+						"build_artifacts_cache_upload_uri": "%s",
 						"buildpacks" : [{ "key": "test-buildpack", "url": "%s" }],
 						"environment": [["SOME_STAGING_ENV", "%s"]]
 					}`,
 					inigoserver.DownloadUrl("app.zip"),
+					inigoserver.DownloadUrl("artifacts.tgz"),
+					inigoserver.UploadUrl("artifacts.tgz"),
 					inigoserver.DownloadUrl(buildpackToUse),
 					outputGuid,
 				),
