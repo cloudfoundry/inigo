@@ -90,7 +90,7 @@ var _ = BeforeEach(func() {
 	natsRunner.Start()
 	loggregatorRunner.Start()
 
-	inigoserver.Start(wardenClient)
+	inigo_server.Start(wardenClient)
 
 	currentTestDescription := CurrentGinkgoTestDescription()
 	fmt.Fprintf(GinkgoWriter, "\n%s\n%s\n\n", strings.Repeat("~", 50), currentTestDescription.FullTestText)
@@ -105,7 +105,7 @@ var _ = AfterEach(func() {
 	natsRunner.Stop()
 	etcdRunner.Stop()
 
-	inigoserver.Stop(wardenClient)
+	inigo_server.Stop(wardenClient)
 })
 
 func startUpFakeCC() {

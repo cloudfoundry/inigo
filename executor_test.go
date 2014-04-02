@@ -1,11 +1,14 @@
 package inigo_test
 
 import (
-	"github.com/cloudfoundry/gunk/timeprovider"
+	"archive/tar"
+	"compress/gzip"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/cloudfoundry/gunk/timeprovider"
 
 	"github.com/cloudfoundry-incubator/inigo/executor_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
@@ -66,12 +69,12 @@ var _ = Describe("Executor", func() {
 				executorRunner.Config.Stack,
 				1024,
 				1024,
-				inigoserver.CurlCommand(existingGuid)+"; sleep 60",
+				inigo_server.CurlCommand(existingGuid)+"; sleep 60",
 			)
 
 			bbs.DesireRunOnce(existingRunOnce)
 
-			Eventually(inigoserver.ReportingGuids, 5.0).Should(ContainElement(existingGuid))
+			Eventually(inigo_server.ReportingGuids, 5.0).Should(ContainElement(existingGuid))
 
 			executorRunner.Stop()
 		})
@@ -119,15 +122,15 @@ var _ = Describe("Executor", func() {
 		It("should only pick up tasks if it has capacity", func() {
 			firstGuyGuid := factories.GenerateGuid()
 			secondGuyGuid := factories.GenerateGuid()
-			firstGuyRunOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 1024, 1024, inigoserver.CurlCommand(firstGuyGuid)+"; sleep 5")
+			firstGuyRunOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(firstGuyGuid)+"; sleep 5")
 			bbs.DesireRunOnce(firstGuyRunOnce)
 
-			Eventually(inigoserver.ReportingGuids, 5.0).Should(ContainElement(firstGuyGuid))
+			Eventually(inigo_server.ReportingGuids, 5.0).Should(ContainElement(firstGuyGuid))
 
-			secondGuyRunOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 1024, 1024, inigoserver.CurlCommand(secondGuyGuid))
+			secondGuyRunOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(secondGuyGuid))
 			bbs.DesireRunOnce(secondGuyRunOnce)
 
-			Consistently(inigoserver.ReportingGuids, 2.0).ShouldNot(ContainElement(secondGuyGuid))
+			Consistently(inigo_server.ReportingGuids, 2.0).ShouldNot(ContainElement(secondGuyGuid))
 		})
 	})
 
@@ -138,18 +141,18 @@ var _ = Describe("Executor", func() {
 
 		It("should only pick up tasks if the stacks match", func() {
 			matchingGuid := factories.GenerateGuid()
-			matchingRunOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 100, 100, inigoserver.CurlCommand(matchingGuid)+"; sleep 10")
+			matchingRunOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(matchingGuid)+"; sleep 10")
 			matchingRunOnce.Stack = "penguin"
 
 			nonMatchingGuid := factories.GenerateGuid()
-			nonMatchingRunOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 100, 100, inigoserver.CurlCommand(nonMatchingGuid)+"; sleep 10")
+			nonMatchingRunOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(nonMatchingGuid)+"; sleep 10")
 			nonMatchingRunOnce.Stack = "lion"
 
 			bbs.DesireRunOnce(matchingRunOnce)
 			bbs.DesireRunOnce(nonMatchingRunOnce)
 
-			Consistently(inigoserver.ReportingGuids, 2.0).ShouldNot(ContainElement(nonMatchingGuid), "Did not expect to see this app running, as it has the wrong stack.")
-			Eventually(inigoserver.ReportingGuids, 5.0).Should(ContainElement(matchingGuid))
+			Consistently(inigo_server.ReportingGuids, 2.0).ShouldNot(ContainElement(nonMatchingGuid), "Did not expect to see this app running, as it has the wrong stack.")
+			Eventually(inigo_server.ReportingGuids, 5.0).Should(ContainElement(matchingGuid))
 		})
 	})
 
@@ -172,19 +175,16 @@ var _ = Describe("Executor", func() {
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
-					{Action: models.RunAction{Script: `echo $FOO > out`, Env: env}},
-					{Action: models.UploadAction{From: "out", To: inigoserver.UploadUrl("out")}},
-					{Action: models.RunAction{Script: inigoserver.CurlCommand(guid)}},
+					{Action: models.RunAction{Script: `test $FOO = "BAR-WIBBLE"`, Env: env}},
 				},
 			}
 
 			bbs.DesireRunOnce(runOnce)
 
-			Eventually(inigoserver.ReportingGuids, 5.0).Should(ContainElement(guid))
-			Ω(inigoserver.DownloadFileString("out")).Should(Equal("BAR-WIBBLE\n"))
-
 			Eventually(bbs.GetAllCompletedRunOnces, 5.0).Should(HaveLen(1))
+
 			runOnces, _ := bbs.GetAllCompletedRunOnces()
+			Ω(runOnces[0].FailureReason).Should(BeEmpty())
 			Ω(runOnces[0].Failed).Should(BeFalse())
 		})
 
@@ -199,22 +199,22 @@ var _ = Describe("Executor", func() {
 					MemoryMB: 10,
 					DiskMB:   1024,
 					Actions: []models.ExecutorAction{
-						{Action: models.RunAction{Script: inigoserver.CurlCommand(guid)}},
+						{Action: models.RunAction{Script: inigo_server.CurlCommand(guid)}},
 						{Action: models.RunAction{Script: `ruby -e 'arr = "m"*1024*1024*100'`}},
-						{Action: models.RunAction{Script: inigoserver.CurlCommand(otherGuid)}},
+						{Action: models.RunAction{Script: inigo_server.CurlCommand(otherGuid)}},
 					},
 				}
 
 				bbs.DesireRunOnce(runOnce)
 
-				Eventually(inigoserver.ReportingGuids, 5.0).Should(ContainElement(guid))
+				Eventually(inigo_server.ReportingGuids, 5.0).Should(ContainElement(guid))
 
 				Eventually(bbs.GetAllCompletedRunOnces, 5.0).Should(HaveLen(1))
 				runOnces, _ := bbs.GetAllCompletedRunOnces()
 				Ω(runOnces[0].Failed).Should(BeTrue())
 				Ω(runOnces[0].FailureReason).Should(ContainSubstring("out of memory"))
 
-				Ω(inigoserver.ReportingGuids()).ShouldNot(ContainElement(otherGuid))
+				Ω(inigo_server.ReportingGuids()).ShouldNot(ContainElement(otherGuid))
 			})
 		})
 
@@ -248,14 +248,14 @@ var _ = Describe("Executor", func() {
 					MemoryMB: 1024,
 					DiskMB:   1024,
 					Actions: []models.ExecutorAction{
-						{Action: models.RunAction{Script: inigoserver.CurlCommand(guid)}},
+						{Action: models.RunAction{Script: inigo_server.CurlCommand(guid)}},
 						{Action: models.RunAction{Script: `sleep 0.8`, Timeout: 500 * time.Millisecond}},
 					},
 				}
 
 				bbs.DesireRunOnce(runOnce)
 
-				Eventually(inigoserver.ReportingGuids, 5.0).Should(ContainElement(guid))
+				Eventually(inigo_server.ReportingGuids, 5.0).Should(ContainElement(guid))
 				Eventually(bbs.GetAllCompletedRunOnces, 5.0).Should(HaveLen(1))
 				runOnces, _ := bbs.GetAllCompletedRunOnces()
 				Ω(runOnces[0].Failed).Should(BeTrue())
@@ -270,7 +270,7 @@ var _ = Describe("Executor", func() {
 			executorRunner.Start()
 
 			guid = factories.GenerateGuid()
-			inigoserver.UploadFileString("curling.sh", inigoserver.CurlCommand(guid))
+			inigo_server.UploadFileString("curling.sh", inigo_server.CurlCommand(guid))
 		})
 
 		It("downloads the file", func() {
@@ -280,18 +280,18 @@ var _ = Describe("Executor", func() {
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
-					{Action: models.DownloadAction{From: inigoserver.DownloadUrl("curling.sh"), To: "curling.sh", Extract: false}},
+					{Action: models.DownloadAction{From: inigo_server.DownloadUrl("curling.sh"), To: "curling.sh", Extract: false}},
 					{Action: models.RunAction{Script: "bash curling.sh"}},
 				},
 			}
 
 			bbs.DesireRunOnce(runOnce)
 
-			Eventually(inigoserver.ReportingGuids, 5.0).Should(ContainElement(guid))
+			Eventually(inigo_server.ReportingGuids, 5.0).Should(ContainElement(guid))
 		})
 	})
 
-	Describe("Uploading a file", func() {
+	Describe("Uploading from the container", func() {
 		var guid string
 		BeforeEach(func() {
 			executorRunner.Start()
@@ -299,7 +299,7 @@ var _ = Describe("Executor", func() {
 			guid = factories.GenerateGuid()
 		})
 
-		It("uploads the file", func() {
+		It("uploads a tarball containing the specified files", func() {
 			runOnce := &models.RunOnce{
 				Guid:     factories.GenerateGuid(),
 				Stack:    executorRunner.Config.Stack,
@@ -307,15 +307,24 @@ var _ = Describe("Executor", func() {
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
 					{Action: models.RunAction{Script: `echo "tasty thingy" > thingy`}},
-					{Action: models.UploadAction{From: "thingy", To: inigoserver.UploadUrl("thingy")}},
-					{Action: models.RunAction{Script: inigoserver.CurlCommand(guid)}},
+					{Action: models.UploadAction{From: "thingy", To: inigo_server.UploadUrl("thingy")}},
+					{Action: models.RunAction{Script: inigo_server.CurlCommand(guid)}},
 				},
 			}
 
 			bbs.DesireRunOnce(runOnce)
 
-			Eventually(inigoserver.ReportingGuids, 5.0).Should(ContainElement(guid))
-			Ω(inigoserver.DownloadFileString("thingy")).Should(Equal("tasty thingy\n"))
+			Eventually(inigo_server.ReportingGuids, 5.0).Should(ContainElement(guid))
+
+			downloadStream := inigo_server.DownloadFile("thingy")
+
+			gw, err := gzip.NewReader(downloadStream)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			tw := tar.NewReader(gw)
+
+			_, err = tw.Next()
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 	})
 

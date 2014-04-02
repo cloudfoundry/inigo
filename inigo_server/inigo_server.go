@@ -1,4 +1,4 @@
-package inigoserver
+package inigo_server
 
 import (
 	"encoding/json"
@@ -6,6 +6,7 @@ import (
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/vito/gordon"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -148,6 +149,13 @@ func UploadFile(filename string, filepath string) {
 	Ω(err).ShouldNot(HaveOccurred())
 	_, err = http.Post(UploadUrl(filename), "application/octet-stream", file)
 	Ω(err).ShouldNot(HaveOccurred())
+}
+
+func DownloadFile(filename string) io.Reader {
+	resp, err := http.Get(DownloadUrl(filename))
+	Ω(err).ShouldNot(HaveOccurred())
+
+	return resp.Body
 }
 
 func ReportingGuids() []string {

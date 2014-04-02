@@ -5,12 +5,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
-	"github.com/cloudfoundry-incubator/inigo/loggredile"
-	"github.com/fraenkel/candiedyaml"
-	"github.com/vito/cmdtest"
 	"io"
 	"io/ioutil"
 	"time"
+
+	"github.com/cloudfoundry-incubator/inigo/loggredile"
+	"github.com/fraenkel/candiedyaml"
+	"github.com/vito/cmdtest"
 
 	"github.com/cloudfoundry-incubator/inigo/archiver"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
@@ -84,17 +85,19 @@ var _ = Describe("Stager", func() {
 			}
 
 			archiver.CreateZipArchive("/tmp/app.zip", appFiles)
-			inigoserver.UploadFile("app.zip", "/tmp/app.zip")
+			inigo_server.UploadFile("app.zip", "/tmp/app.zip")
 
 			//make and upload a buildpack
 			var adminBuildpackFiles = []archiver.ArchiveFile{
 				{"bin/detect", `#!/bin/bash
-				echo My Buildpack
+echo My Buildpack
 				`},
 				{"bin/compile", `#!/bin/bash
-				echo COMPILING BUILDPACK
-				echo $SOME_STAGING_ENV
-				touch $1/compiled
+echo $1 $2
+echo COMPILING BUILDPACK
+echo $SOME_STAGING_ENV
+touch $1/compiled
+touch $2/inserted-into-artifacts-cache
 				`},
 				{"bin/release", `#!/bin/bash
 cat <<EOF
@@ -105,7 +108,7 @@ EOF
 				`},
 			}
 			archiver.CreateZipArchive("/tmp/admin_buildpack.zip", adminBuildpackFiles)
-			inigoserver.UploadFile("admin_buildpack.zip", "/tmp/admin_buildpack.zip")
+			inigo_server.UploadFile("admin_buildpack.zip", "/tmp/admin_buildpack.zip")
 
 			var bustedAdminBuildpackFiles = []archiver.ArchiveFile{
 				{"bin/detect", `#!/bin/bash]
@@ -116,14 +119,14 @@ EOF
 			}
 
 			archiver.CreateZipArchive("/tmp/busted_admin_buildpack.zip", bustedAdminBuildpackFiles)
-			inigoserver.UploadFile("busted_admin_buildpack.zip", "/tmp/busted_admin_buildpack.zip")
+			inigo_server.UploadFile("busted_admin_buildpack.zip", "/tmp/busted_admin_buildpack.zip")
 
 			var buildArtifacts = []archiver.ArchiveFile{
-				{"a", "some contents for a"},
+				{"pulled-down-from-artifacts-cache", "some-contents-for-pulled-down-file"},
 			}
 
-			archiver.CreateTarGZArchive("/tmp/build_artifacts.tar.gz", buildArtifacts)
-			inigoserver.UploadFile("build_artifacts.tar.gz", "/tmp/build_artifacts.tar.gz")
+			archiver.CreateTarGZArchive("/tmp/artifacts.tgz", buildArtifacts)
+			inigo_server.UploadFile("artifacts.tgz", "/tmp/artifacts.tgz")
 		})
 
 		JustBeforeEach(func() {
@@ -142,10 +145,10 @@ EOF
 						"buildpacks" : [{ "key": "test-buildpack", "url": "%s" }],
 						"environment": [["SOME_STAGING_ENV", "%s"]]
 					}`,
-					inigoserver.DownloadUrl("app.zip"),
-					inigoserver.DownloadUrl("artifacts.tgz"),
-					inigoserver.UploadUrl("artifacts.tgz"),
-					inigoserver.DownloadUrl(buildpackToUse),
+					inigo_server.DownloadUrl("app.zip"),
+					inigo_server.DownloadUrl("artifacts.tgz"),
+					inigo_server.UploadUrl("uploaded-artifacts.tgz"),
+					inigo_server.DownloadUrl(buildpackToUse),
 					outputGuid,
 				),
 			)
@@ -200,6 +203,31 @@ EOF
 				}).Should(ContainSubstring("COMPILING BUILDPACK"))
 				Ω(logOutput).Should(ContainSubstring(outputGuid))
 
+				// Assert that the build artifacts cache was downloaded
+
+				// Assert that the build artifacts cache was uploaded again
+				artifactsCache, err := gzip.NewReader(inigo_server.DownloadFile("uploaded-artifacts.tgz"))
+				Ω(err).ShouldNot(HaveOccurred())
+
+				untarredBuildArtifactsData := tar.NewReader(artifactsCache)
+				buildArtifactContents := map[string][]byte{}
+				for {
+					hdr, err := untarredBuildArtifactsData.Next()
+					if err == io.EOF {
+						break
+					}
+
+					Ω(err).ShouldNot(HaveOccurred())
+
+					content, err := ioutil.ReadAll(untarredBuildArtifactsData)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					buildArtifactContents[hdr.Name] = content
+				}
+
+				Ω(buildArtifactContents).Should(HaveKey("pulled-down-from-artifacts-cache"))
+				Ω(buildArtifactContents).Should(HaveKey("inserted-into-artifacts-cache"))
+
 				//Fetch the compiled droplet from the fakeCC
 				dropletData, ok := fakeCC.UploadedDroplets["some-app-guid"]
 				Ω(ok).Should(BeTrue())
@@ -226,19 +254,18 @@ EOF
 				}
 
 				//Assert the droplet has the right files in it
-				Ω(dropletContents).Should(HaveKey("./"))
-				Ω(dropletContents).Should(HaveKey("./staging_info.yml"))
-				Ω(dropletContents).Should(HaveKey("./logs/"))
-				Ω(dropletContents).Should(HaveKey("./tmp/"))
-				Ω(dropletContents).Should(HaveKey("./app/"))
-				Ω(dropletContents).Should(HaveKey("./app/my-app"))
-				Ω(dropletContents).Should(HaveKey("./app/compiled"))
+				Ω(dropletContents).Should(HaveKey("staging_info.yml"))
+				Ω(dropletContents).Should(HaveKey("logs/"))
+				Ω(dropletContents).Should(HaveKey("tmp/"))
+				Ω(dropletContents).Should(HaveKey("app/"))
+				Ω(dropletContents).Should(HaveKey("app/my-app"))
+				Ω(dropletContents).Should(HaveKey("app/compiled"))
 
 				//Assert the files contain the right content
-				Ω(string(dropletContents["./app/my-app"])).Should(Equal("scooby-doo"))
+				Ω(string(dropletContents["app/my-app"])).Should(Equal("scooby-doo"))
 
 				//In particular, staging_info.yml should have the correct detected_buildpack and start_command
-				yamlDecoder := candiedyaml.NewDecoder(bytes.NewReader(dropletContents["./staging_info.yml"]))
+				yamlDecoder := candiedyaml.NewDecoder(bytes.NewReader(dropletContents["staging_info.yml"]))
 				stagingInfo := map[string]string{}
 				err = yamlDecoder.Decode(&stagingInfo)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -247,7 +274,7 @@ EOF
 				Ω(stagingInfo["start_command"]).Should(Equal("start-command"))
 
 				//Assert nothing else crept into the droplet
-				Ω(dropletContents).Should(HaveLen(7))
+				Ω(dropletContents).Should(HaveLen(6))
 			})
 
 			Context("when compilation fails", func() {

@@ -45,7 +45,8 @@ func CreateTarGZArchive(filename string, files []ArchiveFile) {
 	file, err := os.Create(filename)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	w := tar.NewWriter(gzip.NewWriter(file))
+	gw := gzip.NewWriter(file)
+	w := tar.NewWriter(gw)
 
 	for _, file := range files {
 		header := &tar.Header{
@@ -62,6 +63,9 @@ func CreateTarGZArchive(filename string, files []ArchiveFile) {
 	}
 
 	err = w.Close()
+	Ω(err).ShouldNot(HaveOccurred())
+
+	err = gw.Close()
 	Ω(err).ShouldNot(HaveOccurred())
 
 	err = file.Close()
