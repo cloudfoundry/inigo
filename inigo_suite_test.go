@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -29,6 +30,9 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
 	"github.com/pivotal-cf-experimental/garden/integration/garden_runner"
 )
+
+var SHORT_TIMEOUT = 5.0
+var LONG_TIMEOUT = 10.0
 
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
 
@@ -59,6 +63,21 @@ var fileServerPort int
 var smelterZipPath string
 
 func TestInigo(t *testing.T) {
+	var err error
+	if os.Getenv("SHORT_TIMEOUT") != "" {
+		SHORT_TIMEOUT, err = strconv.ParseFloat(os.Getenv("SHORT_TIMEOUT"), 64)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	if os.Getenv("LONG_TIMEOUT") != "" {
+		LONG_TIMEOUT, err = strconv.ParseFloat(os.Getenv("LONG_TIMEOUT"), 64)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	registerSignalHandler()
 	RegisterFailHandler(Fail)
 

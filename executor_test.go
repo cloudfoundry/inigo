@@ -74,7 +74,7 @@ var _ = Describe("Executor", func() {
 
 			bbs.DesireRunOnce(existingRunOnce)
 
-			Eventually(inigo_server.ReportingGuids, 5.0).Should(ContainElement(existingGuid))
+			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(existingGuid))
 
 			executorRunner.Stop()
 		})
@@ -125,12 +125,12 @@ var _ = Describe("Executor", func() {
 			firstGuyRunOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(firstGuyGuid)+"; sleep 5")
 			bbs.DesireRunOnce(firstGuyRunOnce)
 
-			Eventually(inigo_server.ReportingGuids, 5.0).Should(ContainElement(firstGuyGuid))
+			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(firstGuyGuid))
 
 			secondGuyRunOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(secondGuyGuid))
 			bbs.DesireRunOnce(secondGuyRunOnce)
 
-			Consistently(inigo_server.ReportingGuids, 2.0).ShouldNot(ContainElement(secondGuyGuid))
+			Consistently(inigo_server.ReportingGuids, SHORT_TIMEOUT).ShouldNot(ContainElement(secondGuyGuid))
 		})
 	})
 
@@ -151,8 +151,8 @@ var _ = Describe("Executor", func() {
 			bbs.DesireRunOnce(matchingRunOnce)
 			bbs.DesireRunOnce(nonMatchingRunOnce)
 
-			Consistently(inigo_server.ReportingGuids, 2.0).ShouldNot(ContainElement(nonMatchingGuid), "Did not expect to see this app running, as it has the wrong stack.")
-			Eventually(inigo_server.ReportingGuids, 5.0).Should(ContainElement(matchingGuid))
+			Consistently(inigo_server.ReportingGuids, SHORT_TIMEOUT).ShouldNot(ContainElement(nonMatchingGuid), "Did not expect to see this app running, as it has the wrong stack.")
+			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(matchingGuid))
 		})
 	})
 
@@ -181,7 +181,7 @@ var _ = Describe("Executor", func() {
 
 			bbs.DesireRunOnce(runOnce)
 
-			Eventually(bbs.GetAllCompletedRunOnces, 5.0).Should(HaveLen(1))
+			Eventually(bbs.GetAllCompletedRunOnces, LONG_TIMEOUT).Should(HaveLen(1))
 
 			runOnces, _ := bbs.GetAllCompletedRunOnces()
 			Ω(runOnces[0].FailureReason).Should(BeEmpty())
@@ -207,9 +207,9 @@ var _ = Describe("Executor", func() {
 
 				bbs.DesireRunOnce(runOnce)
 
-				Eventually(inigo_server.ReportingGuids, 5.0).Should(ContainElement(guid))
+				Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 
-				Eventually(bbs.GetAllCompletedRunOnces, 5.0).Should(HaveLen(1))
+				Eventually(bbs.GetAllCompletedRunOnces, LONG_TIMEOUT).Should(HaveLen(1))
 				runOnces, _ := bbs.GetAllCompletedRunOnces()
 				Ω(runOnces[0].Failed).Should(BeTrue())
 				Ω(runOnces[0].FailureReason).Should(ContainSubstring("out of memory"))
@@ -233,7 +233,7 @@ var _ = Describe("Executor", func() {
 
 				bbs.DesireRunOnce(runOnce)
 
-				Eventually(bbs.GetAllCompletedRunOnces, 5.0).Should(HaveLen(1))
+				Eventually(bbs.GetAllCompletedRunOnces, LONG_TIMEOUT).Should(HaveLen(1))
 				runOnces, _ := bbs.GetAllCompletedRunOnces()
 				Ω(runOnces[0].Failed).Should(BeTrue())
 				Ω(runOnces[0].FailureReason).Should(ContainSubstring("127"))
@@ -255,8 +255,8 @@ var _ = Describe("Executor", func() {
 
 				bbs.DesireRunOnce(runOnce)
 
-				Eventually(inigo_server.ReportingGuids, 5.0).Should(ContainElement(guid))
-				Eventually(bbs.GetAllCompletedRunOnces, 5.0).Should(HaveLen(1))
+				Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
+				Eventually(bbs.GetAllCompletedRunOnces, LONG_TIMEOUT).Should(HaveLen(1))
 				runOnces, _ := bbs.GetAllCompletedRunOnces()
 				Ω(runOnces[0].Failed).Should(BeTrue())
 				Ω(runOnces[0].FailureReason).Should(ContainSubstring("timed out"))
@@ -287,7 +287,7 @@ var _ = Describe("Executor", func() {
 
 			bbs.DesireRunOnce(runOnce)
 
-			Eventually(inigo_server.ReportingGuids, 5.0).Should(ContainElement(guid))
+			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 		})
 	})
 
@@ -314,7 +314,7 @@ var _ = Describe("Executor", func() {
 
 			bbs.DesireRunOnce(runOnce)
 
-			Eventually(inigo_server.ReportingGuids, 5.0).Should(ContainElement(guid))
+			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 
 			downloadStream := inigo_server.DownloadFile("thingy")
 
@@ -347,7 +347,7 @@ var _ = Describe("Executor", func() {
 
 			bbs.DesireRunOnce(runOnce)
 
-			Eventually(bbs.GetAllCompletedRunOnces, 5.0).Should(HaveLen(1))
+			Eventually(bbs.GetAllCompletedRunOnces, LONG_TIMEOUT).Should(HaveLen(1))
 
 			runOnces, _ := bbs.GetAllCompletedRunOnces()
 			Ω(runOnces[0].Result).Should(Equal("tasty thingy\n"))
@@ -396,6 +396,6 @@ var _ = Describe("Executor", func() {
 
 			close(stop)
 			close(done)
-		}, 10.0)
+		}, LONG_TIMEOUT)
 	})
 })

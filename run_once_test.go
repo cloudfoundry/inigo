@@ -29,7 +29,7 @@ var _ = Describe("RunOnce", func() {
 			runOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
 			bbs.DesireRunOnce(runOnce)
 
-			Eventually(inigo_server.ReportingGuids, 5.0).Should(ContainElement(guid))
+			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 		})
 	})
 
@@ -41,7 +41,7 @@ var _ = Describe("RunOnce", func() {
 
 			executorRunner.Start()
 
-			Eventually(inigo_server.ReportingGuids, 5.0).Should(ContainElement(guid))
+			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 		})
 	})
 
@@ -91,14 +91,14 @@ var _ = Describe("RunOnce", func() {
 			guid := factories.GenerateGuid()
 			runOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(guid)+"; sleep 10")
 			bbs.DesireRunOnce(runOnce)
-			Eventually(inigo_server.ReportingGuids, 5.0).Should(ContainElement(guid))
+			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 
 			secondExecutor.KillWithFire()
 
 			Eventually(func() interface{} {
 				runOnces, _ := bbs.GetAllCompletedRunOnces()
 				return runOnces
-			}, 5.0).Should(HaveLen(1))
+			}, LONG_TIMEOUT).Should(HaveLen(1))
 			runOnces, _ := bbs.GetAllCompletedRunOnces()
 
 			completedRunOnce := runOnces[0]
