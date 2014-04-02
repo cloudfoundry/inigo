@@ -11,11 +11,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "25c02e2862c3a2d69fb678e75960d2024aeb97c2"
+			"Rev": "8011ae7022668069086a4ea1b786e9909e6d4d03"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "25c02e2862c3a2d69fb678e75960d2024aeb97c2"
+			"Rev": "8011ae7022668069086a4ea1b786e9909e6d4d03"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -40,11 +40,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/loggregatorlib/logmessage",
-			"Rev": "feb1e919de2e2a2b3855400e667655e4a39ca804"
+			"Rev": "08f7e66ba7b35ce738966c7d87597fd5175c66e3"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/loggregatorlib/signature",
-			"Rev": "feb1e919de2e2a2b3855400e667655e4a39ca804"
+			"Rev": "08f7e66ba7b35ce738966c7d87597fd5175c66e3"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
@@ -81,7 +81,7 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-cf-experimental/garden/integration/garden_runner",
-			"Rev": "a22cdd03e40190482a3de1fc625b42f107ea2b74"
+			"Rev": "ec31fb9852e160ed930821746bc5052bd164f771"
 		},
 		{
 			"ImportPath": "github.com/vito/cmdtest",
