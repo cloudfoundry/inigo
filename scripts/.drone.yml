@@ -3,6 +3,8 @@ image: cloudfoundry/inigo-ci
 env:
   - GOROOT=/usr/local/go
   - GINKGO_PARALLEL=true
+  - SHORT_TIMEOUT=2.0
+  - LONG_TIMEOUT=5.0
 
 script:
   - ./src/github.com/cloudfoundry-incubator/inigo/scripts/dev-test-inner
