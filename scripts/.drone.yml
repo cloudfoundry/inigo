@@ -2,6 +2,7 @@ image: cloudfoundry/inigo-ci
 
 env:
   - GOROOT=/usr/local/go
+  - GINKGO_PARALLEL=true
 
 script:
   - ./src/github.com/cloudfoundry-incubator/inigo/scripts/dev-test-inner
