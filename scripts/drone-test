@@ -4,14 +4,14 @@ set -e -x
 
 FIRST_GOPATH=`echo $GOPATH | cut -d':' -f1`
 
-pushd $FIRST_GOPATH/src/github.com/pivotal-cf-experimental/garden
+pushd $FIRST_GOPATH/src/github.com/cloudfoundry-incubator/warden-linux
   make # compile wshd/etc.
-  export GARDEN_BINPATH=$PWD/linux_backend/bin
+  export WARDEN_BINPATH=$PWD/linux_backend/bin
 popd
 
 go install github.com/onsi/ginkgo/ginkgo
 
-export GARDEN_ROOTFS=/opt/warden/rootfs
+export WARDEN_ROOTFS=/opt/warden/rootfs
 
 pushd $FIRST_GOPATH/src/github.com/cloudfoundry-incubator/inigo
   if [ "$GINKGO_PARALLEL" = "true" ]; then

@@ -1,8 +1,9 @@
 package inigo_test
 
 import (
-	"github.com/cloudfoundry/gunk/timeprovider"
 	"time"
+
+	"github.com/cloudfoundry/gunk/timeprovider"
 
 	"github.com/cloudfoundry-incubator/inigo/executor_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
@@ -76,8 +77,8 @@ var _ = Describe("RunOnce", func() {
 		BeforeEach(func() {
 			secondExecutor = executor_runner.New(
 				executorPath,
-				gardenRunner.Network,
-				gardenRunner.Addr,
+				wardenRunner.Network,
+				wardenRunner.Addr,
 				etcdRunner.NodeURLS(),
 				"",
 				"",

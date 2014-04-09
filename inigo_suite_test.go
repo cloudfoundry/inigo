@@ -29,7 +29,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/inigo/loggregator_runner"
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
-	"github.com/pivotal-cf-experimental/garden/integration/garden_runner"
+	WardenRunner "github.com/cloudfoundry-incubator/warden-linux/integration/runner"
 )
 
 var SHORT_TIMEOUT = 5.0
@@ -37,8 +37,8 @@ var LONG_TIMEOUT = 10.0
 
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
 
-var gardenRunner *garden_runner.GardenRunner
-var gardenAddr = filepath.Join(os.TempDir(), "garden-temp-socker", "warden.sock")
+var wardenRunner *WardenRunner.Runner
+var wardenAddr = filepath.Join(os.TempDir(), "warden-temp-socker", "warden.sock")
 var wardenClient gordon.Client
 
 var natsRunner *natsrunner.NATSRunner
@@ -84,14 +84,14 @@ func TestInigo(t *testing.T) {
 
 	startUpFakeCC()
 	setUpEtcd()
-	setupGarden()
+	setupWarden()
 	setUpNats()
 	setUpLoggregator()
 	setUpExecutor()
 	setUpStager()
 	compileAndZipUpSmelter()
 	setUpFileServer()
-	connectToGarden()
+	connectToWarden()
 
 	BeforeEach(func() {
 		fakeCC.Reset()
@@ -144,50 +144,50 @@ func setUpEtcd() {
 	})
 }
 
-func setupGarden() {
-	gardenBinPath := os.Getenv("GARDEN_BINPATH")
-	gardenRootfs := os.Getenv("GARDEN_ROOTFS")
+func setupWarden() {
+	wardenBinPath := os.Getenv("WARDEN_BINPATH")
+	wardenRootfs := os.Getenv("WARDEN_ROOTFS")
 
-	if gardenBinPath == "" || gardenRootfs == "" {
+	if wardenBinPath == "" || wardenRootfs == "" {
 		println("Please define either WARDEN_NETWORK and WARDEN_ADDR (for a running Warden), or")
-		println("GARDEN_BINPATH and GARDEN_ROOTFS (for the tests to start it)")
+		println("WARDEN_BINPATH and WARDEN_ROOTFS (for the tests to start it)")
 		println("")
-		failFast("garden is not set up")
+		failFast("warden is not set up")
 		return
 	}
 	var err error
 
-	err = os.MkdirAll(filepath.Dir(gardenAddr), 0700)
+	err = os.MkdirAll(filepath.Dir(wardenAddr), 0700)
 	if err != nil {
 		failFast(err.Error())
 	}
 
-	gardenPath, err := cmdtest.BuildIn(os.Getenv("GARDEN_GOPATH"), "github.com/pivotal-cf-experimental/garden", "-race")
+	wardenPath, err := cmdtest.BuildIn(os.Getenv("WARDEN_GOPATH"), "github.com/cloudfoundry-incubator/warden-linux", "-race")
 	if err != nil {
-		failFast("failed to compile garden:", err)
+		failFast("failed to compile warden:", err)
 	}
 
-	gardenRunner, err = garden_runner.New(gardenPath, gardenBinPath, gardenRootfs, "unix", gardenAddr)
+	wardenRunner, err = WardenRunner.New(wardenPath, wardenBinPath, wardenRootfs, "unix", wardenAddr)
 	if err != nil {
-		failFast("garden failed to initialize: " + err.Error())
+		failFast("warden failed to initialize: " + err.Error())
 	}
 
-	gardenRunner.SnapshotsPath = ""
+	wardenRunner.SnapshotsPath = ""
 }
 
-func connectToGarden() {
+func connectToWarden() {
 	var err error
 	if config.GinkgoConfig.ParallelNode == 1 {
-		err = gardenRunner.Start()
+		err = wardenRunner.Start()
 	} else {
-		err = gardenRunner.WaitForStart()
+		err = wardenRunner.WaitForStart()
 	}
 
 	if err != nil {
-		failFast("garden failed to start: " + err.Error())
+		failFast("warden failed to start: " + err.Error())
 	}
 
-	wardenClient = gardenRunner.NewClient()
+	wardenClient = wardenRunner.NewClient()
 
 	err = wardenClient.Connect()
 	if err != nil {
@@ -238,8 +238,8 @@ func setUpExecutor() {
 	BeforeEach(func() {
 		executorRunner = executor_runner.New(
 			executorPath,
-			gardenRunner.Network,
-			gardenRunner.Addr,
+			wardenRunner.Network,
+			wardenRunner.Addr,
 			etcdRunner.NodeURLS(),
 			fmt.Sprintf("127.0.0.1:%d", loggregatorPort),
 			loggregatorSharedSecret,
@@ -314,9 +314,9 @@ func cleanup() {
 	}
 
 	if config.GinkgoConfig.ParallelNode == 1 {
-		if gardenRunner != nil {
-			gardenRunner.TearDown()
-			gardenRunner.Stop()
+		if wardenRunner != nil {
+			wardenRunner.TearDown()
+			wardenRunner.Stop()
 		}
 	}
 
