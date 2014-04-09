@@ -13,7 +13,7 @@ export EXECUTOR_GOPATH=${GOPATH_ROOT}
 export STAGER_GOPATH=${GOPATH_ROOT}
 export FILE_SERVER_GOPATH=${GOPATH_ROOT}
 export LINUX_SMELTER_GOPATH=${GOPATH_ROOT}
-export WARDEN_GOPATH=${GOPATH_ROOT}
+export WARDEN_LINUX_GOPATH=${GOPATH_ROOT}
 
 # install application dependencies
 for package in github.com/coreos/etcd github.com/apcera/gnatsd; do

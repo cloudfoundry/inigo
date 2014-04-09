@@ -162,7 +162,7 @@ func setupWarden() {
 		failFast(err.Error())
 	}
 
-	wardenPath, err := cmdtest.BuildIn(os.Getenv("WARDEN_GOPATH"), "github.com/cloudfoundry-incubator/warden-linux", "-race")
+	wardenPath, err := cmdtest.BuildIn(os.Getenv("WARDEN_LINUX_GOPATH"), "github.com/cloudfoundry-incubator/warden-linux", "-race")
 	if err != nil {
 		failFast("failed to compile warden:", err)
 	}
