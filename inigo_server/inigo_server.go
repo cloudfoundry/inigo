@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
-	"github.com/vito/gordon"
+	"github.com/cloudfoundry-incubator/gordon"
 	"io"
 	"io/ioutil"
 	"net/http"

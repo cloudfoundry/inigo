@@ -10,6 +10,10 @@
 			"Rev": "0e301d071c68f427f50988c544009278edece86e"
 		},
 		{
+			"ImportPath": "github.com/cloudfoundry-incubator/gordon",
+			"Rev": "0a7276b5a890d335729c1ca0c015278bc0ba4bea"
+		},
+		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
 			"Rev": "1254f3ba5b64033bb18da0971dde78d8c77491ef"
 		},
@@ -19,7 +23,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",
-			"Rev": "206d0c47fb6ac617392c858f89d1570029131d23"
+			"Rev": "888f872a7422c921666d6f937adf308194255630"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -86,10 +90,6 @@
 		{
 			"ImportPath": "github.com/vito/cmdtest",
 			"Rev": "c56fe40f700cbe87257137c14ae739c59897fc6b"
-		},
-		{
-			"ImportPath": "github.com/vito/gordon",
-			"Rev": "c2c5f384bd1bc3c081e62f1401e688a1fe6ddac5"
 		}
 	]
 }

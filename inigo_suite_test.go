@@ -21,7 +21,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/vito/cmdtest"
-	"github.com/vito/gordon"
+	"github.com/cloudfoundry-incubator/gordon"
 
 	"github.com/cloudfoundry-incubator/inigo/executor_runner"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
