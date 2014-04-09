@@ -334,15 +334,18 @@ EOF
 
 			It("only one returns a staging completed response", func() {
 				received := make(chan bool)
-				natsRunner.MessageBus.Subscribe("two-stagers-test", func(message *yagnats.Message) {
+
+				_, err := natsRunner.MessageBus.Subscribe("two-stagers-test", func(message *yagnats.Message) {
 					received <- true
 				})
+				Ω(err).ShouldNot(HaveOccurred())
 
-				natsRunner.MessageBus.PublishWithReplyTo(
+				err = natsRunner.MessageBus.PublishWithReplyTo(
 					"diego.staging.start",
 					"two-stagers-test",
 					stagingMessage,
 				)
+				Ω(err).ShouldNot(HaveOccurred())
 
 				Eventually(received, LONG_TIMEOUT).Should(Receive())
 				Consistently(received, SHORT_TIMEOUT).ShouldNot(Receive())
