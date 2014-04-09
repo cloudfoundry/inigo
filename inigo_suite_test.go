@@ -2,7 +2,6 @@ package inigo_test
 
 import (
 	"fmt"
-	"github.com/onsi/ginkgo/config"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -13,6 +12,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/onsi/ginkgo/config"
 
 	"github.com/cloudfoundry/gunk/natsrunner"
 
@@ -92,6 +93,30 @@ func TestInigo(t *testing.T) {
 	setUpFileServer()
 	connectToGarden()
 
+	BeforeEach(func() {
+		fakeCC.Reset()
+		etcdRunner.Start()
+		natsRunner.Start()
+		loggregatorRunner.Start()
+
+		inigo_server.Start(wardenClient)
+
+		currentTestDescription := CurrentGinkgoTestDescription()
+		fmt.Fprintf(GinkgoWriter, "\n%s\n%s\n\n", strings.Repeat("~", 50), currentTestDescription.FullTestText)
+	})
+
+	AfterEach(func() {
+		executorRunner.Stop()
+		stagerRunner.Stop()
+		fileServerRunner.Stop()
+
+		loggregatorRunner.Stop()
+		natsRunner.Stop()
+		etcdRunner.Stop()
+
+		inigo_server.Stop(wardenClient)
+	})
+
 	RunSpecs(t, "Inigo Integration Suite")
 
 	if config.GinkgoConfig.ParallelNode == 1 && config.GinkgoConfig.ParallelTotal > 1 {
@@ -103,37 +128,20 @@ func TestInigo(t *testing.T) {
 	cleanup()
 }
 
-var _ = BeforeEach(func() {
-	fakeCC.Reset()
-	etcdRunner.Start()
-	natsRunner.Start()
-	loggregatorRunner.Start()
-
-	inigo_server.Start(wardenClient)
-
-	currentTestDescription := CurrentGinkgoTestDescription()
-	fmt.Fprintf(GinkgoWriter, "\n%s\n%s\n\n", strings.Repeat("~", 50), currentTestDescription.FullTestText)
-})
-
-var _ = AfterEach(func() {
-	executorRunner.Stop()
-	stagerRunner.Stop()
-	fileServerRunner.Stop()
-
-	loggregatorRunner.Stop()
-	natsRunner.Stop()
-	etcdRunner.Stop()
-
-	inigo_server.Stop(wardenClient)
-})
-
 func startUpFakeCC() {
-	fakeCC = fake_cc.New()
-	fakeCCAddress = fakeCC.Start()
+	BeforeEach(func() {
+		fakeCC = fake_cc.New()
+		fakeCCAddress = fakeCC.Start()
+	})
 }
 
 func setUpEtcd() {
-	etcdRunner = etcdstorerunner.NewETCDClusterRunner(5001+config.GinkgoConfig.ParallelNode, 1)
+	BeforeEach(func() {
+		etcdRunner = etcdstorerunner.NewETCDClusterRunner(
+			5001+config.GinkgoConfig.ParallelNode,
+			1,
+		)
+	})
 }
 
 func setupGarden() {
@@ -190,7 +198,10 @@ func connectToGarden() {
 
 func setUpNats() {
 	natsPort = 4222 + config.GinkgoConfig.ParallelNode
-	natsRunner = natsrunner.NewNATSRunner(natsPort)
+
+	BeforeEach(func() {
+		natsRunner = natsrunner.NewNATSRunner(natsPort)
+	})
 }
 
 func setUpLoggregator() {
@@ -202,17 +213,19 @@ func setUpLoggregator() {
 		failFast("failed to compile loggregator:", err)
 	}
 
-	loggregatorRunner = loggregator_runner.New(
-		loggregatorPath,
-		loggregator_runner.Config{
-			IncomingPort:           loggregatorPort,
-			OutgoingPort:           8083 + config.GinkgoConfig.ParallelNode,
-			MaxRetainedLogMessages: 1000,
-			SharedSecret:           loggregatorSharedSecret,
-			NatsHost:               "127.0.0.1",
-			NatsPort:               natsPort,
-		},
-	)
+	BeforeEach(func() {
+		loggregatorRunner = loggregator_runner.New(
+			loggregatorPath,
+			loggregator_runner.Config{
+				IncomingPort:           loggregatorPort,
+				OutgoingPort:           8083 + config.GinkgoConfig.ParallelNode,
+				MaxRetainedLogMessages: 1000,
+				SharedSecret:           loggregatorSharedSecret,
+				NatsHost:               "127.0.0.1",
+				NatsPort:               natsPort,
+			},
+		)
+	})
 }
 
 func setUpExecutor() {
@@ -222,14 +235,16 @@ func setUpExecutor() {
 		failFast("failed to compile executor:", err)
 	}
 
-	executorRunner = executor_runner.New(
-		executorPath,
-		gardenRunner.Network,
-		gardenRunner.Addr,
-		etcdRunner.NodeURLS(),
-		fmt.Sprintf("127.0.0.1:%d", loggregatorPort),
-		loggregatorSharedSecret,
-	)
+	BeforeEach(func() {
+		executorRunner = executor_runner.New(
+			executorPath,
+			gardenRunner.Network,
+			gardenRunner.Addr,
+			etcdRunner.NodeURLS(),
+			fmt.Sprintf("127.0.0.1:%d", loggregatorPort),
+			loggregatorSharedSecret,
+		)
+	})
 }
 
 func setUpStager() {
@@ -239,11 +254,13 @@ func setUpStager() {
 		failFast("failed to compile stager:", err)
 	}
 
-	stagerRunner = stager_runner.New(
-		stagerPath,
-		etcdRunner.NodeURLS(),
-		[]string{fmt.Sprintf("127.0.0.1:%d", natsPort)},
-	)
+	BeforeEach(func() {
+		stagerRunner = stager_runner.New(
+			stagerPath,
+			etcdRunner.NodeURLS(),
+			[]string{fmt.Sprintf("127.0.0.1:%d", natsPort)},
+		)
+	})
 }
 
 func compileAndZipUpSmelter() {
@@ -276,7 +293,17 @@ func setUpFileServer() {
 	}
 
 	fileServerPort = 12760 + config.GinkgoConfig.ParallelNode
-	fileServerRunner = fileserver_runner.New(fileServerPath, fileServerPort, etcdRunner.NodeURLS(), fakeCCAddress, fake_cc.CC_USERNAME, fake_cc.CC_PASSWORD)
+
+	BeforeEach(func() {
+		fileServerRunner = fileserver_runner.New(
+			fileServerPath,
+			fileServerPort,
+			etcdRunner.NodeURLS(),
+			fakeCCAddress,
+			fake_cc.CC_USERNAME,
+			fake_cc.CC_PASSWORD,
+		)
+	})
 }
 
 func cleanup() {
