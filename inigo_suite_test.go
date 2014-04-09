@@ -28,6 +28,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/fileserver_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/inigo/loggregator_runner"
+	"github.com/cloudfoundry-incubator/inigo/servistry_runner"
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
 	WardenRunner "github.com/cloudfoundry-incubator/warden-linux/integration/runner"
 )
@@ -53,6 +54,8 @@ var executorPath string
 
 var stagerRunner *stager_runner.StagerRunner
 var stagerPath string
+
+var servistryRunner *servistry_runner.ServistryRunner
 
 var fakeCC *fake_cc.FakeCC
 var fakeCCAddress string
@@ -89,6 +92,7 @@ func TestInigo(t *testing.T) {
 	setUpLoggregator()
 	setUpExecutor()
 	setUpStager()
+	setUpServistry()
 	compileAndZipUpSmelter()
 	setUpFileServer()
 	connectToWarden()
@@ -261,6 +265,19 @@ func setUpStager() {
 			[]string{fmt.Sprintf("127.0.0.1:%d", natsPort)},
 		)
 	})
+}
+
+func setUpServistry() {
+	servistryPath, err := cmdtest.BuildIn(os.Getenv("SERVISTRY_GOPATH"), "github.com/cloudfoundry-incubator/servistry", "-race")
+	if err != nil {
+		failFast("failed to compile servistry:", err)
+	}
+
+	servistryRunner = servistry_runner.New(
+		servistryPath,
+		etcdRunner.NodeURLS(),
+		[]string{fmt.Sprintf("127.0.0.1:%d", natsPort)},
+	)
 }
 
 func compileAndZipUpSmelter() {
