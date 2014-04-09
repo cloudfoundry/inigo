@@ -17,11 +17,11 @@ import (
 
 	"github.com/cloudfoundry/gunk/natsrunner"
 
+	"github.com/cloudfoundry-incubator/gordon"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/vito/cmdtest"
-	"github.com/cloudfoundry-incubator/gordon"
 
 	"github.com/cloudfoundry-incubator/inigo/executor_runner"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
@@ -273,11 +273,13 @@ func setUpServistry() {
 		failFast("failed to compile servistry:", err)
 	}
 
-	servistryRunner = servistry_runner.New(
-		servistryPath,
-		etcdRunner.NodeURLS(),
-		[]string{fmt.Sprintf("127.0.0.1:%d", natsPort)},
-	)
+	BeforeEach(func() {
+		servistryRunner = servistry_runner.New(
+			servistryPath,
+			etcdRunner.NodeURLS(),
+			[]string{fmt.Sprintf("127.0.0.1:%d", natsPort)},
+		)
+	})
 }
 
 func compileAndZipUpSmelter() {
