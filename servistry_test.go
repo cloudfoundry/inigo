@@ -17,7 +17,7 @@ func publishMessageToNats(name string, regMessage models.CCRegistrationMessage) 
 	Ω(err).ShouldNot(HaveOccurred())
 }
 
-var _ = FDescribe("Servistry", func() {
+var _ = Describe("Servistry", func() {
 
 	var bbs *Bbs.BBS
 	var ccUrl = "http://1.2.3.4:8080"
