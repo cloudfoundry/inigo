@@ -38,6 +38,10 @@ type StagerBBS interface {
 	GetAvailableFileServer() (string, error)
 }
 
+type MetricsBBS interface {
+	GetAllRunOnces() ([]*models.RunOnce, error)
+}
+
 type FileServerBBS interface {
 	MaintainFileServerPresence(
 		heartbeatInterval time.Duration,
@@ -64,6 +68,10 @@ func New(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider
 			timeProvider: timeProvider,
 		},
 
+		MetricsBBS: &metricsBBS{
+			store: store,
+		},
+
 		FileServerBBS: &fileServerBBS{
 			store: store,
 		},
@@ -81,5 +89,6 @@ type BBS struct {
 	StagerBBS
 	FileServerBBS
 	ServistryBBS
+	MetricsBBS
 	store storeadapter.StoreAdapter
 }
