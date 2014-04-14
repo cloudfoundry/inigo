@@ -2,7 +2,6 @@ package fake_cc
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"github.com/cloudfoundry/gunk/test_server"
 	"github.com/onsi/ginkgo"
@@ -29,8 +28,6 @@ const (
             }
         }
     `
-	buildArtifactFileName = "dependency.jar"
-	buildArtifactFileBody = "awesome dependency file stuff"
 )
 
 type FakeCC struct {
@@ -137,8 +134,10 @@ func (f *FakeCC) handleBuildArtifactsCacheDownloadRequest(w http.ResponseWriter,
 
 	w.WriteHeader(http.StatusOK)
 
+	contentLength := len(buildArtifactsCache)
+	w.Header().Set("Content-Length", strconv.Itoa(contentLength))
+	fmt.Fprintf(ginkgo.GinkgoWriter, "[FAKE CC] Responding with build artifacts cache for app-guid %s. Content-Length: %d\n", appGuid, contentLength)
+
 	buffer := bytes.NewBuffer(buildArtifactsCache)
-	w.Header().Set("Content-Length", strconv.Itoa(buffer.Len()))
-	decoder := base64.NewDecoder(base64.StdEncoding, buffer)
-	io.Copy(w, decoder)
+	io.Copy(w, buffer)
 }

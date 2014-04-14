@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"time"
 
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
@@ -22,8 +23,22 @@ import (
 	zip_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 )
 
+func downloadBuildArtifactsCache(appId string) []byte {
+	fileServerUrl := fmt.Sprintf("http://127.0.0.1:%d/build_artifacts/%s", fileServerPort, appId)
+	resp, err := http.Get(fileServerUrl)
+	Ω(err).ShouldNot(HaveOccurred())
+
+	Ω(resp.StatusCode).Should(Equal(http.StatusOK))
+
+	bytes, err := ioutil.ReadAll(resp.Body)
+	Ω(err).ShouldNot(HaveOccurred())
+
+	return bytes
+}
+
 var _ = Describe("Stager", func() {
 	var otherStagerRunner *stager_runner.StagerRunner
+	var appId = "some-app-id"
 
 	BeforeEach(func() {
 		fileServerRunner.Start()
@@ -49,14 +64,14 @@ var _ = Describe("Stager", func() {
 			natsRunner.MessageBus.PublishWithReplyTo(
 				"diego.staging.start",
 				"compiler-stagers-test",
-				[]byte(`{
-					"app_id": "some-app-guid",
+				[]byte(fmt.Sprintf(`{
+					"app_id": "%s",
 					"task_id": "some-task-id",
 					"app_bits_download_uri": "some-download-uri",
 					"build_artifacts_cache_download_uri": "artifacts-download-uri",
 					"build_artifacts_cache_upload_uri": "artifacts-upload-uri",
 					"stack": "no-compiler"
-				}`),
+				}`, appId)),
 			)
 
 			var receivedMessage *yagnats.Message
@@ -134,7 +149,7 @@ EOF
 			stagingMessage = []byte(
 				fmt.Sprintf(
 					`{
-						"app_id": "some-app-guid",
+						"app_id": "%s",
 						"task_id": "some-task-id",
 						"memory_mb": 128,
 						"disk_mb": 128,
@@ -144,6 +159,7 @@ EOF
 						"buildpacks" : [{ "key": "test-buildpack", "url": "%s" }],
 						"environment": [["SOME_STAGING_ENV", "%s"]]
 					}`,
+					appId,
 					inigo_server.DownloadUrl("app.zip"),
 					inigo_server.DownloadUrl(buildpackToUse),
 					outputGuid,
@@ -167,7 +183,7 @@ EOF
 				//stream logs
 				messages, stop := loggredile.StreamMessages(
 					loggregatorRunner.Config.OutgoingPort,
-					"/tail/?app=some-app-guid",
+					fmt.Sprintf("/tail/?app=%s", appId),
 				)
 				defer close(stop)
 
@@ -203,12 +219,12 @@ EOF
 				// Assert that the build artifacts cache was downloaded
 				//TODO: how do we test they were downloaded??
 
-				// Assert that the build artifacts cache was uploaded again
-				cacheData, ok := fakeCC.UploadedBuildArtifactsCaches["some-app-guid"]
-				Ω(ok).Should(BeTrue())
-				Ω(cacheData).ShouldNot(BeEmpty())
+				// Download the build artifacts cache from the file-server
+				buildArtifactsCacheBytes := downloadBuildArtifactsCache(appId)
+				Ω(buildArtifactsCacheBytes).ShouldNot(BeEmpty())
 
-				artifactsCache, err := gzip.NewReader(bytes.NewReader(cacheData))
+				// Assert that the downloaded build artifacts cache matches what the buildpack created
+				artifactsCache, err := gzip.NewReader(bytes.NewReader(buildArtifactsCacheBytes))
 				Ω(err).ShouldNot(HaveOccurred())
 
 				untarredBuildArtifactsData := tar.NewReader(artifactsCache)
@@ -231,7 +247,7 @@ EOF
 				Ω(buildArtifactContents).Should(HaveKey("inserted-into-artifacts-cache"))
 
 				//Fetch the compiled droplet from the fakeCC
-				dropletData, ok := fakeCC.UploadedDroplets["some-app-guid"]
+				dropletData, ok := fakeCC.UploadedDroplets[appId]
 				Ω(ok).Should(BeTrue())
 				Ω(dropletData).ShouldNot(BeEmpty())
 
@@ -293,7 +309,7 @@ EOF
 
 					messages, stop := loggredile.StreamMessages(
 						loggregatorRunner.Config.OutgoingPort,
-						"/tail/?app=some-app-guid",
+						fmt.Sprintf("/tail/?app=%s", appId),
 					)
 					defer close(stop)
 
