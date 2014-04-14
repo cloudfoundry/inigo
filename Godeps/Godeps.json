@@ -88,6 +88,10 @@
 			"Rev": "b017f5b84e91054313ed33ba2422e992c3b08626"
 		},
 		{
+			"ImportPath": "github.com/pivotal-golang/archiver/extractor/test_helper",
+			"Rev": "338bf2b31d42f9ff6f57e0944cf5628bdfee546c"
+		},
+		{
 			"ImportPath": "github.com/vito/cmdtest",
 			"Rev": "c56fe40f700cbe87257137c14ae739c59897fc6b"
 		}
