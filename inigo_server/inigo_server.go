@@ -3,9 +3,8 @@ package inigo_server
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/onsi/ginkgo/config"
-	. "github.com/onsi/gomega"
 	"github.com/cloudfoundry-incubator/gordon"
+	. "github.com/onsi/gomega"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -88,17 +87,9 @@ func Start(wardenClient gordon.Client) {
 
 	ipAddress = infoResponse.GetContainerIp()
 
-	_, stream, err := wardenClient.Run(handle, fmt.Sprintf("PORT=%d %s", containerPort, amazingRubyServer), gordon.ResourceLimits{})
+	_, _, err = wardenClient.Run(handle, fmt.Sprintf("PORT=%d %s", containerPort, amazingRubyServer), gordon.ResourceLimits{})
 	if err != nil {
 		panic(err)
-	}
-
-	if config.DefaultReporterConfig.Verbose {
-		go func() {
-			for response := range stream {
-				fmt.Printf("[InigoListener]: %s", response.GetData())
-			}
-		}()
 	}
 
 	Eventually(func() error {
