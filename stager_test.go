@@ -13,13 +13,13 @@ import (
 	"github.com/fraenkel/candiedyaml"
 	"github.com/vito/cmdtest"
 
-	"github.com/cloudfoundry-incubator/inigo/archiver"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	"github.com/cloudfoundry/yagnats"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	zip_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 )
 
 var _ = Describe("Stager", func() {
@@ -80,26 +80,32 @@ var _ = Describe("Stager", func() {
 			fileServerRunner.ServeFile("smelter.zip", smelterZipPath)
 
 			//make and upload an app
-			var appFiles = []archiver.ArchiveFile{
-				{"my-app", "scooby-doo"},
+			var appFiles = []zip_helper.ArchiveFile{
+				{Name: "my-app", Body: "scooby-doo"},
 			}
 
-			archiver.CreateZipArchive("/tmp/app.zip", appFiles)
+			zip_helper.CreateZipArchive("/tmp/app.zip", appFiles)
 			inigo_server.UploadFile("app.zip", "/tmp/app.zip")
 
 			//make and upload a buildpack
-			var adminBuildpackFiles = []archiver.ArchiveFile{
-				{"bin/detect", `#!/bin/bash
+			var adminBuildpackFiles = []zip_helper.ArchiveFile{
+				{
+					Name: "bin/detect",
+					Body: `#!/bin/bash
 echo My Buildpack
 				`},
-				{"bin/compile", `#!/bin/bash
+				{
+					Name: "bin/compile",
+					Body: `#!/bin/bash
 echo $1 $2
 echo COMPILING BUILDPACK
 echo $SOME_STAGING_ENV
 touch $1/compiled
 touch $2/inserted-into-artifacts-cache
 				`},
-				{"bin/release", `#!/bin/bash
+				{
+					Name: "bin/release",
+					Body: `#!/bin/bash
 cat <<EOF
 ---
 default_process_types:
@@ -107,18 +113,20 @@ default_process_types:
 EOF
 				`},
 			}
-			archiver.CreateZipArchive("/tmp/admin_buildpack.zip", adminBuildpackFiles)
+			zip_helper.CreateZipArchive("/tmp/admin_buildpack.zip", adminBuildpackFiles)
 			inigo_server.UploadFile("admin_buildpack.zip", "/tmp/admin_buildpack.zip")
 
-			var bustedAdminBuildpackFiles = []archiver.ArchiveFile{
-				{"bin/detect", `#!/bin/bash]
+			var bustedAdminBuildpackFiles = []zip_helper.ArchiveFile{
+				{
+					Name: "bin/detect",
+					Body: `#!/bin/bash]
 				exit 1
 				`},
-				{"bin/compile", `#!/bin/bash`},
-				{"bin/release", `#!/bin/bash`},
+				{Name: "bin/compile", Body: `#!/bin/bash`},
+				{Name: "bin/release", Body: `#!/bin/bash`},
 			}
 
-			archiver.CreateZipArchive("/tmp/busted_admin_buildpack.zip", bustedAdminBuildpackFiles)
+			zip_helper.CreateZipArchive("/tmp/busted_admin_buildpack.zip", bustedAdminBuildpackFiles)
 			inigo_server.UploadFile("busted_admin_buildpack.zip", "/tmp/busted_admin_buildpack.zip")
 		})
 
