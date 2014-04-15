@@ -13,7 +13,7 @@ func publishMessageToNats(name string, regMessage models.CCRegistrationMessage) 
 	msg, err := json.Marshal(regMessage)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	err = natsRunner.MessageBus.Publish(name, msg)
+	err = suiteContext.NatsRunner.MessageBus.Publish(name, msg)
 	Ω(err).ShouldNot(HaveOccurred())
 }
 
@@ -27,8 +27,8 @@ var _ = Describe("Servistry", func() {
 	}
 
 	BeforeEach(func() {
-		servistryRunner.Start()
-		bbs = Bbs.New(etcdRunner.Adapter(), timeprovider.NewTimeProvider())
+		suiteContext.ServistryRunner.Start()
+		bbs = Bbs.New(suiteContext.EtcdRunner.Adapter(), timeprovider.NewTimeProvider())
 	})
 
 	Describe("Register CC", func() {

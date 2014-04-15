@@ -24,7 +24,7 @@ import (
 )
 
 func downloadBuildArtifactsCache(appId string) []byte {
-	fileServerUrl := fmt.Sprintf("http://127.0.0.1:%d/build_artifacts/%s", fileServerPort, appId)
+	fileServerUrl := fmt.Sprintf("http://127.0.0.1:%d/build_artifacts/%s", suiteContext.FileServerPort, appId)
 	resp, err := http.Get(fileServerUrl)
 	Ω(err).ShouldNot(HaveOccurred())
 
@@ -41,27 +41,27 @@ var _ = Describe("Stager", func() {
 	var appId = "some-app-id"
 
 	BeforeEach(func() {
-		fileServerRunner.Start()
+		suiteContext.FileServerRunner.Start()
 		otherStagerRunner = stager_runner.New(
-			stagerPath,
-			etcdRunner.NodeURLS(),
-			[]string{fmt.Sprintf("127.0.0.1:%d", natsPort)},
+			suiteContext.SharedContext.StagerPath,
+			suiteContext.EtcdRunner.NodeURLS(),
+			[]string{fmt.Sprintf("127.0.0.1:%d", suiteContext.NatsPort)},
 		)
 	})
 
 	Context("when unable to find an appropriate compiler", func() {
 		BeforeEach(func() {
-			executorRunner.Start()
-			stagerRunner.Start()
+			suiteContext.ExecutorRunner.Start()
+			suiteContext.StagerRunner.Start()
 		})
 
 		It("returns an error", func() {
 			receivedMessages := make(chan *yagnats.Message)
-			natsRunner.MessageBus.Subscribe("compiler-stagers-test", func(message *yagnats.Message) {
+			suiteContext.NatsRunner.MessageBus.Subscribe("compiler-stagers-test", func(message *yagnats.Message) {
 				receivedMessages <- message
 			})
 
-			natsRunner.MessageBus.PublishWithReplyTo(
+			suiteContext.NatsRunner.MessageBus.PublishWithReplyTo(
 				"diego.staging.start",
 				"compiler-stagers-test",
 				[]byte(fmt.Sprintf(`{
@@ -87,12 +87,12 @@ var _ = Describe("Stager", func() {
 		var buildpackToUse string
 
 		BeforeEach(func() {
-			executorRunner.Start()
+			suiteContext.ExecutorRunner.Start()
 
 			buildpackToUse = "admin_buildpack.zip"
 			outputGuid = factories.GenerateGuid()
 
-			fileServerRunner.ServeFile("smelter.zip", smelterZipPath)
+			suiteContext.FileServerRunner.ServeFile("smelter.zip", suiteContext.SharedContext.SmelterZipPath)
 
 			//make and upload an app
 			var appFiles = []zip_helper.ArchiveFile{
@@ -169,20 +169,20 @@ EOF
 
 		Context("with one stager running", func() {
 			BeforeEach(func() {
-				stagerRunner.Start("--compilers", `{"default":"smelter.zip"}`)
+				suiteContext.StagerRunner.Start("--compilers", `{"default":"smelter.zip"}`)
 			})
 
 			It("runs the compiler on the executor with the correct environment variables, bits and log tag, and responds with the detected buildpack", func() {
 				//listen for NATS response
 				payloads := make(chan []byte)
 
-				natsRunner.MessageBus.Subscribe("stager-test", func(msg *yagnats.Message) {
+				suiteContext.NatsRunner.MessageBus.Subscribe("stager-test", func(msg *yagnats.Message) {
 					payloads <- msg.Payload
 				})
 
 				//stream logs
 				messages, stop := loggredile.StreamMessages(
-					loggregatorRunner.Config.OutgoingPort,
+					suiteContext.LoggregatorRunner.Config.OutgoingPort,
 					fmt.Sprintf("/tail/?app=%s", appId),
 				)
 				defer close(stop)
@@ -196,7 +196,7 @@ EOF
 				}()
 
 				//publish the staging message
-				err := natsRunner.MessageBus.PublishWithReplyTo(
+				err := suiteContext.NatsRunner.MessageBus.PublishWithReplyTo(
 					"diego.staging.start",
 					"stager-test",
 					stagingMessage,
@@ -247,7 +247,7 @@ EOF
 				Ω(buildArtifactContents).Should(HaveKey("inserted-into-artifacts-cache"))
 
 				//Fetch the compiled droplet from the fakeCC
-				dropletData, ok := fakeCC.UploadedDroplets[appId]
+				dropletData, ok := suiteContext.FakeCC.UploadedDroplets[appId]
 				Ω(ok).Should(BeTrue())
 				Ω(dropletData).ShouldNot(BeEmpty())
 
@@ -303,12 +303,12 @@ EOF
 				It("responds with the error, and no detected buildpack present", func() {
 					payloads := make(chan []byte)
 
-					natsRunner.MessageBus.Subscribe("stager-test", func(msg *yagnats.Message) {
+					suiteContext.NatsRunner.MessageBus.Subscribe("stager-test", func(msg *yagnats.Message) {
 						payloads <- msg.Payload
 					})
 
 					messages, stop := loggredile.StreamMessages(
-						loggregatorRunner.Config.OutgoingPort,
+						suiteContext.LoggregatorRunner.Config.OutgoingPort,
 						fmt.Sprintf("/tail/?app=%s", appId),
 					)
 					defer close(stop)
@@ -322,7 +322,7 @@ EOF
 						}
 					}()
 
-					err := natsRunner.MessageBus.PublishWithReplyTo(
+					err := suiteContext.NatsRunner.MessageBus.PublishWithReplyTo(
 						"diego.staging.start",
 						"stager-test",
 						stagingMessage,
@@ -342,7 +342,7 @@ EOF
 
 		Context("with two stagers running", func() {
 			BeforeEach(func() {
-				stagerRunner.Start("--compilers", `{"default":"smelter.zip"}`)
+				suiteContext.StagerRunner.Start("--compilers", `{"default":"smelter.zip"}`)
 				otherStagerRunner.Start("--compilers", `{"default":"smelter.zip"}`)
 			})
 
@@ -353,12 +353,12 @@ EOF
 			It("only one returns a staging completed response", func() {
 				received := make(chan bool)
 
-				_, err := natsRunner.MessageBus.Subscribe("two-stagers-test", func(message *yagnats.Message) {
+				_, err := suiteContext.NatsRunner.MessageBus.Subscribe("two-stagers-test", func(message *yagnats.Message) {
 					received <- true
 				})
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = natsRunner.MessageBus.PublishWithReplyTo(
+				err = suiteContext.NatsRunner.MessageBus.PublishWithReplyTo(
 					"diego.staging.start",
 					"two-stagers-test",
 					stagingMessage,

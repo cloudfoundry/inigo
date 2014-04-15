@@ -17,17 +17,17 @@ var _ = Describe("RunOnce", func() {
 	var bbs *Bbs.BBS
 
 	BeforeEach(func() {
-		bbs = Bbs.New(etcdRunner.Adapter(), timeprovider.NewTimeProvider())
+		bbs = Bbs.New(suiteContext.EtcdRunner.Adapter(), timeprovider.NewTimeProvider())
 	})
 
 	Context("when there is an executor running and a RunOnce is registered", func() {
 		BeforeEach(func() {
-			executorRunner.Start()
+			suiteContext.ExecutorRunner.Start()
 		})
 
 		It("eventually runs the RunOnce", func() {
 			guid := factories.GenerateGuid()
-			runOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
+			runOnce := factories.BuildRunOnceWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
 			bbs.DesireRunOnce(runOnce)
 
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
@@ -37,10 +37,10 @@ var _ = Describe("RunOnce", func() {
 	Context("when there are no executors listening when a RunOnce is registered", func() {
 		It("eventually runs the RunOnce once an executor comes up", func() {
 			guid := factories.GenerateGuid()
-			runOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
+			runOnce := factories.BuildRunOnceWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
 			bbs.DesireRunOnce(runOnce)
 
-			executorRunner.Start()
+			suiteContext.ExecutorRunner.Start()
 
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 		})
@@ -48,7 +48,7 @@ var _ = Describe("RunOnce", func() {
 
 	Context("when no one picks up the RunOnce", func() {
 		BeforeEach(func() {
-			executorRunner.Start(executor_runner.Config{
+			suiteContext.ExecutorRunner.Start(executor_runner.Config{
 				Stack:               "mickey-mouse",
 				TimeToClaim:         1 * time.Second,
 				ConvergenceInterval: 1 * time.Second,
@@ -57,7 +57,7 @@ var _ = Describe("RunOnce", func() {
 
 		It("should be marked as failed, eventually", func() {
 			guid := factories.GenerateGuid()
-			runOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
+			runOnce := factories.BuildRunOnceWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
 			runOnce.Stack = "donald-duck"
 			bbs.DesireRunOnce(runOnce)
 
@@ -76,21 +76,21 @@ var _ = Describe("RunOnce", func() {
 
 		BeforeEach(func() {
 			secondExecutor = executor_runner.New(
-				executorPath,
-				wardenRunner.Network,
-				wardenRunner.Addr,
-				etcdRunner.NodeURLS(),
+				suiteContext.SharedContext.ExecutorPath,
+				suiteContext.SharedContext.WardenNetwork,
+				suiteContext.SharedContext.WardenAddr,
+				suiteContext.EtcdRunner.NodeURLS(),
 				"",
 				"",
 			)
 
-			executorRunner.Start(executor_runner.Config{MemoryMB: 100, DiskMB: 100, ConvergenceInterval: 1 * time.Second})
+			suiteContext.ExecutorRunner.Start(executor_runner.Config{MemoryMB: 100, DiskMB: 100, ConvergenceInterval: 1 * time.Second})
 			secondExecutor.Start(executor_runner.Config{ConvergenceInterval: 1 * time.Second, HeartbeatInterval: 1 * time.Second})
 		})
 
 		It("eventually marks jobs running on that executor as failed", func() {
 			guid := factories.GenerateGuid()
-			runOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(guid)+"; sleep 10")
+			runOnce := factories.BuildRunOnceWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(guid)+"; sleep 10")
 			bbs.DesireRunOnce(runOnce)
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 

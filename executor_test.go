@@ -26,21 +26,21 @@ var _ = Describe("Executor", func() {
 	var bbs *Bbs.BBS
 
 	BeforeEach(func() {
-		bbs = Bbs.New(etcdRunner.Adapter(), timeprovider.NewTimeProvider())
+		bbs = Bbs.New(suiteContext.EtcdRunner.Adapter(), timeprovider.NewTimeProvider())
 	})
 
 	Describe("starting without a snaphsot", func() {
 		It("should come up, just fine", func() {
-			executorRunner.Start()
-			executorRunner.Stop()
+			suiteContext.ExecutorRunner.Start()
+			suiteContext.ExecutorRunner.Stop()
 		})
 	})
 
 	Describe("when starting with invalid memory/disk", func() {
 		It("should exit with failure", func() {
-			executorRunner.StartWithoutCheck(executor_runner.Config{MemoryMB: -1, DiskMB: -1, SnapshotFile: "/tmp/i_dont_exist"})
-			Ω(executorRunner.Session).Should(SayWithTimeout("valid memory and disk capacity must be specified", time.Second))
-			Ω(executorRunner.Session).Should(ExitWith(1))
+			suiteContext.ExecutorRunner.StartWithoutCheck(executor_runner.Config{MemoryMB: -1, DiskMB: -1, SnapshotFile: "/tmp/i_dont_exist"})
+			Ω(suiteContext.ExecutorRunner.Session).Should(SayWithTimeout("valid memory and disk capacity must be specified", time.Second))
+			Ω(suiteContext.ExecutorRunner.Session).Should(ExitWith(1))
 		})
 	})
 
@@ -61,12 +61,12 @@ var _ = Describe("Executor", func() {
 				SnapshotFile: registrySnapshotFile,
 			}
 
-			executorRunner.Start(executorConfig)
+			suiteContext.ExecutorRunner.Start(executorConfig)
 
 			existingGuid := factories.GenerateGuid()
 
 			existingRunOnce := factories.BuildRunOnceWithRunAction(
-				executorRunner.Config.Stack,
+				suiteContext.ExecutorRunner.Config.Stack,
 				1024,
 				1024,
 				inigo_server.CurlCommand(existingGuid)+"; sleep 60",
@@ -76,11 +76,11 @@ var _ = Describe("Executor", func() {
 
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(existingGuid))
 
-			executorRunner.Stop()
+			suiteContext.ExecutorRunner.Stop()
 		})
 
 		AfterEach(func() {
-			executorRunner.Stop()
+			suiteContext.ExecutorRunner.Stop()
 
 			os.RemoveAll(tmpdir)
 		})
@@ -95,17 +95,17 @@ var _ = Describe("Executor", func() {
 
 				executorConfig.SnapshotFile = file.Name()
 
-				executorRunner.StartWithoutCheck(executorConfig)
+				suiteContext.ExecutorRunner.StartWithoutCheck(executorConfig)
 
-				Ω(executorRunner.Session).Should(SayWithTimeout("corrupt registry", time.Second))
-				Ω(executorRunner.Session).Should(ExitWith(1))
+				Ω(suiteContext.ExecutorRunner.Session).Should(SayWithTimeout("corrupt registry", time.Second))
+				Ω(suiteContext.ExecutorRunner.Session).Should(ExitWith(1))
 			})
 		})
 	})
 
 	Describe("Heartbeating", func() {
 		It("should heartbeat its presence", func() {
-			executorRunner.Start()
+			suiteContext.ExecutorRunner.Start()
 
 			Eventually(func() interface{} {
 				executors, _ := bbs.GetAllExecutors()
@@ -116,18 +116,18 @@ var _ = Describe("Executor", func() {
 
 	Describe("Resource limits", func() {
 		BeforeEach(func() {
-			executorRunner.Start()
+			suiteContext.ExecutorRunner.Start()
 		})
 
 		It("should only pick up tasks if it has capacity", func() {
 			firstGuyGuid := factories.GenerateGuid()
 			secondGuyGuid := factories.GenerateGuid()
-			firstGuyRunOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(firstGuyGuid)+"; sleep 5")
+			firstGuyRunOnce := factories.BuildRunOnceWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(firstGuyGuid)+"; sleep 5")
 			bbs.DesireRunOnce(firstGuyRunOnce)
 
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(firstGuyGuid))
 
-			secondGuyRunOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(secondGuyGuid))
+			secondGuyRunOnce := factories.BuildRunOnceWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(secondGuyGuid))
 			bbs.DesireRunOnce(secondGuyRunOnce)
 
 			Consistently(inigo_server.ReportingGuids, SHORT_TIMEOUT).ShouldNot(ContainElement(secondGuyGuid))
@@ -136,16 +136,16 @@ var _ = Describe("Executor", func() {
 
 	Describe("Stack", func() {
 		BeforeEach(func() {
-			executorRunner.Start(executor_runner.Config{Stack: "penguin"})
+			suiteContext.ExecutorRunner.Start(executor_runner.Config{Stack: "penguin"})
 		})
 
 		It("should only pick up tasks if the stacks match", func() {
 			matchingGuid := factories.GenerateGuid()
-			matchingRunOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(matchingGuid)+"; sleep 10")
+			matchingRunOnce := factories.BuildRunOnceWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(matchingGuid)+"; sleep 10")
 			matchingRunOnce.Stack = "penguin"
 
 			nonMatchingGuid := factories.GenerateGuid()
-			nonMatchingRunOnce := factories.BuildRunOnceWithRunAction(executorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(nonMatchingGuid)+"; sleep 10")
+			nonMatchingRunOnce := factories.BuildRunOnceWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(nonMatchingGuid)+"; sleep 10")
 			nonMatchingRunOnce.Stack = "lion"
 
 			bbs.DesireRunOnce(matchingRunOnce)
@@ -159,7 +159,7 @@ var _ = Describe("Executor", func() {
 	Describe("Running a command", func() {
 		var guid string
 		BeforeEach(func() {
-			executorRunner.Start()
+			suiteContext.ExecutorRunner.Start()
 			guid = factories.GenerateGuid()
 		})
 
@@ -171,7 +171,7 @@ var _ = Describe("Executor", func() {
 			}
 			runOnce := &models.RunOnce{
 				Guid:     factories.GenerateGuid(),
-				Stack:    executorRunner.Config.Stack,
+				Stack:    suiteContext.ExecutorRunner.Config.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
@@ -195,7 +195,7 @@ var _ = Describe("Executor", func() {
 				otherGuid = factories.GenerateGuid()
 				runOnce := &models.RunOnce{
 					Guid:     factories.GenerateGuid(),
-					Stack:    executorRunner.Config.Stack,
+					Stack:    suiteContext.ExecutorRunner.Config.Stack,
 					MemoryMB: 10,
 					DiskMB:   1024,
 					Actions: []models.ExecutorAction{
@@ -222,7 +222,7 @@ var _ = Describe("Executor", func() {
 			It("should fail the RunOnce", func() {
 				runOnce := &models.RunOnce{
 					Guid:            factories.GenerateGuid(),
-					Stack:           executorRunner.Config.Stack,
+					Stack:           suiteContext.ExecutorRunner.Config.Stack,
 					MemoryMB:        10,
 					DiskMB:          1024,
 					FileDescriptors: 1,
@@ -244,7 +244,7 @@ var _ = Describe("Executor", func() {
 			It("should fail the RunOnce", func() {
 				runOnce := &models.RunOnce{
 					Guid:     factories.GenerateGuid(),
-					Stack:    executorRunner.Config.Stack,
+					Stack:    suiteContext.ExecutorRunner.Config.Stack,
 					MemoryMB: 1024,
 					DiskMB:   1024,
 					Actions: []models.ExecutorAction{
@@ -267,7 +267,7 @@ var _ = Describe("Executor", func() {
 	Describe("Running a downloaded file", func() {
 		var guid string
 		BeforeEach(func() {
-			executorRunner.Start()
+			suiteContext.ExecutorRunner.Start()
 
 			guid = factories.GenerateGuid()
 			inigo_server.UploadFileString("curling.sh", inigo_server.CurlCommand(guid))
@@ -276,7 +276,7 @@ var _ = Describe("Executor", func() {
 		It("downloads the file", func() {
 			runOnce := &models.RunOnce{
 				Guid:     factories.GenerateGuid(),
-				Stack:    executorRunner.Config.Stack,
+				Stack:    suiteContext.ExecutorRunner.Config.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
@@ -294,7 +294,7 @@ var _ = Describe("Executor", func() {
 	Describe("Uploading from the container", func() {
 		var guid string
 		BeforeEach(func() {
-			executorRunner.Start()
+			suiteContext.ExecutorRunner.Start()
 
 			guid = factories.GenerateGuid()
 		})
@@ -302,7 +302,7 @@ var _ = Describe("Executor", func() {
 		It("uploads a tarball containing the specified files", func() {
 			runOnce := &models.RunOnce{
 				Guid:     factories.GenerateGuid(),
-				Stack:    executorRunner.Config.Stack,
+				Stack:    suiteContext.ExecutorRunner.Config.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
@@ -330,13 +330,13 @@ var _ = Describe("Executor", func() {
 
 	Describe("Fetching results", func() {
 		BeforeEach(func() {
-			executorRunner.Start()
+			suiteContext.ExecutorRunner.Start()
 		})
 
 		It("should fetch the contents of the requested file and provide the content in the completed RunOnce", func() {
 			runOnce := &models.RunOnce{
 				Guid:     factories.GenerateGuid(),
-				Stack:    executorRunner.Config.Stack,
+				Stack:    suiteContext.ExecutorRunner.Config.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
@@ -356,19 +356,19 @@ var _ = Describe("Executor", func() {
 
 	Describe("A RunOnce with logging configured", func() {
 		BeforeEach(func() {
-			executorRunner.Start()
+			suiteContext.ExecutorRunner.Start()
 		})
 
 		It("has its stdout and stderr emitted to Loggregator", func(done Done) {
 			logGuid := factories.GenerateGuid()
 
 			messages, stop := loggredile.StreamMessages(
-				loggregatorRunner.Config.OutgoingPort,
+				suiteContext.LoggregatorRunner.Config.OutgoingPort,
 				"/tail/?app="+logGuid,
 			)
 
 			runOnce := factories.BuildRunOnceWithRunAction(
-				executorRunner.Config.Stack,
+				suiteContext.ExecutorRunner.Config.Stack,
 				1024,
 				1024,
 				"echo out A; echo out B; echo out C; echo err A 1>&2; echo err B 1>&2; echo err C 1>&2",

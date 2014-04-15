@@ -1,17 +1,15 @@
 package inigo_test
 
 import (
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
-	"syscall"
 	"testing"
-	"time"
 
 	"github.com/onsi/ginkgo/config"
 
@@ -36,37 +34,206 @@ import (
 var SHORT_TIMEOUT = 5.0
 var LONG_TIMEOUT = 10.0
 
-var etcdRunner *etcdstorerunner.ETCDClusterRunner
-
-var wardenRunner *WardenRunner.Runner
 var wardenAddr = filepath.Join(os.TempDir(), "warden-temp-socker", "warden.sock")
-var wardenClient gordon.Client
 
-var natsRunner *natsrunner.NATSRunner
-var natsPort int
+type sharedContextType struct {
+	ExecutorPath    string
+	StagerPath      string
+	FileServerPath  string
+	LoggregatorPath string
+	ServistryPath   string
+	SmelterZipPath  string
 
-var loggregatorRunner *loggregator_runner.LoggregatorRunner
-var loggregatorPort int
-var loggregatorSharedSecret string
+	WardenAddr    string
+	WardenNetwork string
+}
 
-var executorRunner *executor_runner.ExecutorRunner
-var executorPath string
+func DecodeSharedContext(data []byte) sharedContextType {
+	var context sharedContextType
+	err := json.Unmarshal(data, &context)
+	Ω(err).ShouldNot(HaveOccurred())
 
-var stagerRunner *stager_runner.StagerRunner
-var stagerPath string
+	return context
+}
 
-var servistryRunner *servistry_runner.ServistryRunner
+func (d sharedContextType) Encode() []byte {
+	data, err := json.Marshal(d)
+	Ω(err).ShouldNot(HaveOccurred())
+	return data
+}
 
-var fakeCC *fake_cc.FakeCC
-var fakeCCAddress string
+type Runner interface {
+	Stop()
+}
 
-var fileServerRunner *fileserver_runner.FileServerRunner
-var fileServerPath string
-var fileServerPort int
+type suiteContextType struct {
+	SharedContext sharedContextType
 
-var smelterZipPath string
+	EtcdRunner   *etcdstorerunner.ETCDClusterRunner
+	WardenClient gordon.Client
+
+	NatsRunner *natsrunner.NATSRunner
+	NatsPort   int
+
+	LoggregatorRunner       *loggregator_runner.LoggregatorRunner
+	LoggregatorInPort       int
+	LoggregatorOutPort      int
+	LoggregatorSharedSecret string
+
+	ExecutorRunner *executor_runner.ExecutorRunner
+
+	StagerRunner *stager_runner.StagerRunner
+
+	ServistryRunner *servistry_runner.ServistryRunner
+
+	FakeCC        *fake_cc.FakeCC
+	FakeCCAddress string
+
+	FileServerRunner *fileserver_runner.FileServerRunner
+	FileServerPort   int
+
+	EtcdPort int
+}
+
+func (context suiteContextType) Runners() []Runner {
+	return []Runner{
+		context.ExecutorRunner,
+		context.StagerRunner,
+		context.FileServerRunner,
+		context.LoggregatorRunner,
+		context.NatsRunner,
+		context.EtcdRunner,
+	}
+}
+
+func (context suiteContextType) StopRunners() {
+	for _, stoppable := range context.Runners() {
+		if !reflect.ValueOf(stoppable).IsNil() {
+			stoppable.Stop()
+		}
+	}
+}
+
+var suiteContext suiteContextType
+
+func beforeSuite(encodedSharedContext []byte) {
+	sharedContext := DecodeSharedContext(encodedSharedContext)
+
+	context := suiteContextType{
+		SharedContext:           sharedContext,
+		NatsPort:                4222 + config.GinkgoConfig.ParallelNode,
+		LoggregatorInPort:       3456 + config.GinkgoConfig.ParallelNode,
+		LoggregatorOutPort:      8083 + config.GinkgoConfig.ParallelNode,
+		LoggregatorSharedSecret: "conspiracy",
+		FileServerPort:          12760 + config.GinkgoConfig.ParallelNode,
+		EtcdPort:                5001 + config.GinkgoConfig.ParallelNode,
+	}
+
+	context.FakeCC = fake_cc.New()
+	context.FakeCCAddress = context.FakeCC.Start()
+
+	context.EtcdRunner = etcdstorerunner.NewETCDClusterRunner(context.EtcdPort, 1)
+
+	context.NatsRunner = natsrunner.NewNATSRunner(context.NatsPort)
+
+	context.LoggregatorRunner = loggregator_runner.New(
+		context.SharedContext.LoggregatorPath,
+		loggregator_runner.Config{
+			IncomingPort:           context.LoggregatorInPort,
+			OutgoingPort:           context.LoggregatorOutPort,
+			MaxRetainedLogMessages: 1000,
+			SharedSecret:           context.LoggregatorSharedSecret,
+			NatsHost:               "127.0.0.1",
+			NatsPort:               context.NatsPort,
+		},
+	)
+
+	context.ExecutorRunner = executor_runner.New(
+		context.SharedContext.ExecutorPath,
+		context.SharedContext.WardenNetwork,
+		context.SharedContext.WardenAddr,
+		context.EtcdRunner.NodeURLS(),
+		fmt.Sprintf("127.0.0.1:%d", context.LoggregatorInPort),
+		context.LoggregatorSharedSecret,
+	)
+
+	context.StagerRunner = stager_runner.New(
+		context.SharedContext.StagerPath,
+		context.EtcdRunner.NodeURLS(),
+		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
+	)
+
+	context.ServistryRunner = servistry_runner.New(
+		context.SharedContext.ServistryPath,
+		context.EtcdRunner.NodeURLS(),
+		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
+	)
+
+	context.FileServerRunner = fileserver_runner.New(
+		context.SharedContext.FileServerPath,
+		context.FileServerPort,
+		context.EtcdRunner.NodeURLS(),
+		context.FakeCCAddress,
+		fake_cc.CC_USERNAME,
+		fake_cc.CC_PASSWORD,
+	)
+
+	wardenClient := gordon.NewClient(&gordon.ConnectionInfo{
+		Network: context.SharedContext.WardenNetwork,
+		Addr:    context.SharedContext.WardenAddr,
+	})
+
+	err := wardenClient.Connect()
+	Ω(err).ShouldNot(HaveOccurred())
+
+	context.WardenClient = wardenClient
+
+	// make context available to all tests
+	suiteContext = context
+}
+
+func afterSuite() {
+	suiteContext.StopRunners()
+}
 
 func TestInigo(t *testing.T) {
+	extractTimeoutsFromEnvironment()
+
+	RegisterFailHandler(Fail)
+
+	nodeOne := &nodeOneType{}
+
+	SynchronizedBeforeSuite(func() []byte {
+		nodeOne.StartWarden()
+		nodeOne.CompileTestedExecutables()
+
+		return nodeOne.context.Encode()
+	}, beforeSuite)
+
+	BeforeEach(func() {
+		suiteContext.FakeCC.Reset()
+		suiteContext.EtcdRunner.Start()
+		suiteContext.NatsRunner.Start()
+		suiteContext.LoggregatorRunner.Start()
+
+		inigo_server.Start(suiteContext.WardenClient)
+
+		currentTestDescription := CurrentGinkgoTestDescription()
+		fmt.Fprintf(GinkgoWriter, "\n%s\n%s\n\n", strings.Repeat("~", 50), currentTestDescription.FullTestText)
+	})
+
+	AfterEach(func() {
+		suiteContext.StopRunners()
+
+		inigo_server.Stop(suiteContext.WardenClient)
+	})
+
+	SynchronizedAfterSuite(afterSuite, nodeOne.StopWarden)
+
+	RunSpecs(t, "Inigo Integration Suite")
+}
+
+func extractTimeoutsFromEnvironment() {
 	var err error
 	if os.Getenv("SHORT_TIMEOUT") != "" {
 		SHORT_TIMEOUT, err = strconv.ParseFloat(os.Getenv("SHORT_TIMEOUT"), 64)
@@ -81,74 +248,14 @@ func TestInigo(t *testing.T) {
 			panic(err)
 		}
 	}
-
-	registerSignalHandler()
-	RegisterFailHandler(Fail)
-
-	startUpFakeCC()
-	setUpEtcd()
-	setupWarden()
-	setUpNats()
-	setUpLoggregator()
-	setUpExecutor()
-	setUpStager()
-	setUpServistry()
-	compileAndZipUpSmelter()
-	setUpFileServer()
-	connectToWarden()
-
-	BeforeEach(func() {
-		fakeCC.Reset()
-		etcdRunner.Start()
-		natsRunner.Start()
-		loggregatorRunner.Start()
-
-		inigo_server.Start(wardenClient)
-
-		currentTestDescription := CurrentGinkgoTestDescription()
-		fmt.Fprintf(GinkgoWriter, "\n%s\n%s\n\n", strings.Repeat("~", 50), currentTestDescription.FullTestText)
-	})
-
-	AfterEach(func() {
-		executorRunner.Stop()
-		stagerRunner.Stop()
-		fileServerRunner.Stop()
-
-		loggregatorRunner.Stop()
-		natsRunner.Stop()
-		etcdRunner.Stop()
-
-		inigo_server.Stop(wardenClient)
-	})
-
-	RunSpecs(t, "Inigo Integration Suite")
-
-	if config.GinkgoConfig.ParallelNode == 1 && config.GinkgoConfig.ParallelTotal > 1 {
-		waitForOtherGinkgoNodes()
-	}
-
-	notifyFinished()
-
-	cleanup()
 }
 
-func startUpFakeCC() {
-	BeforeEach(func() {
-		fakeCC = fake_cc.New()
-		fakeCCAddress = fakeCC.Start()
-	})
+type nodeOneType struct {
+	wardenRunner *WardenRunner.Runner
+	context      sharedContextType
 }
 
-func setUpEtcd() {
-	BeforeEach(func() {
-		etcdRunner = etcdstorerunner.NewETCDClusterRunner(
-			5001+config.GinkgoConfig.ParallelNode,
-			1,
-		)
-	})
-}
-
-func setupWarden() {
+func (node *nodeOneType) StartWarden() {
 	wardenBinPath := os.Getenv("WARDEN_BINPATH")
 	wardenRootfs := os.Getenv("WARDEN_ROOTFS")
 
@@ -156,253 +263,68 @@ func setupWarden() {
 		println("Please define either WARDEN_NETWORK and WARDEN_ADDR (for a running Warden), or")
 		println("WARDEN_BINPATH and WARDEN_ROOTFS (for the tests to start it)")
 		println("")
-		failFast("warden is not set up")
-		return
+
+		Fail("warden is not set up")
 	}
 	var err error
 
 	err = os.MkdirAll(filepath.Dir(wardenAddr), 0700)
-	if err != nil {
-		failFast(err.Error())
-	}
+	Ω(err).ShouldNot(HaveOccurred())
 
 	wardenPath, err := cmdtest.BuildIn(os.Getenv("WARDEN_LINUX_GOPATH"), "github.com/cloudfoundry-incubator/warden-linux", "-race")
-	if err != nil {
-		failFast("failed to compile warden:", err)
-	}
+	Ω(err).ShouldNot(HaveOccurred())
 
-	wardenRunner, err = WardenRunner.New(wardenPath, wardenBinPath, wardenRootfs, "unix", wardenAddr)
-	if err != nil {
-		failFast("warden failed to initialize: " + err.Error())
-	}
+	node.wardenRunner, err = WardenRunner.New(wardenPath, wardenBinPath, wardenRootfs, "unix", wardenAddr)
+	Ω(err).ShouldNot(HaveOccurred())
 
-	wardenRunner.SnapshotsPath = ""
+	node.wardenRunner.SnapshotsPath = ""
+
+	err = node.wardenRunner.Start()
+	Ω(err).ShouldNot(HaveOccurred())
+
+	node.context.WardenAddr = node.wardenRunner.Addr
+	node.context.WardenNetwork = node.wardenRunner.Network
 }
 
-func connectToWarden() {
+func (node *nodeOneType) CompileTestedExecutables() {
 	var err error
-	if config.GinkgoConfig.ParallelNode == 1 {
-		err = wardenRunner.Start()
-	} else {
-		err = wardenRunner.WaitForStart()
-	}
+	node.context.LoggregatorPath, err = cmdtest.BuildIn(os.Getenv("LOGGREGATOR_GOPATH"), "loggregator/loggregator")
+	Ω(err).ShouldNot(HaveOccurred())
 
-	if err != nil {
-		failFast("warden failed to start: " + err.Error())
-	}
+	node.context.ExecutorPath, err = cmdtest.BuildIn(os.Getenv("EXECUTOR_GOPATH"), "github.com/cloudfoundry-incubator/executor", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
 
-	wardenClient = wardenRunner.NewClient()
+	node.context.StagerPath, err = cmdtest.BuildIn(os.Getenv("STAGER_GOPATH"), "github.com/cloudfoundry-incubator/stager", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
 
-	err = wardenClient.Connect()
-	if err != nil {
-		failFast("warden is not up: " + err.Error())
-		return
-	}
+	node.context.ServistryPath, err = cmdtest.BuildIn(os.Getenv("SERVISTRY_GOPATH"), "github.com/cloudfoundry-incubator/servistry", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	node.context.FileServerPath, err = cmdtest.BuildIn(os.Getenv("FILE_SERVER_GOPATH"), "github.com/cloudfoundry-incubator/file-server", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	node.context.SmelterZipPath = node.compileAndZipUpSmelter()
 }
 
-func setUpNats() {
-	natsPort = 4222 + config.GinkgoConfig.ParallelNode
-
-	BeforeEach(func() {
-		natsRunner = natsrunner.NewNATSRunner(natsPort)
-	})
-}
-
-func setUpLoggregator() {
-	loggregatorPort = 3456 + config.GinkgoConfig.ParallelNode
-	loggregatorSharedSecret = "conspiracy"
-
-	loggregatorPath, err := cmdtest.BuildIn(os.Getenv("LOGGREGATOR_GOPATH"), "loggregator/loggregator")
-	if err != nil {
-		failFast("failed to compile loggregator:", err)
-	}
-
-	BeforeEach(func() {
-		loggregatorRunner = loggregator_runner.New(
-			loggregatorPath,
-			loggregator_runner.Config{
-				IncomingPort:           loggregatorPort,
-				OutgoingPort:           8083 + config.GinkgoConfig.ParallelNode,
-				MaxRetainedLogMessages: 1000,
-				SharedSecret:           loggregatorSharedSecret,
-				NatsHost:               "127.0.0.1",
-				NatsPort:               natsPort,
-			},
-		)
-	})
-}
-
-func setUpExecutor() {
-	var err error
-	executorPath, err = cmdtest.BuildIn(os.Getenv("EXECUTOR_GOPATH"), "github.com/cloudfoundry-incubator/executor", "-race")
-	if err != nil {
-		failFast("failed to compile executor:", err)
-	}
-
-	BeforeEach(func() {
-		executorRunner = executor_runner.New(
-			executorPath,
-			wardenRunner.Network,
-			wardenRunner.Addr,
-			etcdRunner.NodeURLS(),
-			fmt.Sprintf("127.0.0.1:%d", loggregatorPort),
-			loggregatorSharedSecret,
-		)
-	})
-}
-
-func setUpStager() {
-	var err error
-	stagerPath, err = cmdtest.BuildIn(os.Getenv("STAGER_GOPATH"), "github.com/cloudfoundry-incubator/stager", "-race")
-	if err != nil {
-		failFast("failed to compile stager:", err)
-	}
-
-	BeforeEach(func() {
-		stagerRunner = stager_runner.New(
-			stagerPath,
-			etcdRunner.NodeURLS(),
-			[]string{fmt.Sprintf("127.0.0.1:%d", natsPort)},
-		)
-	})
-}
-
-func setUpServistry() {
-	servistryPath, err := cmdtest.BuildIn(os.Getenv("SERVISTRY_GOPATH"), "github.com/cloudfoundry-incubator/servistry", "-race")
-	if err != nil {
-		failFast("failed to compile servistry:", err)
-	}
-
-	BeforeEach(func() {
-		servistryRunner = servistry_runner.New(
-			servistryPath,
-			etcdRunner.NodeURLS(),
-			[]string{fmt.Sprintf("127.0.0.1:%d", natsPort)},
-		)
-	})
-}
-
-func compileAndZipUpSmelter() {
+func (node *nodeOneType) compileAndZipUpSmelter() string {
 	smelterPath, err := cmdtest.BuildIn(os.Getenv("LINUX_SMELTER_GOPATH"), "github.com/cloudfoundry-incubator/linux-smelter", "-race")
-	if err != nil {
-		failFast("failed to compile smelter", err)
-	}
+	Ω(err).ShouldNot(HaveOccurred())
 
 	smelterDir := filepath.Dir(smelterPath)
 	err = os.Rename(smelterPath, filepath.Join(smelterDir, "run"))
-	if err != nil {
-		failFast("failed to move smelter", err)
-	}
+	Ω(err).ShouldNot(HaveOccurred())
 
 	cmd := exec.Command("zip", "smelter.zip", "run")
 	cmd.Dir = smelterDir
 	err = cmd.Run()
-	if err != nil {
-		failFast("failed to zip up smelter", err)
-	}
+	Ω(err).ShouldNot(HaveOccurred())
 
-	smelterZipPath = filepath.Join(smelterDir, "smelter.zip")
+	return filepath.Join(smelterDir, "smelter.zip")
 }
 
-func setUpFileServer() {
-	var err error
-	fileServerPath, err = cmdtest.BuildIn(os.Getenv("FILE_SERVER_GOPATH"), "github.com/cloudfoundry-incubator/file-server", "-race")
-	if err != nil {
-		failFast("failed to compile file server:", err)
+func (node *nodeOneType) StopWarden() {
+	if node.wardenRunner != nil {
+		node.wardenRunner.TearDown()
+		node.wardenRunner.Stop()
 	}
-
-	fileServerPort = 12760 + config.GinkgoConfig.ParallelNode
-
-	BeforeEach(func() {
-		fileServerRunner = fileserver_runner.New(
-			fileServerPath,
-			fileServerPort,
-			etcdRunner.NodeURLS(),
-			fakeCCAddress,
-			fake_cc.CC_USERNAME,
-			fake_cc.CC_PASSWORD,
-		)
-	})
-}
-
-func cleanup() {
-	defer GinkgoRecover()
-
-	if etcdRunner != nil {
-		etcdRunner.Stop()
-	}
-
-	if config.GinkgoConfig.ParallelNode == 1 {
-		if wardenRunner != nil {
-			wardenRunner.TearDown()
-			wardenRunner.Stop()
-		}
-	}
-
-	if natsRunner != nil {
-		natsRunner.Stop()
-	}
-
-	if loggregatorRunner != nil {
-		loggregatorRunner.Stop()
-	}
-
-	if executorRunner != nil {
-		executorRunner.Stop()
-	}
-
-	if stagerRunner != nil {
-		stagerRunner.Stop()
-	}
-
-	if fileServerRunner != nil {
-		fileServerRunner.Stop()
-	}
-}
-
-func failFast(msg string, errs ...error) {
-	println("!!!!! " + msg + " !!!!!")
-	if len(errs) > 0 {
-		println("error: " + errs[0].Error())
-	}
-	cleanup()
-	os.Exit(1)
-}
-
-func waitForOtherGinkgoNodes() {
-	for {
-		found := true
-		for i := 2; i <= config.GinkgoConfig.ParallelTotal; i++ {
-			_, err := os.Stat(fmt.Sprintf("/tmp/ginkgo-%d", i))
-			if err != nil {
-				found = false
-			}
-		}
-		if found {
-			return
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-}
-
-func notifyFinished() {
-	ioutil.WriteFile(fmt.Sprintf("/tmp/ginkgo-%d", config.GinkgoConfig.ParallelNode), []byte("done"), 0777)
-}
-
-func registerSignalHandler() {
-	c := make(chan os.Signal, 1)
-
-	go func() {
-		select {
-		case <-c:
-			println("cleaning up!")
-
-			cleanup()
-
-			println("goodbye!")
-			os.Exit(1)
-		}
-	}()
-
-	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 }
