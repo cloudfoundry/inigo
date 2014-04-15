@@ -2,14 +2,12 @@ package executor_runner
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/cloudfoundry/gunk/runner_support"
-	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/gomega"
 	"github.com/vito/cmdtest"
 	. "github.com/vito/cmdtest/matchers"
@@ -20,7 +18,6 @@ type ExecutorRunner struct {
 	wardenNetwork string
 	wardenAddr    string
 	etcdCluster   []string
-	snapshotFile  string
 
 	loggregatorServer string
 	loggregatorSecret string
@@ -32,7 +29,6 @@ type ExecutorRunner struct {
 type Config struct {
 	MemoryMB            int
 	DiskMB              int
-	SnapshotFile        string
 	ConvergenceInterval time.Duration
 	HeartbeatInterval   time.Duration
 	Stack               string
@@ -67,7 +63,7 @@ func New(executorBin, wardenNetwork, wardenAddr string, etcdCluster []string, lo
 func (r *ExecutorRunner) Start(config ...Config) {
 	r.StartWithoutCheck(config...)
 
-	Ω(r.Session).Should(SayWithTimeout("Watching for RunOnces!", 1*time.Second))
+	Ω(r.Session).Should(SayWithTimeout("executor.started", 1*time.Second))
 }
 
 func (r *ExecutorRunner) StartWithoutCheck(config ...Config) {
@@ -80,7 +76,6 @@ func (r *ExecutorRunner) StartWithoutCheck(config ...Config) {
 			"-etcdCluster", strings.Join(r.etcdCluster, ","),
 			"-memoryMB", fmt.Sprintf("%d", configToUse.MemoryMB),
 			"-diskMB", fmt.Sprintf("%d", configToUse.DiskMB),
-			"-registrySnapshotFile", configToUse.SnapshotFile,
 			"-convergenceInterval", fmt.Sprintf("%s", configToUse.ConvergenceInterval),
 			"-heartbeatInterval", fmt.Sprintf("%s", configToUse.HeartbeatInterval),
 			"-stack", configToUse.Stack,
@@ -93,7 +88,6 @@ func (r *ExecutorRunner) StartWithoutCheck(config ...Config) {
 		runner_support.TeeToGinkgoWriter,
 	)
 	Ω(err).ShouldNot(HaveOccurred())
-	r.snapshotFile = configToUse.SnapshotFile
 	r.Config = configToUse
 	r.Session = executorSession
 }
@@ -109,15 +103,11 @@ func (r *ExecutorRunner) Stop() {
 func (r *ExecutorRunner) KillWithFire() {
 	if r.Session != nil {
 		r.Session.Cmd.Process.Kill()
-		os.Remove(r.snapshotFile)
 	}
 }
 
 func (r *ExecutorRunner) generateConfig(config ...Config) Config {
-	guid, _ := uuid.NewV4()
-	snapshotFile := fmt.Sprintf("/tmp/executor_registry_%s", guid.String())
 	configToReturn := defaultConfig
-	configToReturn.SnapshotFile = snapshotFile
 
 	if len(config) == 0 {
 		return configToReturn
@@ -129,9 +119,6 @@ func (r *ExecutorRunner) generateConfig(config ...Config) Config {
 	}
 	if givenConfig.DiskMB != 0 {
 		configToReturn.DiskMB = givenConfig.DiskMB
-	}
-	if givenConfig.SnapshotFile != "" {
-		configToReturn.SnapshotFile = givenConfig.SnapshotFile
 	}
 	if givenConfig.ConvergenceInterval != 0 {
 		configToReturn.ConvergenceInterval = givenConfig.ConvergenceInterval

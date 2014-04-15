@@ -3,9 +3,6 @@ package inigo_test
 import (
 	"archive/tar"
 	"compress/gzip"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/cloudfoundry/gunk/timeprovider"
@@ -29,77 +26,11 @@ var _ = Describe("Executor", func() {
 		bbs = Bbs.New(suiteContext.EtcdRunner.Adapter(), timeprovider.NewTimeProvider())
 	})
 
-	Describe("starting without a snaphsot", func() {
-		It("should come up, just fine", func() {
-			suiteContext.ExecutorRunner.Start()
-			suiteContext.ExecutorRunner.Stop()
-		})
-	})
-
 	Describe("when starting with invalid memory/disk", func() {
 		It("should exit with failure", func() {
-			suiteContext.ExecutorRunner.StartWithoutCheck(executor_runner.Config{MemoryMB: -1, DiskMB: -1, SnapshotFile: "/tmp/i_dont_exist"})
+			suiteContext.ExecutorRunner.StartWithoutCheck(executor_runner.Config{MemoryMB: -1, DiskMB: -1})
 			Ω(suiteContext.ExecutorRunner.Session).Should(SayWithTimeout("valid memory and disk capacity must be specified", time.Second))
 			Ω(suiteContext.ExecutorRunner.Session).Should(ExitWith(1))
-		})
-	})
-
-	Describe("when restarted with running tasks", func() {
-		var tmpdir string
-		var registrySnapshotFile string
-		var executorConfig executor_runner.Config
-
-		BeforeEach(func() {
-			tmpdir, err := ioutil.TempDir(os.TempDir(), "executor-registry")
-			Ω(err).ShouldNot(HaveOccurred())
-
-			registrySnapshotFile = filepath.Join(tmpdir, "snapshot.json")
-
-			executorConfig = executor_runner.Config{
-				MemoryMB:     1024,
-				DiskMB:       1024,
-				SnapshotFile: registrySnapshotFile,
-			}
-
-			suiteContext.ExecutorRunner.Start(executorConfig)
-
-			existingGuid := factories.GenerateGuid()
-
-			existingRunOnce := factories.BuildRunOnceWithRunAction(
-				suiteContext.ExecutorRunner.Config.Stack,
-				1024,
-				1024,
-				inigo_server.CurlCommand(existingGuid)+"; sleep 60",
-			)
-
-			bbs.DesireRunOnce(existingRunOnce)
-
-			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(existingGuid))
-
-			suiteContext.ExecutorRunner.Stop()
-		})
-
-		AfterEach(func() {
-			suiteContext.ExecutorRunner.Stop()
-
-			os.RemoveAll(tmpdir)
-		})
-
-		Context("when the snapshot is corrupted", func() {
-			It("should exit with failure", func() {
-				file, err := ioutil.TempFile(os.TempDir(), "executor-invalid-snapshot")
-				Ω(err).ShouldNot(HaveOccurred())
-
-				_, err = file.Write([]byte("ß"))
-				Ω(err).ShouldNot(HaveOccurred())
-
-				executorConfig.SnapshotFile = file.Name()
-
-				suiteContext.ExecutorRunner.StartWithoutCheck(executorConfig)
-
-				Ω(suiteContext.ExecutorRunner.Session).Should(SayWithTimeout("corrupt registry", time.Second))
-				Ω(suiteContext.ExecutorRunner.Session).Should(ExitWith(1))
-			})
 		})
 	})
 
