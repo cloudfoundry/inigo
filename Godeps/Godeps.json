@@ -15,11 +15,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "d829fb07126ab3eb2e7ba647ed919fff5a2e650a"
+			"Rev": "9eac3f9d3ea8ee2175e419a5fd3e2d3c1130c8ff"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "d829fb07126ab3eb2e7ba647ed919fff5a2e650a"
+			"Rev": "9eac3f9d3ea8ee2175e419a5fd3e2d3c1130c8ff"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",
