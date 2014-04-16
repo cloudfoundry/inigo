@@ -85,7 +85,7 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Rev": "cec9a2f4c24dc8d549903020e347b70e1e314e1e"
+			"Rev": "6286f046a84f63920e8a10809447d9a6ac73cf7c"
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/archiver/extractor/test_helper",

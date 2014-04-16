@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func publishMessageToNats(name string, regMessage models.CCRegistrationMessage) {
+func publishMessageToNats(name string, regMessage models.RouterRegistrationMessage) {
 	msg, err := json.Marshal(regMessage)
 	Ω(err).ShouldNot(HaveOccurred())
 
@@ -21,9 +21,10 @@ var _ = Describe("Servistry", func() {
 
 	var bbs *Bbs.BBS
 	var ccUrl = "http://1.2.3.4:8080"
-	var regMessage = models.CCRegistrationMessage{
+	var regMessage = models.RouterRegistrationMessage{
 		Host: "1.2.3.4",
 		Port: 8080,
+		Tags: map[string]string{"component": "CloudController"},
 	}
 
 	BeforeEach(func() {
@@ -40,37 +41,24 @@ var _ = Describe("Servistry", func() {
 
 			It("registers cc in etcd", func() {
 				// Wait for the BBS to confirm that CC has been registered
-				Eventually(func() bool {
-					urls, err := bbs.GetAvailableCC()
-					Ω(err).ShouldNot(HaveOccurred())
-					return len(urls) > 0 && urls[0] == ccUrl
-				})
+				Eventually(bbs.GetAvailableCC).Should(ContainElement(ccUrl))
 			})
 		})
 	})
 
 	Describe("Unregister CC", func() {
-
 		BeforeEach(func() {
 			publishMessageToNats("router.register", regMessage)
 
 			// Wait for the BBS to confirm that CC has been registered
-			Eventually(func() bool {
-				urls, err := bbs.GetAvailableCC()
-				Ω(err).ShouldNot(HaveOccurred())
-				return len(urls) > 0 && urls[0] == ccUrl
-			})
+			Eventually(bbs.GetAvailableCC).Should(ContainElement(ccUrl))
 
 			publishMessageToNats("router.unregister", regMessage)
 		})
 
 		It("unregisters cc in etcd", func() {
 			// Wait for the BBS to confirm that CC has been unregistered
-			Eventually(func() bool {
-				urls, err := bbs.GetAvailableCC()
-				Ω(err).ShouldNot(HaveOccurred())
-				return len(urls) == 0
-			})
+			Eventually(bbs.GetAvailableCC).Should(BeEmpty())
 		})
 	})
 })
