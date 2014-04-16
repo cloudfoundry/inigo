@@ -334,7 +334,7 @@ EOF
 					Ω(string(payload)).Should(Equal(`{"error":"process exited with status 1"}`))
 
 					expector := cmdtest.NewExpector(logIn, 5*time.Second)
-					err = expector.Expect("no buildpack detected")
+					err = expector.Expect("no valid buildpacks detected")
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 			})

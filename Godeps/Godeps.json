@@ -23,7 +23,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",
-			"Rev": "6bf1d9f5f6bef89fd90e2f2bfc7fd0d28609572d"
+			"Rev": "faeb415c6deedae237ef2f6979ae28ed7778d81e"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -32,19 +32,19 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
-			"Rev": "02c643e319e71ac034d3d96b0c1147e2a037a8f2"
+			"Rev": "8c166e2e973df123b29351b396bb8d356192bd81"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/runner_support",
-			"Rev": "02c643e319e71ac034d3d96b0c1147e2a037a8f2"
+			"Rev": "8c166e2e973df123b29351b396bb8d356192bd81"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/test_server",
-			"Rev": "02c643e319e71ac034d3d96b0c1147e2a037a8f2"
+			"Rev": "8c166e2e973df123b29351b396bb8d356192bd81"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/timeprovider",
-			"Rev": "02c643e319e71ac034d3d96b0c1147e2a037a8f2"
+			"Rev": "8c166e2e973df123b29351b396bb8d356192bd81"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/loggregatorlib/logmessage",
@@ -56,7 +56,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
-			"Rev": "93681214aa36bc47abcdd378aa532de78a687350"
+			"Rev": "75297e7f1b7c70951bb78c8122bc266288870829"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/yagnats",
@@ -85,7 +85,7 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Rev": "fce60402026b32bb9e95d4850773cd67bdd47c93"
+			"Rev": "cec9a2f4c24dc8d549903020e347b70e1e314e1e"
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/archiver/extractor/test_helper",
@@ -93,7 +93,7 @@
 		},
 		{
 			"ImportPath": "github.com/vito/cmdtest",
-			"Rev": "c56fe40f700cbe87257137c14ae739c59897fc6b"
+			"Rev": "6fd93c13d3730be0dda712707179fa1edc9b08f7"
 		}
 	]
 }
