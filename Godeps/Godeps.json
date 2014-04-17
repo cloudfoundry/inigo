@@ -11,7 +11,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/gordon",
-			"Rev": "0a7276b5a890d335729c1ca0c015278bc0ba4bea"
+			"Rev": "805c94e3d342d90d0795afd0382c55f90741e310"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
@@ -23,7 +23,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",
-			"Rev": "faeb415c6deedae237ef2f6979ae28ed7778d81e"
+			"Rev": "9df172c249a6b53253a6261daf3ea8a4bc6266e2"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -48,11 +48,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/loggregatorlib/logmessage",
-			"Rev": "0c6324449270826d694150d493be126901554a89"
+			"Rev": "3636032c2102441ef045a250fdd9ebdc121ce8c8"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/loggregatorlib/signature",
-			"Rev": "0c6324449270826d694150d493be126901554a89"
+			"Rev": "3636032c2102441ef045a250fdd9ebdc121ce8c8"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
@@ -93,7 +93,7 @@
 		},
 		{
 			"ImportPath": "github.com/vito/cmdtest",
-			"Rev": "6fd93c13d3730be0dda712707179fa1edc9b08f7"
+			"Rev": "ce316f247a64d0ea35484b44315c456833df500a"
 		}
 	]
 }

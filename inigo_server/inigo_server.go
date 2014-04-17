@@ -3,13 +3,14 @@ package inigo_server
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/cloudfoundry-incubator/gordon"
-	. "github.com/onsi/gomega"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/cloudfoundry-incubator/gordon"
+	. "github.com/onsi/gomega"
 )
 
 const amazingRubyServer = `ruby <<END_MAGIC_SERVER
@@ -65,7 +66,7 @@ var hostPort uint32
 var ipAddress string
 
 func Start(wardenClient gordon.Client) {
-	createResponse, err := wardenClient.Create()
+	createResponse, err := wardenClient.Create(nil)
 	if err != nil {
 		panic(err)
 	}
