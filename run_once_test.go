@@ -85,7 +85,7 @@ var _ = Describe("RunOnce", func() {
 			)
 
 			suiteContext.ExecutorRunner.Start(executor_runner.Config{MemoryMB: 100, DiskMB: 100, ConvergenceInterval: 1 * time.Second})
-			secondExecutor.Start(executor_runner.Config{ConvergenceInterval: 1 * time.Second, HeartbeatInterval: 1 * time.Second})
+			secondExecutor.Start(executor_runner.Config{ConvergenceInterval: 1 * time.Second, HeartbeatInterval: 1 * time.Second, ContainerOwnerName: "another-executor"})
 		})
 
 		It("eventually marks jobs running on that executor as failed", func() {

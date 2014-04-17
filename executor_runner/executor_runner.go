@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry/gunk/runner_support"
+	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/vito/cmdtest"
 	. "github.com/vito/cmdtest/matchers"
@@ -34,6 +35,7 @@ type Config struct {
 	Stack               string
 	TempDir             string
 	TimeToClaim         time.Duration
+	ContainerOwnerName  string
 }
 
 var defaultConfig = Config{
@@ -44,6 +46,7 @@ var defaultConfig = Config{
 	Stack:               "default",
 	TempDir:             "/tmp",
 	TimeToClaim:         30 * 60 * time.Second,
+	ContainerOwnerName:  "",
 }
 
 func New(executorBin, wardenNetwork, wardenAddr string, etcdCluster []string, loggregatorServer string, loggregatorSecret string) *ExecutorRunner {
@@ -83,6 +86,7 @@ func (r *ExecutorRunner) StartWithoutCheck(config ...Config) {
 			"-loggregatorSecret", r.loggregatorSecret,
 			"-tempDir", configToUse.TempDir,
 			"-timeToClaimRunOnce", fmt.Sprintf("%s", configToUse.TimeToClaim),
+			"-containerOwnerName", configToUse.ContainerOwnerName,
 		),
 		runner_support.TeeToGinkgoWriter,
 		runner_support.TeeToGinkgoWriter,
@@ -106,14 +110,15 @@ func (r *ExecutorRunner) KillWithFire() {
 	}
 }
 
-func (r *ExecutorRunner) generateConfig(config ...Config) Config {
+func (r *ExecutorRunner) generateConfig(configs ...Config) Config {
 	configToReturn := defaultConfig
+	configToReturn.ContainerOwnerName = fmt.Sprintf("executor-on-node-%d", config.GinkgoConfig.ParallelNode)
 
-	if len(config) == 0 {
+	if len(configs) == 0 {
 		return configToReturn
 	}
 
-	givenConfig := config[0]
+	givenConfig := configs[0]
 	if givenConfig.MemoryMB != 0 {
 		configToReturn.MemoryMB = givenConfig.MemoryMB
 	}
@@ -134,6 +139,9 @@ func (r *ExecutorRunner) generateConfig(config ...Config) Config {
 	}
 	if givenConfig.TimeToClaim != 0 {
 		configToReturn.TimeToClaim = givenConfig.TimeToClaim
+	}
+	if givenConfig.ContainerOwnerName != "" {
+		configToReturn.ContainerOwnerName = givenConfig.ContainerOwnerName
 	}
 
 	return configToReturn
