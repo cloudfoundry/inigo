@@ -97,6 +97,7 @@ func (r *ExecutorRunner) StartWithoutCheck(config ...Config) {
 }
 
 func (r *ExecutorRunner) Stop() {
+	r.Config = defaultConfig
 	if r.Session != nil {
 		r.Session.Cmd.Process.Signal(syscall.SIGTERM)
 		_, err := r.Session.Wait(5 * time.Second)

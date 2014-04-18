@@ -190,7 +190,7 @@ var _ = Describe("Executor", func() {
 				Eventually(bbs.GetAllCompletedRunOnces, LONG_TIMEOUT).Should(HaveLen(1))
 				runOnces, _ := bbs.GetAllCompletedRunOnces()
 				Ω(runOnces[0].Failed).Should(BeTrue())
-				Ω(runOnces[0].FailureReason).Should(ContainSubstring("timed out"))
+				Ω(runOnces[0].FailureReason).Should(ContainSubstring("Timed out after 500ms"))
 			})
 		})
 	})

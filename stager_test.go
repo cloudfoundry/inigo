@@ -8,11 +8,9 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"time"
 
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
 	"github.com/fraenkel/candiedyaml"
-	"github.com/vito/cmdtest"
 
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
@@ -20,6 +18,7 @@ import (
 	"github.com/cloudfoundry/yagnats"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	zip_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 )
 
@@ -187,11 +186,11 @@ EOF
 				)
 				defer close(stop)
 
-				logOutput := ""
+				logOutput := gbytes.NewBuffer()
 				go func() {
 					for message := range messages {
 						Ω(message.GetSourceName()).To(Equal("STG"))
-						logOutput += string(message.GetMessage()) + "\n"
+						logOutput.Write([]byte(string(message.GetMessage()) + "\n"))
 					}
 				}()
 
@@ -211,10 +210,8 @@ EOF
 				Ω(string(payload)).Should(Equal(`{"detected_buildpack":"My Buildpack"}`))
 
 				//Asser the user saw reasonable output
-				Eventually(func() string {
-					return logOutput
-				}).Should(ContainSubstring("COMPILING BUILDPACK"))
-				Ω(logOutput).Should(ContainSubstring(outputGuid))
+				Eventually(logOutput).Should(gbytes.Say("COMPILING BUILDPACK"))
+				Ω(logOutput.Contents()).Should(ContainSubstring(outputGuid))
 
 				// Assert that the build artifacts cache was downloaded
 				//TODO: how do we test they were downloaded??
@@ -313,12 +310,11 @@ EOF
 					)
 					defer close(stop)
 
-					logIn, logOut := io.Pipe()
+					logOutput := gbytes.NewBuffer()
 					go func() {
 						for message := range messages {
 							Ω(message.GetSourceName()).To(Equal("STG"))
-							logOut.Write(message.GetMessage())
-							logOut.Write([]byte{'\n'})
+							logOutput.Write([]byte(string(message.GetMessage()) + "\n"))
 						}
 					}()
 
@@ -331,11 +327,9 @@ EOF
 
 					var payload []byte
 					Eventually(payloads, 10.0).Should(Receive(&payload))
-					Ω(string(payload)).Should(Equal(`{"error":"process exited with status 1"}`))
+					Ω(string(payload)).Should(Equal(`{"error":"Exited with status 1"}`))
 
-					expector := cmdtest.NewExpector(logIn, 5*time.Second)
-					err = expector.Expect("no valid buildpacks detected")
-					Ω(err).ShouldNot(HaveOccurred())
+					Eventually(logOutput).Should(gbytes.Say("no valid buildpacks detected"))
 				})
 			})
 		})
