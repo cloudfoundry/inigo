@@ -156,7 +156,7 @@ EOF
 						"stack": "default",
 						"app_bits_download_uri": "%s",
 						"buildpacks" : [{ "key": "test-buildpack", "url": "%s" }],
-						"environment": [["SOME_STAGING_ENV", "%s"]]
+						"environment": [{ "key": "SOME_STAGING_ENV", "value": "%s"}]
 					}`,
 					appId,
 					inigo_server.DownloadUrl("app.zip"),

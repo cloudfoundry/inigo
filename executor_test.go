@@ -95,7 +95,7 @@ var _ = Describe("Executor", func() {
 		})
 
 		It("should run the command with the provided environment", func() {
-			env := [][]string{
+			env := []models.EnvironmentVariable{
 				{"FOO", "BAR"},
 				{"BAZ", "WIBBLE"},
 				{"FOO", "$FOO-$BAZ"},
