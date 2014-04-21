@@ -1,4 +1,4 @@
-// Copyright 2013 Gary Burd. All rights reserved.
+// Copyright 2013 The Gorilla WebSocket Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-var timeoutErrImplementsNetError net.Error = errWriteTimeout
+var _ net.Error = errWriteTimeout
 
 type fakeNetConn struct {
 	io.Reader
