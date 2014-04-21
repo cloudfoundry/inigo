@@ -53,13 +53,13 @@ var _ = Describe("Executor", func() {
 		It("should only pick up tasks if it has capacity", func() {
 			firstGuyGuid := factories.GenerateGuid()
 			secondGuyGuid := factories.GenerateGuid()
-			firstGuyRunOnce := factories.BuildRunOnceWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(firstGuyGuid)+"; sleep 5")
-			bbs.DesireRunOnce(firstGuyRunOnce)
+			firstGuyTask := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(firstGuyGuid)+"; sleep 5")
+			bbs.DesireTask(firstGuyTask)
 
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(firstGuyGuid))
 
-			secondGuyRunOnce := factories.BuildRunOnceWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(secondGuyGuid))
-			bbs.DesireRunOnce(secondGuyRunOnce)
+			secondGuyTask := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(secondGuyGuid))
+			bbs.DesireTask(secondGuyTask)
 
 			Consistently(inigo_server.ReportingGuids, SHORT_TIMEOUT).ShouldNot(ContainElement(secondGuyGuid))
 		})
@@ -72,15 +72,15 @@ var _ = Describe("Executor", func() {
 
 		It("should only pick up tasks if the stacks match", func() {
 			matchingGuid := factories.GenerateGuid()
-			matchingRunOnce := factories.BuildRunOnceWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(matchingGuid)+"; sleep 10")
-			matchingRunOnce.Stack = "penguin"
+			matchingTask := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(matchingGuid)+"; sleep 10")
+			matchingTask.Stack = "penguin"
 
 			nonMatchingGuid := factories.GenerateGuid()
-			nonMatchingRunOnce := factories.BuildRunOnceWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(nonMatchingGuid)+"; sleep 10")
-			nonMatchingRunOnce.Stack = "lion"
+			nonMatchingTask := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(nonMatchingGuid)+"; sleep 10")
+			nonMatchingTask.Stack = "lion"
 
-			bbs.DesireRunOnce(matchingRunOnce)
-			bbs.DesireRunOnce(nonMatchingRunOnce)
+			bbs.DesireTask(matchingTask)
+			bbs.DesireTask(nonMatchingTask)
 
 			Consistently(inigo_server.ReportingGuids, SHORT_TIMEOUT).ShouldNot(ContainElement(nonMatchingGuid), "Did not expect to see this app running, as it has the wrong stack.")
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(matchingGuid))
@@ -100,7 +100,7 @@ var _ = Describe("Executor", func() {
 				{"BAZ", "WIBBLE"},
 				{"FOO", "$FOO-$BAZ"},
 			}
-			runOnce := &models.RunOnce{
+			runOnce := &models.Task{
 				Guid:     factories.GenerateGuid(),
 				Stack:    suiteContext.ExecutorRunner.Config.Stack,
 				MemoryMB: 1024,
@@ -110,11 +110,11 @@ var _ = Describe("Executor", func() {
 				},
 			}
 
-			bbs.DesireRunOnce(runOnce)
+			bbs.DesireTask(runOnce)
 
-			Eventually(bbs.GetAllCompletedRunOnces, LONG_TIMEOUT).Should(HaveLen(1))
+			Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
 
-			runOnces, _ := bbs.GetAllCompletedRunOnces()
+			runOnces, _ := bbs.GetAllCompletedTasks()
 			Ω(runOnces[0].FailureReason).Should(BeEmpty())
 			Ω(runOnces[0].Failed).Should(BeFalse())
 		})
@@ -122,9 +122,9 @@ var _ = Describe("Executor", func() {
 		Context("when the command exceeds its memory limit", func() {
 			var otherGuid string
 
-			It("should fail the RunOnce", func() {
+			It("should fail the Task", func() {
 				otherGuid = factories.GenerateGuid()
-				runOnce := &models.RunOnce{
+				runOnce := &models.Task{
 					Guid:     factories.GenerateGuid(),
 					Stack:    suiteContext.ExecutorRunner.Config.Stack,
 					MemoryMB: 10,
@@ -136,12 +136,12 @@ var _ = Describe("Executor", func() {
 					},
 				}
 
-				bbs.DesireRunOnce(runOnce)
+				bbs.DesireTask(runOnce)
 
 				Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 
-				Eventually(bbs.GetAllCompletedRunOnces, LONG_TIMEOUT).Should(HaveLen(1))
-				runOnces, _ := bbs.GetAllCompletedRunOnces()
+				Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
+				runOnces, _ := bbs.GetAllCompletedTasks()
 				Ω(runOnces[0].Failed).Should(BeTrue())
 				Ω(runOnces[0].FailureReason).Should(ContainSubstring("out of memory"))
 
@@ -150,8 +150,8 @@ var _ = Describe("Executor", func() {
 		})
 
 		Context("when the command exceeds its file descriptor limit", func() {
-			It("should fail the RunOnce", func() {
-				runOnce := &models.RunOnce{
+			It("should fail the Task", func() {
+				runOnce := &models.Task{
 					Guid:            factories.GenerateGuid(),
 					Stack:           suiteContext.ExecutorRunner.Config.Stack,
 					MemoryMB:        10,
@@ -162,18 +162,18 @@ var _ = Describe("Executor", func() {
 					},
 				}
 
-				bbs.DesireRunOnce(runOnce)
+				bbs.DesireTask(runOnce)
 
-				Eventually(bbs.GetAllCompletedRunOnces, LONG_TIMEOUT).Should(HaveLen(1))
-				runOnces, _ := bbs.GetAllCompletedRunOnces()
+				Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
+				runOnces, _ := bbs.GetAllCompletedTasks()
 				Ω(runOnces[0].Failed).Should(BeTrue())
 				Ω(runOnces[0].FailureReason).Should(ContainSubstring("127"))
 			})
 		})
 
 		Context("when the command times out", func() {
-			It("should fail the RunOnce", func() {
-				runOnce := &models.RunOnce{
+			It("should fail the Task", func() {
+				runOnce := &models.Task{
 					Guid:     factories.GenerateGuid(),
 					Stack:    suiteContext.ExecutorRunner.Config.Stack,
 					MemoryMB: 1024,
@@ -184,11 +184,11 @@ var _ = Describe("Executor", func() {
 					},
 				}
 
-				bbs.DesireRunOnce(runOnce)
+				bbs.DesireTask(runOnce)
 
 				Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
-				Eventually(bbs.GetAllCompletedRunOnces, LONG_TIMEOUT).Should(HaveLen(1))
-				runOnces, _ := bbs.GetAllCompletedRunOnces()
+				Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
+				runOnces, _ := bbs.GetAllCompletedTasks()
 				Ω(runOnces[0].Failed).Should(BeTrue())
 				Ω(runOnces[0].FailureReason).Should(ContainSubstring("Timed out after 500ms"))
 			})
@@ -205,7 +205,7 @@ var _ = Describe("Executor", func() {
 		})
 
 		It("downloads the file", func() {
-			runOnce := &models.RunOnce{
+			runOnce := &models.Task{
 				Guid:     factories.GenerateGuid(),
 				Stack:    suiteContext.ExecutorRunner.Config.Stack,
 				MemoryMB: 1024,
@@ -216,7 +216,7 @@ var _ = Describe("Executor", func() {
 				},
 			}
 
-			bbs.DesireRunOnce(runOnce)
+			bbs.DesireTask(runOnce)
 
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 		})
@@ -231,7 +231,7 @@ var _ = Describe("Executor", func() {
 		})
 
 		It("uploads a tarball containing the specified files", func() {
-			runOnce := &models.RunOnce{
+			runOnce := &models.Task{
 				Guid:     factories.GenerateGuid(),
 				Stack:    suiteContext.ExecutorRunner.Config.Stack,
 				MemoryMB: 1024,
@@ -243,7 +243,7 @@ var _ = Describe("Executor", func() {
 				},
 			}
 
-			bbs.DesireRunOnce(runOnce)
+			bbs.DesireTask(runOnce)
 
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 
@@ -264,8 +264,8 @@ var _ = Describe("Executor", func() {
 			suiteContext.ExecutorRunner.Start()
 		})
 
-		It("should fetch the contents of the requested file and provide the content in the completed RunOnce", func() {
-			runOnce := &models.RunOnce{
+		It("should fetch the contents of the requested file and provide the content in the completed Task", func() {
+			runOnce := &models.Task{
 				Guid:     factories.GenerateGuid(),
 				Stack:    suiteContext.ExecutorRunner.Config.Stack,
 				MemoryMB: 1024,
@@ -276,16 +276,16 @@ var _ = Describe("Executor", func() {
 				},
 			}
 
-			bbs.DesireRunOnce(runOnce)
+			bbs.DesireTask(runOnce)
 
-			Eventually(bbs.GetAllCompletedRunOnces, LONG_TIMEOUT).Should(HaveLen(1))
+			Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
 
-			runOnces, _ := bbs.GetAllCompletedRunOnces()
+			runOnces, _ := bbs.GetAllCompletedTasks()
 			Ω(runOnces[0].Result).Should(Equal("tasty thingy\n"))
 		})
 	})
 
-	Describe("A RunOnce with logging configured", func() {
+	Describe("A Task with logging configured", func() {
 		BeforeEach(func() {
 			suiteContext.ExecutorRunner.Start()
 		})
@@ -298,7 +298,7 @@ var _ = Describe("Executor", func() {
 				"/tail/?app="+logGuid,
 			)
 
-			runOnce := factories.BuildRunOnceWithRunAction(
+			runOnce := factories.BuildTaskWithRunAction(
 				suiteContext.ExecutorRunner.Config.Stack,
 				1024,
 				1024,
@@ -307,7 +307,7 @@ var _ = Describe("Executor", func() {
 			runOnce.Log.Guid = logGuid
 			runOnce.Log.SourceName = "APP"
 
-			bbs.DesireRunOnce(runOnce)
+			bbs.DesireTask(runOnce)
 
 			outStream := []string{}
 			errStream := []string{}

@@ -85,7 +85,7 @@ func (r *ExecutorRunner) StartWithoutCheck(config ...Config) {
 			"-loggregatorServer", r.loggregatorServer,
 			"-loggregatorSecret", r.loggregatorSecret,
 			"-tempDir", configToUse.TempDir,
-			"-timeToClaimRunOnce", fmt.Sprintf("%s", configToUse.TimeToClaim),
+			"-timeToClaimTask", fmt.Sprintf("%s", configToUse.TimeToClaim),
 			"-containerOwnerName", configToUse.ContainerOwnerName,
 		),
 		runner_support.TeeToGinkgoWriter,

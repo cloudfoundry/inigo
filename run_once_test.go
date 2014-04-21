@@ -13,32 +13,32 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("RunOnce", func() {
+var _ = Describe("Task", func() {
 	var bbs *Bbs.BBS
 
 	BeforeEach(func() {
 		bbs = Bbs.New(suiteContext.EtcdRunner.Adapter(), timeprovider.NewTimeProvider())
 	})
 
-	Context("when there is an executor running and a RunOnce is registered", func() {
+	Context("when there is an executor running and a Task is registered", func() {
 		BeforeEach(func() {
 			suiteContext.ExecutorRunner.Start()
 		})
 
-		It("eventually runs the RunOnce", func() {
+		It("eventually runs the Task", func() {
 			guid := factories.GenerateGuid()
-			runOnce := factories.BuildRunOnceWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
-			bbs.DesireRunOnce(runOnce)
+			runOnce := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
+			bbs.DesireTask(runOnce)
 
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 		})
 	})
 
-	Context("when there are no executors listening when a RunOnce is registered", func() {
-		It("eventually runs the RunOnce once an executor comes up", func() {
+	Context("when there are no executors listening when a Task is registered", func() {
+		It("eventually runs the Task once an executor comes up", func() {
 			guid := factories.GenerateGuid()
-			runOnce := factories.BuildRunOnceWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
-			bbs.DesireRunOnce(runOnce)
+			runOnce := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
+			bbs.DesireTask(runOnce)
 
 			suiteContext.ExecutorRunner.Start()
 
@@ -46,7 +46,7 @@ var _ = Describe("RunOnce", func() {
 		})
 	})
 
-	Context("when no one picks up the RunOnce", func() {
+	Context("when no one picks up the Task", func() {
 		BeforeEach(func() {
 			suiteContext.ExecutorRunner.Start(executor_runner.Config{
 				Stack:               "mickey-mouse",
@@ -57,14 +57,14 @@ var _ = Describe("RunOnce", func() {
 
 		It("should be marked as failed, eventually", func() {
 			guid := factories.GenerateGuid()
-			runOnce := factories.BuildRunOnceWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
+			runOnce := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
 			runOnce.Stack = "donald-duck"
-			bbs.DesireRunOnce(runOnce)
+			bbs.DesireTask(runOnce)
 
-			Eventually(bbs.GetAllCompletedRunOnces, 5).Should(HaveLen(1))
-			runOnces, err := bbs.GetAllCompletedRunOnces()
+			Eventually(bbs.GetAllCompletedTasks, 5).Should(HaveLen(1))
+			runOnces, err := bbs.GetAllCompletedTasks()
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(runOnces[0].Failed).Should(BeTrue(), "RunOnce should have failed")
+			Ω(runOnces[0].Failed).Should(BeTrue(), "Task should have failed")
 			Ω(runOnces[0].FailureReason).Should(ContainSubstring("not claimed within time limit"))
 
 			Ω(inigo_server.ReportingGuids()).Should(BeEmpty())
@@ -90,21 +90,21 @@ var _ = Describe("RunOnce", func() {
 
 		It("eventually marks jobs running on that executor as failed", func() {
 			guid := factories.GenerateGuid()
-			runOnce := factories.BuildRunOnceWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(guid)+"; sleep 10")
-			bbs.DesireRunOnce(runOnce)
+			runOnce := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(guid)+"; sleep 10")
+			bbs.DesireTask(runOnce)
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 
 			secondExecutor.KillWithFire()
 
 			Eventually(func() interface{} {
-				runOnces, _ := bbs.GetAllCompletedRunOnces()
+				runOnces, _ := bbs.GetAllCompletedTasks()
 				return runOnces
 			}, LONG_TIMEOUT).Should(HaveLen(1))
-			runOnces, _ := bbs.GetAllCompletedRunOnces()
+			runOnces, _ := bbs.GetAllCompletedTasks()
 
-			completedRunOnce := runOnces[0]
-			Ω(completedRunOnce.Guid).Should(Equal(runOnce.Guid))
-			Ω(completedRunOnce.Failed).To(BeTrue())
+			completedTask := runOnces[0]
+			Ω(completedTask.Guid).Should(Equal(runOnce.Guid))
+			Ω(completedTask.Failed).To(BeTrue())
 		})
 	})
 })
