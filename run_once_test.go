@@ -27,8 +27,8 @@ var _ = Describe("Task", func() {
 
 		It("eventually runs the Task", func() {
 			guid := factories.GenerateGuid()
-			runOnce := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
-			bbs.DesireTask(runOnce)
+			task := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
+			bbs.DesireTask(task)
 
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 		})
@@ -37,8 +37,8 @@ var _ = Describe("Task", func() {
 	Context("when there are no executors listening when a Task is registered", func() {
 		It("eventually runs the Task once an executor comes up", func() {
 			guid := factories.GenerateGuid()
-			runOnce := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
-			bbs.DesireTask(runOnce)
+			task := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
+			bbs.DesireTask(task)
 
 			suiteContext.ExecutorRunner.Start()
 
@@ -57,15 +57,15 @@ var _ = Describe("Task", func() {
 
 		It("should be marked as failed, eventually", func() {
 			guid := factories.GenerateGuid()
-			runOnce := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
-			runOnce.Stack = "donald-duck"
-			bbs.DesireTask(runOnce)
+			task := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
+			task.Stack = "donald-duck"
+			bbs.DesireTask(task)
 
 			Eventually(bbs.GetAllCompletedTasks, 5).Should(HaveLen(1))
-			runOnces, err := bbs.GetAllCompletedTasks()
+			tasks, err := bbs.GetAllCompletedTasks()
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(runOnces[0].Failed).Should(BeTrue(), "Task should have failed")
-			Ω(runOnces[0].FailureReason).Should(ContainSubstring("not claimed within time limit"))
+			Ω(tasks[0].Failed).Should(BeTrue(), "Task should have failed")
+			Ω(tasks[0].FailureReason).Should(ContainSubstring("not claimed within time limit"))
 
 			Ω(inigo_server.ReportingGuids()).Should(BeEmpty())
 		})
@@ -90,20 +90,20 @@ var _ = Describe("Task", func() {
 
 		It("eventually marks jobs running on that executor as failed", func() {
 			guid := factories.GenerateGuid()
-			runOnce := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(guid)+"; sleep 10")
-			bbs.DesireTask(runOnce)
+			task := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(guid)+"; sleep 10")
+			bbs.DesireTask(task)
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 
 			secondExecutor.KillWithFire()
 
 			Eventually(func() interface{} {
-				runOnces, _ := bbs.GetAllCompletedTasks()
-				return runOnces
+				tasks, _ := bbs.GetAllCompletedTasks()
+				return tasks
 			}, LONG_TIMEOUT).Should(HaveLen(1))
-			runOnces, _ := bbs.GetAllCompletedTasks()
+			tasks, _ := bbs.GetAllCompletedTasks()
 
-			completedTask := runOnces[0]
-			Ω(completedTask.Guid).Should(Equal(runOnce.Guid))
+			completedTask := tasks[0]
+			Ω(completedTask.Guid).Should(Equal(task.Guid))
 			Ω(completedTask.Failed).To(BeTrue())
 		})
 	})
