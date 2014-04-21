@@ -103,6 +103,7 @@ func (context suiteContextType) Runners() []Runner {
 		context.LoggregatorRunner,
 		context.NatsRunner,
 		context.EtcdRunner,
+		context.ServistryRunner,
 	}
 }
 

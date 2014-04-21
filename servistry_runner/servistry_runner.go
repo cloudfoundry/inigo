@@ -1,14 +1,15 @@
 package servistry_runner
 
 import (
-	"github.com/cloudfoundry/gunk/runner_support"
-	. "github.com/onsi/gomega"
-	"github.com/vito/cmdtest"
-	. "github.com/vito/cmdtest/matchers"
 	"os/exec"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/cloudfoundry/gunk/runner_support"
+	. "github.com/onsi/gomega"
+	"github.com/vito/cmdtest"
+	. "github.com/vito/cmdtest/matchers"
 )
 
 type ServistryRunner struct {
@@ -51,7 +52,7 @@ func (r *ServistryRunner) Start(args ...string) {
 
 func (r *ServistryRunner) Stop() {
 	if r.session != nil {
-		r.session.Cmd.Process.Signal(syscall.SIGTERM)
+		r.session.Cmd.Process.Signal(syscall.SIGKILL)
 		_, err := r.session.Wait(5 * time.Second)
 		Ω(err).ShouldNot(HaveOccurred())
 	}
