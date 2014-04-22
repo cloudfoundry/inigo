@@ -40,7 +40,6 @@ type sharedContextType struct {
 	StagerPath      string
 	FileServerPath  string
 	LoggregatorPath string
-	ServistryPath   string
 	SmelterZipPath  string
 
 	WardenAddr    string
