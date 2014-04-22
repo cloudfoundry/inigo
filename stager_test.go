@@ -207,7 +207,10 @@ EOF
 				Eventually(payloads, LONG_TIMEOUT).Should(Receive(&payload))
 
 				//Assert on the staging output (detected buildpack)
-				Ω(string(payload)).Should(Equal(`{"detected_buildpack":"My Buildpack"}`))
+				Ω(string(payload)).Should(MatchJSON(`{
+					"buildpack_key":"test-buildpack",
+					"detected_buildpack":"My Buildpack"
+				}`))
 
 				//Asser the user saw reasonable output
 				Eventually(logOutput).Should(gbytes.Say("COMPILING BUILDPACK"))
