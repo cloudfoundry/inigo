@@ -19,7 +19,6 @@ pushd $TMP_GOPATH
     github.com/cloudfoundry-incubator/inigo/...\
     github.com/cloudfoundry-incubator/executor/... \
     github.com/cloudfoundry-incubator/stager/... \
-    github.com/cloudfoundry-incubator/servistry/... \
     github.com/cloudfoundry-incubator/file-server/... \
     github.com/cloudfoundry-incubator/linux-smelter/... \
     github.com/cloudfoundry-incubator/warden-linux/...
@@ -28,7 +27,6 @@ pushd $TMP_GOPATH
     github.com/cloudfoundry-incubator/inigo/...\
     github.com/cloudfoundry-incubator/executor/... \
     github.com/cloudfoundry-incubator/stager/... \
-    github.com/cloudfoundry-incubator/servistry/... \
     github.com/cloudfoundry-incubator/file-server/... \
     github.com/cloudfoundry-incubator/linux-smelter/... \
     github.com/cloudfoundry-incubator/warden-linux/...
@@ -42,7 +40,6 @@ for package in \
     github.com/cloudfoundry-incubator/inigo \
     github.com/cloudfoundry-incubator/executor \
     github.com/cloudfoundry-incubator/stager \
-    github.com/cloudfoundry-incubator/servistry \
     github.com/cloudfoundry-incubator/file-server \
     github.com/cloudfoundry-incubator/linux-smelter \
     github.com/cloudfoundry-incubator/warden-linux; do

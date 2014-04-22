@@ -26,7 +26,6 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/fileserver_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/inigo/loggregator_runner"
-	"github.com/cloudfoundry-incubator/inigo/servistry_runner"
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
 	WardenRunner "github.com/cloudfoundry-incubator/warden-linux/integration/runner"
 )
@@ -84,8 +83,6 @@ type suiteContextType struct {
 
 	StagerRunner *stager_runner.StagerRunner
 
-	ServistryRunner *servistry_runner.ServistryRunner
-
 	FakeCC        *fake_cc.FakeCC
 	FakeCCAddress string
 
@@ -103,7 +100,6 @@ func (context suiteContextType) Runners() []Runner {
 		context.LoggregatorRunner,
 		context.NatsRunner,
 		context.EtcdRunner,
-		context.ServistryRunner,
 	}
 }
 
@@ -160,12 +156,6 @@ func beforeSuite(encodedSharedContext []byte) {
 
 	context.StagerRunner = stager_runner.New(
 		context.SharedContext.StagerPath,
-		context.EtcdRunner.NodeURLS(),
-		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
-	)
-
-	context.ServistryRunner = servistry_runner.New(
-		context.SharedContext.ServistryPath,
 		context.EtcdRunner.NodeURLS(),
 		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
 	)
@@ -296,9 +286,6 @@ func (node *nodeOneType) CompileTestedExecutables() {
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.StagerPath, err = cmdtest.BuildIn(os.Getenv("STAGER_GOPATH"), "github.com/cloudfoundry-incubator/stager", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	node.context.ServistryPath, err = cmdtest.BuildIn(os.Getenv("SERVISTRY_GOPATH"), "github.com/cloudfoundry-incubator/servistry", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.FileServerPath, err = cmdtest.BuildIn(os.Getenv("FILE_SERVER_GOPATH"), "github.com/cloudfoundry-incubator/file-server", "-race")
