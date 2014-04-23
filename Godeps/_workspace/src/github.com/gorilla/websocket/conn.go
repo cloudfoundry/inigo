@@ -1,4 +1,4 @@
-// Copyright 2013 The Gorilla WebSocket Authors. All rights reserved.
+// Copyright 2013 Gary Burd. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -61,12 +61,7 @@ var (
 )
 
 var (
-	// ErrCloseSent is returned when the application writes a message to the
-	// connection after sending a close message.
 	ErrCloseSent = errors.New("websocket: close sent")
-
-	// ErrReadLimit is returned when reading a message that is larger than the
-	// read limit set for the connection.
 	ErrReadLimit = errors.New("websocket: read limit exceeded")
 )
 
@@ -106,7 +101,7 @@ func isData(frameType int) bool {
 func maskBytes(key [4]byte, pos int, b []byte) int {
 	for i := range b {
 		b[i] ^= key[pos&3]
-		pos++
+		pos += 1
 	}
 	return pos & 3
 }
@@ -307,7 +302,7 @@ func (c *Conn) flushFrame(final bool, extra []byte) error {
 	// Check for invalid control frames.
 	if isControl(c.writeFrameType) &&
 		(!final || length > maxControlFramePayloadSize) {
-		c.writeSeq++
+		c.writeSeq += 1
 		c.writeFrameType = noFrame
 		c.writePos = maxFrameHeaderSize
 		return errInvalidControlFrame
@@ -362,7 +357,7 @@ func (c *Conn) flushFrame(final bool, extra []byte) error {
 	c.writePos = maxFrameHeaderSize
 	c.writeFrameType = continuationFrame
 	if final {
-		c.writeSeq++
+		c.writeSeq += 1
 		c.writeFrameType = noFrame
 	}
 	return c.writeErr
@@ -671,7 +666,7 @@ func (c *Conn) read(buf []byte) error {
 // accessed by more than one goroutine at a time.
 func (c *Conn) NextReader() (messageType int, r io.Reader, err error) {
 
-	c.readSeq++
+	c.readSeq += 1
 	c.readLength = 0
 
 	for c.readErr == nil {
@@ -708,7 +703,7 @@ func (r messageReader) Read(b []byte) (n int, err error) {
 		}
 
 		if r.c.readFinal {
-			r.c.readSeq++
+			r.c.readSeq += 1
 			return 0, io.EOF
 		}
 

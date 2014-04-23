@@ -10,20 +10,24 @@
 			"Rev": "dc9b8350fb4568b6562900df872672f378242552"
 		},
 		{
+			"ImportPath": "github.com/cloudfoundry-incubator/garden/protocol",
+			"Rev": "27f354a16a7ca592136290e61b380ea67c64d0da"
+		},
+		{
 			"ImportPath": "github.com/cloudfoundry-incubator/gordon",
-			"Rev": "09869e6f3295bc4905edb059ae49f97c4ca9b343"
+			"Rev": "d048c4da2686b39fe6c912dfa2273eb934cd7d7b"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "3f5301d907083e62cf6fed141bf4526067fa4d73"
+			"Rev": "8021b389b4a8314c8cf891e3affe5f4a1e821eae"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "3f5301d907083e62cf6fed141bf4526067fa4d73"
+			"Rev": "8021b389b4a8314c8cf891e3affe5f4a1e821eae"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",
-			"Rev": "ad216cce993b1388d4a4fd06b453cd5d7c5b6f49"
+			"Rev": "5970303a3a27a52f0f4996c3969eda304aa18fd8"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -73,7 +77,7 @@
 		},
 		{
 			"ImportPath": "github.com/gorilla/websocket",
-			"Rev": "1e6e1281b05fe5eaaf3300bdedb8e75880b9c6fd"
+			"Rev": "03206ef31ebe44a6db9e66f3b466e05a31790631"
 		},
 		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
@@ -81,11 +85,11 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Rev": "462cb7e31b222093d2fd2f4f0cbbce324f6ab3be"
+			"Rev": "d941db095ac86d29f8304472895d2fd512bf8f57"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Rev": "426c03a406ae6e4ffb9b65528d62439831d7c901"
+			"Rev": "4fbbd0c858838cb79f21ce9da9dbb4129fcce862"
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/archiver/extractor/test_helper",
