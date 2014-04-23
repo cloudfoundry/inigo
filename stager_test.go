@@ -153,7 +153,7 @@ EOF
 						"memory_mb": 128,
 						"disk_mb": 128,
 						"file_descriptors": 1024,
-						"stack": "default",
+						"stack": "lucid64",
 						"app_bits_download_uri": "%s",
 						"buildpacks" : [{ "key": "test-buildpack", "url": "%s" }],
 						"environment": [{ "key": "SOME_STAGING_ENV", "value": "%s"}]
@@ -168,7 +168,7 @@ EOF
 
 		Context("with one stager running", func() {
 			BeforeEach(func() {
-				suiteContext.StagerRunner.Start("--compilers", `{"default":"smelter.zip"}`)
+				suiteContext.StagerRunner.Start("--compilers", `{"lucid64":"smelter.zip"}`)
 			})
 
 			It("runs the compiler on the executor with the correct environment variables, bits and log tag, and responds with the detected buildpack", func() {
@@ -339,8 +339,8 @@ EOF
 
 		Context("with two stagers running", func() {
 			BeforeEach(func() {
-				suiteContext.StagerRunner.Start("--compilers", `{"default":"smelter.zip"}`)
-				otherStagerRunner.Start("--compilers", `{"default":"smelter.zip"}`)
+				suiteContext.StagerRunner.Start("--compilers", `{"lucid64":"smelter.zip"}`)
+				otherStagerRunner.Start("--compilers", `{"lucid64":"smelter.zip"}`)
 			})
 
 			AfterEach(func() {
