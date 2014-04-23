@@ -21,7 +21,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/vito/cmdtest"
 
-	"github.com/cloudfoundry-incubator/inigo/executor_runner"
+	"github.com/cloudfoundry-incubator/executor/integration/executor_runner"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/inigo/fileserver_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"

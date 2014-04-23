@@ -5,7 +5,7 @@ import (
 
 	"github.com/cloudfoundry/gunk/timeprovider"
 
-	"github.com/cloudfoundry-incubator/inigo/executor_runner"
+	"github.com/cloudfoundry-incubator/executor/integration/executor_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
