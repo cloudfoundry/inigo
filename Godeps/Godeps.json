@@ -10,12 +10,16 @@
 			"Rev": "dc9b8350fb4568b6562900df872672f378242552"
 		},
 		{
+			"ImportPath": "github.com/cloudfoundry-incubator/executor/integration/executor_runner",
+			"Rev": "e594ac845fab19d6e275683edc9abcb4e2e82fdd"
+		},
+		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/protocol",
 			"Rev": "27f354a16a7ca592136290e61b380ea67c64d0da"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/gordon",
-			"Rev": "d048c4da2686b39fe6c912dfa2273eb934cd7d7b"
+			"Rev": "ad178ab9a752cd85c4f3bb5a9a138d6961df68d5"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
@@ -27,7 +31,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",
-			"Rev": "5970303a3a27a52f0f4996c3969eda304aa18fd8"
+			"Rev": "182d0aa68ba44351aba32d3c03ca2941d9ce6e14"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
