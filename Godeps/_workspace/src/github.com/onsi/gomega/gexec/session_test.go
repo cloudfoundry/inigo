@@ -3,6 +3,7 @@ package gexec_test
 import (
 	"bytes"
 	"os/exec"
+	"time"
 	. "github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
 
@@ -48,6 +49,43 @@ var _ = Describe("Session", func() {
 			}
 
 			close(done)
+		})
+
+		It("should satisfy the gbytes.BufferProvider interface, passing Stdout", func() {
+			Eventually(session).Should(Say("We've done the impossible, and that makes us mighty"))
+			Eventually(session).Should(Exit())
+		})
+	})
+
+	Describe("providing the exit code", func() {
+		It("should provide the app's exit code", func() {
+			Ω(session.ExitCode()).Should(Equal(-1))
+
+			Eventually(session).Should(Exit())
+			Ω(session.ExitCode()).Should(BeNumerically(">=", 0))
+			Ω(session.ExitCode()).Should(BeNumerically("<", 3))
+		})
+	})
+
+	Context("when the command exits", func() {
+		It("should close the buffers", func() {
+			Eventually(session).Should(Exit())
+
+			Ω(session.Out.Closed()).Should(BeTrue())
+			Ω(session.Err.Closed()).Should(BeTrue())
+
+			Ω(session.Out).Should(Say("We've done the impossible, and that makes us mighty"))
+		})
+
+		var So = It
+
+		So("this means that eventually should short circuit", func() {
+			t := time.Now()
+			failures := interceptFailures(func() {
+				Eventually(session).Should(Say("blah blah blah blah blah"))
+			})
+			Ω(time.Since(t)).Should(BeNumerically("<=", 500*time.Millisecond))
+			Ω(failures).Should(HaveLen(1))
 		})
 	})
 

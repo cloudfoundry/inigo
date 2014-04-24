@@ -10,8 +10,9 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/gordon"
-	"github.com/cloudfoundry/gunk/runner_support"
-	"github.com/vito/cmdtest"
+	"github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gexec"
 )
 
 type Runner struct {
@@ -24,7 +25,7 @@ type Runner struct {
 	SnapshotsPath string
 
 	wardenBin     string
-	wardenSession *cmdtest.Session
+	wardenSession *gexec.Session
 
 	tmpdir string
 }
@@ -83,11 +84,7 @@ func (r *Runner) Start(argv ...string) error {
 	warden.Stdout = os.Stdout
 	warden.Stderr = os.Stderr
 
-	session, err := cmdtest.StartWrapped(
-		warden,
-		runner_support.TeeToGinkgoWriter,
-		runner_support.TeeToGinkgoWriter,
-	)
+	session, err := gexec.Start(warden, ginkgo.GinkgoWriter, ginkgo.GinkgoWriter)
 	if err != nil {
 		return err
 	}
@@ -102,15 +99,12 @@ func (r *Runner) Stop() error {
 		return nil
 	}
 
-	err := r.wardenSession.Cmd.Process.Signal(os.Interrupt)
+	err := r.wardenSession.Command.Process.Signal(os.Interrupt)
 	if err != nil {
 		return err
 	}
 
-	_, err = r.wardenSession.Wait(10 * time.Second)
-	if err != nil {
-		return err
-	}
+	Eventually(r.wardenSession.ExitCode, 10).ShouldNot(Equal(-1))
 
 	r.wardenSession = nil
 
