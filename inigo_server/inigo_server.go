@@ -103,7 +103,7 @@ func Start(wardenClient gordon.Client) {
 	Eventually(func() error {
 		_, err := http.Get(fmt.Sprintf("http://%s:%d/registrations", ipAddress, hostPort))
 		return err
-	}).ShouldNot(HaveOccurred())
+	}, 2).ShouldNot(HaveOccurred())
 }
 
 func Stop(wardenClient gordon.Client) {
