@@ -11,23 +11,23 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/onsi/ginkgo/config"
-
+	"github.com/cloudfoundry-incubator/executor/integration/executor_runner"
+	WardenClient "github.com/cloudfoundry-incubator/garden/client"
+	WardenConnection "github.com/cloudfoundry-incubator/garden/client/connection"
+	"github.com/cloudfoundry-incubator/garden/warden"
+	WardenRunner "github.com/cloudfoundry-incubator/warden-linux/integration/runner"
 	"github.com/cloudfoundry/gunk/natsrunner"
-
-	"github.com/cloudfoundry-incubator/gordon"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/vito/cmdtest"
 
-	"github.com/cloudfoundry-incubator/executor/integration/executor_runner"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/inigo/fileserver_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/inigo/loggregator_runner"
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
-	WardenRunner "github.com/cloudfoundry-incubator/warden-linux/integration/runner"
 )
 
 var SHORT_TIMEOUT = 5.0
@@ -68,7 +68,7 @@ type suiteContextType struct {
 	SharedContext sharedContextType
 
 	EtcdRunner   *etcdstorerunner.ETCDClusterRunner
-	WardenClient gordon.Client
+	WardenClient warden.Client
 
 	NatsRunner *natsrunner.NATSRunner
 	NatsPort   int
@@ -168,13 +168,10 @@ func beforeSuite(encodedSharedContext []byte) {
 		fake_cc.CC_PASSWORD,
 	)
 
-	wardenClient := gordon.NewClient(&gordon.ConnectionInfo{
+	wardenClient := WardenClient.New(&WardenConnection.Info{
 		Network: context.SharedContext.WardenNetwork,
 		Addr:    context.SharedContext.WardenAddr,
 	})
-
-	err := wardenClient.Connect()
-	Ω(err).ShouldNot(HaveOccurred())
 
 	context.WardenClient = wardenClient
 

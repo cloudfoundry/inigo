@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cloudfoundry-incubator/gordon"
+	"github.com/cloudfoundry-incubator/garden/warden"
 	. "github.com/onsi/gomega"
 )
 
@@ -61,41 +61,38 @@ server.start
 END_MAGIC_SERVER
 `
 
-var handle string
+var container warden.Container
+
 var hostPort uint32
 var ipAddress string
 
-func Start(wardenClient gordon.Client) {
-	createResponse, err := wardenClient.Create(nil)
+func Start(wardenClient warden.Client) {
+	var err error
+
+	container, err = wardenClient.Create(warden.ContainerSpec{})
 	if err != nil {
 		panic(err)
 	}
 
-	handle = createResponse.GetHandle()
-
-	netResponse, err := wardenClient.NetIn(handle)
+	var containerPort uint32
+	hostPort, containerPort, err = container.NetIn(0, 0)
 	if err != nil {
 		panic(err)
 	}
 
-	containerPort := netResponse.GetContainerPort()
-	hostPort = netResponse.GetHostPort()
-
-	infoResponse, err := wardenClient.Info(handle)
+	info, err := container.Info()
 	if err != nil {
 		panic(err)
 	}
 
-	ipAddress = infoResponse.GetContainerIp()
+	ipAddress = info.ContainerIP
 
-	_, _, err = wardenClient.Run(
-		handle,
-		amazingRubyServer,
-		gordon.ResourceLimits{},
-		[]gordon.EnvironmentVariable{
-			gordon.EnvironmentVariable{Key: "PORT", Value: fmt.Sprintf("%d", containerPort)},
+	_, _, err = container.Run(warden.ProcessSpec{
+		Script: amazingRubyServer,
+		EnvironmentVariables: []warden.EnvironmentVariable{
+			warden.EnvironmentVariable{Key: "PORT", Value: fmt.Sprintf("%d", containerPort)},
 		},
-	)
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -106,9 +103,9 @@ func Start(wardenClient gordon.Client) {
 	}, 2).ShouldNot(HaveOccurred())
 }
 
-func Stop(wardenClient gordon.Client) {
-	wardenClient.Destroy(handle)
-	handle = ""
+func Stop(wardenClient warden.Client) {
+	wardenClient.Destroy(container.Handle())
+	container = nil
 	hostPort = 0
 	ipAddress = ""
 }
