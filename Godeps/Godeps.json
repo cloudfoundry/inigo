@@ -16,7 +16,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/integration/executor_runner",
-			"Rev": "c6f68d327d9380277fed84dae745e61f3d6b80f9"
+			"Rev": "4156f84bc85742625712d2a1d54ec85450f927ae"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/client",
@@ -32,15 +32,15 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "db82ae944dda942b1dccc6598c8b85c22e830077"
+			"Rev": "6c0f259f60b4e4d5a472e6d474086ec8c73605b1"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "db82ae944dda942b1dccc6598c8b85c22e830077"
+			"Rev": "6c0f259f60b4e4d5a472e6d474086ec8c73605b1"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",
-			"Rev": "c81294c95189ab9d72aec27af720c16b1ea69a96"
+			"Rev": "b24c0d139e8c6bfd4014c59c3ee55f67f5315400"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -73,7 +73,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
-			"Rev": "49b3830c5568b6193f6078bafa2262b2a1bae790"
+			"Rev": "28086a050c8acb6bc1d28fd23645e208aa95585d"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/yagnats",
@@ -81,8 +81,8 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/go-etcd/etcd",
-			"Comment": "v0.2.0-rc1-96-g1e26d8e",
-			"Rev": "1e26d8ee84cf9b1000d2af8acfb45b2521f49be5"
+			"Comment": "v0.2.0-rc1-98-gd88f477",
+			"Rev": "d88f477a542c781eb9ad18ce82b3a0b9b6e2d07e"
 		},
 		{
 			"ImportPath": "github.com/fraenkel/candiedyaml",
@@ -107,10 +107,6 @@
 		{
 			"ImportPath": "github.com/pivotal-golang/archiver/extractor/test_helper",
 			"Rev": "338bf2b31d42f9ff6f57e0944cf5628bdfee546c"
-		},
-		{
-			"ImportPath": "github.com/vito/cmdtest",
-			"Rev": "7949d8f2b06890d93ca31d3056de240b9d7c3bd5"
 		}
 	]
 }
