@@ -86,8 +86,8 @@ var _ = Describe("Task", func() {
 
 			convergingExecutor.Start(executor_runner.Config{
 				// so the task does not get scheduled on the converger
-				MemoryMB: 100,
-				DiskMB:   100,
+				MemoryMB: 1,
+				DiskMB:   1,
 
 				ConvergenceInterval: 1 * time.Second,
 				ContainerOwnerName:  "converging-executor",
@@ -105,7 +105,7 @@ var _ = Describe("Task", func() {
 			bbs.DesireTask(task)
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 
-			convergingExecutor.KillWithFire()
+			suiteContext.ExecutorRunner.KillWithFire()
 
 			Eventually(func() interface{} {
 				tasks, _ := bbs.GetAllCompletedTasks()
