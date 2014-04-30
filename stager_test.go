@@ -56,13 +56,12 @@ var _ = Describe("Stager", func() {
 
 		It("returns an error", func() {
 			receivedMessages := make(chan *yagnats.Message)
-			suiteContext.NatsRunner.MessageBus.Subscribe("compiler-stagers-test", func(message *yagnats.Message) {
+			suiteContext.NatsRunner.MessageBus.Subscribe("diego.staging.finished", func(message *yagnats.Message) {
 				receivedMessages <- message
 			})
 
-			suiteContext.NatsRunner.MessageBus.PublishWithReplyTo(
+			suiteContext.NatsRunner.MessageBus.Publish(
 				"diego.staging.start",
-				"compiler-stagers-test",
 				[]byte(fmt.Sprintf(`{
 					"app_id": "%s",
 					"task_id": "some-task-id",
@@ -175,7 +174,7 @@ EOF
 				//listen for NATS response
 				payloads := make(chan []byte)
 
-				suiteContext.NatsRunner.MessageBus.Subscribe("stager-test", func(msg *yagnats.Message) {
+				suiteContext.NatsRunner.MessageBus.Subscribe("diego.staging.finished", func(msg *yagnats.Message) {
 					payloads <- msg.Payload
 				})
 
@@ -195,11 +194,7 @@ EOF
 				}()
 
 				//publish the staging message
-				err := suiteContext.NatsRunner.MessageBus.PublishWithReplyTo(
-					"diego.staging.start",
-					"stager-test",
-					stagingMessage,
-				)
+				err := suiteContext.NatsRunner.MessageBus.Publish("diego.staging.start", stagingMessage)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				//wait for staging to complete
@@ -303,7 +298,7 @@ EOF
 				It("responds with the error, and no detected buildpack present", func() {
 					payloads := make(chan []byte)
 
-					suiteContext.NatsRunner.MessageBus.Subscribe("stager-test", func(msg *yagnats.Message) {
+					suiteContext.NatsRunner.MessageBus.Subscribe("diego.staging.finished", func(msg *yagnats.Message) {
 						payloads <- msg.Payload
 					})
 
@@ -321,9 +316,8 @@ EOF
 						}
 					}()
 
-					err := suiteContext.NatsRunner.MessageBus.PublishWithReplyTo(
+					err := suiteContext.NatsRunner.MessageBus.Publish(
 						"diego.staging.start",
-						"stager-test",
 						stagingMessage,
 					)
 					Ω(err).ShouldNot(HaveOccurred())
@@ -350,14 +344,13 @@ EOF
 			It("only one returns a staging completed response", func() {
 				received := make(chan bool)
 
-				_, err := suiteContext.NatsRunner.MessageBus.Subscribe("two-stagers-test", func(message *yagnats.Message) {
+				_, err := suiteContext.NatsRunner.MessageBus.Subscribe("diego.staging.finished", func(message *yagnats.Message) {
 					received <- true
 				})
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = suiteContext.NatsRunner.MessageBus.PublishWithReplyTo(
+				err = suiteContext.NatsRunner.MessageBus.Publish(
 					"diego.staging.start",
-					"two-stagers-test",
 					stagingMessage,
 				)
 				Ω(err).ShouldNot(HaveOccurred())
