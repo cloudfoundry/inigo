@@ -5,17 +5,19 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"time"
 
 	"github.com/cloudfoundry/yagnats"
+	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/vito/cmdtest"
+	"github.com/onsi/gomega/gexec"
 )
 
 var natsCommand *exec.Cmd
 
 type NATSRunner struct {
 	port        int
-	natsSession *cmdtest.Session
+	natsSession *gexec.Session
 	MessageBus  yagnats.NATSClient
 }
 
@@ -32,7 +34,8 @@ func (runner *NATSRunner) Start() {
 		os.Exit(1)
 	}
 
-	sess, err := cmdtest.Start(exec.Command("gnatsd", "-p", strconv.Itoa(runner.port)))
+	cmd := exec.Command("gnatsd", "-p", strconv.Itoa(runner.port))
+	sess, err := gexec.Start(cmd, ginkgo.GinkgoWriter, ginkgo.GinkgoWriter)
 	Ω(err).ShouldNot(HaveOccurred(), "Make sure to have gnatsd on your path")
 
 	runner.natsSession = sess
@@ -52,7 +55,7 @@ func (runner *NATSRunner) Start() {
 
 func (runner *NATSRunner) Stop() {
 	if runner.natsSession != nil {
-		runner.natsSession.Cmd.Process.Kill()
+		runner.natsSession.Kill().Wait(time.Second)
 		runner.MessageBus = nil
 		runner.natsSession = nil
 	}

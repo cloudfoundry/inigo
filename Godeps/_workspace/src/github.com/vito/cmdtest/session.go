@@ -3,14 +3,16 @@ package cmdtest
 import (
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"strings"
-	"syscall"
 	"time"
+
+	"github.com/onsi/gomega/gexec"
 )
 
 type Session struct {
+	gsess *gexec.Session
+
 	Cmd *exec.Cmd
 
 	Stdin io.WriteCloser
@@ -28,53 +30,26 @@ func Start(cmd *exec.Cmd) (*Session, error) {
 }
 
 func StartWrapped(cmd *exec.Cmd, outWrapper OutputWrapper, errWrapper OutputWrapper) (*Session, error) {
-	stdinOut, stdinIn, err := os.Pipe()
+	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, err
 	}
 
-	stdoutOut, stdoutIn, err := os.Pipe()
+	gsess, err := gexec.Start(cmd, outWrapper(nil), errWrapper(nil))
 	if err != nil {
 		return nil, err
 	}
 
-	stderrOut, stderrIn, err := os.Pipe()
-	if err != nil {
-		return nil, err
-	}
-
-	cmd.Stdin = stdinOut
-	cmd.Stdout = outWrapper(stdoutIn)
-	cmd.Stderr = errWrapper(stderrIn)
-
-	outExpector := NewExpector(stdoutOut, 0)
-	errExpector := NewExpector(stderrOut, 0)
-
-	err = cmd.Start()
-	if err != nil {
-		return nil, err
-	}
-
-	exited := make(chan int, 1)
-
-	go func() {
-		state, err := cmd.Process.Wait()
-		if err == nil {
-			exited <- state.Sys().(syscall.WaitStatus).ExitStatus()
-		}
-
-		close(exited)
-	}()
+	outExpector := NewBufferExpector(gsess.Out, 0)
+	errExpector := NewBufferExpector(gsess.Err, 0)
 
 	return &Session{
-		Cmd: cmd,
+		Cmd:   cmd,
+		Stdin: stdin,
 
-		Stdin: stdinIn,
-
+		gsess:  gsess,
 		stdout: outExpector,
 		stderr: errExpector,
-
-		exited: exited,
 	}, nil
 }
 
@@ -99,12 +74,19 @@ func (s Session) ExpectErrorWithTimeout(pattern string, timeout time.Duration) e
 }
 
 func (s Session) Wait(timeout time.Duration) (int, error) {
-	select {
-	case status := <-s.exited:
-		return status, nil
-	case <-time.After(timeout):
-		return -1, fmt.Errorf("command did not exit: %s", strings.Join(s.Cmd.Args, " "))
+	tick := 100 * time.Millisecond
+
+	for i := time.Duration(0); i < timeout; i += tick {
+		exitCode := s.gsess.ExitCode()
+
+		if exitCode != -1 {
+			return exitCode, nil
+		}
+
+		time.Sleep(tick)
 	}
+
+	return -1, fmt.Errorf("command did not exit: %s", strings.Join(s.Cmd.Args, " "))
 }
 
 func (s Session) FullOutput() []byte {

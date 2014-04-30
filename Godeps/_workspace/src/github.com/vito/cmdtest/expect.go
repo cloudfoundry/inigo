@@ -1,24 +1,23 @@
 package cmdtest
 
 import (
-	"bytes"
 	"fmt"
 	"io"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/onsi/gomega/gbytes"
 )
 
 type Expector struct {
 	output         io.Reader
 	defaultTimeout time.Duration
 
-	closed bool
+	offset int
+	buffer *gbytes.Buffer
 
-	offset     int
-	buffer     *bytes.Buffer
-	fullBuffer *bytes.Buffer
+	closed chan struct{}
 
 	sync.RWMutex
 }
@@ -30,7 +29,6 @@ type ExpectBranch struct {
 
 type ExpectationFailed struct {
 	Branches []ExpectBranch
-	Next     string
 	Output   string
 }
 
@@ -42,25 +40,44 @@ func (e ExpectationFailed) Error() string {
 	}
 
 	return fmt.Sprintf(
-		"Expected to see '%s', got stuck at: %#v.\n\nFull output:\n\n%s",
+		"Expected to see '%s'.\n\nFull output:\n\n%s",
 		strings.Join(patterns, "' or '"),
-		e.Next,
 		e.Output,
 	)
 }
 
-func NewExpector(out io.Reader, defaultTimeout time.Duration) *Expector {
-	e := &Expector{
-		output:         out,
+func NewExpector(in io.Reader, defaultTimeout time.Duration) *Expector {
+	buffer := gbytes.NewBuffer()
+
+	go func() {
+		io.Copy(buffer, in)
+		buffer.Close()
+	}()
+
+	return NewBufferExpector(buffer, defaultTimeout)
+}
+
+func NewBufferExpector(buffer *gbytes.Buffer, defaultTimeout time.Duration) *Expector {
+	closed := make(chan struct{})
+
+	go func() {
+		for {
+			if buffer.Closed() {
+				close(closed)
+				break
+			}
+
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
+
+	return &Expector{
 		defaultTimeout: defaultTimeout,
 
-		buffer:     new(bytes.Buffer),
-		fullBuffer: new(bytes.Buffer),
+		buffer: buffer,
+
+		closed: closed,
 	}
-
-	go e.monitor()
-
-	return e
 }
 
 func (e *Expector) Expect(pattern string) error {
@@ -75,7 +92,6 @@ func (e *Expector) ExpectWithTimeout(pattern string, timeout time.Duration) erro
 			Callback: func() {},
 		},
 	)
-
 }
 
 func (e *Expector) ExpectBranches(branches ...ExpectBranch) error {
@@ -84,18 +100,9 @@ func (e *Expector) ExpectBranches(branches ...ExpectBranch) error {
 
 func (e *Expector) ExpectBranchesWithTimeout(timeout time.Duration, branches ...ExpectBranch) error {
 	matchResults := make(chan func(), len(branches))
-	stoppers := []chan bool{}
 
 	for _, branch := range branches {
-		re, err := regexp.Compile(branch.Pattern)
-		if err != nil {
-			return err
-		}
-
-		stop := make(chan bool)
-		stoppers = append(stoppers, stop)
-
-		go e.match(matchResults, stop, re, branch.Callback)
+		go e.match(matchResults, branch.Pattern, branch.Callback)
 	}
 
 	matchedCallback := make(chan func())
@@ -126,29 +133,23 @@ func (e *Expector) ExpectBranchesWithTimeout(timeout time.Duration, branches ...
 	case <-allComplete:
 		return e.failedMatch(branches)
 	case <-timeoutChan:
-		for _, stop := range stoppers {
-			select {
-			case stop <- true:
-			default:
-			}
-		}
-
+		e.buffer.CancelDetects()
 		return e.failedMatch(branches)
 	}
 }
 
 func (e *Expector) FullOutput() []byte {
 	for {
-		if e.isClosed() {
-			return e.fullOutput()
+		if e.buffer.Closed() {
+			return e.buffer.Contents()
 		}
 
 		time.Sleep(100 * time.Millisecond)
 	}
 }
 
-func (e *Expector) match(result chan func(), stop chan bool, pattern *regexp.Regexp, callback func()) {
-	matched := e.matchOutput(stop, pattern)
+func (e *Expector) match(result chan func(), pattern string, callback func()) {
+	matched := e.matchOutput(pattern)
 
 	if matched {
 		result <- callback
@@ -157,91 +158,19 @@ func (e *Expector) match(result chan func(), stop chan bool, pattern *regexp.Reg
 	}
 }
 
-func (e *Expector) matchOutput(stop chan bool, pattern *regexp.Regexp) bool {
-	for {
-		found := pattern.FindIndex(e.nextOutput())
-		if found != nil {
-			e.forwardOutput(found[1])
-			return true
-		}
-
-		if e.isClosed() {
-			return false
-		}
-
-		select {
-		case <-time.After(100 * time.Millisecond):
-		case <-stop:
-			return false
-		}
+func (e *Expector) matchOutput(pattern string) bool {
+	select {
+	case val := <-e.buffer.Detect(pattern):
+		return val
+	case <-e.closed:
+		ok, err := gbytes.Say(pattern).Match(e.buffer)
+		return ok && err == nil
 	}
 }
 
 func (e *Expector) failedMatch(branches []ExpectBranch) ExpectationFailed {
 	return ExpectationFailed{
 		Branches: branches,
-		Next:     string(e.nextOutput()),
-		Output:   string(e.fullOutput()),
+		Output:   string(e.buffer.Contents()),
 	}
-}
-
-func (e *Expector) monitor() {
-	var buf [1024]byte
-
-	for {
-		read, err := e.output.Read(buf[:])
-
-		if read > 0 {
-			e.addOutput(buf[:read])
-		}
-
-		if err != nil {
-			break
-		}
-	}
-
-	e.setClosed()
-}
-
-func (e *Expector) addOutput(out []byte) {
-	e.Lock()
-	defer e.Unlock()
-
-	e.buffer.Write(out)
-	e.fullBuffer.Write(out)
-}
-
-func (e *Expector) forwardOutput(count int) {
-	e.Lock()
-	defer e.Unlock()
-
-	e.buffer.Next(count)
-}
-
-func (e *Expector) nextOutput() []byte {
-	e.RLock()
-	defer e.RUnlock()
-
-	return e.buffer.Bytes()
-}
-
-func (e *Expector) fullOutput() []byte {
-	e.RLock()
-	defer e.RUnlock()
-
-	return e.fullBuffer.Bytes()
-}
-
-func (e *Expector) isClosed() bool {
-	e.RLock()
-	defer e.RUnlock()
-
-	return e.closed
-}
-
-func (e *Expector) setClosed() {
-	e.Lock()
-	defer e.Unlock()
-
-	e.closed = true
 }
