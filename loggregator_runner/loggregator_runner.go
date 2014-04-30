@@ -7,16 +7,16 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/cloudfoundry/gunk/runner_support"
+	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/vito/cmdtest"
+	"github.com/onsi/gomega/gexec"
 )
 
 type LoggregatorRunner struct {
 	loggregatorPath string
 	configFile      *os.File
 
-	session *cmdtest.Session
+	session *gexec.Session
 
 	Config
 }
@@ -51,10 +51,12 @@ func New(loggregatorPath string, config Config) *LoggregatorRunner {
 }
 
 func (runner *LoggregatorRunner) Start() {
-	sess, err := cmdtest.StartWrapped(exec.Command(
-		runner.loggregatorPath,
-		"--config", runner.configFile.Name(),
-	), runner_support.TeeToGinkgoWriter, runner_support.TeeToGinkgoWriter)
+	sess, err := gexec.Start(
+		exec.Command(runner.loggregatorPath, "--config", runner.configFile.Name()),
+		ginkgo.GinkgoWriter,
+		ginkgo.GinkgoWriter,
+	)
+
 	Ω(err).ShouldNot(HaveOccurred())
 
 	runner.session = sess
@@ -62,8 +64,6 @@ func (runner *LoggregatorRunner) Start() {
 
 func (runner *LoggregatorRunner) Stop() {
 	if runner.session != nil {
-		runner.session.Cmd.Process.Signal(os.Interrupt)
-		_, err := runner.session.Wait(5 * time.Second)
-		Ω(err).ShouldNot(HaveOccurred())
+		runner.session.Interrupt().Wait(5 * time.Second)
 	}
 }

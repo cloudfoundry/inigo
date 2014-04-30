@@ -3,13 +3,12 @@ package stager_runner
 import (
 	"os/exec"
 	"strings"
-	"syscall"
 	"time"
 
-	"github.com/cloudfoundry/gunk/runner_support"
+	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/vito/cmdtest"
-	. "github.com/vito/cmdtest/matchers"
+	"github.com/onsi/gomega/gbytes"
+	"github.com/onsi/gomega/gexec"
 )
 
 type StagerRunner struct {
@@ -17,7 +16,7 @@ type StagerRunner struct {
 	etcdCluster   []string
 	natsAddresses []string
 
-	session     *cmdtest.Session
+	session     *gexec.Session
 	CompilerUrl string
 }
 
@@ -30,7 +29,7 @@ func New(stagerBin string, etcdCluster []string, natsAddresses []string) *Stager
 }
 
 func (r *StagerRunner) Start(args ...string) {
-	stagerSession, err := cmdtest.StartWrapped(
+	stagerSession, err := gexec.Start(
 		exec.Command(
 			r.stagerBin,
 			append([]string{
@@ -38,23 +37,18 @@ func (r *StagerRunner) Start(args ...string) {
 				"-natsAddresses", strings.Join(r.natsAddresses, ","),
 			}, args...)...,
 		),
-		runner_support.TeeToGinkgoWriter,
-		runner_support.TeeToGinkgoWriter,
+		ginkgo.GinkgoWriter,
+		ginkgo.GinkgoWriter,
 	)
 
 	Ω(err).ShouldNot(HaveOccurred())
-	Ω(stagerSession).Should(SayWithTimeout(
-		"Listening for staging requests!",
-		1*time.Second,
-	))
+	Eventually(stagerSession).Should(gbytes.Say("Listening for staging requests!"))
 
 	r.session = stagerSession
 }
 
 func (r *StagerRunner) Stop() {
 	if r.session != nil {
-		r.session.Cmd.Process.Signal(syscall.SIGTERM)
-		_, err := r.session.Wait(5 * time.Second)
-		Ω(err).ShouldNot(HaveOccurred())
+		r.session.Interrupt().Wait(5 * time.Second)
 	}
 }

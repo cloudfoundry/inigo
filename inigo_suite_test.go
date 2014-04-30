@@ -21,7 +21,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
-	"github.com/vito/cmdtest"
+	"github.com/onsi/gomega/gexec"
 
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/inigo/fileserver_runner"
@@ -258,7 +258,7 @@ func (node *nodeOneType) StartWarden() {
 	err = os.MkdirAll(filepath.Dir(wardenAddr), 0700)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	wardenPath, err := cmdtest.BuildIn(os.Getenv("WARDEN_LINUX_GOPATH"), "github.com/cloudfoundry-incubator/warden-linux", "-race")
+	wardenPath, err := gexec.BuildIn(os.Getenv("WARDEN_LINUX_GOPATH"), "github.com/cloudfoundry-incubator/warden-linux", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.wardenRunner, err = WardenRunner.New(wardenPath, wardenBinPath, wardenRootfs, "unix", wardenAddr)
@@ -275,23 +275,23 @@ func (node *nodeOneType) StartWarden() {
 
 func (node *nodeOneType) CompileTestedExecutables() {
 	var err error
-	node.context.LoggregatorPath, err = cmdtest.BuildIn(os.Getenv("LOGGREGATOR_GOPATH"), "loggregator/loggregator")
+	node.context.LoggregatorPath, err = gexec.BuildIn(os.Getenv("LOGGREGATOR_GOPATH"), "loggregator/loggregator")
 	Ω(err).ShouldNot(HaveOccurred())
 
-	node.context.ExecutorPath, err = cmdtest.BuildIn(os.Getenv("EXECUTOR_GOPATH"), "github.com/cloudfoundry-incubator/executor", "-race")
+	node.context.ExecutorPath, err = gexec.BuildIn(os.Getenv("EXECUTOR_GOPATH"), "github.com/cloudfoundry-incubator/executor", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
-	node.context.StagerPath, err = cmdtest.BuildIn(os.Getenv("STAGER_GOPATH"), "github.com/cloudfoundry-incubator/stager", "-race")
+	node.context.StagerPath, err = gexec.BuildIn(os.Getenv("STAGER_GOPATH"), "github.com/cloudfoundry-incubator/stager", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
-	node.context.FileServerPath, err = cmdtest.BuildIn(os.Getenv("FILE_SERVER_GOPATH"), "github.com/cloudfoundry-incubator/file-server", "-race")
+	node.context.FileServerPath, err = gexec.BuildIn(os.Getenv("FILE_SERVER_GOPATH"), "github.com/cloudfoundry-incubator/file-server", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.SmelterZipPath = node.compileAndZipUpSmelter()
 }
 
 func (node *nodeOneType) compileAndZipUpSmelter() string {
-	smelterPath, err := cmdtest.BuildIn(os.Getenv("LINUX_SMELTER_GOPATH"), "github.com/cloudfoundry-incubator/linux-smelter", "-race")
+	smelterPath, err := gexec.BuildIn(os.Getenv("LINUX_SMELTER_GOPATH"), "github.com/cloudfoundry-incubator/linux-smelter", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	smelterDir := filepath.Dir(smelterPath)

@@ -8,12 +8,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
-	"github.com/cloudfoundry/gunk/runner_support"
+	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/vito/cmdtest"
+	"github.com/onsi/gomega/gexec"
 )
 
 type FileServerRunner struct {
@@ -21,7 +20,7 @@ type FileServerRunner struct {
 	etcdCluster   []string
 	dir           string
 	port          int
-	Session       *cmdtest.Session
+	Session       *gexec.Session
 	ccAddress     string
 	ccUsername    string
 	ccPassword    string
@@ -41,10 +40,12 @@ func New(fileServerBin string, port int, etcdCluster []string, ccAddress, ccUser
 func (r *FileServerRunner) Start() {
 	tempDir, err := ioutil.TempDir("", "inigo-file-server")
 	Ω(err).ShouldNot(HaveOccurred())
+
 	r.dir = tempDir
+
 	ioutil.WriteFile(filepath.Join(r.dir, "ready"), []byte("ready"), os.ModePerm)
 
-	executorSession, err := cmdtest.StartWrapped(
+	executorSession, err := gexec.Start(
 		exec.Command(
 			r.fileServerBin,
 			"-address", "127.0.0.1",
@@ -56,10 +57,11 @@ func (r *FileServerRunner) Start() {
 			"-ccUsername", r.ccUsername,
 			"-ccPassword", r.ccPassword,
 		),
-		runner_support.TeeToGinkgoWriter,
-		runner_support.TeeToGinkgoWriter,
+		ginkgo.GinkgoWriter,
+		ginkgo.GinkgoWriter,
 	)
 	Ω(err).ShouldNot(HaveOccurred())
+
 	r.Session = executorSession
 
 	Eventually(func() int {
@@ -75,13 +77,12 @@ func (r *FileServerRunner) Start() {
 func (r *FileServerRunner) ServeFile(name string, path string) {
 	data, err := ioutil.ReadFile(path)
 	Ω(err).ShouldNot(HaveOccurred())
+
 	ioutil.WriteFile(filepath.Join(r.dir, name), data, os.ModePerm)
 }
 
 func (r *FileServerRunner) Stop() {
 	if r.Session != nil {
-		r.Session.Cmd.Process.Signal(syscall.SIGTERM)
-		_, err := r.Session.Wait(5 * time.Second)
-		Ω(err).ShouldNot(HaveOccurred())
+		r.Session.Interrupt().Wait(5 * time.Second)
 	}
 }

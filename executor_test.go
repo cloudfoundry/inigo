@@ -16,7 +16,8 @@ import (
 	"github.com/cloudfoundry/loggregatorlib/logmessage"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/vito/cmdtest/matchers"
+	"github.com/onsi/gomega/gbytes"
+	"github.com/onsi/gomega/gexec"
 )
 
 var _ = Describe("Executor", func() {
@@ -29,8 +30,8 @@ var _ = Describe("Executor", func() {
 	Describe("when starting with invalid memory/disk", func() {
 		It("should exit with failure", func() {
 			suiteContext.ExecutorRunner.StartWithoutCheck(executor_runner.Config{MemoryMB: -1, DiskMB: -1})
-			Ω(suiteContext.ExecutorRunner.Session).Should(SayWithTimeout("valid memory and disk capacity must be specified", time.Second))
-			Ω(suiteContext.ExecutorRunner.Session).Should(ExitWith(1))
+			Eventually(suiteContext.ExecutorRunner.Session).Should(gbytes.Say("valid memory and disk capacity must be specified"))
+			Eventually(suiteContext.ExecutorRunner.Session).Should(gexec.Exit(1))
 		})
 	})
 
