@@ -72,10 +72,10 @@ var _ = Describe("Task", func() {
 	})
 
 	Context("when an executor disappears", func() {
-		var secondExecutor *executor_runner.ExecutorRunner
+		var convergingExecutor *executor_runner.ExecutorRunner
 
 		BeforeEach(func() {
-			secondExecutor = executor_runner.New(
+			convergingExecutor = executor_runner.New(
 				suiteContext.SharedContext.ExecutorPath,
 				suiteContext.SharedContext.WardenNetwork,
 				suiteContext.SharedContext.WardenAddr,
@@ -84,8 +84,19 @@ var _ = Describe("Task", func() {
 				"",
 			)
 
-			suiteContext.ExecutorRunner.Start(executor_runner.Config{MemoryMB: 100, DiskMB: 100, ConvergenceInterval: 1 * time.Second})
-			secondExecutor.Start(executor_runner.Config{ConvergenceInterval: 1 * time.Second, HeartbeatInterval: 1 * time.Second, ContainerOwnerName: "another-executor"})
+			convergingExecutor.Start(executor_runner.Config{
+				// so the task does not get scheduled on the converger
+				MemoryMB: 100,
+				DiskMB:   100,
+
+				ConvergenceInterval: 1 * time.Second,
+				ContainerOwnerName:  "converging-executor",
+			})
+
+			suiteContext.ExecutorRunner.Start(executor_runner.Config{
+				ConvergenceInterval: 1 * time.Second,
+				HeartbeatInterval:   1 * time.Second,
+			})
 		})
 
 		It("eventually marks jobs running on that executor as failed", func() {
@@ -94,7 +105,7 @@ var _ = Describe("Task", func() {
 			bbs.DesireTask(task)
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 
-			secondExecutor.KillWithFire()
+			convergingExecutor.KillWithFire()
 
 			Eventually(func() interface{} {
 				tasks, _ := bbs.GetAllCompletedTasks()
