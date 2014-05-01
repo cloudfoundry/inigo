@@ -23,7 +23,7 @@ import (
 )
 
 func downloadBuildArtifactsCache(appId string) []byte {
-	fileServerUrl := fmt.Sprintf("http://127.0.0.1:%d/build_artifacts/%s", suiteContext.FileServerPort, appId)
+	fileServerUrl := fmt.Sprintf("http://127.0.0.1:%d/v1/build_artifacts/%s", suiteContext.FileServerPort, appId)
 	resp, err := http.Get(fileServerUrl)
 	Ω(err).ShouldNot(HaveOccurred())
 

@@ -65,7 +65,7 @@ func (r *FileServerRunner) Start() {
 	r.Session = executorSession
 
 	Eventually(func() int {
-		resp, _ := http.Get(fmt.Sprintf("http://127.0.0.1:%d/static/ready", r.port))
+		resp, _ := http.Get(fmt.Sprintf("http://127.0.0.1:%d/v1/static/ready", r.port))
 		if resp != nil {
 			return resp.StatusCode
 		} else {
