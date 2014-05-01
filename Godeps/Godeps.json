@@ -16,19 +16,19 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/integration/executor_runner",
-			"Rev": "4156f84bc85742625712d2a1d54ec85450f927ae"
+			"Rev": "83ecaad957043a361a2628084640cfa734a5a6a1"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/client",
-			"Rev": "675a10a946f55dae6678088e30ab13a25979725c"
+			"Rev": "6520863bc8bc2e143a862023e3511b44af98aa1a"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/protocol",
-			"Rev": "675a10a946f55dae6678088e30ab13a25979725c"
+			"Rev": "6520863bc8bc2e143a862023e3511b44af98aa1a"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/warden",
-			"Rev": "675a10a946f55dae6678088e30ab13a25979725c"
+			"Rev": "6520863bc8bc2e143a862023e3511b44af98aa1a"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",

@@ -86,8 +86,8 @@ var _ = Describe("Task", func() {
 
 			convergingExecutor.Start(executor_runner.Config{
 				// so the task does not get scheduled on the converger
-				MemoryMB: 1,
-				DiskMB:   1,
+				MemoryMB: "1",
+				DiskMB:   "1",
 
 				ConvergenceInterval: 1 * time.Second,
 				ContainerOwnerName:  "converging-executor",

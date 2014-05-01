@@ -27,10 +27,16 @@ var _ = Describe("Executor", func() {
 		bbs = Bbs.New(suiteContext.EtcdRunner.Adapter(), timeprovider.NewTimeProvider())
 	})
 
-	Describe("when starting with invalid memory/disk", func() {
-		It("should exit with failure", func() {
-			suiteContext.ExecutorRunner.StartWithoutCheck(executor_runner.Config{MemoryMB: -1, DiskMB: -1})
-			Eventually(suiteContext.ExecutorRunner.Session).Should(gbytes.Say("valid memory and disk capacity must be specified"))
+	Describe("invalid memory and disk limit flags", func() {
+		It("fails when the memory limit is not valid", func() {
+			suiteContext.ExecutorRunner.StartWithoutCheck(executor_runner.Config{MemoryMB: "0", DiskMB: "256"})
+			Eventually(suiteContext.ExecutorRunner.Session).Should(gbytes.Say("memory limit must be a positive number or 'auto'"))
+			Eventually(suiteContext.ExecutorRunner.Session).Should(gexec.Exit(1))
+		})
+
+		It("fails when the disk limit is not valid", func() {
+			suiteContext.ExecutorRunner.StartWithoutCheck(executor_runner.Config{MemoryMB: "256", DiskMB: "0"})
+			Eventually(suiteContext.ExecutorRunner.Session).Should(gbytes.Say("disk limit must be a positive number or 'auto'"))
 			Eventually(suiteContext.ExecutorRunner.Session).Should(gexec.Exit(1))
 		})
 	})
