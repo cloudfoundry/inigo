@@ -1,4 +1,4 @@
-// Copyright 2013 The Gorilla WebSocket Authors. All rights reserved.
+// Copyright 2013 Gary Burd. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -24,11 +24,6 @@ const (
 	// Maximum message size allowed from peer.
 	maxMessageSize = 512
 )
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-}
 
 // connection is an middleman between the websocket connection and the hub.
 type connection struct {
@@ -94,11 +89,16 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", 405)
 		return
 	}
-	ws, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		if _, ok := err.(websocket.HandshakeError); !ok {
-			log.Println(err)
-		}
+	if r.Header.Get("Origin") != "http://"+r.Host {
+		http.Error(w, "Origin not allowed", 403)
+		return
+	}
+	ws, err := websocket.Upgrade(w, r, nil, 1024, 1024)
+	if _, ok := err.(websocket.HandshakeError); ok {
+		http.Error(w, "Not a websocket handshake", 400)
+		return
+	} else if err != nil {
+		log.Println(err)
 		return
 	}
 	c := &connection{send: make(chan []byte, 256), ws: ws}
