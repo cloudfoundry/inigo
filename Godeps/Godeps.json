@@ -16,7 +16,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/integration/executor_runner",
-			"Rev": "cb3babefa8b09942585233f42fdc527ef6c5ec19"
+			"Rev": "3011753275a745c44fd4fe17d351525a3b9bfc8f"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/client",
@@ -98,7 +98,7 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Rev": "660b70079010c9eeeffdc381fcb3a8cde45ce495"
+			"Rev": "7bd23e46a966cc441ac27f153dbac56b40d1f41b"
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/archiver/extractor/test_helper",
