@@ -154,7 +154,7 @@ EOF
 						"file_descriptors": 1024,
 						"stack": "lucid64",
 						"app_bits_download_uri": "%s",
-						"buildpacks" : [{ "key": "test-buildpack", "url": "%s" }],
+						"buildpacks" : [{ "name": "test-buildpack", "key": "test-buildpack-key", "url": "%s" }],
 						"environment": [{ "key": "SOME_STAGING_ENV", "value": "%s"}]
 					}`,
 					appId,
@@ -203,7 +203,7 @@ EOF
 
 				//Assert on the staging output (detected buildpack)
 				Ω(string(payload)).Should(MatchJSON(`{
-					"buildpack_key":"test-buildpack",
+					"buildpack_key":"test-buildpack-key",
 					"detected_buildpack":"My Buildpack"
 				}`))
 
