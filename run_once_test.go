@@ -3,12 +3,11 @@ package inigo_test
 import (
 	"time"
 
-	"github.com/cloudfoundry/gunk/timeprovider"
-
 	"github.com/cloudfoundry-incubator/executor/integration/executor_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
+	"github.com/cloudfoundry/gunk/timeprovider"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -35,6 +34,10 @@ var _ = Describe("Task", func() {
 	})
 
 	Context("when there are no executors listening when a Task is registered", func() {
+		BeforeEach(func() {
+			suiteContext.ConvergerRunner.Start(1*time.Second, 60*time.Second)
+		})
+
 		It("eventually runs the Task once an executor comes up", func() {
 			guid := factories.GenerateGuid()
 			task := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
@@ -48,11 +51,7 @@ var _ = Describe("Task", func() {
 
 	Context("when no one picks up the Task", func() {
 		BeforeEach(func() {
-			suiteContext.ExecutorRunner.Start(executor_runner.Config{
-				Stack:               "mickey-mouse",
-				TimeToClaim:         1 * time.Second,
-				ConvergenceInterval: 1 * time.Second,
-			})
+			suiteContext.ConvergerRunner.Start(1*time.Second, 1*time.Second)
 		})
 
 		It("should be marked as failed, eventually", func() {
@@ -72,30 +71,11 @@ var _ = Describe("Task", func() {
 	})
 
 	Context("when an executor disappears", func() {
-		var convergingExecutor *executor_runner.ExecutorRunner
-
 		BeforeEach(func() {
-			convergingExecutor = executor_runner.New(
-				suiteContext.SharedContext.ExecutorPath,
-				suiteContext.SharedContext.WardenNetwork,
-				suiteContext.SharedContext.WardenAddr,
-				suiteContext.EtcdRunner.NodeURLS(),
-				"",
-				"",
-			)
-
-			convergingExecutor.Start(executor_runner.Config{
-				// so the task does not get scheduled on the converger
-				MemoryMB: "1",
-				DiskMB:   "1",
-
-				ConvergenceInterval: 1 * time.Second,
-				ContainerOwnerName:  "converging-executor",
-			})
+			suiteContext.ConvergerRunner.Start(1*time.Second, 1*time.Second)
 
 			suiteContext.ExecutorRunner.Start(executor_runner.Config{
-				ConvergenceInterval: 1 * time.Second,
-				HeartbeatInterval:   1 * time.Second,
+				HeartbeatInterval: 1 * time.Second,
 			})
 		})
 

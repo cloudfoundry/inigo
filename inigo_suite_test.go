@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cloudfoundry-incubator/converger/converger_runner"
 	"github.com/cloudfoundry-incubator/executor/integration/executor_runner"
 	WardenClient "github.com/cloudfoundry-incubator/garden/client"
 	WardenConnection "github.com/cloudfoundry-incubator/garden/client/connection"
@@ -37,6 +38,7 @@ var wardenAddr = filepath.Join(os.TempDir(), "warden-temp-socker", "warden.sock"
 
 type sharedContextType struct {
 	ExecutorPath    string
+	ConvergerPath   string
 	StagerPath      string
 	FileServerPath  string
 	LoggregatorPath string
@@ -78,7 +80,8 @@ type suiteContextType struct {
 	LoggregatorOutPort      int
 	LoggregatorSharedSecret string
 
-	ExecutorRunner *executor_runner.ExecutorRunner
+	ExecutorRunner  *executor_runner.ExecutorRunner
+	ConvergerRunner *converger_runner.ConvergerRunner
 
 	StagerRunner *stager_runner.StagerRunner
 
@@ -94,6 +97,7 @@ type suiteContextType struct {
 func (context suiteContextType) Runners() []Runner {
 	return []Runner{
 		context.ExecutorRunner,
+		context.ConvergerRunner,
 		context.StagerRunner,
 		context.FileServerRunner,
 		context.LoggregatorRunner,
@@ -151,6 +155,12 @@ func beforeSuite(encodedSharedContext []byte) {
 		context.EtcdRunner.NodeURLS(),
 		fmt.Sprintf("127.0.0.1:%d", context.LoggregatorInPort),
 		context.LoggregatorSharedSecret,
+	)
+
+	context.ConvergerRunner = converger_runner.New(
+		context.SharedContext.ConvergerPath,
+		strings.Join(context.EtcdRunner.NodeURLS(), ","),
+		"debug",
 	)
 
 	context.StagerRunner = stager_runner.New(
@@ -279,6 +289,9 @@ func (node *nodeOneType) CompileTestedExecutables() {
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.ExecutorPath, err = gexec.BuildIn(os.Getenv("EXECUTOR_GOPATH"), "github.com/cloudfoundry-incubator/executor", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	node.context.ConvergerPath, err = gexec.BuildIn(os.Getenv("CONVERGER_GOPATH"), "github.com/cloudfoundry-incubator/converger", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.StagerPath, err = gexec.BuildIn(os.Getenv("STAGER_GOPATH"), "github.com/cloudfoundry-incubator/stager", "-race")

@@ -18,6 +18,7 @@ pushd $TMP_GOPATH
   go get \
     github.com/cloudfoundry-incubator/inigo/...\
     github.com/cloudfoundry-incubator/executor/... \
+    github.com/cloudfoundry-incubator/converger/... \
     github.com/cloudfoundry-incubator/stager/... \
     github.com/cloudfoundry-incubator/file-server/... \
     github.com/cloudfoundry-incubator/linux-smelter/... \
@@ -26,6 +27,7 @@ pushd $TMP_GOPATH
   godep save \
     github.com/cloudfoundry-incubator/inigo/...\
     github.com/cloudfoundry-incubator/executor/... \
+    github.com/cloudfoundry-incubator/converger/... \
     github.com/cloudfoundry-incubator/stager/... \
     github.com/cloudfoundry-incubator/file-server/... \
     github.com/cloudfoundry-incubator/linux-smelter/... \
@@ -39,6 +41,7 @@ popd
 for package in \
     github.com/cloudfoundry-incubator/inigo \
     github.com/cloudfoundry-incubator/executor \
+    github.com/cloudfoundry-incubator/converger \
     github.com/cloudfoundry-incubator/stager \
     github.com/cloudfoundry-incubator/file-server \
     github.com/cloudfoundry-incubator/linux-smelter \
