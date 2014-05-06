@@ -38,6 +38,7 @@ func downloadBuildArtifactsCache(appId string) []byte {
 var _ = Describe("Stager", func() {
 	var otherStagerRunner *stager_runner.StagerRunner
 	var appId = "some-app-id"
+	var taskId = "some-task-id"
 
 	BeforeEach(func() {
 		suiteContext.FileServerRunner.Start()
@@ -64,12 +65,12 @@ var _ = Describe("Stager", func() {
 				"diego.staging.start",
 				[]byte(fmt.Sprintf(`{
 					"app_id": "%s",
-					"task_id": "some-task-id",
+					"task_id": "%s",
 					"app_bits_download_uri": "some-download-uri",
 					"build_artifacts_cache_download_uri": "artifacts-download-uri",
 					"build_artifacts_cache_upload_uri": "artifacts-upload-uri",
 					"stack": "no-compiler"
-				}`, appId)),
+				}`, appId, taskId)),
 			)
 
 			var receivedMessage *yagnats.Message
@@ -148,7 +149,7 @@ EOF
 				fmt.Sprintf(
 					`{
 						"app_id": "%s",
-						"task_id": "some-task-id",
+						"task_id": "%s",
 						"memory_mb": 128,
 						"disk_mb": 128,
 						"file_descriptors": 1024,
@@ -158,6 +159,7 @@ EOF
 						"environment": [{ "key": "SOME_STAGING_ENV", "value": "%s"}]
 					}`,
 					appId,
+					taskId,
 					inigo_server.DownloadUrl("app.zip"),
 					inigo_server.DownloadUrl(buildpackToUse),
 					outputGuid,
@@ -202,10 +204,12 @@ EOF
 				Eventually(payloads, LONG_TIMEOUT).Should(Receive(&payload))
 
 				//Assert on the staging output (detected buildpack)
-				Ω(string(payload)).Should(MatchJSON(`{
+				Ω(string(payload)).Should(MatchJSON(fmt.Sprintf(`{
+					"app_id": "%s",
+					"task_id": "%s",
 					"buildpack_key":"test-buildpack-key",
 					"detected_buildpack":"My Buildpack"
-				}`))
+				}`, appId, taskId)))
 
 				//Asser the user saw reasonable output
 				Eventually(logOutput).Should(gbytes.Say("COMPILING BUILDPACK"))
@@ -324,7 +328,11 @@ EOF
 
 					var payload []byte
 					Eventually(payloads, 10.0).Should(Receive(&payload))
-					Ω(string(payload)).Should(Equal(`{"error":"Exited with status 1"}`))
+					Ω(string(payload)).Should(MatchJSON(fmt.Sprintf(`{
+						"app_id":"%s",
+						"task_id":"%s",
+						"error":"Exited with status 1"
+					}`, appId, taskId)))
 
 					Eventually(logOutput).Should(gbytes.Say("no valid buildpacks detected"))
 				})
