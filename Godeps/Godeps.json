@@ -20,7 +20,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/integration/executor_runner",
-			"Rev": "ab6f9bdb43eabe99311e16d5bb6253164a8ff55e"
+			"Rev": "5463018a5cb2ffd2cc653a7e67cd2e060e8e28b4"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/client",
@@ -40,11 +40,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "eb99dcb818690fb83fdd7aab3f43e4f4c05e2692"
+			"Rev": "7e61a26d4dcb5d2cbcd417b7d00d4379df304d9d"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "eb99dcb818690fb83fdd7aab3f43e4f4c05e2692"
+			"Rev": "7e61a26d4dcb5d2cbcd417b7d00d4379df304d9d"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",
@@ -110,7 +110,7 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/archiver/extractor/test_helper",
-			"Rev": "338bf2b31d42f9ff6f57e0944cf5628bdfee546c"
+			"Rev": "9f697e9047406639e0977fa99cb0b6aa95a3fdca"
 		}
 	]
 }
