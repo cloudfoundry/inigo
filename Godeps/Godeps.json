@@ -20,7 +20,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/integration/executor_runner",
-			"Rev": "5463018a5cb2ffd2cc653a7e67cd2e060e8e28b4"
+			"Rev": "95615fdbaf83650840967d1fb235d49a478d8652"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/client",
@@ -110,7 +110,7 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/archiver/extractor/test_helper",
-			"Rev": "9f697e9047406639e0977fa99cb0b6aa95a3fdca"
+			"Rev": "e46831b67d1f71fe27f85b6b4224e2cf55efea8a"
 		}
 	]
 }
