@@ -271,6 +271,7 @@ EOF
 				}
 
 				//Assert the droplet has the right files in it
+				Ω(dropletContents).Should(HaveKey("./"))
 				Ω(dropletContents).Should(HaveKey("staging_info.yml"))
 				Ω(dropletContents).Should(HaveKey("logs/"))
 				Ω(dropletContents).Should(HaveKey("tmp/"))
@@ -291,7 +292,7 @@ EOF
 				Ω(stagingInfo["start_command"]).Should(Equal("start-command"))
 
 				//Assert nothing else crept into the droplet
-				Ω(dropletContents).Should(HaveLen(6))
+				Ω(dropletContents).Should(HaveLen(7))
 			})
 
 			Context("when compilation fails", func() {
