@@ -11,11 +11,8 @@ type Container interface {
 
 	Info() (ContainerInfo, error)
 
-	CopyIn(srcPath, dstPath string) error
-	CopyOut(srcPath, dstPath, owner string) error
-
-	StreamIn(src io.Reader, dstPath string) error
-	StreamOut(srcPath string, dest io.Writer) error
+	StreamIn(dstPath string) (io.WriteCloser, error)
+	StreamOut(srcPath string) (io.Reader, error)
 
 	LimitBandwidth(limits BandwidthLimits) error
 	CurrentBandwidthLimits() (BandwidthLimits, error)

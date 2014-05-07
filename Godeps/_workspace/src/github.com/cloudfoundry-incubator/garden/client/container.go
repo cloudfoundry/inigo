@@ -1,9 +1,11 @@
 package client
 
 import (
-	"github.com/cloudfoundry-incubator/garden/client/connection"
-	"github.com/cloudfoundry-incubator/garden/warden"
 	"io"
+
+	"github.com/cloudfoundry-incubator/garden/client/connection"
+	"github.com/cloudfoundry-incubator/garden/client/releasenotifier"
+	"github.com/cloudfoundry-incubator/garden/warden"
 )
 
 type container struct {
@@ -38,32 +40,38 @@ func (container *container) Info() (warden.ContainerInfo, error) {
 	return conn.Info(container.handle)
 }
 
-func (container *container) CopyIn(srcPath, dstPath string) error {
+func (container *container) StreamIn(dstPath string) (io.WriteCloser, error) {
 	conn := container.pool.Acquire()
-	defer container.pool.Release(conn)
 
-	return conn.CopyIn(container.handle, srcPath, dstPath)
+	writeCloser, err := conn.StreamIn(container.handle, dstPath)
+	if err != nil {
+		container.pool.Release(conn)
+		return nil, err
+	}
+
+	return releasenotifier.ReleaseNotifier{
+		WriteCloser: writeCloser,
+		Callback: func() {
+			container.pool.Release(conn)
+		},
+	}, nil
 }
 
-func (container *container) CopyOut(srcPath, dstPath, owner string) error {
+func (container *container) StreamOut(srcPath string) (io.Reader, error) {
 	conn := container.pool.Acquire()
-	defer container.pool.Release(conn)
 
-	return conn.CopyOut(container.handle, srcPath, dstPath, owner)
-}
+	reader, err := conn.StreamOut(container.handle, srcPath)
+	if err != nil {
+		container.pool.Release(conn)
+		return nil, err
+	}
 
-func (container *container) StreamIn(src io.Reader, dstPath string) error {
-	conn := container.pool.Acquire()
-	defer container.pool.Release(conn)
-
-	return conn.StreamIn(container.handle, src, dstPath)
-}
-
-func (container *container) StreamOut(srcPath string, dst io.Writer) error {
-	conn := container.pool.Acquire()
-	defer container.pool.Release(conn)
-
-	return conn.StreamOut(container.handle, srcPath, dst)
+	return releasenotifier.ReleaseNotifier{
+		Reader: reader,
+		Callback: func() {
+			container.pool.Release(conn)
+		},
+	}, nil
 }
 
 func (container *container) LimitBandwidth(limits warden.BandwidthLimits) error {

@@ -1,10 +1,12 @@
 package fake_connection
 
 import (
+	"bytes"
 	"io"
 	"sync"
 
 	"github.com/cloudfoundry-incubator/garden/warden"
+	"github.com/onsi/gomega/gbytes"
 )
 
 type FakeConnection struct {
@@ -30,17 +32,11 @@ type FakeConnection struct {
 
 	WhenGettingInfo func(handle string) (warden.ContainerInfo, error)
 
-	copiedIn      map[string][]CopyInSpec
-	WhenCopyingIn func(handle string, src, dst string) error
-
-	copiedOut      map[string][]CopyOutSpec
-	WhenCopyingOut func(handle string, src, dst, owner string) error
-
 	streamedIn      map[string][]StreamInSpec
-	WhenStreamingIn func(handle string, src io.Reader, dst string) error
+	WhenStreamingIn func(handle string, dst string) (io.WriteCloser, error)
 
 	streamedOut      map[string][]StreamOutSpec
-	WhenStreamingOut func(handle string, src string, dst io.Writer) error
+	WhenStreamingOut func(handle string, src string) (io.Reader, error)
 
 	limitedBandwidth      map[string][]warden.BandwidthLimits
 	WhenLimitingBandwidth func(handle string, limits warden.BandwidthLimits) (warden.BandwidthLimits, error)
@@ -72,25 +68,14 @@ type StopSpec struct {
 	Kill       bool
 }
 
-type CopyInSpec struct {
-	Source      string
-	Destination string
-}
-
-type CopyOutSpec struct {
-	Source      string
-	Destination string
-	Owner       string
-}
-
 type StreamInSpec struct {
-	Source      io.Reader
 	Destination string
+	WriteBuffer *gbytes.Buffer
 }
 
 type StreamOutSpec struct {
-	Source      string
-	Destination io.Writer
+	Source     string
+	ReadBuffer *bytes.Buffer
 }
 
 type NetInSpec struct {
@@ -110,9 +95,6 @@ func New() *FakeConnection {
 		disconnected: make(chan struct{}),
 
 		stopped: make(map[string][]StopSpec),
-
-		copiedIn:  make(map[string][]CopyInSpec),
-		copiedOut: make(map[string][]CopyOutSpec),
 
 		streamedIn:  make(map[string][]StreamInSpec),
 		streamedOut: make(map[string][]StreamOutSpec),
@@ -246,64 +228,21 @@ func (connection *FakeConnection) Info(handle string) (warden.ContainerInfo, err
 	return warden.ContainerInfo{}, nil
 }
 
-func (connection *FakeConnection) CopyIn(handle string, src, dst string) error {
-	connection.lock.Lock()
-	connection.copiedIn[handle] = append(connection.copiedIn[handle], CopyInSpec{
-		Source:      src,
-		Destination: dst,
-	})
-	connection.lock.Unlock()
+func (connection *FakeConnection) StreamIn(handle string, dstPath string) (io.WriteCloser, error) {
+	buffer := gbytes.NewBuffer()
 
-	if connection.WhenCopyingIn != nil {
-		return connection.WhenCopyingIn(handle, src, dst)
-	}
-
-	return nil
-}
-
-func (connection *FakeConnection) CopiedIn(handle string) []CopyInSpec {
-	connection.lock.RLock()
-	defer connection.lock.RUnlock()
-
-	return connection.copiedIn[handle]
-}
-
-func (connection *FakeConnection) CopyOut(handle string, src, dst, owner string) error {
-	connection.lock.Lock()
-	connection.copiedOut[handle] = append(connection.copiedOut[handle], CopyOutSpec{
-		Source:      src,
-		Destination: dst,
-		Owner:       owner,
-	})
-	connection.lock.Unlock()
-
-	if connection.WhenCopyingOut != nil {
-		return connection.WhenCopyingOut(handle, src, dst, owner)
-	}
-
-	return nil
-}
-
-func (connection *FakeConnection) CopiedOut(handle string) []CopyOutSpec {
-	connection.lock.RLock()
-	defer connection.lock.RUnlock()
-
-	return connection.copiedOut[handle]
-}
-
-func (connection *FakeConnection) StreamIn(handle string, src io.Reader, dstPath string) error {
 	connection.lock.Lock()
 	connection.streamedIn[handle] = append(connection.streamedIn[handle], StreamInSpec{
-		Source:      src,
 		Destination: dstPath,
+		WriteBuffer: buffer,
 	})
 	connection.lock.Unlock()
 
 	if connection.WhenStreamingIn != nil {
-		return connection.WhenStreamingIn(handle, src, dstPath)
+		return connection.WhenStreamingIn(handle, dstPath)
 	}
 
-	return nil
+	return buffer, nil
 }
 
 func (connection *FakeConnection) StreamedIn(handle string) []StreamInSpec {
@@ -313,19 +252,20 @@ func (connection *FakeConnection) StreamedIn(handle string) []StreamInSpec {
 	return connection.streamedIn[handle]
 }
 
-func (connection *FakeConnection) StreamOut(handle string, srcPath string, dest io.Writer) error {
+func (connection *FakeConnection) StreamOut(handle string, srcPath string) (io.Reader, error) {
+	buffer := new(bytes.Buffer)
 	connection.lock.Lock()
 	connection.streamedOut[handle] = append(connection.streamedOut[handle], StreamOutSpec{
-		Source:      srcPath,
-		Destination: dest,
+		Source:     srcPath,
+		ReadBuffer: buffer,
 	})
 	connection.lock.Unlock()
 
 	if connection.WhenStreamingOut != nil {
-		return connection.WhenStreamingOut(handle, srcPath, dest)
+		return connection.WhenStreamingOut(handle, srcPath)
 	}
 
-	return nil
+	return buffer, nil
 }
 
 func (connection *FakeConnection) StreamedOut(handle string) []StreamOutSpec {
