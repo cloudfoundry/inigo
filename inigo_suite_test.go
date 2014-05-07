@@ -38,13 +38,13 @@ var LONG_TIMEOUT = 10.0
 var wardenAddr = filepath.Join(os.TempDir(), "warden-temp-socker", "warden.sock")
 
 type sharedContextType struct {
-	ExecutorPath       string
-	ConvergerPath      string
-	RepresentativePath string
-	StagerPath         string
-	FileServerPath     string
-	LoggregatorPath    string
-	SmelterZipPath     string
+	ExecutorPath    string
+	ConvergerPath   string
+	RepPath         string
+	StagerPath      string
+	FileServerPath  string
+	LoggregatorPath string
+	SmelterZipPath  string
 
 	WardenAddr    string
 	WardenNetwork string
@@ -177,7 +177,7 @@ func beforeSuite(encodedSharedContext []byte) {
 	)
 
 	context.RepRunner = reprunner.New(
-		context.SharedContext.RepresentativePath,
+		context.SharedContext.RepPath,
 		context.RepStack,
 		fmt.Sprintf("127.0.0.1:%d", context.RepPort),
 		fmt.Sprintf("http://127.0.0.1:%d", context.ExecutorPort),
@@ -316,7 +316,7 @@ func (node *nodeOneType) CompileTestedExecutables() {
 	node.context.ConvergerPath, err = gexec.BuildIn(os.Getenv("CONVERGER_GOPATH"), "github.com/cloudfoundry-incubator/converger", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
-	node.context.RepresentativePath, err = gexec.BuildIn(os.Getenv("CONVERGER_GOPATH"), "github.com/cloudfoundry-incubator/rep", "-race")
+	node.context.RepPath, err = gexec.BuildIn(os.Getenv("REP_GOPATH"), "github.com/cloudfoundry-incubator/rep", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.StagerPath, err = gexec.BuildIn(os.Getenv("STAGER_GOPATH"), "github.com/cloudfoundry-incubator/stager", "-race")
