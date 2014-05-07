@@ -15,6 +15,7 @@ import (
 
 type ExecutorRunner struct {
 	executorBin   string
+	listenAddr    string
 	wardenNetwork string
 	wardenAddr    string
 	etcdCluster   []string
@@ -31,7 +32,6 @@ type Config struct {
 	DiskMB                string
 	ConvergenceInterval   time.Duration
 	HeartbeatInterval     time.Duration
-	Stack                 string
 	TempDir               string
 	TimeToClaim           time.Duration
 	ContainerOwnerName    string
@@ -44,7 +44,6 @@ var defaultConfig = Config{
 	DiskMB:                "1024",
 	ConvergenceInterval:   30 * time.Second,
 	HeartbeatInterval:     60 * time.Second,
-	Stack:                 "lucid64",
 	TempDir:               "/tmp",
 	TimeToClaim:           30 * 60 * time.Second,
 	ContainerOwnerName:    "",
@@ -52,9 +51,10 @@ var defaultConfig = Config{
 	DrainTimeout:          5 * time.Second,
 }
 
-func New(executorBin, wardenNetwork, wardenAddr string, etcdCluster []string, loggregatorServer string, loggregatorSecret string) *ExecutorRunner {
+func New(executorBin, listenAddr, wardenNetwork, wardenAddr string, etcdCluster []string, loggregatorServer string, loggregatorSecret string) *ExecutorRunner {
 	return &ExecutorRunner{
 		executorBin:   executorBin,
+		listenAddr:    listenAddr,
 		wardenNetwork: wardenNetwork,
 		wardenAddr:    wardenAddr,
 		etcdCluster:   etcdCluster,
@@ -77,18 +77,16 @@ func (r *ExecutorRunner) StartWithoutCheck(config ...Config) {
 	executorSession, err := gexec.Start(
 		exec.Command(
 			r.executorBin,
+			"-listenAddr", r.listenAddr,
 			"-wardenNetwork", r.wardenNetwork,
 			"-wardenAddr", r.wardenAddr,
 			"-etcdCluster", strings.Join(r.etcdCluster, ","),
 			"-memoryMB", configToUse.MemoryMB,
 			"-diskMB", configToUse.DiskMB,
-			"-convergenceInterval", fmt.Sprintf("%s", configToUse.ConvergenceInterval),
 			"-heartbeatInterval", fmt.Sprintf("%s", configToUse.HeartbeatInterval),
-			"-stack", configToUse.Stack,
 			"-loggregatorServer", r.loggregatorServer,
 			"-loggregatorSecret", r.loggregatorSecret,
 			"-tempDir", configToUse.TempDir,
-			"-timeToClaimTask", fmt.Sprintf("%s", configToUse.TimeToClaim),
 			"-containerOwnerName", configToUse.ContainerOwnerName,
 			"-containerMaxCpuShares", fmt.Sprintf("%d", configToUse.ContainerMaxCpuShares),
 			"-drainTimeout", fmt.Sprintf("%s", configToUse.DrainTimeout),
@@ -134,9 +132,6 @@ func (r *ExecutorRunner) generateConfig(configs ...Config) Config {
 	}
 	if givenConfig.HeartbeatInterval != 0 {
 		configToReturn.HeartbeatInterval = givenConfig.HeartbeatInterval
-	}
-	if givenConfig.Stack != "" {
-		configToReturn.Stack = givenConfig.Stack
 	}
 	if givenConfig.TempDir != "" {
 		configToReturn.TempDir = givenConfig.TempDir
