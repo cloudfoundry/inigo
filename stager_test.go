@@ -243,7 +243,7 @@ EOF
 				}
 
 				//Ω(buildArtifactContents).Should(HaveKey("pulled-down-from-artifacts-cache"))
-				Ω(buildArtifactContents).Should(HaveKey("inserted-into-artifacts-cache"))
+				Ω(buildArtifactContents).Should(HaveKey("./inserted-into-artifacts-cache"))
 
 				//Fetch the compiled droplet from the fakeCC
 				dropletData, ok := suiteContext.FakeCC.UploadedDroplets[appId]
@@ -272,18 +272,18 @@ EOF
 
 				//Assert the droplet has the right files in it
 				Ω(dropletContents).Should(HaveKey("./"))
-				Ω(dropletContents).Should(HaveKey("staging_info.yml"))
-				Ω(dropletContents).Should(HaveKey("logs/"))
-				Ω(dropletContents).Should(HaveKey("tmp/"))
-				Ω(dropletContents).Should(HaveKey("app/"))
-				Ω(dropletContents).Should(HaveKey("app/my-app"))
-				Ω(dropletContents).Should(HaveKey("app/compiled"))
+				Ω(dropletContents).Should(HaveKey("./staging_info.yml"))
+				Ω(dropletContents).Should(HaveKey("./logs/"))
+				Ω(dropletContents).Should(HaveKey("./tmp/"))
+				Ω(dropletContents).Should(HaveKey("./app/"))
+				Ω(dropletContents).Should(HaveKey("./app/my-app"))
+				Ω(dropletContents).Should(HaveKey("./app/compiled"))
 
 				//Assert the files contain the right content
-				Ω(string(dropletContents["app/my-app"])).Should(Equal("scooby-doo"))
+				Ω(string(dropletContents["./app/my-app"])).Should(Equal("scooby-doo"))
 
 				//In particular, staging_info.yml should have the correct detected_buildpack and start_command
-				yamlDecoder := candiedyaml.NewDecoder(bytes.NewReader(dropletContents["staging_info.yml"]))
+				yamlDecoder := candiedyaml.NewDecoder(bytes.NewReader(dropletContents["./staging_info.yml"]))
 				stagingInfo := map[string]string{}
 				err = yamlDecoder.Decode(&stagingInfo)
 				Ω(err).ShouldNot(HaveOccurred())
