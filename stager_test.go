@@ -52,6 +52,7 @@ var _ = Describe("Stager", func() {
 	Context("when unable to find an appropriate compiler", func() {
 		BeforeEach(func() {
 			suiteContext.ExecutorRunner.Start()
+			suiteContext.RepRunner.Start()
 			suiteContext.StagerRunner.Start()
 		})
 
@@ -87,6 +88,7 @@ var _ = Describe("Stager", func() {
 
 		BeforeEach(func() {
 			suiteContext.ExecutorRunner.Start()
+			suiteContext.RepRunner.Start()
 
 			buildpackToUse = "admin_buildpack.zip"
 			outputGuid = factories.GenerateGuid()

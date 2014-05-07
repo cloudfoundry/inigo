@@ -55,17 +55,18 @@ var _ = Describe("Executor", func() {
 	Describe("Resource limits", func() {
 		BeforeEach(func() {
 			suiteContext.ExecutorRunner.Start()
+			suiteContext.RepRunner.Start()
 		})
 
 		It("should only pick up tasks if it has capacity", func() {
 			firstGuyGuid := factories.GenerateGuid()
 			secondGuyGuid := factories.GenerateGuid()
-			firstGuyTask := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(firstGuyGuid)+"; sleep 5")
+			firstGuyTask := factories.BuildTaskWithRunAction(suiteContext.RepStack, 1024, 1024, inigo_server.CurlCommand(firstGuyGuid)+"; sleep 5")
 			bbs.DesireTask(firstGuyTask)
 
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(firstGuyGuid))
 
-			secondGuyTask := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(secondGuyGuid))
+			secondGuyTask := factories.BuildTaskWithRunAction(suiteContext.RepStack, 1024, 1024, inigo_server.CurlCommand(secondGuyGuid))
 			bbs.DesireTask(secondGuyTask)
 
 			Consistently(inigo_server.ReportingGuids, SHORT_TIMEOUT).ShouldNot(ContainElement(secondGuyGuid))
@@ -73,18 +74,19 @@ var _ = Describe("Executor", func() {
 	})
 
 	Describe("Stack", func() {
+		var wrongStack = "penguin"
+
 		BeforeEach(func() {
-			suiteContext.ExecutorRunner.Start(executor_runner.Config{Stack: "penguin"})
+			suiteContext.ExecutorRunner.Start()
+			suiteContext.RepRunner.Start()
 		})
 
 		It("should only pick up tasks if the stacks match", func() {
 			matchingGuid := factories.GenerateGuid()
-			matchingTask := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(matchingGuid)+"; sleep 10")
-			matchingTask.Stack = "penguin"
+			matchingTask := factories.BuildTaskWithRunAction(suiteContext.RepStack, 100, 100, inigo_server.CurlCommand(matchingGuid)+"; sleep 10")
 
 			nonMatchingGuid := factories.GenerateGuid()
-			nonMatchingTask := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(nonMatchingGuid)+"; sleep 10")
-			nonMatchingTask.Stack = "lion"
+			nonMatchingTask := factories.BuildTaskWithRunAction(wrongStack, 100, 100, inigo_server.CurlCommand(nonMatchingGuid)+"; sleep 10")
 
 			bbs.DesireTask(matchingTask)
 			bbs.DesireTask(nonMatchingTask)
@@ -98,6 +100,8 @@ var _ = Describe("Executor", func() {
 		var guid string
 		BeforeEach(func() {
 			suiteContext.ExecutorRunner.Start()
+			suiteContext.RepRunner.Start()
+
 			guid = factories.GenerateGuid()
 		})
 
@@ -109,7 +113,7 @@ var _ = Describe("Executor", func() {
 			}
 			task := &models.Task{
 				Guid:     factories.GenerateGuid(),
-				Stack:    suiteContext.ExecutorRunner.Config.Stack,
+				Stack:    suiteContext.RepStack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
@@ -133,7 +137,7 @@ var _ = Describe("Executor", func() {
 				otherGuid = factories.GenerateGuid()
 				task := &models.Task{
 					Guid:     factories.GenerateGuid(),
-					Stack:    suiteContext.ExecutorRunner.Config.Stack,
+					Stack:    suiteContext.RepStack,
 					MemoryMB: 10,
 					DiskMB:   1024,
 					Actions: []models.ExecutorAction{
@@ -158,14 +162,22 @@ var _ = Describe("Executor", func() {
 
 		Context("when the command exceeds its file descriptor limit", func() {
 			It("should fail the Task", func() {
+				nofile := uint64(1)
+
 				task := &models.Task{
-					Guid:            factories.GenerateGuid(),
-					Stack:           suiteContext.ExecutorRunner.Config.Stack,
-					MemoryMB:        10,
-					DiskMB:          1024,
-					FileDescriptors: 1,
+					Guid:     factories.GenerateGuid(),
+					Stack:    suiteContext.RepStack,
+					MemoryMB: 10,
+					DiskMB:   1024,
 					Actions: []models.ExecutorAction{
-						{Action: models.RunAction{Script: `ruby -e '10.times.each { |x| File.open("#{x}","w") }'`}},
+						{
+							models.RunAction{
+								Script: `ruby -e '10.times.each { |x| File.open("#{x}","w") }'`,
+								ResourceLimits: models.ResourceLimits{
+									Nofile: &nofile,
+								},
+							},
+						},
 					},
 				}
 
@@ -182,7 +194,7 @@ var _ = Describe("Executor", func() {
 			It("should fail the Task", func() {
 				task := &models.Task{
 					Guid:     factories.GenerateGuid(),
-					Stack:    suiteContext.ExecutorRunner.Config.Stack,
+					Stack:    suiteContext.RepStack,
 					MemoryMB: 1024,
 					DiskMB:   1024,
 					Actions: []models.ExecutorAction{
@@ -206,6 +218,7 @@ var _ = Describe("Executor", func() {
 		var guid string
 		BeforeEach(func() {
 			suiteContext.ExecutorRunner.Start()
+			suiteContext.RepRunner.Start()
 
 			guid = factories.GenerateGuid()
 			inigo_server.UploadFileString("curling.sh", inigo_server.CurlCommand(guid))
@@ -214,7 +227,7 @@ var _ = Describe("Executor", func() {
 		It("downloads the file", func() {
 			task := &models.Task{
 				Guid:     factories.GenerateGuid(),
-				Stack:    suiteContext.ExecutorRunner.Config.Stack,
+				Stack:    suiteContext.RepStack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
@@ -233,6 +246,7 @@ var _ = Describe("Executor", func() {
 		var guid string
 		BeforeEach(func() {
 			suiteContext.ExecutorRunner.Start()
+			suiteContext.RepRunner.Start()
 
 			guid = factories.GenerateGuid()
 		})
@@ -240,7 +254,7 @@ var _ = Describe("Executor", func() {
 		It("uploads a tarball containing the specified files", func() {
 			task := &models.Task{
 				Guid:     factories.GenerateGuid(),
-				Stack:    suiteContext.ExecutorRunner.Config.Stack,
+				Stack:    suiteContext.RepStack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
@@ -269,12 +283,13 @@ var _ = Describe("Executor", func() {
 	Describe("Fetching results", func() {
 		BeforeEach(func() {
 			suiteContext.ExecutorRunner.Start()
+			suiteContext.RepRunner.Start()
 		})
 
 		It("should fetch the contents of the requested file and provide the content in the completed Task", func() {
 			task := &models.Task{
 				Guid:     factories.GenerateGuid(),
-				Stack:    suiteContext.ExecutorRunner.Config.Stack,
+				Stack:    suiteContext.RepStack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
@@ -295,6 +310,7 @@ var _ = Describe("Executor", func() {
 	Describe("A Task with logging configured", func() {
 		BeforeEach(func() {
 			suiteContext.ExecutorRunner.Start()
+			suiteContext.RepRunner.Start()
 		})
 
 		It("has its stdout and stderr emitted to Loggregator", func(done Done) {
@@ -306,7 +322,7 @@ var _ = Describe("Executor", func() {
 			)
 
 			task := factories.BuildTaskWithRunAction(
-				suiteContext.ExecutorRunner.Config.Stack,
+				suiteContext.RepStack,
 				1024,
 				1024,
 				"echo out A; echo out B; echo out C; echo err A 1>&2; echo err B 1>&2; echo err C 1>&2",

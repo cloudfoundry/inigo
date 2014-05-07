@@ -16,6 +16,7 @@ import (
 	WardenClient "github.com/cloudfoundry-incubator/garden/client"
 	WardenConnection "github.com/cloudfoundry-incubator/garden/client/connection"
 	"github.com/cloudfoundry-incubator/garden/warden"
+	"github.com/cloudfoundry-incubator/rep/reprunner"
 	WardenRunner "github.com/cloudfoundry-incubator/warden-linux/integration/runner"
 	"github.com/cloudfoundry/gunk/natsrunner"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
@@ -37,12 +38,13 @@ var LONG_TIMEOUT = 10.0
 var wardenAddr = filepath.Join(os.TempDir(), "warden-temp-socker", "warden.sock")
 
 type sharedContextType struct {
-	ExecutorPath    string
-	ConvergerPath   string
-	StagerPath      string
-	FileServerPath  string
-	LoggregatorPath string
-	SmelterZipPath  string
+	ExecutorPath       string
+	ConvergerPath      string
+	RepresentativePath string
+	StagerPath         string
+	FileServerPath     string
+	LoggregatorPath    string
+	SmelterZipPath     string
 
 	WardenAddr    string
 	WardenNetwork string
@@ -69,6 +71,7 @@ type Runner interface {
 type suiteContextType struct {
 	SharedContext sharedContextType
 
+	RepStack     string
 	EtcdRunner   *etcdstorerunner.ETCDClusterRunner
 	WardenClient warden.Client
 
@@ -80,8 +83,13 @@ type suiteContextType struct {
 	LoggregatorOutPort      int
 	LoggregatorSharedSecret string
 
-	ExecutorRunner  *executor_runner.ExecutorRunner
+	ExecutorRunner *executor_runner.ExecutorRunner
+	ExecutorPort   int
+
 	ConvergerRunner *converger_runner.ConvergerRunner
+
+	RepRunner *reprunner.Runner
+	RepPort   int
 
 	StagerRunner *stager_runner.StagerRunner
 
@@ -98,6 +106,7 @@ func (context suiteContextType) Runners() []Runner {
 	return []Runner{
 		context.ExecutorRunner,
 		context.ConvergerRunner,
+		context.RepRunner,
 		context.StagerRunner,
 		context.FileServerRunner,
 		context.LoggregatorRunner,
@@ -121,7 +130,10 @@ func beforeSuite(encodedSharedContext []byte) {
 
 	context := suiteContextType{
 		SharedContext:           sharedContext,
+		RepStack:                "lucid64",
 		NatsPort:                4222 + config.GinkgoConfig.ParallelNode,
+		ExecutorPort:            1700 + config.GinkgoConfig.ParallelNode,
+		RepPort:                 20515 + config.GinkgoConfig.ParallelNode,
 		LoggregatorInPort:       3456 + config.GinkgoConfig.ParallelNode,
 		LoggregatorOutPort:      8083 + config.GinkgoConfig.ParallelNode,
 		LoggregatorSharedSecret: "conspiracy",
@@ -150,6 +162,7 @@ func beforeSuite(encodedSharedContext []byte) {
 
 	context.ExecutorRunner = executor_runner.New(
 		context.SharedContext.ExecutorPath,
+		fmt.Sprintf("127.0.0.1:%d", context.ExecutorPort),
 		context.SharedContext.WardenNetwork,
 		context.SharedContext.WardenAddr,
 		context.EtcdRunner.NodeURLS(),
@@ -159,6 +172,15 @@ func beforeSuite(encodedSharedContext []byte) {
 
 	context.ConvergerRunner = converger_runner.New(
 		context.SharedContext.ConvergerPath,
+		strings.Join(context.EtcdRunner.NodeURLS(), ","),
+		"debug",
+	)
+
+	context.RepRunner = reprunner.New(
+		context.SharedContext.RepresentativePath,
+		context.RepStack,
+		fmt.Sprintf("127.0.0.1:%d", context.RepPort),
+		fmt.Sprintf("http://127.0.0.1:%d", context.ExecutorPort),
 		strings.Join(context.EtcdRunner.NodeURLS(), ","),
 		"debug",
 	)
@@ -292,6 +314,9 @@ func (node *nodeOneType) CompileTestedExecutables() {
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.ConvergerPath, err = gexec.BuildIn(os.Getenv("CONVERGER_GOPATH"), "github.com/cloudfoundry-incubator/converger", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	node.context.RepresentativePath, err = gexec.BuildIn(os.Getenv("CONVERGER_GOPATH"), "github.com/cloudfoundry-incubator/rep", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.StagerPath, err = gexec.BuildIn(os.Getenv("STAGER_GOPATH"), "github.com/cloudfoundry-incubator/stager", "-race")

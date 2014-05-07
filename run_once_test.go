@@ -22,11 +22,13 @@ var _ = Describe("Task", func() {
 	Context("when there is an executor running and a Task is registered", func() {
 		BeforeEach(func() {
 			suiteContext.ExecutorRunner.Start()
+			suiteContext.RepRunner.Start()
+			suiteContext.ConvergerRunner.Start(10*time.Second, 30*time.Minute)
 		})
 
 		It("eventually runs the Task", func() {
 			guid := factories.GenerateGuid()
-			task := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
+			task := factories.BuildTaskWithRunAction(suiteContext.RepStack, 100, 100, inigo_server.CurlCommand(guid))
 			bbs.DesireTask(task)
 
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
@@ -40,10 +42,11 @@ var _ = Describe("Task", func() {
 
 		It("eventually runs the Task once an executor comes up", func() {
 			guid := factories.GenerateGuid()
-			task := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
+			task := factories.BuildTaskWithRunAction(suiteContext.RepStack, 100, 100, inigo_server.CurlCommand(guid))
 			bbs.DesireTask(task)
 
 			suiteContext.ExecutorRunner.Start()
+			suiteContext.RepRunner.Start()
 
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 		})
@@ -56,7 +59,7 @@ var _ = Describe("Task", func() {
 
 		It("should be marked as failed, eventually", func() {
 			guid := factories.GenerateGuid()
-			task := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 100, 100, inigo_server.CurlCommand(guid))
+			task := factories.BuildTaskWithRunAction(suiteContext.RepStack, 100, 100, inigo_server.CurlCommand(guid))
 			task.Stack = "donald-duck"
 			bbs.DesireTask(task)
 
@@ -77,11 +80,14 @@ var _ = Describe("Task", func() {
 			suiteContext.ExecutorRunner.Start(executor_runner.Config{
 				HeartbeatInterval: 1 * time.Second,
 			})
+
+			suiteContext.RepRunner.Start()
+			suiteContext.ConvergerRunner.Start(10*time.Second, 30*time.Minute)
 		})
 
 		It("eventually marks jobs running on that executor as failed", func() {
 			guid := factories.GenerateGuid()
-			task := factories.BuildTaskWithRunAction(suiteContext.ExecutorRunner.Config.Stack, 1024, 1024, inigo_server.CurlCommand(guid)+"; sleep 10")
+			task := factories.BuildTaskWithRunAction(suiteContext.RepStack, 1024, 1024, inigo_server.CurlCommand(guid)+"; sleep 10")
 			bbs.DesireTask(task)
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 
