@@ -111,7 +111,7 @@ var _ = Describe("Executor", func() {
 				{"BAZ", "WIBBLE"},
 				{"FOO", "$FOO-$BAZ"},
 			}
-			task := &models.Task{
+			task := models.Task{
 				Guid:     factories.GenerateGuid(),
 				Stack:    suiteContext.RepStack,
 				MemoryMB: 1024,
@@ -121,7 +121,8 @@ var _ = Describe("Executor", func() {
 				},
 			}
 
-			bbs.DesireTask(task)
+			_, err := bbs.DesireTask(task)
+			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
 
@@ -135,7 +136,7 @@ var _ = Describe("Executor", func() {
 
 			It("should fail the Task", func() {
 				otherGuid = factories.GenerateGuid()
-				task := &models.Task{
+				task := models.Task{
 					Guid:     factories.GenerateGuid(),
 					Stack:    suiteContext.RepStack,
 					MemoryMB: 10,
@@ -147,7 +148,8 @@ var _ = Describe("Executor", func() {
 					},
 				}
 
-				bbs.DesireTask(task)
+				_, err := bbs.DesireTask(task)
+				Ω(err).ShouldNot(HaveOccurred())
 
 				Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 
@@ -164,7 +166,7 @@ var _ = Describe("Executor", func() {
 			It("should fail the Task", func() {
 				nofile := uint64(1)
 
-				task := &models.Task{
+				task := models.Task{
 					Guid:     factories.GenerateGuid(),
 					Stack:    suiteContext.RepStack,
 					MemoryMB: 10,
@@ -181,7 +183,8 @@ var _ = Describe("Executor", func() {
 					},
 				}
 
-				bbs.DesireTask(task)
+				_, err := bbs.DesireTask(task)
+				Ω(err).ShouldNot(HaveOccurred())
 
 				Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
 				tasks, _ := bbs.GetAllCompletedTasks()
@@ -192,7 +195,7 @@ var _ = Describe("Executor", func() {
 
 		Context("when the command times out", func() {
 			It("should fail the Task", func() {
-				task := &models.Task{
+				task := models.Task{
 					Guid:     factories.GenerateGuid(),
 					Stack:    suiteContext.RepStack,
 					MemoryMB: 1024,
@@ -203,7 +206,8 @@ var _ = Describe("Executor", func() {
 					},
 				}
 
-				bbs.DesireTask(task)
+				_, err := bbs.DesireTask(task)
+				Ω(err).ShouldNot(HaveOccurred())
 
 				Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 				Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
@@ -225,7 +229,7 @@ var _ = Describe("Executor", func() {
 		})
 
 		It("downloads the file", func() {
-			task := &models.Task{
+			task := models.Task{
 				Guid:     factories.GenerateGuid(),
 				Stack:    suiteContext.RepStack,
 				MemoryMB: 1024,
@@ -236,7 +240,8 @@ var _ = Describe("Executor", func() {
 				},
 			}
 
-			bbs.DesireTask(task)
+			_, err := bbs.DesireTask(task)
+			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 		})
@@ -252,7 +257,7 @@ var _ = Describe("Executor", func() {
 		})
 
 		It("uploads a tarball containing the specified files", func() {
-			task := &models.Task{
+			task := models.Task{
 				Guid:     factories.GenerateGuid(),
 				Stack:    suiteContext.RepStack,
 				MemoryMB: 1024,
@@ -264,7 +269,8 @@ var _ = Describe("Executor", func() {
 				},
 			}
 
-			bbs.DesireTask(task)
+			_, err := bbs.DesireTask(task)
+			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 
@@ -287,7 +293,7 @@ var _ = Describe("Executor", func() {
 		})
 
 		It("should fetch the contents of the requested file and provide the content in the completed Task", func() {
-			task := &models.Task{
+			task := models.Task{
 				Guid:     factories.GenerateGuid(),
 				Stack:    suiteContext.RepStack,
 				MemoryMB: 1024,
@@ -298,7 +304,8 @@ var _ = Describe("Executor", func() {
 				},
 			}
 
-			bbs.DesireTask(task)
+			_, err := bbs.DesireTask(task)
+			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
 
