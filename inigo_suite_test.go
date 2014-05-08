@@ -33,7 +33,7 @@ import (
 )
 
 var SHORT_TIMEOUT = 5.0
-var LONG_TIMEOUT = 10.0
+var LONG_TIMEOUT = 15.0
 
 var wardenAddr = filepath.Join(os.TempDir(), "warden-temp-socker", "warden.sock")
 
