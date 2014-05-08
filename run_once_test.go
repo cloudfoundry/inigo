@@ -82,7 +82,6 @@ var _ = Describe("Task", func() {
 			})
 
 			suiteContext.RepRunner.Start()
-			suiteContext.ConvergerRunner.Start(10*time.Second, 30*time.Minute)
 		})
 
 		It("eventually marks jobs running on that executor as failed", func() {
