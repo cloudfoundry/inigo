@@ -2,7 +2,6 @@ package converger_runner
 
 import (
 	"os/exec"
-	"syscall"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -33,6 +32,10 @@ func New(binPath, etcdCluster, logLevel string) *ConvergerRunner {
 }
 
 func (r *ConvergerRunner) Start(convergenceInterval, timeToClaim time.Duration) {
+	if r.Session != nil {
+		panic("starting two convergers!!!")
+	}
+
 	convergerSession, err := gexec.Start(
 		exec.Command(
 			r.binPath,
@@ -47,18 +50,19 @@ func (r *ConvergerRunner) Start(convergenceInterval, timeToClaim time.Duration) 
 
 	Ω(err).ShouldNot(HaveOccurred())
 	r.Session = convergerSession
-	Eventually(r.Session.Buffer()).Should(gbytes.Say("started"))
+	Eventually(r.Session, 5*time.Second).Should(gbytes.Say("started"))
 }
 
 func (r *ConvergerRunner) Stop() {
 	if r.Session != nil {
-		r.Session.Command.Process.Signal(syscall.SIGTERM)
-		r.Session.Wait(5 * time.Second)
+		r.Session.Interrupt().Wait(5 * time.Second)
+		r.Session = nil
 	}
 }
 
 func (r *ConvergerRunner) KillWithFire() {
 	if r.Session != nil {
-		r.Session.Command.Process.Kill()
+		r.Session.Kill().Wait()
+		r.Session = nil
 	}
 }
