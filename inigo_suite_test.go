@@ -25,6 +25,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 
+	"github.com/cloudfoundry-incubator/inigo/app_manager_runner"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/inigo/fileserver_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
@@ -42,6 +43,7 @@ type sharedContextType struct {
 	ConvergerPath   string
 	RepPath         string
 	StagerPath      string
+	AppManagerPath  string
 	FileServerPath  string
 	LoggregatorPath string
 	SmelterZipPath  string
@@ -91,7 +93,8 @@ type suiteContextType struct {
 	RepRunner *reprunner.Runner
 	RepPort   int
 
-	StagerRunner *stager_runner.StagerRunner
+	StagerRunner     *stager_runner.StagerRunner
+	AppManagerRunner *app_manager_runner.AppManagerRunner
 
 	FakeCC        *fake_cc.FakeCC
 	FakeCCAddress string
@@ -108,6 +111,7 @@ func (context suiteContextType) Runners() []Runner {
 		context.ConvergerRunner,
 		context.RepRunner,
 		context.StagerRunner,
+		context.AppManagerRunner,
 		context.FileServerRunner,
 		context.LoggregatorRunner,
 		context.NatsRunner,
@@ -187,6 +191,12 @@ func beforeSuite(encodedSharedContext []byte) {
 
 	context.StagerRunner = stager_runner.New(
 		context.SharedContext.StagerPath,
+		context.EtcdRunner.NodeURLS(),
+		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
+	)
+
+	context.AppManagerRunner = app_manager_runner.New(
+		context.SharedContext.AppManagerPath,
 		context.EtcdRunner.NodeURLS(),
 		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
 	)
@@ -320,6 +330,9 @@ func (node *nodeOneType) CompileTestedExecutables() {
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.StagerPath, err = gexec.BuildIn(os.Getenv("STAGER_GOPATH"), "github.com/cloudfoundry-incubator/stager", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	node.context.AppManagerPath, err = gexec.BuildIn(os.Getenv("APP_MANAGER_GOPATH"), "github.com/cloudfoundry-incubator/app-manager", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.FileServerPath, err = gexec.BuildIn(os.Getenv("FILE_SERVER_GOPATH"), "github.com/cloudfoundry-incubator/file-server", "-race")
