@@ -11,8 +11,11 @@ import (
 type FakeExecutorBBS struct {
 	callsToConverge int
 
-	desiredTaskChan chan models.Task
-	desiredLrpChan  chan models.TransitionalLongRunningProcess
+	desiredTaskChan     chan models.Task
+	desiredTaskStopChan chan bool
+	desiredTaskErrChan  chan error
+
+	desiredLrpChan chan models.TransitionalLongRunningProcess
 
 	maintainConvergeInterval      time.Duration
 	maintainConvergeExecutorID    string
@@ -50,6 +53,8 @@ func NewFakeExecutorBBS() *FakeExecutorBBS {
 	fakeBBS.MaintainExecutorPresenceInputs.HeartbeatInterval = make(chan time.Duration, 1)
 	fakeBBS.MaintainExecutorPresenceInputs.ExecutorID = make(chan string, 1)
 	fakeBBS.desiredTaskChan = make(chan models.Task, 1)
+	fakeBBS.desiredTaskStopChan = make(chan bool)
+	fakeBBS.desiredTaskErrChan = make(chan error)
 	fakeBBS.desiredLrpChan = make(chan models.TransitionalLongRunningProcess, 1)
 	return fakeBBS
 }
@@ -80,7 +85,7 @@ func (fakeBBS *FakeExecutorBBS) GetMaintainExecutorPresenceId() string {
 }
 
 func (fakeBBS *FakeExecutorBBS) WatchForDesiredTask() (<-chan models.Task, chan<- bool, <-chan error) {
-	return fakeBBS.desiredTaskChan, nil, nil
+	return fakeBBS.desiredTaskChan, fakeBBS.desiredTaskStopChan, fakeBBS.desiredTaskErrChan
 }
 
 func (fakeBBS *FakeExecutorBBS) WatchForDesiredTransitionalLongRunningProcess() (<-chan models.TransitionalLongRunningProcess, chan<- bool, <-chan error) {
@@ -89,6 +94,10 @@ func (fakeBBS *FakeExecutorBBS) WatchForDesiredTransitionalLongRunningProcess() 
 
 func (fakeBBS *FakeExecutorBBS) EmitDesiredTask(task models.Task) {
 	fakeBBS.desiredTaskChan <- task
+}
+
+func (fakeBBS *FakeExecutorBBS) EmitDesiredLrp(lrp models.TransitionalLongRunningProcess) {
+	fakeBBS.desiredLrpChan <- lrp
 }
 
 func (fakeBBS *FakeExecutorBBS) ClaimTask(task models.Task, executorID string) (models.Task, error) {
@@ -170,11 +179,28 @@ func (fakeBBS *FakeExecutorBBS) StartedTasks() []models.Task {
 	return started
 }
 
+func (fakeBBS *FakeExecutorBBS) StartedLongRunningProcesses() []models.TransitionalLongRunningProcess {
+	fakeBBS.RLock()
+	defer fakeBBS.RUnlock()
+
+	started := make([]models.TransitionalLongRunningProcess, len(fakeBBS.startedLrps))
+	copy(started, fakeBBS.startedLrps)
+
+	return started
+}
+
 func (fakeBBS *FakeExecutorBBS) SetStartTaskErr(err error) {
 	fakeBBS.Lock()
 	defer fakeBBS.Unlock()
 
 	fakeBBS.startTaskErr = err
+}
+
+func (fakeBBS *FakeExecutorBBS) SetStartLrpErr(err error) {
+	fakeBBS.Lock()
+	defer fakeBBS.Unlock()
+
+	fakeBBS.startLrpErr = err
 }
 
 func (fakeBBS *FakeExecutorBBS) CompleteTask(task models.Task, failed bool, failureReason string, result string) (models.Task, error) {
