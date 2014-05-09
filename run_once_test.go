@@ -63,7 +63,7 @@ var _ = Describe("Task", func() {
 			task.Stack = "donald-duck"
 			bbs.DesireTask(task)
 
-			Eventually(bbs.GetAllCompletedTasks, 5).Should(HaveLen(1))
+			Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
 			tasks, err := bbs.GetAllCompletedTasks()
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(tasks[0].Failed).Should(BeTrue(), "Task should have failed")
