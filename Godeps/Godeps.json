@@ -40,7 +40,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/rep/reprunner",
-			"Rev": "c906e20b259c7a6eeed9a501c23be05bf371b17b"
+			"Rev": "7da917cf6ad52343abc3b3e6345a531557f8af30"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
@@ -85,7 +85,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/yagnats",
-			"Rev": "8bf15e48f3abf6db1765ff908ee678a6f347ce0a"
+			"Rev": "2c197cfdcd587274614ab63fef96bbaaa1c01f10"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-etcd/etcd",
