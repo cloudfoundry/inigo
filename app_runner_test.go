@@ -34,7 +34,7 @@ var _ = Describe("AppRunner", func() {
 			//make and upload a droplet
 			var dropletFiles = []zip_helper.ArchiveFile{
 				{
-					Name: "run",
+					Name: "app/run",
 					Body: `#!/bin/bash
           echo hello world
           `,
