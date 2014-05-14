@@ -52,11 +52,13 @@ var _ = Describe("AppRunner", func() {
             "app_id": "%s",
             "app_version": "%s",
             "droplet_uri": "%s",
+						"stack": "%s",
             "start_command": "./run"
           }`,
 					appId,
 					appVersion,
 					inigo_server.DownloadUrl("simple-echo-droplet.zip"),
+					suiteContext.RepStack,
 				),
 			)
 		})
