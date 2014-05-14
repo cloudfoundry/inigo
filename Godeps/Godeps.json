@@ -16,11 +16,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/converger/converger_runner",
-			"Rev": "7d4bb3b17512f00726bfc2a11ff08ff205dca190"
+			"Rev": "3a583decdc15e7794c3e66d1d7f5b50fc99e6dcc"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/integration/executor_runner",
-			"Rev": "1efa96e02c536ce8bfa71cbe1e38d09e134978ad"
+			"Rev": "29fdf6730384c5ca8695935f74054189a7a973cc"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/client",
@@ -44,11 +44,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "2ab10793e243b2ce962296826de17e6db7cfd80c"
+			"Rev": "255de87f8f0c62c470da240423c1866b9c4cc986"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "2ab10793e243b2ce962296826de17e6db7cfd80c"
+			"Rev": "255de87f8f0c62c470da240423c1866b9c4cc986"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",
@@ -73,15 +73,15 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/loggregatorlib/logmessage",
-			"Rev": "b2f1c6577e09b5727076c72f4096e3cc5cfd737d"
+			"Rev": "90e9aee1f6ae4ba750c6656c3fb529bf217b4908"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/loggregatorlib/signature",
-			"Rev": "b2f1c6577e09b5727076c72f4096e3cc5cfd737d"
+			"Rev": "90e9aee1f6ae4ba750c6656c3fb529bf217b4908"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
-			"Rev": "28086a050c8acb6bc1d28fd23645e208aa95585d"
+			"Rev": "c21b707184aa2b2b4a8c8a25e90bc36011dd147d"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/yagnats",
@@ -89,8 +89,8 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/go-etcd/etcd",
-			"Comment": "v0.2.0-rc1-104-geb40b08",
-			"Rev": "eb40b0881e469d696c35641c9624641e96b4dca5"
+			"Comment": "v0.2.0-rc1-100-g1014044",
+			"Rev": "1014044eff94a4931724969b68867a0ee05beabc"
 		},
 		{
 			"ImportPath": "github.com/fraenkel/candiedyaml",
@@ -98,7 +98,7 @@
 		},
 		{
 			"ImportPath": "github.com/gorilla/websocket",
-			"Rev": "10a95d14a3a215f5e2045d3dbbcd29f1ab209586"
+			"Rev": "1e6e1281b05fe5eaaf3300bdedb8e75880b9c6fd"
 		},
 		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
@@ -114,7 +114,7 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/archiver/extractor/test_helper",
-			"Rev": "0a8320d8e288e4de14303aefe490da0075140ab3"
+			"Rev": "e46831b67d1f71fe27f85b6b4224e2cf55efea8a"
 		}
 	]
 }
