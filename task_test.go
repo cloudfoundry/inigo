@@ -20,18 +20,47 @@ var _ = Describe("Task", func() {
 	})
 
 	Context("when there is an executor running and a Task is registered", func() {
+		var guid string
+
 		BeforeEach(func() {
 			suiteContext.ExecutorRunner.Start()
 			suiteContext.RepRunner.Start()
 			suiteContext.ConvergerRunner.Start(10*time.Second, 30*time.Minute)
+
+			guid = factories.GenerateGuid()
+			task := factories.BuildTaskWithRunAction(
+				suiteContext.RepStack,
+				512,
+				512,
+				inigo_server.CurlCommand(guid),
+			)
+			bbs.DesireTask(task)
 		})
 
 		It("eventually runs the Task", func() {
-			guid := factories.GenerateGuid()
-			task := factories.BuildTaskWithRunAction(suiteContext.RepStack, 100, 100, inigo_server.CurlCommand(guid))
-			bbs.DesireTask(task)
-
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
+		})
+
+		Context("and another task is registered", func() {
+			var newGuid string
+
+			BeforeEach(func() {
+				newGuid = factories.GenerateGuid()
+
+				task := factories.BuildTaskWithRunAction(
+					suiteContext.RepStack,
+					768,
+					768,
+					inigo_server.CurlCommand(newGuid),
+				)
+				bbs.DesireTask(task)
+			})
+
+			It("is executed, as the previous task's resources are cleared", func() {
+				Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
+
+				Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(newGuid))
+			})
 		})
 	})
 
