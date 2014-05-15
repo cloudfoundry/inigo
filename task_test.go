@@ -16,7 +16,7 @@ var _ = Describe("Task", func() {
 	var bbs *Bbs.BBS
 
 	BeforeEach(func() {
-		bbs = Bbs.New(suiteContext.EtcdRunner.Adapter(), timeprovider.NewTimeProvider())
+		bbs = Bbs.NewBBS(suiteContext.EtcdRunner.Adapter(), timeprovider.NewTimeProvider())
 	})
 
 	Context("when there is an executor running and a Task is registered", func() {

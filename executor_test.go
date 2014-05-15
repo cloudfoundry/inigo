@@ -24,7 +24,7 @@ var _ = Describe("Executor", func() {
 	var bbs *Bbs.BBS
 
 	BeforeEach(func() {
-		bbs = Bbs.New(suiteContext.EtcdRunner.Adapter(), timeprovider.NewTimeProvider())
+		bbs = Bbs.NewBBS(suiteContext.EtcdRunner.Adapter(), timeprovider.NewTimeProvider())
 	})
 
 	Describe("invalid memory and disk limit flags", func() {
