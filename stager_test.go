@@ -210,7 +210,8 @@ EOF
 					"app_id": "%s",
 					"task_id": "%s",
 					"buildpack_key":"test-buildpack-key",
-					"detected_buildpack":"My Buildpack"
+					"detected_buildpack":"My Buildpack",
+					"detected_start_command":"start-command"
 				}`, appId, taskId)))
 
 				//Asser the user saw reasonable output
