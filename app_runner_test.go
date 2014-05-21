@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
-	zip_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
+	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 )
 
 var _ = Describe("AppRunner", func() {
@@ -32,7 +32,7 @@ var _ = Describe("AppRunner", func() {
 			outputGuid = factories.GenerateGuid()
 
 			//make and upload a droplet
-			var dropletFiles = []zip_helper.ArchiveFile{
+			var dropletFiles = []archive_helper.ArchiveFile{
 				{
 					Name: "app/run",
 					Body: `#!/bin/bash
@@ -41,8 +41,20 @@ var _ = Describe("AppRunner", func() {
 				},
 			}
 
-			zip_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", dropletFiles)
+			archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", dropletFiles)
 			inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")
+
+			var healthCheckFiles = []archive_helper.ArchiveFile{
+				{
+					Name: "diego-health-check",
+					Body: `#!/bin/bash
+					exit 0
+          `,
+				},
+			}
+
+			archive_helper.CreateTarGZArchive("/tmp/some-health-check.tgz", healthCheckFiles)
+			inigo_server.UploadFile("some-health-check.tgz", "/tmp/some-health-check.tgz")
 		})
 
 		JustBeforeEach(func() {

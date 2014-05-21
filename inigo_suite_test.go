@@ -10,7 +10,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/cloudfoundry-incubator/app-manager/integration/app_manager_runner"
 	"github.com/cloudfoundry-incubator/converger/converger_runner"
 	"github.com/cloudfoundry-incubator/executor/integration/executor_runner"
 	WardenClient "github.com/cloudfoundry-incubator/garden/client"
@@ -25,7 +27,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 
-	"github.com/cloudfoundry-incubator/inigo/app_manager_runner"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/inigo/fileserver_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
@@ -187,6 +188,7 @@ func beforeSuite(encodedSharedContext []byte) {
 		fmt.Sprintf("http://127.0.0.1:%d", context.ExecutorPort),
 		strings.Join(context.EtcdRunner.NodeURLS(), ","),
 		"debug",
+		5*time.Second,
 	)
 
 	context.StagerRunner = stager_runner.New(
@@ -199,6 +201,7 @@ func beforeSuite(encodedSharedContext []byte) {
 		context.SharedContext.AppManagerPath,
 		context.EtcdRunner.NodeURLS(),
 		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
+		map[string]string{context.RepStack: "some-health-check.tgz"},
 	)
 
 	context.FileServerRunner = fileserver_runner.New(
