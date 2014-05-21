@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cloudfoundry-incubator/runtime-schema/bbs/services_bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
@@ -28,6 +29,18 @@ type FakeRepBBS struct {
 
 	startedLrps []models.TransitionalLongRunningProcess
 	startLrpErr error
+
+	runningLrps   []models.LRP
+	runningLrpErr error
+
+	MaintainRepPresenceInput struct {
+		HeartbeatInterval time.Duration
+		RepPresence       models.RepPresence
+	}
+	MaintainRepPresenceOutput struct {
+		Presence *FakePresence
+		Error    error
+	}
 
 	sync.RWMutex
 }
@@ -128,6 +141,22 @@ func (fakeBBS *FakeRepBBS) StartTransitionalLongRunningProcess(lrp models.Transi
 	return nil
 }
 
+func (fakeBBS *FakeRepBBS) ReportLongRunningProcessAsRunning(lrp models.LRP) error {
+	fakeBBS.RLock()
+	err := fakeBBS.runningLrpErr
+	fakeBBS.RUnlock()
+
+	if err != nil {
+		return err
+	}
+
+	fakeBBS.Lock()
+	fakeBBS.runningLrps = append(fakeBBS.runningLrps, lrp)
+	fakeBBS.Unlock()
+
+	return nil
+}
+
 func (fakeBBS *FakeRepBBS) StartedTasks() []models.Task {
 	fakeBBS.RLock()
 	defer fakeBBS.RUnlock()
@@ -146,6 +175,23 @@ func (fakeBBS *FakeRepBBS) StartedLongRunningProcesses() []models.TransitionalLo
 	copy(started, fakeBBS.startedLrps)
 
 	return started
+}
+
+func (fakeBBS *FakeRepBBS) RunningLongRunningProcesses() []models.LRP {
+	fakeBBS.RLock()
+	defer fakeBBS.RUnlock()
+
+	running := make([]models.LRP, len(fakeBBS.runningLrps))
+	copy(running, fakeBBS.runningLrps)
+
+	return running
+}
+
+func (fakeBBS *FakeRepBBS) SetRunningError(err error) {
+	fakeBBS.Lock()
+	defer fakeBBS.Unlock()
+
+	fakeBBS.runningLrpErr = err
 }
 
 func (fakeBBS *FakeRepBBS) SetStartTaskErr(err error) {
@@ -197,4 +243,45 @@ func (fakeBBS *FakeRepBBS) SetCompleteTaskErr(err error) {
 	defer fakeBBS.Unlock()
 
 	fakeBBS.completeTaskErr = err
+}
+
+func (fakeBBS *FakeRepBBS) MaintainRepPresence(heartbeatInterval time.Duration, repPresence models.RepPresence) (services_bbs.Presence, <-chan bool, error) {
+	fakeBBS.Lock()
+	fakeBBS.MaintainRepPresenceInput.HeartbeatInterval = heartbeatInterval
+	fakeBBS.MaintainRepPresenceInput.RepPresence = repPresence
+	fakeBBS.Unlock()
+
+	presence := fakeBBS.MaintainRepPresenceOutput.Presence
+
+	if presence == nil {
+		presence = &FakePresence{
+			MaintainStatus: true,
+		}
+	}
+
+	status, _ := presence.Maintain(heartbeatInterval)
+
+	return presence, status, fakeBBS.MaintainRepPresenceOutput.Error
+}
+
+func (fakeBBS *FakeRepBBS) GetMaintainRepPresenceHeartbeatInterval() time.Duration {
+	fakeBBS.Lock()
+	defer fakeBBS.Unlock()
+	return fakeBBS.MaintainRepPresenceInput.HeartbeatInterval
+}
+
+func (fakeBBS *FakeRepBBS) GetMaintainRepPresence() models.RepPresence {
+	fakeBBS.Lock()
+	defer fakeBBS.Unlock()
+	return fakeBBS.MaintainRepPresenceInput.RepPresence
+}
+
+func (fakeBBS *FakeRepBBS) Stop() {
+	fakeBBS.RLock()
+	presence := fakeBBS.MaintainRepPresenceOutput.Presence
+	fakeBBS.RUnlock()
+
+	if presence != nil {
+		presence.Remove()
+	}
 }
