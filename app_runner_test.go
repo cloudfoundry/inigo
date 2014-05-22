@@ -37,8 +37,8 @@ var _ = Describe("AppRunner", func() {
 				{
 					Name: "app/run",
 					Body: `#!/bin/bash
-          echo hello world
           env
+          echo hello world
           `,
 				},
 			}
@@ -110,7 +110,9 @@ var _ = Describe("AppRunner", func() {
 				Eventually(logOutput, LONG_TIMEOUT).Should(gbytes.Say("hello world"))
 				Eventually(logOutput, LONG_TIMEOUT).Should(gbytes.Say("hello world"))
 				Eventually(logOutput, LONG_TIMEOUT).Should(gbytes.Say("hello world"))
-				fmt.Println(string(logOutput.Contents()))
+				Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":0`))
+				Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":1`))
+				Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":2`))
 			})
 		})
 	})
