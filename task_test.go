@@ -25,7 +25,7 @@ var _ = Describe("Task", func() {
 		BeforeEach(func() {
 			suiteContext.ExecutorRunner.Start()
 			suiteContext.RepRunner.Start()
-			suiteContext.ConvergerRunner.Start(10*time.Second, 30*time.Minute)
+			suiteContext.ConvergerRunner.Start(1*time.Second, 30*time.Minute)
 
 			guid = factories.GenerateGuid()
 			task := factories.BuildTaskWithRunAction(

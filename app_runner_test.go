@@ -28,6 +28,7 @@ var _ = Describe("AppRunner", func() {
 		BeforeEach(func() {
 			suiteContext.ExecutorRunner.Start()
 			suiteContext.RepRunner.Start()
+			suiteContext.AuctioneerRunner.Start()
 
 			outputGuid = factories.GenerateGuid()
 
@@ -37,6 +38,7 @@ var _ = Describe("AppRunner", func() {
 					Name: "app/run",
 					Body: `#!/bin/bash
           echo hello world
+          env
           `,
 				},
 			}
@@ -54,7 +56,7 @@ var _ = Describe("AppRunner", func() {
 			}
 
 			archive_helper.CreateTarGZArchive("/tmp/some-health-check.tgz", healthCheckFiles)
-			inigo_server.UploadFile("some-health-check.tgz", "/tmp/some-health-check.tgz")
+			suiteContext.FileServerRunner.ServeFile("some-health-check.tgz", "/tmp/some-health-check.tgz")
 		})
 
 		JustBeforeEach(func() {
@@ -65,7 +67,9 @@ var _ = Describe("AppRunner", func() {
             "app_version": "%s",
             "droplet_uri": "%s",
 						"stack": "%s",
-            "start_command": "./run"
+            "start_command": "./run",
+            "num_instances": 3,
+            "environment":[{"key":"VCAP_APPLICATION", "value":"{}"}]
           }`,
 					appId,
 					appVersion,
@@ -104,6 +108,9 @@ var _ = Describe("AppRunner", func() {
 
 				// Assert the user saw reasonable output
 				Eventually(logOutput, LONG_TIMEOUT).Should(gbytes.Say("hello world"))
+				Eventually(logOutput, LONG_TIMEOUT).Should(gbytes.Say("hello world"))
+				Eventually(logOutput, LONG_TIMEOUT).Should(gbytes.Say("hello world"))
+				fmt.Println(string(logOutput.Contents()))
 			})
 		})
 	})

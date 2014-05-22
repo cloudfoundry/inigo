@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/app-manager/integration/app_manager_runner"
+	"github.com/cloudfoundry-incubator/auctioneer/integration/auctioneer_runner"
 	"github.com/cloudfoundry-incubator/converger/converger_runner"
 	"github.com/cloudfoundry-incubator/executor/integration/executor_runner"
 	WardenClient "github.com/cloudfoundry-incubator/garden/client"
@@ -40,6 +41,7 @@ var LONG_TIMEOUT = 15.0
 var wardenAddr = filepath.Join(os.TempDir(), "warden-temp-socker", "warden.sock")
 
 type sharedContextType struct {
+	AuctioneerPath  string
 	ExecutorPath    string
 	ConvergerPath   string
 	RepPath         string
@@ -86,6 +88,8 @@ type suiteContextType struct {
 	LoggregatorOutPort      int
 	LoggregatorSharedSecret string
 
+	AuctioneerRunner *auctioneer_runner.AuctioneerRunner
+
 	ExecutorRunner *executor_runner.ExecutorRunner
 	ExecutorPort   int
 
@@ -108,6 +112,7 @@ type suiteContextType struct {
 
 func (context suiteContextType) Runners() []Runner {
 	return []Runner{
+		context.AuctioneerRunner,
 		context.ExecutorRunner,
 		context.ConvergerRunner,
 		context.RepRunner,
@@ -165,6 +170,12 @@ func beforeSuite(encodedSharedContext []byte) {
 		},
 	)
 
+	context.AuctioneerRunner = auctioneer_runner.New(
+		context.SharedContext.AuctioneerPath,
+		context.EtcdRunner.NodeURLS(),
+		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
+	)
+
 	context.ExecutorRunner = executor_runner.New(
 		context.SharedContext.ExecutorPath,
 		fmt.Sprintf("127.0.0.1:%d", context.ExecutorPort),
@@ -184,9 +195,11 @@ func beforeSuite(encodedSharedContext []byte) {
 	context.RepRunner = reprunner.New(
 		context.SharedContext.RepPath,
 		context.RepStack,
+		"127.0.0.1",
 		fmt.Sprintf("127.0.0.1:%d", context.RepPort),
 		fmt.Sprintf("http://127.0.0.1:%d", context.ExecutorPort),
 		strings.Join(context.EtcdRunner.NodeURLS(), ","),
+		fmt.Sprintf("127.0.0.1:%d", context.NatsPort),
 		"debug",
 		5*time.Second,
 	)
@@ -321,6 +334,9 @@ func (node *nodeOneType) StartWarden() {
 func (node *nodeOneType) CompileTestedExecutables() {
 	var err error
 	node.context.LoggregatorPath, err = gexec.BuildIn(os.Getenv("LOGGREGATOR_GOPATH"), "loggregator/loggregator")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	node.context.AuctioneerPath, err = gexec.BuildIn(os.Getenv("AUCTIONEER_GOPATH"), "github.com/cloudfoundry-incubator/auctioneer", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.ExecutorPath, err = gexec.BuildIn(os.Getenv("EXECUTOR_GOPATH"), "github.com/cloudfoundry-incubator/executor", "-race")

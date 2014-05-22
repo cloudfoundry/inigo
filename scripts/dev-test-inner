@@ -10,6 +10,7 @@ export PATH=${GOPATH_ROOT}/bin:${PATH}
 # set up compile-time $GOPATHs for each component
 export LOGGREGATOR_GOPATH=${GOPATH_ROOT}/loggregator
 export EXECUTOR_GOPATH=${GOPATH_ROOT}
+export AUCTIONEER_GOPATH=${GOPATH_ROOT}
 export CONVERGER_GOPATH=${GOPATH_ROOT}
 export REP_GOPATH=${GOPATH_ROOT}
 export STAGER_GOPATH=${GOPATH_ROOT}
