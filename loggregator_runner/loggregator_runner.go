@@ -64,6 +64,6 @@ func (runner *LoggregatorRunner) Start() {
 
 func (runner *LoggregatorRunner) Stop() {
 	if runner.session != nil {
-		runner.session.Interrupt().Wait(5 * time.Second)
+		runner.session.Kill().Wait(5 * time.Second)
 	}
 }
