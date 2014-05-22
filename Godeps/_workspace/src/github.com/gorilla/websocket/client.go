@@ -96,9 +96,7 @@ type Dialer struct {
 
 var errMalformedURL = errors.New("malformed ws or wss URL")
 
-// parseURL parses the URL. The url.Parse function is not used here because
-// url.Parse mangles the path.
-func parseURL(s string) (*url.URL, error) {
+func parseURL(u string) (useTLS bool, host, port, opaque string, err error) {
 	// From the RFC:
 	//
 	// ws-URI = "ws:" "//" host [ ":" port ] path [ "?" query ]
@@ -108,41 +106,33 @@ func parseURL(s string) (*url.URL, error) {
 	// not provide a way for applications to work around percent deocding in
 	// the net/url parser.
 
-	var u url.URL
 	switch {
-	case strings.HasPrefix(s, "ws://"):
-		u.Scheme = "ws"
-		s = s[len("ws://"):]
-	case strings.HasPrefix(s, "wss://"):
-		u.Scheme = "wss"
-		s = s[len("wss://"):]
+	case strings.HasPrefix(u, "ws://"):
+		u = u[len("ws://"):]
+	case strings.HasPrefix(u, "wss://"):
+		u = u[len("wss://"):]
+		useTLS = true
 	default:
-		return nil, errMalformedURL
+		return false, "", "", "", errMalformedURL
 	}
 
-	u.Host = s
-	u.Opaque = "/"
-	if i := strings.Index(s, "/"); i >= 0 {
-		u.Host = s[:i]
-		u.Opaque = s[i:]
+	hostPort := u
+	opaque = "/"
+	if i := strings.Index(u, "/"); i >= 0 {
+		hostPort = u[:i]
+		opaque = u[i:]
 	}
 
-	return &u, nil
-}
-
-func hostPortNoPort(u *url.URL) (hostPort, hostNoPort string) {
-	hostPort = u.Host
-	hostNoPort = u.Host
-	if i := strings.LastIndex(u.Host, ":"); i > strings.LastIndex(u.Host, "]") {
-		hostNoPort = hostNoPort[:i]
-	} else {
-		if u.Scheme == "wss" {
-			hostPort += ":443"
-		} else {
-			hostPort += ":80"
-		}
+	host = hostPort
+	port = ":80"
+	if i := strings.LastIndex(hostPort, ":"); i > strings.LastIndex(hostPort, "]") {
+		host = hostPort[:i]
+		port = hostPort[i:]
+	} else if useTLS {
+		port = ":443"
 	}
-	return hostPort, hostNoPort
+
+	return useTLS, host, port, opaque, nil
 }
 
 // DefaultDialer is a dialer with all fields set to the default zero values.
@@ -157,12 +147,11 @@ var DefaultDialer *Dialer
 // non-nil *http.Response so that callers can handle redirects, authentication,
 // etc.
 func (d *Dialer) Dial(urlStr string, requestHeader http.Header) (*Conn, *http.Response, error) {
-	u, err := parseURL(urlStr)
+
+	useTLS, host, port, opaque, err := parseURL(urlStr)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	hostPort, hostNoPort := hostPortNoPort(u)
 
 	if d == nil {
 		d = &Dialer{}
@@ -179,7 +168,7 @@ func (d *Dialer) Dial(urlStr string, requestHeader http.Header) (*Conn, *http.Re
 		netDial = netDialer.Dial
 	}
 
-	netConn, err := netDial("tcp", hostPort)
+	netConn, err := netDial("tcp", host+port)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -194,14 +183,14 @@ func (d *Dialer) Dial(urlStr string, requestHeader http.Header) (*Conn, *http.Re
 		return nil, nil, err
 	}
 
-	if u.Scheme == "wss" {
+	if useTLS {
 		cfg := d.TLSClientConfig
 		if cfg == nil {
-			cfg = &tls.Config{ServerName: hostNoPort}
+			cfg = &tls.Config{ServerName: host}
 		} else if cfg.ServerName == "" {
 			shallowCopy := *cfg
 			cfg = &shallowCopy
-			cfg.ServerName = hostNoPort
+			cfg.ServerName = host
 		}
 		tlsConn := tls.Client(netConn, cfg)
 		netConn = tlsConn
@@ -234,7 +223,10 @@ func (d *Dialer) Dial(urlStr string, requestHeader http.Header) (*Conn, *http.Re
 		requestHeader = h
 	}
 
-	conn, resp, err := NewClient(netConn, u, requestHeader, readBufferSize, writeBufferSize)
+	conn, resp, err := NewClient(
+		netConn,
+		&url.URL{Host: host + port, Opaque: opaque},
+		requestHeader, readBufferSize, writeBufferSize)
 	if err != nil {
 		return nil, resp, err
 	}

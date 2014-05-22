@@ -22,7 +22,6 @@ type Runner struct {
 	Addr    string
 
 	DepotPath     string
-	OverlaysPath  string
 	BinPath       string
 	RootFSPath    string
 	SnapshotsPath string
@@ -55,7 +54,6 @@ func (r *Runner) Prepare() error {
 	}
 
 	r.DepotPath = filepath.Join(r.tmpdir, "containers")
-	r.OverlaysPath = filepath.Join(r.tmpdir, "overlays")
 	r.SnapshotsPath = filepath.Join(r.tmpdir, "snapshots")
 
 	if err := os.Mkdir(r.DepotPath, 0755); err != nil {
@@ -77,7 +75,6 @@ func (r *Runner) Start(argv ...string) error {
 		"--listenAddr", r.Addr,
 		"--bin", r.BinPath,
 		"--depot", r.DepotPath,
-		"--overlays", r.OverlaysPath,
 		"--rootfs", r.RootFSPath,
 		"--snapshots", r.SnapshotsPath,
 		"--debug",
@@ -117,18 +114,9 @@ func (r *Runner) Stop() error {
 }
 
 func (r *Runner) DestroyContainers() error {
-	client := r.NewClient()
-
-	containers, err := client.Containers(nil)
+	err := exec.Command(filepath.Join(r.BinPath, "clear.sh"), r.DepotPath).Run()
 	if err != nil {
 		return err
-	}
-
-	for _, container := range containers {
-		err := client.Destroy(container.Handle())
-		if err != nil {
-			return err
-		}
 	}
 
 	if err := os.RemoveAll(r.SnapshotsPath); err != nil {
@@ -140,11 +128,6 @@ func (r *Runner) DestroyContainers() error {
 
 func (r *Runner) TearDown() error {
 	err := r.DestroyContainers()
-	if err != nil {
-		return err
-	}
-
-	err = r.Stop()
 	if err != nil {
 		return err
 	}
