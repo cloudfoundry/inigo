@@ -20,7 +20,9 @@ import (
 	WardenConnection "github.com/cloudfoundry-incubator/garden/client/connection"
 	"github.com/cloudfoundry-incubator/garden/warden"
 	"github.com/cloudfoundry-incubator/rep/reprunner"
+	"github.com/cloudfoundry-incubator/route-emitter/integration/route_emitter_runner"
 	WardenRunner "github.com/cloudfoundry-incubator/warden-linux/integration/runner"
+	gorouterconfig "github.com/cloudfoundry/gorouter/config"
 	"github.com/cloudfoundry/gunk/natsrunner"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
@@ -32,6 +34,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/fileserver_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/inigo/loggregator_runner"
+	"github.com/cloudfoundry-incubator/inigo/router_runner"
 	"github.com/cloudfoundry-incubator/inigo/stager_runner"
 )
 
@@ -41,15 +44,17 @@ var LONG_TIMEOUT = 15.0
 var wardenAddr = filepath.Join(os.TempDir(), "warden-temp-socker", "warden.sock")
 
 type sharedContextType struct {
-	AuctioneerPath  string
-	ExecutorPath    string
-	ConvergerPath   string
-	RepPath         string
-	StagerPath      string
-	AppManagerPath  string
-	FileServerPath  string
-	LoggregatorPath string
-	SmelterZipPath  string
+	AuctioneerPath   string
+	ExecutorPath     string
+	ConvergerPath    string
+	RepPath          string
+	StagerPath       string
+	AppManagerPath   string
+	FileServerPath   string
+	LoggregatorPath  string
+	RouteEmitterPath string
+	RouterPath       string
+	SmelterZipPath   string
 
 	WardenAddr    string
 	WardenNetwork string
@@ -75,6 +80,8 @@ type Runner interface {
 
 type suiteContextType struct {
 	SharedContext sharedContextType
+
+	ExternalAddress string
 
 	RepStack     string
 	EtcdRunner   *etcdstorerunner.ETCDClusterRunner
@@ -107,6 +114,11 @@ type suiteContextType struct {
 	FileServerRunner *fileserver_runner.FileServerRunner
 	FileServerPort   int
 
+	RouteEmitterRunner *route_emitter_runner.Runner
+
+	RouterRunner *router_runner.Runner
+	RouterPort   int
+
 	EtcdPort int
 }
 
@@ -122,6 +134,8 @@ func (context suiteContextType) Runners() []Runner {
 		context.LoggregatorRunner,
 		context.NatsRunner,
 		context.EtcdRunner,
+		context.RouteEmitterRunner,
+		context.RouterRunner,
 	}
 }
 
@@ -140,6 +154,7 @@ func beforeSuite(encodedSharedContext []byte) {
 
 	context := suiteContextType{
 		SharedContext:           sharedContext,
+		ExternalAddress:         os.Getenv("EXTERNAL_ADDRESS"),
 		RepStack:                "lucid64",
 		NatsPort:                4222 + config.GinkgoConfig.ParallelNode,
 		ExecutorPort:            1700 + config.GinkgoConfig.ParallelNode,
@@ -149,7 +164,10 @@ func beforeSuite(encodedSharedContext []byte) {
 		LoggregatorSharedSecret: "conspiracy",
 		FileServerPort:          12760 + config.GinkgoConfig.ParallelNode,
 		EtcdPort:                5001 + config.GinkgoConfig.ParallelNode,
+		RouterPort:              9090 + config.GinkgoConfig.ParallelNode,
 	}
+
+	Ω(context.ExternalAddress).ShouldNot(BeEmpty())
 
 	context.FakeCC = fake_cc.New()
 	context.FakeCCAddress = context.FakeCC.Start()
@@ -195,7 +213,7 @@ func beforeSuite(encodedSharedContext []byte) {
 	context.RepRunner = reprunner.New(
 		context.SharedContext.RepPath,
 		context.RepStack,
-		"127.0.0.1",
+		context.ExternalAddress,
 		fmt.Sprintf("127.0.0.1:%d", context.RepPort),
 		fmt.Sprintf("http://127.0.0.1:%d", context.ExecutorPort),
 		strings.Join(context.EtcdRunner.NodeURLS(), ","),
@@ -215,6 +233,7 @@ func beforeSuite(encodedSharedContext []byte) {
 		context.EtcdRunner.NodeURLS(),
 		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
 		map[string]string{context.RepStack: "some-health-check.tgz"},
+		fmt.Sprintf("127.0.0.1:%d", context.RepPort),
 	)
 
 	context.FileServerRunner = fileserver_runner.New(
@@ -224,6 +243,35 @@ func beforeSuite(encodedSharedContext []byte) {
 		context.FakeCCAddress,
 		fake_cc.CC_USERNAME,
 		fake_cc.CC_PASSWORD,
+	)
+
+	context.RouteEmitterRunner = route_emitter_runner.New(
+		context.SharedContext.RouteEmitterPath,
+		context.EtcdRunner.NodeURLS(),
+		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
+	)
+
+	context.RouterRunner = router_runner.New(
+		context.SharedContext.RouterPath,
+		&gorouterconfig.Config{
+			Port: uint16(context.RouterPort),
+
+			PruneStaleDropletsIntervalInSeconds: 5,
+			DropletStaleThresholdInSeconds:      10,
+			PublishActiveAppsIntervalInSeconds:  0,
+			StartResponseDelayIntervalInSeconds: 1,
+
+			Nats: []gorouterconfig.NatsConfig{
+				{
+					Host: "127.0.0.1",
+					Port: uint16(context.NatsPort),
+				},
+			},
+			Logging: gorouterconfig.LoggingConfig{
+				File:  "/dev/stdout",
+				Level: "info",
+			},
+		},
 	)
 
 	wardenClient := WardenClient.New(&WardenConnection.Info{
@@ -355,6 +403,12 @@ func (node *nodeOneType) CompileTestedExecutables() {
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.FileServerPath, err = gexec.BuildIn(os.Getenv("FILE_SERVER_GOPATH"), "github.com/cloudfoundry-incubator/file-server", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	node.context.RouteEmitterPath, err = gexec.BuildIn(os.Getenv("ROUTE_EMITTER_GOPATH"), "github.com/cloudfoundry-incubator/route-emitter", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	node.context.RouterPath, err = gexec.BuildIn(os.Getenv("ROUTER_GOPATH"), "github.com/cloudfoundry/gorouter", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.SmelterZipPath = node.compileAndZipUpSmelter()

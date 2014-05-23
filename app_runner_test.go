@@ -2,6 +2,9 @@ package inigo_test
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
 
@@ -39,6 +42,26 @@ var _ = Describe("AppRunner", func() {
 					Body: `#!/bin/bash
           env
           echo hello world
+
+					ruby <<END_MAGIC_SERVER
+require 'webrick'
+require 'json'
+
+server = WEBrick::HTTPServer.new :BindAddress => "0.0.0.0", :Port => ENV['PORT']
+
+index = JSON.parse(ENV["VCAP_APPLICATION"])["instance_index"]
+
+server.mount_proc '/' do |req, res|
+	res.body = index.to_s
+  res.status = 200
+end
+
+trap('INT') {
+  server.shutdown
+}
+
+server.start
+END_MAGIC_SERVER
           `,
 				},
 			}
@@ -59,6 +82,29 @@ var _ = Describe("AppRunner", func() {
 			suiteContext.FileServerRunner.ServeFile("some-health-check.tgz", "/tmp/some-health-check.tgz")
 		})
 
+		var responseCodeFromHost = func(host string) func() int {
+			return func() int {
+				request := &http.Request{
+					URL: &url.URL{
+						Scheme: "http",
+						Host:   suiteContext.RouterRunner.Addr(),
+						Path:   "/",
+					},
+
+					Host: host,
+				}
+
+				response, err := http.DefaultClient.Do(request)
+				if err != nil {
+					return 0
+				}
+
+				response.Body.Close()
+
+				return response.StatusCode
+			}
+		}
+
 		JustBeforeEach(func() {
 			runningMessage = []byte(
 				fmt.Sprintf(
@@ -69,7 +115,8 @@ var _ = Describe("AppRunner", func() {
 						"stack": "%s",
             "start_command": "./run",
             "num_instances": 3,
-            "environment":[{"key":"VCAP_APPLICATION", "value":"{}"}]
+            "environment":[{"key":"VCAP_APPLICATION", "value":"{}"}],
+            "routes": ["route-1", "route-2"]
           }`,
 					appId,
 					appVersion,
@@ -79,9 +126,11 @@ var _ = Describe("AppRunner", func() {
 			)
 		})
 
-		Context("with the app manager is running", func() {
+		Context("with the app manager running", func() {
 			BeforeEach(func() {
 				suiteContext.AppManagerRunner.Start()
+				suiteContext.RouteEmitterRunner.Start()
+				suiteContext.RouterRunner.Start()
 			})
 
 			It("runs the app on the executor and responds with the echo message", func() {
@@ -113,6 +162,50 @@ var _ = Describe("AppRunner", func() {
 				Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":0`))
 				Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":1`))
 				Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":2`))
+			})
+
+			It("is routable via the router and its configured routes", func() {
+				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", runningMessage)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Eventually(responseCodeFromHost("route-1"), LONG_TIMEOUT).Should(Equal(http.StatusOK))
+				Eventually(responseCodeFromHost("route-2"), LONG_TIMEOUT).Should(Equal(http.StatusOK))
+			})
+
+			It("distributes requests to all instances", func() {
+				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", runningMessage)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Eventually(responseCodeFromHost("route-1"), LONG_TIMEOUT).Should(Equal(http.StatusOK))
+
+				responseCounts := map[string]int{}
+
+				for i := 0; i < 500; i++ {
+					request := &http.Request{
+						URL: &url.URL{
+							Scheme: "http",
+							Host:   suiteContext.RouterRunner.Addr(),
+							Path:   "/",
+						},
+
+						Host: "route-1",
+					}
+
+					response, err := http.DefaultClient.Do(request)
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(response.StatusCode).Should(Equal(http.StatusOK))
+
+					body, err := ioutil.ReadAll(response.Body)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					responseCounts[string(body)]++
+				}
+
+				Ω(responseCounts).Should(HaveLen(3))
+
+				for _, count := range responseCounts {
+					Ω(count).ShouldNot(BeZero())
+				}
 			})
 		})
 	})

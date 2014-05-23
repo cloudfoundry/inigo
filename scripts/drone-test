@@ -13,9 +13,12 @@ go install github.com/onsi/ginkgo/ginkgo
 
 export WARDEN_ROOTFS=/opt/warden/rootfs
 
+# used for routing to apps; same logic that Warden uses.
+export EXTERNAL_ADDRESS=$(ip route get 8.8.8.8 | sed 's/.*src\s\(.*\)\s/\1/;tx;d;:x')
+
 pushd $FIRST_GOPATH/src/github.com/cloudfoundry-incubator/inigo
   if [ "$GINKGO_PARALLEL" = "true" ]; then
-    ginkgo -r -failOnPending -randomizeAllSpecs -nodes=4 -race -slowSpecThreshold=10 "$@"
+    ginkgo -v -r -failOnPending -randomizeAllSpecs -race -slowSpecThreshold=10 "$@"
   else
     ginkgo -r -failOnPending -randomizeAllSpecs -race -slowSpecThreshold=10 "$@"
   fi

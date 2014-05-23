@@ -18,6 +18,8 @@ pushd $TMP_GOPATH
   go get \
     github.com/cloudfoundry-incubator/inigo/...\
     github.com/cloudfoundry-incubator/auctioneer/... \
+    github.com/cloudfoundry-incubator/route-emitter/... \
+    github.com/cloudfoundry/gorouter/... \
     github.com/cloudfoundry-incubator/executor/... \
     github.com/cloudfoundry-incubator/converger/... \
     github.com/cloudfoundry-incubator/rep/... \
@@ -30,6 +32,8 @@ pushd $TMP_GOPATH
   godep save \
     github.com/cloudfoundry-incubator/inigo/...\
     github.com/cloudfoundry-incubator/auctioneer/... \
+    github.com/cloudfoundry-incubator/route-emitter/... \
+    github.com/cloudfoundry/gorouter/... \
     github.com/cloudfoundry-incubator/executor/... \
     github.com/cloudfoundry-incubator/converger/... \
     github.com/cloudfoundry-incubator/rep/... \
@@ -47,6 +51,8 @@ popd
 for package in \
     github.com/cloudfoundry-incubator/inigo \
     github.com/cloudfoundry-incubator/auctioneer \
+    github.com/cloudfoundry-incubator/route-emitter \
+    github.com/cloudfoundry/gorouter \
     github.com/cloudfoundry-incubator/executor \
     github.com/cloudfoundry-incubator/converger \
     github.com/cloudfoundry-incubator/rep \
