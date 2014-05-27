@@ -3,15 +3,16 @@ package fake_cc
 import (
 	"bytes"
 	"fmt"
-	"github.com/cloudfoundry/gunk/test_server"
-	"github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
 	"strconv"
+
+	"github.com/cloudfoundry/gunk/test_server"
+	"github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 const (
@@ -47,6 +48,23 @@ func (f *FakeCC) Start() (address string) {
 	f.server = httptest.NewServer(f)
 
 	return f.server.URL
+}
+
+func (f *FakeCC) Stop() {
+	f.server.Close()
+	f.Reset()
+}
+
+func (f *FakeCC) Address() string {
+	return f.server.URL
+}
+
+func (f *FakeCC) Username() string {
+	return CC_USERNAME
+}
+
+func (f *FakeCC) Password() string {
+	return CC_PASSWORD
 }
 
 func (f *FakeCC) Reset() {
