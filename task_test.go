@@ -104,7 +104,7 @@ var _ = Describe("Task", func() {
 
 	Context("when an executor disappears", func() {
 		BeforeEach(func() {
-			suiteContext.ConvergerRunner.Start(1*time.Second, 1*time.Second)
+			suiteContext.ConvergerRunner.Start(1*time.Second, 10*time.Second)
 
 			suiteContext.ExecutorRunner.Start(executor_runner.Config{
 				HeartbeatInterval: 1 * time.Second,
