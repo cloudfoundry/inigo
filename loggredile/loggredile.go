@@ -8,7 +8,9 @@ import (
 	"code.google.com/p/gogoprotobuf/proto"
 	"github.com/cloudfoundry/loggregatorlib/logmessage"
 	"github.com/gorilla/websocket"
+	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 func StreamMessages(port int, path string) (<-chan *logmessage.LogMessage, chan<- bool) {
@@ -73,4 +75,21 @@ func StreamMessages(port int, path string) (<-chan *logmessage.LogMessage, chan<
 	}()
 
 	return receivedMessages, stop
+}
+
+func StreamIntoGBuffer(port int, path string, sourceName string) (*gbytes.Buffer, chan<- bool) {
+	messages, stop := StreamMessages(port, path)
+	logOutput := gbytes.NewBuffer()
+
+	go func() {
+		for message := range messages {
+			defer ginkgo.GinkgoRecover()
+
+			if message.GetSourceName() == sourceName {
+				logOutput.Write([]byte(string(message.GetMessage()) + "\n"))
+			}
+		}
+	}()
+
+	return logOutput, stop
 }

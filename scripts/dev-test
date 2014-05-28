@@ -9,6 +9,9 @@ mkdir -p ${TMP_GOPATH}
 
 cp $(dirname $0)/.drone.yml ${TMP_GOPATH}/.drone.yml
 
+go test -c
+rm inigo.test
+
 function copy_to_gopath {
   mkdir -p ${TMP_GOPATH}/src/${1}
   rsync --del --exclude '.*' -a ${DEV_GOPATH}/src/${1}/ ${TMP_GOPATH}/src/${1}/
