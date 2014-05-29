@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"time"
 
+	steno "github.com/cloudfoundry/gosteno"
 	"github.com/cloudfoundry/gunk/timeprovider"
 
 	"github.com/cloudfoundry-incubator/executor/integration/executor_runner"
@@ -24,7 +25,16 @@ var _ = Describe("Executor", func() {
 	var bbs *Bbs.BBS
 
 	BeforeEach(func() {
-		bbs = Bbs.NewBBS(suiteContext.EtcdRunner.Adapter(), timeprovider.NewTimeProvider())
+		logSink := steno.NewTestingSink()
+
+		steno.Init(&steno.Config{
+			Sinks: []steno.Sink{logSink},
+		})
+
+		logger := steno.NewLogger("the-logger")
+		steno.EnterTestMode()
+
+		bbs = Bbs.NewBBS(suiteContext.EtcdRunner.Adapter(), timeprovider.NewTimeProvider(), logger)
 	})
 
 	Describe("invalid memory and disk limit flags", func() {
