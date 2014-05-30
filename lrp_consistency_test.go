@@ -54,7 +54,7 @@ var _ = Describe("LRP Consistency", func() {
 			err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-to-simple"), LONG_TIMEOUT).Should(Equal(http.StatusOK))
+			Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-to-simple"), LONG_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
 		})
 
 		It("should scale up to the correct number of apps", func() {
