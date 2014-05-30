@@ -29,7 +29,7 @@ pushd $TMP_GOPATH
     github.com/cloudfoundry-incubator/stager/... \
     github.com/cloudfoundry-incubator/app-manager/... \
     github.com/cloudfoundry-incubator/file-server/... \
-    github.com/cloudfoundry-incubator/linux-smelter/... \
+    github.com/cloudfoundry-incubator/linux-circus/... \
     github.com/cloudfoundry-incubator/warden-linux/...
 
   godep save \
@@ -43,7 +43,7 @@ pushd $TMP_GOPATH
     github.com/cloudfoundry-incubator/stager/... \
     github.com/cloudfoundry-incubator/app-manager/... \
     github.com/cloudfoundry-incubator/file-server/... \
-    github.com/cloudfoundry-incubator/linux-smelter/... \
+    github.com/cloudfoundry-incubator/linux-circus/... \
     github.com/cloudfoundry-incubator/warden-linux/...
 
   rsync --del --exclude '.*' -a Godeps/_workspace/src/ src/
@@ -62,7 +62,7 @@ for package in \
     github.com/cloudfoundry-incubator/stager \
     github.com/cloudfoundry-incubator/app-manager \
     github.com/cloudfoundry-incubator/file-server \
-    github.com/cloudfoundry-incubator/linux-smelter \
+    github.com/cloudfoundry-incubator/linux-circus \
     github.com/cloudfoundry-incubator/warden-linux; do
   copy_to_gopath $package &
 done

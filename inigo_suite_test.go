@@ -3,6 +3,7 @@ package inigo_test
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -54,7 +55,7 @@ type sharedContextType struct {
 	LoggregatorPath  string
 	RouteEmitterPath string
 	RouterPath       string
-	SmelterZipPath   string
+	CircusZipPath    string
 
 	WardenAddr    string
 	WardenNetwork string
@@ -232,7 +233,7 @@ func beforeSuite(encodedSharedContext []byte) {
 		context.SharedContext.AppManagerPath,
 		context.EtcdRunner.NodeURLS(),
 		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
-		map[string]string{context.RepStack: "some-health-check.tgz"},
+		map[string]string{context.RepStack: "some-lifecycle-bundle.tgz"},
 		fmt.Sprintf("127.0.0.1:%d", context.RepPort),
 	)
 
@@ -359,6 +360,7 @@ func (node *nodeOneType) StartWarden() {
 
 		Fail("warden is not set up")
 	}
+
 	var err error
 
 	err = os.MkdirAll(filepath.Dir(wardenAddr), 0700)
@@ -411,23 +413,39 @@ func (node *nodeOneType) CompileTestedExecutables() {
 	node.context.RouterPath, err = gexec.BuildIn(os.Getenv("ROUTER_GOPATH"), "github.com/cloudfoundry/gorouter", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
-	node.context.SmelterZipPath = node.compileAndZipUpSmelter()
+	node.context.CircusZipPath = node.compileAndZipUpCircus()
 }
 
-func (node *nodeOneType) compileAndZipUpSmelter() string {
-	smelterPath, err := gexec.BuildIn(os.Getenv("LINUX_SMELTER_GOPATH"), "github.com/cloudfoundry-incubator/linux-smelter", "-race")
+func (node *nodeOneType) compileAndZipUpCircus() string {
+	tailorPath, err := gexec.BuildIn(os.Getenv("LINUX_CIRCUS_GOPATH"), "github.com/cloudfoundry-incubator/linux-circus/tailor", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
-	smelterDir := filepath.Dir(smelterPath)
-	err = os.Rename(smelterPath, filepath.Join(smelterDir, "run"))
+	spyPath, err := gexec.BuildIn(os.Getenv("LINUX_CIRCUS_GOPATH"), "github.com/cloudfoundry-incubator/linux-circus/spy", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
-	cmd := exec.Command("zip", "smelter.zip", "run")
-	cmd.Dir = smelterDir
+	soldierPath, err := gexec.BuildIn(os.Getenv("LINUX_CIRCUS_GOPATH"), "github.com/cloudfoundry-incubator/linux-circus/soldier", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	circusDir, err := ioutil.TempDir("", "circus-dir")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	err = os.Rename(tailorPath, filepath.Join(circusDir, "tailor"))
+	Ω(err).ShouldNot(HaveOccurred())
+
+	err = os.Rename(spyPath, filepath.Join(circusDir, "spy"))
+	Ω(err).ShouldNot(HaveOccurred())
+
+	err = os.Rename(soldierPath, filepath.Join(circusDir, "soldier"))
+	Ω(err).ShouldNot(HaveOccurred())
+
+	cmd := exec.Command("zip", "-v", "circus.zip", "tailor", "soldier", "spy")
+	cmd.Stderr = GinkgoWriter
+	cmd.Stdout = GinkgoWriter
+	cmd.Dir = circusDir
 	err = cmd.Run()
 	Ω(err).ShouldNot(HaveOccurred())
 
-	return filepath.Join(smelterDir, "smelter.zip")
+	return filepath.Join(circusDir, "circus.zip")
 }
 
 func (node *nodeOneType) StopWarden() {

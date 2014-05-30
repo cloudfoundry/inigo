@@ -70,7 +70,7 @@ var _ = Describe("Stager", func() {
 					"app_bits_download_uri": "some-download-uri",
 					"build_artifacts_cache_download_uri": "artifacts-download-uri",
 					"build_artifacts_cache_upload_uri": "artifacts-upload-uri",
-					"stack": "no-compiler"
+					"stack": "no-circus"
 				}`, appId, taskId)),
 			)
 
@@ -93,7 +93,7 @@ var _ = Describe("Stager", func() {
 			buildpackToUse = "admin_buildpack.zip"
 			outputGuid = factories.GenerateGuid()
 
-			suiteContext.FileServerRunner.ServeFile("smelter.zip", suiteContext.SharedContext.SmelterZipPath)
+			suiteContext.FileServerRunner.ServeFile("lifecycle.zip", suiteContext.SharedContext.CircusZipPath)
 
 			//make and upload an app
 			var appFiles = []zip_helper.ArchiveFile{
@@ -171,7 +171,7 @@ EOF
 
 		Context("with one stager running", func() {
 			BeforeEach(func() {
-				suiteContext.StagerRunner.Start("--compilers", `{"lucid64":"smelter.zip"}`)
+				suiteContext.StagerRunner.Start("--circuses", `{"lucid64":"lifecycle.zip"}`)
 			})
 
 			It("runs the compiler on the executor with the correct environment variables, bits and log tag, and responds with the detected buildpack", func() {
@@ -345,8 +345,8 @@ EOF
 
 		Context("with two stagers running", func() {
 			BeforeEach(func() {
-				suiteContext.StagerRunner.Start("--compilers", `{"lucid64":"smelter.zip"}`)
-				otherStagerRunner.Start("--compilers", `{"lucid64":"smelter.zip"}`)
+				suiteContext.StagerRunner.Start("--circuses", `{"lucid64":"lifecycle.zip"}`)
+				otherStagerRunner.Start("--circuses", `{"lucid64":"lifecycle.zip"}`)
 			})
 
 			AfterEach(func() {

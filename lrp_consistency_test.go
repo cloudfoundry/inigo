@@ -32,8 +32,7 @@ var _ = Describe("LRP Consistency", func() {
 		archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
 		inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")
 
-		archive_helper.CreateTarGZArchive("/tmp/some-health-check.tgz", fixtures.SuccessfulHealthCheck())
-		suiteContext.FileServerRunner.ServeFile("some-health-check.tgz", "/tmp/some-health-check.tgz")
+		suiteContext.FileServerRunner.ServeFile("some-lifecycle-bundle.tgz", suiteContext.SharedContext.CircusZipPath)
 
 		desiredAppRequest = models.DesireAppRequestFromCC{
 			AppId:        appId,

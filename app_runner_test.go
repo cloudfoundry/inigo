@@ -15,6 +15,8 @@ import (
 	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 )
 
+const LONGER_TIMEOUT = 30.0 // "temporary" - see #72360324
+
 var _ = Describe("AppRunner", func() {
 	var appId = "simple-echo-app"
 	var appVersion = "the-first-one"
@@ -34,8 +36,7 @@ var _ = Describe("AppRunner", func() {
 			archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
 			inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")
 
-			archive_helper.CreateTarGZArchive("/tmp/some-health-check.tgz", fixtures.SuccessfulHealthCheck())
-			suiteContext.FileServerRunner.ServeFile("some-health-check.tgz", "/tmp/some-health-check.tgz")
+			suiteContext.FileServerRunner.ServeFile("some-lifecycle-bundle.tgz", suiteContext.SharedContext.CircusZipPath)
 		})
 
 		JustBeforeEach(func() {
@@ -80,9 +81,9 @@ var _ = Describe("AppRunner", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 
 				// Assert the user saw reasonable output
-				Eventually(logOutput, LONG_TIMEOUT).Should(gbytes.Say("hello world"))
-				Eventually(logOutput, LONG_TIMEOUT).Should(gbytes.Say("hello world"))
-				Eventually(logOutput, LONG_TIMEOUT).Should(gbytes.Say("hello world"))
+				Eventually(logOutput, LONGER_TIMEOUT).Should(gbytes.Say("hello world"))
+				Eventually(logOutput, LONGER_TIMEOUT).Should(gbytes.Say("hello world"))
+				Eventually(logOutput, LONGER_TIMEOUT).Should(gbytes.Say("hello world"))
 				Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":0`))
 				Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":1`))
 				Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":2`))
@@ -92,15 +93,15 @@ var _ = Describe("AppRunner", func() {
 				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", runningMessage)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-1"), LONG_TIMEOUT).Should(Equal(http.StatusOK))
-				Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-2"), LONG_TIMEOUT).Should(Equal(http.StatusOK))
+				Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-1"), LONGER_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
+				Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-2"), LONGER_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
 			})
 
 			It("distributes requests to all instances", func() {
 				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", runningMessage)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-1"), LONG_TIMEOUT).Should(Equal(http.StatusOK))
+				Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-1"), LONGER_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
 
 				respondingIndices := map[string]bool{}
 
