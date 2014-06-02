@@ -34,9 +34,11 @@ type RepBBS interface {
 	CompleteTask(task models.Task, failed bool, failureReason string, result string) (models.Task, error)
 
 	///lrp
-	ReportActualLRPAsStarting(lrp models.LRP) error
-	ReportActualLRPAsRunning(lrp models.LRP) error
-	RemoveActualLRP(lrp models.LRP) error
+	ReportActualLRPAsStarting(lrp models.ActualLRP) error
+	ReportActualLRPAsRunning(lrp models.ActualLRP) error
+	RemoveActualLRP(lrp models.ActualLRP) error
+	WatchForStopLRPInstance() (<-chan models.StopLRPInstance, chan<- bool, <-chan error)
+	ResolveStopLRPInstance(stopInstance models.StopLRPInstance) error
 }
 
 type ConvergerBBS interface {
@@ -47,11 +49,18 @@ type ConvergerBBS interface {
 	MaintainConvergeLock(interval time.Duration, executorID string) (disappeared <-chan bool, stop chan<- chan bool, err error)
 }
 
+type TPSBBS interface {
+	//lrp
+	GetActualLRPsByProcessGuid(string) ([]models.ActualLRP, error)
+}
+
 type AppManagerBBS interface {
 	//lrp
 	DesireLRP(models.DesiredLRP) error
+	RemoveDesiredLRPByProcessGuid(guid string) error
+	GetActualLRPsByProcessGuid(string) ([]models.ActualLRP, error)
 	RequestLRPStartAuction(models.LRPStartAuction) error
-	GetActualLRPsByProcessGuid(string) ([]models.LRP, error)
+	RequestStopLRPInstance(stopInstance models.StopLRPInstance) error
 
 	//services
 	GetAvailableFileServer() (string, error)
@@ -103,9 +112,9 @@ type LRPRouterBBS interface {
 	WatchForDesiredLRPChanges() (<-chan models.DesiredLRPChange, chan<- bool, <-chan error)
 	WatchForActualLRPChanges() (<-chan models.ActualLRPChange, chan<- bool, <-chan error)
 	GetAllDesiredLRPs() ([]models.DesiredLRP, error)
-	GetRunningActualLRPs() ([]models.LRP, error)
+	GetRunningActualLRPs() ([]models.ActualLRP, error)
 	GetDesiredLRPByProcessGuid(processGuid string) (models.DesiredLRP, error)
-	GetRunningActualLRPsByProcessGuid(processGuid string) ([]models.LRP, error)
+	GetRunningActualLRPsByProcessGuid(processGuid string) ([]models.ActualLRP, error)
 }
 
 func NewExecutorBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger *steno.Logger) ExecutorBBS {
@@ -141,6 +150,10 @@ func NewFileServerBBS(store storeadapter.StoreAdapter, timeProvider timeprovider
 }
 
 func NewLRPRouterBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger *steno.Logger) LRPRouterBBS {
+	return NewBBS(store, timeProvider, logger)
+}
+
+func NewTPSBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger *steno.Logger) TPSBBS {
 	return NewBBS(store, timeProvider, logger)
 }
 

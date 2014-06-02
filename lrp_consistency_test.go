@@ -2,17 +2,18 @@ package inigo_test
 
 import (
 	"fmt"
-	"net/http"
 	"syscall"
 
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
+	"github.com/cloudfoundry-incubator/inigo/loggredile"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/tedsuo/ifrit"
 
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 )
 
@@ -40,16 +41,6 @@ var _ = Describe("LRP Consistency", func() {
 
 		suiteContext.FileServerRunner.ServeFile("some-lifecycle-bundle.tgz", suiteContext.SharedContext.CircusZipPath)
 
-		desiredAppRequest = models.DesireAppRequestFromCC{
-			AppId:        appId,
-			AppVersion:   "the-first-one",
-			DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
-			Stack:        suiteContext.RepStack,
-			Environment:  []models.EnvironmentVariable{{Key: "VCAP_APPLICATION", Value: "{}"}},
-			NumInstances: 3,
-			Routes:       []string{"route-to-simple"},
-			StartCommand: "./run",
-		}
 	})
 
 	AfterEach(func() {
@@ -57,40 +48,87 @@ var _ = Describe("LRP Consistency", func() {
 		Eventually(tpsProcess.Wait()).Should(Receive())
 	})
 
-	Describe("Scaling an app up", func() {
+	Context("with an app running", func() {
+		var logOutput *gbytes.Buffer
+		var stop chan<- bool
+
 		BeforeEach(func() {
-			//start the first instance
-			desiredAppRequest.NumInstances = 1
+			logOutput, stop = loggredile.StreamIntoGBuffer(
+				suiteContext.LoggregatorRunner.Config.OutgoingPort,
+				fmt.Sprintf("/tail/?app=%s", appId),
+				"App",
+			)
 
-			err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
-			Ω(err).ShouldNot(HaveOccurred())
-
-			Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-to-simple"), LONG_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
-		})
-
-		It("should scale up to the correct number of apps", func() {
-			desiredAppRequest.NumInstances = 3
-
-			err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
-			Ω(err).ShouldNot(HaveOccurred())
-
-			Eventually(func() interface {} {
-				return helpers.LRPInstances(tpsAddr, "simple-echo-app-the-first-one")
-			}, LONG_TIMEOUT).Should(HaveLen(3))
-
-			respondingIndices := map[string]bool{}
-
-			for i := 0; i < 500; i++ {
-				body, err := helpers.ResponseBodyFromHost(suiteContext.RouterRunner.Addr(), "route-to-simple")
-				Ω(err).ShouldNot(HaveOccurred())
-				respondingIndices[string(body)] = true
+			desiredAppRequest = models.DesireAppRequestFromCC{
+				AppId:        appId,
+				AppVersion:   "the-first-one",
+				DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
+				Stack:        suiteContext.RepStack,
+				Environment:  []models.EnvironmentVariable{{Key: "VCAP_APPLICATION", Value: "{}"}},
+				NumInstances: 2,
+				Routes:       []string{"route-to-simple"},
+				StartCommand: "./run",
 			}
 
-			Ω(respondingIndices).Should(HaveLen(3))
+			//start the first two instances
+			err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+			Ω(err).ShouldNot(HaveOccurred())
 
-			Ω(respondingIndices).Should(HaveKey("0"))
-			Ω(respondingIndices).Should(HaveKey("1"))
-			Ω(respondingIndices).Should(HaveKey("2"))
+			Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, "simple-echo-app-the-first-one"), LONG_TIMEOUT).Should(HaveLen(2))
+			poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
+			Eventually(poller, LONG_TIMEOUT*2, 1).Should(Equal([]string{"0", "1"}))
+		})
+
+		AfterEach(func() {
+			close(stop)
+		})
+
+		Describe("Scaling an app up", func() {
+			BeforeEach(func() {
+				desiredAppRequest.NumInstances = 3
+
+				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("should scale up to the correct number of instances", func() {
+				Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, "simple-echo-app-the-first-one"), LONG_TIMEOUT).Should(HaveLen(3))
+
+				poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
+				Eventually(poller, LONG_TIMEOUT).Should(Equal([]string{"0", "1", "2"}))
+			})
+		})
+
+		Describe("Scaling an app down", func() {
+			BeforeEach(func() {
+				desiredAppRequest.NumInstances = 1
+
+				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("should scale down to the correct number of instances", func() {
+				Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, "simple-echo-app-the-first-one"), LONG_TIMEOUT).Should(HaveLen(1))
+
+				poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
+				Eventually(poller, LONG_TIMEOUT, 1).Should(Equal([]string{"0"}))
+			})
+		})
+
+		Describe("Stopping an app", func() {
+			BeforeEach(func() {
+				desiredAppRequest.NumInstances = 0
+
+				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("should stop all instances of the app", func() {
+				Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, "simple-echo-app-the-first-one"), LONG_TIMEOUT).Should(BeEmpty())
+
+				poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
+				Eventually(poller, LONG_TIMEOUT).Should(BeEmpty())
+			})
 		})
 	})
 })

@@ -4,12 +4,18 @@ import (
 	"encoding/json"
 	"net/http"
 	. "github.com/onsi/gomega"
+	"github.com/tedsuo/router"
 
 	tpsapi "github.com/cloudfoundry-incubator/tps/api"
-	"github.com/tedsuo/router"
 )
 
-func LRPInstances(tpsAddr string, guid string) []tpsapi.LRPInstance {
+func RunningLRPInstancesPoller(tpsAddr string, guid string) func() []tpsapi.LRPInstance {
+	return func() []tpsapi.LRPInstance {
+		return RunningLRPInstances(tpsAddr, guid)
+	}
+}
+
+func RunningLRPInstances(tpsAddr string, guid string) []tpsapi.LRPInstance {
 	tpsRequestGenerator := router.NewRequestGenerator(tpsAddr, tpsapi.Routes)
 
 	getLRPs, err := tpsRequestGenerator.RequestForHandler(
@@ -23,8 +29,16 @@ func LRPInstances(tpsAddr string, guid string) []tpsapi.LRPInstance {
 	response, err := http.DefaultClient.Do(getLRPs)
 	Ω(err).ShouldNot(HaveOccurred())
 
+	defer response.Body.Close()
 	err = json.NewDecoder(response.Body).Decode(&instances)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	return instances
+	instancesToReturn := []tpsapi.LRPInstance{}
+	for _, instance := range instances {
+		if instance.State == "running" {
+			instancesToReturn = append(instancesToReturn, instance)
+		}
+	}
+
+	return instancesToReturn
 }

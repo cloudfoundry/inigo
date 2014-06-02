@@ -43,6 +43,9 @@ var _ = Describe("AppRunner", func() {
 			suiteContext.ExecutorRunner.Start()
 			suiteContext.RepRunner.Start()
 			suiteContext.AuctioneerRunner.Start()
+			suiteContext.AppManagerRunner.Start()
+			suiteContext.RouteEmitterRunner.Start()
+			suiteContext.RouterRunner.Start()
 
 			archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
 			inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")
@@ -71,75 +74,39 @@ var _ = Describe("AppRunner", func() {
 			)
 		})
 
-		Context("with the app manager running", func() {
-			BeforeEach(func() {
-				suiteContext.AppManagerRunner.Start()
-				suiteContext.RouteEmitterRunner.Start()
-				suiteContext.RouterRunner.Start()
-			})
+		It("runs the app on the executor, registers routes, and shows that they are running via the tps", func() {
+			//stream logs
+			logOutput, stop := loggredile.StreamIntoGBuffer(
+				suiteContext.LoggregatorRunner.Config.OutgoingPort,
+				fmt.Sprintf("/tail/?app=%s", appId),
+				"App",
+			)
+			defer close(stop)
 
-			It("runs the app on the executor and responds with the echo message", func() {
-				//stream logs
-				logOutput, stop := loggredile.StreamIntoGBuffer(
-					suiteContext.LoggregatorRunner.Config.OutgoingPort,
-					fmt.Sprintf("/tail/?app=%s", appId),
-					"App",
-				)
-				defer close(stop)
+			// publish the app run message
+			err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", runningMessage)
+			Ω(err).ShouldNot(HaveOccurred())
 
-				// publish the app run message
-				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", runningMessage)
-				Ω(err).ShouldNot(HaveOccurred())
+			// Assert the user saw reasonable output
+			Eventually(logOutput, LONG_TIMEOUT).Should(gbytes.Say("hello world"))
+			Eventually(logOutput, LONG_TIMEOUT).Should(gbytes.Say("hello world"))
+			Eventually(logOutput, LONG_TIMEOUT).Should(gbytes.Say("hello world"))
+			Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":0`))
+			Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":1`))
+			Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":2`))
 
-				// Assert the user saw reasonable output
-				Eventually(logOutput, LONG_TIMEOUT).Should(gbytes.Say("hello world"))
-				Eventually(logOutput, LONG_TIMEOUT).Should(gbytes.Say("hello world"))
-				Eventually(logOutput, LONG_TIMEOUT).Should(gbytes.Say("hello world"))
-				Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":0`))
-				Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":1`))
-				Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":2`))
+			// check lrp instance statuses
+			Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, "simple-echo-app-the-first-one"), LONG_TIMEOUT, 0.5).Should(HaveLen(3))
 
-				// check lrp instance statuses
-				Eventually(func() interface{} {
-					lrpInstances := helpers.LRPInstances(tpsAddr, "simple-echo-app-the-first-one")
+			//both routes should be routable
+			Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-1"), LONG_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
+			Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-2"), LONG_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
 
-					states := make([]string, len(lrpInstances))
-					for i, inst := range lrpInstances {
-						states[i] = inst.State
-					}
+			//a given route should route to all three runninginstances
+			Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-1"), LONG_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
 
-					return states
-				}, LONG_TIMEOUT).Should(Equal([]string{"running", "running", "running"}))
-			})
-
-			It("is routable via the router and its configured routes", func() {
-				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", runningMessage)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-1"), LONG_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
-				Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-2"), LONG_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
-			})
-
-			It("distributes requests to all instances", func() {
-				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", runningMessage)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-1"), LONG_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
-
-				respondingIndices := map[string]bool{}
-
-				for i := 0; i < 500; i++ {
-					body, err := helpers.ResponseBodyFromHost(suiteContext.RouterRunner.Addr(), "route-1")
-					Ω(err).ShouldNot(HaveOccurred())
-					respondingIndices[string(body)] = true
-				}
-
-				Ω(respondingIndices).Should(HaveLen(3))
-
-				Ω(respondingIndices).Should(HaveKey("0"))
-				Ω(respondingIndices).Should(HaveKey("1"))
-				Ω(respondingIndices).Should(HaveKey("2"))
-			})
+			poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-1")
+			Eventually(poller, LONG_TIMEOUT, 1).Should(Equal([]string{"0", "1", "2"}))
 		})
 	})
 })

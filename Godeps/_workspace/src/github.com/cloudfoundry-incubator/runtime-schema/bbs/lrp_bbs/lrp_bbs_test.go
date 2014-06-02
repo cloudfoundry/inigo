@@ -15,7 +15,7 @@ var _ = Describe("LRP", func() {
 		bbs = New(etcdClient)
 	})
 
-	Describe("DesireLRP", func() {
+	Describe("Adding and removing DesireLRP", func() {
 		var lrp models.DesiredLRP
 
 		BeforeEach(func() {
@@ -38,6 +38,28 @@ var _ = Describe("LRP", func() {
 			Ω(node.Value).Should(Equal(lrp.ToJSON()))
 		})
 
+		Context("when deleting the DesiredLRP", func() {
+			BeforeEach(func() {
+				err := bbs.DesireLRP(lrp)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("should delete it", func() {
+				err := bbs.RemoveDesiredLRPByProcessGuid(lrp.ProcessGuid)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				_, err = etcdClient.Get("/v1/desired/some-process-guid")
+				Ω(err).Should(MatchError(storeadapter.ErrorKeyNotFound))
+			})
+
+			Context("when the desired LRP does not exist", func() {
+				It("should not error", func() {
+					err := bbs.RemoveDesiredLRPByProcessGuid("monkey")
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+			})
+		})
+
 		Context("when the store is out of commission", func() {
 			itRetriesUntilStoreComesBack(func() error {
 				return bbs.DesireLRP(lrp)
@@ -46,10 +68,10 @@ var _ = Describe("LRP", func() {
 	})
 
 	Describe("Adding and removing actual LRPs", func() {
-		var lrp models.LRP
+		var lrp models.ActualLRP
 
 		BeforeEach(func() {
-			lrp = models.LRP{
+			lrp = models.ActualLRP{
 				ProcessGuid:  "some-process-guid",
 				InstanceGuid: "some-instance-guid",
 				Index:        1,
@@ -71,7 +93,7 @@ var _ = Describe("LRP", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 
 				expectedLRP := lrp
-				expectedLRP.State = models.LRPStateStarting
+				expectedLRP.State = models.ActualLRPStateStarting
 				Ω(node.Value).Should(MatchJSON(expectedLRP.ToJSON()))
 			})
 
@@ -91,7 +113,7 @@ var _ = Describe("LRP", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 
 				expectedLRP := lrp
-				expectedLRP.State = models.LRPStateRunning
+				expectedLRP.State = models.ActualLRPStateRunning
 				Ω(node.Value).Should(MatchJSON(expectedLRP.ToJSON()))
 			})
 

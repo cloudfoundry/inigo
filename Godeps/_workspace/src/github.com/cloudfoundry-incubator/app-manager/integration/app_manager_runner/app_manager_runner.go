@@ -16,7 +16,7 @@ type AppManagerRunner struct {
 	appManagerBin string
 	etcdCluster   []string
 	natsCluster   []string
-	healthChecks  map[string]string
+	circuses      map[string]string
 	Session       *gexec.Session
 
 	repAddrRelativeToExecutor string
@@ -26,14 +26,14 @@ func New(
 	appManagerBin string,
 	etcdCluster,
 	natsCluster []string,
-	healthChecks map[string]string,
+	circuses map[string]string,
 	repAddrRelativeToExecutor string,
 ) *AppManagerRunner {
 	return &AppManagerRunner{
 		appManagerBin: appManagerBin,
 		etcdCluster:   etcdCluster,
 		natsCluster:   natsCluster,
-		healthChecks:  healthChecks,
+		circuses:      circuses,
 
 		repAddrRelativeToExecutor: repAddrRelativeToExecutor,
 	}
@@ -45,7 +45,7 @@ func (r *AppManagerRunner) Start() {
 }
 
 func (r *AppManagerRunner) StartWithoutCheck() {
-	healthChecksFlag, err := json.Marshal(r.healthChecks)
+	circusesFlag, err := json.Marshal(r.circuses)
 	Ω(err).ShouldNot(HaveOccurred())
 
 	executorSession, err := gexec.Start(
@@ -53,7 +53,7 @@ func (r *AppManagerRunner) StartWithoutCheck() {
 			r.appManagerBin,
 			"-etcdCluster", strings.Join(r.etcdCluster, ","),
 			"-natsAddresses", strings.Join(r.natsCluster, ","),
-			"-healthChecks", string(healthChecksFlag),
+			"-circuses", string(circusesFlag),
 			"-repAddrRelativeToExecutor", r.repAddrRelativeToExecutor,
 		),
 		ginkgo.GinkgoWriter,

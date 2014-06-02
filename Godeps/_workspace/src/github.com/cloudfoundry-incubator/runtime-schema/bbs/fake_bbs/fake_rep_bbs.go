@@ -13,6 +13,13 @@ type FakeRepBBS struct {
 	desiredTaskStopChan chan bool
 	desiredTaskErrChan  chan error
 
+	stopLRPInstanceChan     chan models.StopLRPInstance
+	stopLRPInstanceStopChan chan bool
+	stopLRPInstanceErrChan  chan error
+
+	resolvedStopLRPInstances  []models.StopLRPInstance
+	resolveStopLRPInstanceErr error
+
 	claimedTasks []models.Task
 	claimTaskErr error
 
@@ -23,13 +30,13 @@ type FakeRepBBS struct {
 	completeTaskErr          error
 	convergeTimeToClaimTasks time.Duration
 
-	runningLrps   []models.LRP
+	runningLrps   []models.ActualLRP
 	runningLrpErr error
 
-	startingLrps   []models.LRP
+	startingLrps   []models.ActualLRP
 	startingLrpErr error
 
-	removedLrps []models.LRP
+	removedLrps []models.ActualLRP
 
 	MaintainRepPresenceInput struct {
 		HeartbeatInterval time.Duration
@@ -48,6 +55,10 @@ func NewFakeRepBBS() *FakeRepBBS {
 	fakeBBS.desiredTaskChan = make(chan models.Task, 1)
 	fakeBBS.desiredTaskStopChan = make(chan bool)
 	fakeBBS.desiredTaskErrChan = make(chan error)
+	fakeBBS.stopLRPInstanceChan = make(chan models.StopLRPInstance)
+	fakeBBS.stopLRPInstanceStopChan = make(chan bool)
+	fakeBBS.stopLRPInstanceErrChan = make(chan error)
+
 	return fakeBBS
 }
 
@@ -112,7 +123,7 @@ func (fakeBBS *FakeRepBBS) StartTask(task models.Task, containerHandle string) (
 	return task, nil
 }
 
-func (fakeBBS *FakeRepBBS) ReportActualLRPAsStarting(lrp models.LRP) error {
+func (fakeBBS *FakeRepBBS) ReportActualLRPAsStarting(lrp models.ActualLRP) error {
 	fakeBBS.RLock()
 	err := fakeBBS.startingLrpErr
 	fakeBBS.RUnlock()
@@ -128,11 +139,11 @@ func (fakeBBS *FakeRepBBS) ReportActualLRPAsStarting(lrp models.LRP) error {
 	return nil
 }
 
-func (fakeBBS *FakeRepBBS) StartingLRPs() []models.LRP {
+func (fakeBBS *FakeRepBBS) StartingLRPs() []models.ActualLRP {
 	fakeBBS.RLock()
 	defer fakeBBS.RUnlock()
 
-	running := make([]models.LRP, len(fakeBBS.startingLrps))
+	running := make([]models.ActualLRP, len(fakeBBS.startingLrps))
 	copy(running, fakeBBS.startingLrps)
 
 	return running
@@ -145,7 +156,7 @@ func (fakeBBS *FakeRepBBS) SetStartingError(err error) {
 	fakeBBS.startingLrpErr = err
 }
 
-func (fakeBBS *FakeRepBBS) ReportActualLRPAsRunning(lrp models.LRP) error {
+func (fakeBBS *FakeRepBBS) ReportActualLRPAsRunning(lrp models.ActualLRP) error {
 	fakeBBS.RLock()
 	err := fakeBBS.runningLrpErr
 	fakeBBS.RUnlock()
@@ -161,11 +172,11 @@ func (fakeBBS *FakeRepBBS) ReportActualLRPAsRunning(lrp models.LRP) error {
 	return nil
 }
 
-func (fakeBBS *FakeRepBBS) RunningLRPs() []models.LRP {
+func (fakeBBS *FakeRepBBS) RunningLRPs() []models.ActualLRP {
 	fakeBBS.RLock()
 	defer fakeBBS.RUnlock()
 
-	running := make([]models.LRP, len(fakeBBS.runningLrps))
+	running := make([]models.ActualLRP, len(fakeBBS.runningLrps))
 	copy(running, fakeBBS.runningLrps)
 
 	return running
@@ -178,7 +189,7 @@ func (fakeBBS *FakeRepBBS) SetRunningError(err error) {
 	fakeBBS.runningLrpErr = err
 }
 
-func (fakeBBS *FakeRepBBS) RemoveActualLRP(lrp models.LRP) error {
+func (fakeBBS *FakeRepBBS) RemoveActualLRP(lrp models.ActualLRP) error {
 	fakeBBS.Lock()
 	fakeBBS.removedLrps = append(fakeBBS.removedLrps, lrp)
 	fakeBBS.Unlock()
@@ -186,12 +197,45 @@ func (fakeBBS *FakeRepBBS) RemoveActualLRP(lrp models.LRP) error {
 	return nil
 }
 
-func (fakeBBS *FakeRepBBS) RemovedLRPs() []models.LRP {
+func (fakeBBS *FakeRepBBS) RemovedLRPs() []models.ActualLRP {
 	fakeBBS.RLock()
 	defer fakeBBS.RUnlock()
 
-	removed := make([]models.LRP, len(fakeBBS.removedLrps))
+	removed := make([]models.ActualLRP, len(fakeBBS.removedLrps))
 	copy(removed, fakeBBS.removedLrps)
+
+	return removed
+}
+
+func (fakeBBS *FakeRepBBS) WatchForStopLRPInstance() (<-chan models.StopLRPInstance, chan<- bool, <-chan error) {
+	return fakeBBS.stopLRPInstanceChan, fakeBBS.stopLRPInstanceStopChan, fakeBBS.stopLRPInstanceErrChan
+}
+
+func (fakeBBS *FakeRepBBS) EmitStopLRPInstance(stopInstance models.StopLRPInstance) {
+	fakeBBS.stopLRPInstanceChan <- stopInstance
+}
+
+func (fakeBBS *FakeRepBBS) ResolveStopLRPInstance(stopInstance models.StopLRPInstance) error {
+	fakeBBS.Lock()
+	fakeBBS.resolvedStopLRPInstances = append(fakeBBS.resolvedStopLRPInstances, stopInstance)
+	fakeBBS.Unlock()
+
+	return fakeBBS.resolveStopLRPInstanceErr
+}
+
+func (fakeBBS *FakeRepBBS) SetResolveStopLRPInstanceError(err error) {
+	fakeBBS.RLock()
+	defer fakeBBS.RUnlock()
+
+	fakeBBS.resolveStopLRPInstanceErr = err
+}
+
+func (fakeBBS *FakeRepBBS) ResolvedStopLRPInstances() []models.StopLRPInstance {
+	fakeBBS.RLock()
+	defer fakeBBS.RUnlock()
+
+	removed := make([]models.StopLRPInstance, len(fakeBBS.resolvedStopLRPInstances))
+	copy(removed, fakeBBS.resolvedStopLRPInstances)
 
 	return removed
 }

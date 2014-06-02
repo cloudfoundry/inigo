@@ -1,4 +1,4 @@
-package shared_test
+package ifrit_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestShared(t *testing.T) {
+func TestIfrit(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Shared Suite")
+	RunSpecs(t, "Ifrit Suite")
 }

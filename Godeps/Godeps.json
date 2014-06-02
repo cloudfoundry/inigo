@@ -7,7 +7,7 @@
 	"Deps": [
 		{
 			"ImportPath": "code.google.com/p/gogoprotobuf/proto",
-			"Rev": "fb9da014650ebc7037bf74d4f4b835cb44949a93"
+			"Rev": "c0f910cdcde7b484263f20880df1b3aff387305a"
 		},
 		{
 			"ImportPath": "code.google.com/p/goprotobuf/proto",
@@ -15,8 +15,12 @@
 			"Rev": "556b9de4249f50f311584f75324a45e426324a19"
 		},
 		{
+			"ImportPath": "github.com/bmizerany/pat",
+			"Rev": "48be7df2c27e1cec821a3284a683ce6ef90d9052"
+		},
+		{
 			"ImportPath": "github.com/cloudfoundry-incubator/app-manager/integration/app_manager_runner",
-			"Rev": "8c7d2ab5bd6890d768c4dd00272c9835fdb4210f"
+			"Rev": "1784751862c2beec25126ba235586798d065ce33"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auctioneer/integration/auctioneer_runner",
@@ -24,15 +28,15 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/candiedyaml",
-			"Rev": "dfcb028513f33935d16a9c278a9b38c39dae6343"
+			"Rev": "50e233a7fb31a32b174c1263c7b786eba1fa79d4"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/converger/converger_runner",
-			"Rev": "5571dddf632e1183cede61a737502977cd3cc27f"
+			"Rev": "f6080218784ed0e7fe3bf460f60fadf11430ce8d"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/integration/executor_runner",
-			"Rev": "98f46a3b65650388b111d5a616f1bf031c9ae389"
+			"Rev": "fa3b98cdf388874758dc90beeac9cf02cc5dad01"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/client",
@@ -52,19 +56,27 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/rep/reprunner",
-			"Rev": "c13a6d3bae830859aeb901a838eaed64ca38415b"
+			"Rev": "e3bd81da18ccdb0ca8f0294ee51e0a3d28da34ff"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/route-emitter/integration/route_emitter_runner",
-			"Rev": "6016810bdb66bffa3cfb72d240cf70760400d681"
+			"Rev": "22c135283d912dbd1ffe8bee2a9da50a4634bbf5"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "2357a40e3b2744288cb9a1cbc32e1bd8e6760e8e"
+			"Rev": "2cda547df956888c75ece186444a34bfad31ae12"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "2357a40e3b2744288cb9a1cbc32e1bd8e6760e8e"
+			"Rev": "2cda547df956888c75ece186444a34bfad31ae12"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry-incubator/tps/api",
+			"Rev": "ed3b27dd08d69b96b880c5cf70b10441b4107bbb"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry-incubator/tps/integration/tpsrunner",
+			"Rev": "ed3b27dd08d69b96b880c5cf70b10441b4107bbb"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",
@@ -72,11 +84,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gorouter/common",
-			"Rev": "6fcbce25a48fea26f8bed6ba110c739aa28818e7"
+			"Rev": "2137a9fa4ce792c6d521dcafa85fb48522f9283e"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gorouter/config",
-			"Rev": "6fcbce25a48fea26f8bed6ba110c739aa28818e7"
+			"Rev": "2137a9fa4ce792c6d521dcafa85fb48522f9283e"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -113,8 +125,8 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/go-etcd/etcd",
-			"Comment": "v0.2.0-rc1-108-g4c69444",
-			"Rev": "4c694447f66ad846c7ab72d16993ebe6904f2d90"
+			"Comment": "v0.2.0-rc1-114-g7745cfd",
+			"Rev": "7745cfd7f8e619cc9e6be450238e6253a57a227f"
 		},
 		{
 			"ImportPath": "github.com/fraenkel/candiedyaml",
@@ -130,16 +142,24 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Comment": "v1.0.0-2-g4cf6831",
-			"Rev": "4cf683101c36426dc975f4db4d7f01d9c071f31a"
+			"Comment": "v1.0.0-9-g99ce275",
+			"Rev": "99ce27541cce15de9dd2e287f327507f8e2a1e94"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Rev": "05c2b322d514282430789eb9ff8efee6c904cc77"
+			"Rev": "bdbf788226cb7e227917ca92805c204112f30e19"
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/archiver/extractor/test_helper",
 			"Rev": "95890bdee16f0b84ba4a442e956ea278f7d7f0ef"
+		},
+		{
+			"ImportPath": "github.com/tedsuo/ifrit",
+			"Rev": "8f57c1dcd12fc1cf91eea3f7704e348f3023f834"
+		},
+		{
+			"ImportPath": "github.com/tedsuo/router",
+			"Rev": "e148496de27fab9f10ef07f3be00471fa59f58b9"
 		}
 	]
 }
