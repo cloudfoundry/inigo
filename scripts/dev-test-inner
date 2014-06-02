@@ -20,6 +20,7 @@ export WARDEN_LINUX_GOPATH=${GOPATH_ROOT}
 export ROUTE_EMITTER_GOPATH=${GOPATH_ROOT}
 export ROUTER_GOPATH=${GOPATH_ROOT}
 export LINUX_CIRCUS_GOPATH=${GOPATH_ROOT}
+export TPS_GOPATH=${GOPATH_ROOT}
 
 # install application dependencies
 for package in github.com/coreos/etcd github.com/apcera/gnatsd; do

@@ -3,10 +3,12 @@ package inigo_test
 import (
 	"fmt"
 	"net/http"
+	"syscall"
 
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
+	"github.com/tedsuo/ifrit"
 
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	. "github.com/onsi/ginkgo"
@@ -19,8 +21,19 @@ var _ = Describe("AppRunner", func() {
 	var appId = "simple-echo-app"
 	var appVersion = "the-first-one"
 
+	var tpsProcess ifrit.Process
+	var tpsAddr string
+
 	BeforeEach(func() {
 		suiteContext.FileServerRunner.Start()
+
+		tpsProcess = ifrit.Envoke(suiteContext.TPSRunner)
+		tpsAddr = fmt.Sprintf("http://127.0.0.1:%d", suiteContext.TPSPort)
+	})
+
+	AfterEach(func() {
+		tpsProcess.Signal(syscall.SIGKILL)
+		Eventually(tpsProcess.Wait()).Should(Receive())
 	})
 
 	Describe("Running", func() {
@@ -85,6 +98,18 @@ var _ = Describe("AppRunner", func() {
 				Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":0`))
 				Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":1`))
 				Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":2`))
+
+				// check lrp instance statuses
+				Eventually(func() interface{} {
+					lrpInstances := helpers.LRPInstances(tpsAddr, "simple-echo-app-the-first-one")
+
+					states := make([]string, len(lrpInstances))
+					for i, inst := range lrpInstances {
+						states[i] = inst.State
+					}
+
+					return states
+				}, LONG_TIMEOUT).Should(Equal([]string{"running", "running", "running"}))
 			})
 
 			It("is routable via the router and its configured routes", func() {

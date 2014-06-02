@@ -22,6 +22,7 @@ import (
 	"github.com/cloudfoundry-incubator/garden/warden"
 	"github.com/cloudfoundry-incubator/rep/reprunner"
 	"github.com/cloudfoundry-incubator/route-emitter/integration/route_emitter_runner"
+	"github.com/cloudfoundry-incubator/tps/integration/tpsrunner"
 	WardenRunner "github.com/cloudfoundry-incubator/warden-linux/integration/runner"
 	gorouterconfig "github.com/cloudfoundry/gorouter/config"
 	"github.com/cloudfoundry/gunk/natsrunner"
@@ -30,6 +31,7 @@ import (
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/tedsuo/ifrit"
 
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/inigo/fileserver_runner"
@@ -56,6 +58,7 @@ type sharedContextType struct {
 	RouteEmitterPath string
 	RouterPath       string
 	CircusZipPath    string
+	TPSPath          string
 
 	WardenAddr    string
 	WardenNetwork string
@@ -120,6 +123,9 @@ type suiteContextType struct {
 	RouterRunner *router_runner.Runner
 	RouterPort   int
 
+	TPSRunner ifrit.Runner
+	TPSPort   uint16
+
 	EtcdPort int
 }
 
@@ -166,6 +172,7 @@ func beforeSuite(encodedSharedContext []byte) {
 		FileServerPort:          12760 + config.GinkgoConfig.ParallelNode,
 		EtcdPort:                5001 + config.GinkgoConfig.ParallelNode,
 		RouterPort:              9090 + config.GinkgoConfig.ParallelNode,
+		TPSPort:                 uint16(1518 + config.GinkgoConfig.ParallelNode),
 	}
 
 	Ω(context.ExternalAddress).ShouldNot(BeEmpty())
@@ -273,6 +280,12 @@ func beforeSuite(encodedSharedContext []byte) {
 				Level: "info",
 			},
 		},
+	)
+
+	context.TPSRunner = tpsrunner.New(
+		context.SharedContext.TPSPath,
+		context.TPSPort,
+		context.EtcdRunner.NodeURLS(),
 	)
 
 	wardenClient := WardenClient.New(&WardenConnection.Info{
@@ -411,6 +424,9 @@ func (node *nodeOneType) CompileTestedExecutables() {
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.RouterPath, err = gexec.BuildIn(os.Getenv("ROUTER_GOPATH"), "github.com/cloudfoundry/gorouter", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	node.context.TPSPath, err = gexec.BuildIn(os.Getenv("TPS_GOPATH"), "github.com/cloudfoundry-incubator/tps", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.CircusZipPath = node.compileAndZipUpCircus()
