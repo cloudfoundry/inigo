@@ -60,23 +60,23 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/route-emitter/integration/route_emitter_runner",
-			"Rev": "22c135283d912dbd1ffe8bee2a9da50a4634bbf5"
+			"Rev": "a0a2da44cee0ae6517a8adeb800eb319819c5a74"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "2cda547df956888c75ece186444a34bfad31ae12"
+			"Rev": "e3154cbfba5600c3cc925773ff27c70d6e981e82"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "2cda547df956888c75ece186444a34bfad31ae12"
+			"Rev": "e3154cbfba5600c3cc925773ff27c70d6e981e82"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/tps/api",
-			"Rev": "ed3b27dd08d69b96b880c5cf70b10441b4107bbb"
+			"Rev": "c12a04fe8e1af5fd22d47bc5362492ea8307ac4b"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/tps/integration/tpsrunner",
-			"Rev": "ed3b27dd08d69b96b880c5cf70b10441b4107bbb"
+			"Rev": "c12a04fe8e1af5fd22d47bc5362492ea8307ac4b"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",

@@ -5,4 +5,5 @@ type LRPInstance struct {
 	InstanceGuid string `json:"instance_guid"`
 	Index        uint   `json:"index"`
 	State        string `json:"state"`
+	Since        int64  `json:"since_in_ns"`
 }

@@ -160,7 +160,7 @@ func NewTPSBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimePr
 func NewBBS(store storeadapter.StoreAdapter, timeProvider timeprovider.TimeProvider, logger *steno.Logger) *BBS {
 	return &BBS{
 		LockBBS:     lock_bbs.New(store),
-		LRPBBS:      lrp_bbs.New(store),
+		LRPBBS:      lrp_bbs.New(store, timeProvider),
 		ServicesBBS: services_bbs.New(store, logger),
 		TaskBBS:     task_bbs.New(store, timeProvider, logger),
 	}
