@@ -36,7 +36,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/integration/executor_runner",
-			"Rev": "fa3b98cdf388874758dc90beeac9cf02cc5dad01"
+			"Rev": "148cf78a5764dcf4407fd64e09b46da66ea597a3"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/client",
@@ -80,7 +80,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",
-			"Rev": "3251d74e780aeeeab09903e4b0dba7d0d3556294"
+			"Rev": "53e3f591f310f225230d5ce45cebfdfa4e907118"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gorouter/common",
@@ -151,7 +151,7 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/archiver/extractor/test_helper",
-			"Rev": "95890bdee16f0b84ba4a442e956ea278f7d7f0ef"
+			"Rev": "02489ef5ef1eaae09e95d0abae099593c8c5e03c"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
