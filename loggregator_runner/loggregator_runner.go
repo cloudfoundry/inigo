@@ -67,3 +67,10 @@ func (runner *LoggregatorRunner) Stop() {
 		runner.session.Kill().Wait(5 * time.Second)
 	}
 }
+
+func (runner *LoggregatorRunner) KillWithFire() {
+	if runner.session != nil {
+		runner.session.Kill().Wait(5 * time.Second)
+		runner.session = nil
+	}
+}

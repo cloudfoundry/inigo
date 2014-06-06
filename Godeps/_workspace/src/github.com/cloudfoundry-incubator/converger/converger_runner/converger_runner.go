@@ -4,7 +4,7 @@ import (
 	"os/exec"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
@@ -46,8 +46,8 @@ func (r *ConvergerRunner) Start(kickPendingTaskDuration, expireClaimedTaskDurati
 			"-kickPendingLRPStartAuctionDuration", kickPendingLRPStartAuctionDuration.String(),
 			"-expireClaimedLRPStartAuctionDuration", expireClaimedLRPStartAuctionDuration.String(),
 		),
-		gexec.NewPrefixedWriter("[converger] ", GinkgoWriter),
-		gexec.NewPrefixedWriter("[converger] ", GinkgoWriter),
+		gexec.NewPrefixedWriter("\x1b[32m[o]\x1b[94m[converger]\x1b[0m ", ginkgo.GinkgoWriter),
+		gexec.NewPrefixedWriter("\x1b[91m[e]\x1b[94m[converger]\x1b[0m ", ginkgo.GinkgoWriter),
 	)
 
 	Ω(err).ShouldNot(HaveOccurred())
@@ -64,7 +64,7 @@ func (r *ConvergerRunner) Stop() {
 
 func (r *ConvergerRunner) KillWithFire() {
 	if r.Session != nil {
-		r.Session.Kill().Wait()
+		r.Session.Kill().Wait(5 * time.Second)
 		r.Session = nil
 	}
 }

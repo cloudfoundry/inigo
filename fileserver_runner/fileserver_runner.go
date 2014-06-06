@@ -84,5 +84,13 @@ func (r *FileServerRunner) ServeFile(name string, path string) {
 func (r *FileServerRunner) Stop() {
 	if r.Session != nil {
 		r.Session.Interrupt().Wait(5 * time.Second)
+		r.Session = nil
+	}
+}
+
+func (r *FileServerRunner) KillWithFire() {
+	if r.Session != nil {
+		r.Session.Kill().Wait(5 * time.Second)
+		r.Session = nil
 	}
 }

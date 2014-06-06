@@ -44,6 +44,10 @@ func (etcd *ETCDClusterRunner) Stop() {
 	etcd.stop(true)
 }
 
+func (etcd *ETCDClusterRunner) KillWithFire() {
+	etcd.kill()
+}
+
 func (etcd *ETCDClusterRunner) GoAway() {
 	etcd.stop(false)
 }
@@ -129,7 +133,11 @@ func (etcd *ETCDClusterRunner) start(nuke bool) {
 			args = append(args, "-peers", etcd.serverUrl(0))
 		}
 
-		session, err := gexec.Start(exec.Command("etcd", args...), ginkgo.GinkgoWriter, ginkgo.GinkgoWriter)
+		session, err := gexec.Start(
+			exec.Command("etcd", args...),
+			gexec.NewPrefixedWriter("\x1b[32m[o]\x1b[33m[etcd_cluster]]\x1b[0m ", ginkgo.GinkgoWriter),
+			gexec.NewPrefixedWriter("\x1b[91m[e]\x1b[33m[etcd_cluster]]\x1b[0m ", ginkgo.GinkgoWriter),
+		)
 		Ω(err).ShouldNot(HaveOccurred(), "Make sure etcd is compiled and on your $PATH.")
 
 		etcd.etcdSessions[i] = session
@@ -147,6 +155,7 @@ func (etcd *ETCDClusterRunner) start(nuke bool) {
 
 func (etcd *ETCDClusterRunner) stop(nuke bool) {
 	etcd.mutex.Lock()
+	defer etcd.mutex.Unlock()
 
 	if etcd.running {
 		for i := 0; i < etcd.numNodes; i++ {
@@ -155,12 +164,27 @@ func (etcd *ETCDClusterRunner) stop(nuke bool) {
 				etcd.nukeArtifacts(i)
 			}
 		}
-		etcd.etcdSessions = nil
-		etcd.running = false
-		etcd.client = nil
+		etcd.markAsStopped()
 	}
+}
 
-	etcd.mutex.Unlock()
+func (etcd *ETCDClusterRunner) kill() {
+	etcd.mutex.Lock()
+	defer etcd.mutex.Unlock()
+
+	if etcd.running {
+		for i := 0; i < etcd.numNodes; i++ {
+			etcd.etcdSessions[i].Kill().Wait(5 * time.Second)
+			etcd.nukeArtifacts(i)
+		}
+		etcd.markAsStopped()
+	}
+}
+
+func (etcd *ETCDClusterRunner) markAsStopped() {
+	etcd.etcdSessions = nil
+	etcd.running = false
+	etcd.client = nil
 }
 
 func (etcd *ETCDClusterRunner) detectRunningEtcd(index int) bool {

@@ -34,8 +34,8 @@ func (r *runner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 			"-etcdCluster", strings.Join(r.etcdCluster, ","),
 			"-listenAddr", fmt.Sprintf("0.0.0.0:%d", r.listenPort),
 		),
-		ginkgo.GinkgoWriter,
-		ginkgo.GinkgoWriter,
+		gexec.NewPrefixedWriter("\x1b[32m[o]\x1b[31m[tps]\x1b[0m ", ginkgo.GinkgoWriter),
+		gexec.NewPrefixedWriter("\x1b[91m[e]\x1b[31m[tps]\x1b[0m ", ginkgo.GinkgoWriter),
 	)
 	if err != nil {
 		return err

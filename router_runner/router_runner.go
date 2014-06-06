@@ -57,9 +57,17 @@ func (runner *Runner) Start() {
 func (runner *Runner) Stop() {
 	if runner.session != nil {
 		runner.session.Kill().Wait(5 * time.Second)
+		runner.session = nil
 	}
 }
 
 func (runner *Runner) Addr() string {
 	return fmt.Sprintf("127.0.0.1:%d", runner.Config.Port)
+}
+
+func (runner *Runner) KillWithFire() {
+	if runner.session != nil {
+		runner.session.Kill().Wait(5 * time.Second)
+		runner.session = nil
+	}
 }

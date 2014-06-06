@@ -70,20 +70,14 @@ func Start(wardenClient warden.Client) {
 	var err error
 
 	container, err = wardenClient.Create(warden.ContainerSpec{})
-	if err != nil {
-		panic(err)
-	}
+	Ω(err).ShouldNot(HaveOccurred())
 
 	var containerPort uint32
 	hostPort, containerPort, err = container.NetIn(0, 0)
-	if err != nil {
-		panic(err)
-	}
+	Ω(err).ShouldNot(HaveOccurred())
 
 	info, err := container.Info()
-	if err != nil {
-		panic(err)
-	}
+	Ω(err).ShouldNot(HaveOccurred())
 
 	ipAddress = info.ContainerIP
 
@@ -93,9 +87,7 @@ func Start(wardenClient warden.Client) {
 			warden.EnvironmentVariable{Key: "PORT", Value: fmt.Sprintf("%d", containerPort)},
 		},
 	})
-	if err != nil {
-		panic(err)
-	}
+	Ω(err).ShouldNot(HaveOccurred())
 
 	Eventually(func() error {
 		_, err := http.Get(fmt.Sprintf("http://%s:%d/registrations", ipAddress, hostPort))

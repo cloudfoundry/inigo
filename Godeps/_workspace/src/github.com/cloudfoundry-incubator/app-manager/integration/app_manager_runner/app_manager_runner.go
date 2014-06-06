@@ -56,8 +56,8 @@ func (r *AppManagerRunner) StartWithoutCheck() {
 			"-circuses", string(circusesFlag),
 			"-repAddrRelativeToExecutor", r.repAddrRelativeToExecutor,
 		),
-		ginkgo.GinkgoWriter,
-		ginkgo.GinkgoWriter,
+		gexec.NewPrefixedWriter("\x1b[32m[o]\x1b[35m[app_manager]\x1b[0m ", ginkgo.GinkgoWriter),
+		gexec.NewPrefixedWriter("\x1b[91m[e]\x1b[35m[app_manager]\x1b[0m ", ginkgo.GinkgoWriter),
 	)
 	Ω(err).ShouldNot(HaveOccurred())
 

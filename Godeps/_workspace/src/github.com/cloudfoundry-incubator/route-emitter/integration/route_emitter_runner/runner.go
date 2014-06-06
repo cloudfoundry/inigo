@@ -38,8 +38,8 @@ func (r *Runner) StartWithoutCheck() {
 			"-etcdCluster", strings.Join(r.etcdCluster, ","),
 			"-natsAddresses", strings.Join(r.natsCluster, ","),
 		),
-		gexec.NewPrefixedWriter("[route-emitter] ", ginkgo.GinkgoWriter),
-		gexec.NewPrefixedWriter("[route-emitter] ", ginkgo.GinkgoWriter),
+		gexec.NewPrefixedWriter("\x1b[32m[o]\x1b[97m[route-emitter]\x1b[0m ", ginkgo.GinkgoWriter),
+		gexec.NewPrefixedWriter("\x1b[91m[e]\x1b[97m[route-emitter]\x1b[0m ", ginkgo.GinkgoWriter),
 	)
 	Ω(err).ShouldNot(HaveOccurred())
 	r.Session = executorSession
