@@ -8,6 +8,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/nu7hatch/gouuid"
 	"github.com/tedsuo/ifrit"
 
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
@@ -19,12 +20,25 @@ import (
 
 var _ = Describe("LRP Consistency", func() {
 	var desiredAppRequest models.DesireAppRequestFromCC
-	var appId = "simple-echo-app"
+	var appId string
+	var processGuid string
 
 	var tpsProcess ifrit.Process
 	var tpsAddr string
 
 	BeforeEach(func() {
+		guid, err := uuid.NewV4()
+		if err != nil {
+			panic("Failed to generate AppID Guid")
+		}
+		appId = guid.String()
+
+		guid, err = uuid.NewV4()
+		if err != nil {
+			panic("Failed to generate AppID Guid")
+		}
+		processGuid = guid.String()
+
 		suiteContext.FileServerRunner.Start()
 		suiteContext.ExecutorRunner.Start()
 		suiteContext.RepRunner.Start()
@@ -60,21 +74,21 @@ var _ = Describe("LRP Consistency", func() {
 			)
 
 			desiredAppRequest = models.DesireAppRequestFromCC{
-				AppId:        appId,
-				AppVersion:   "the-first-one",
+				ProcessGuid:  processGuid,
 				DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
 				Stack:        suiteContext.RepStack,
 				Environment:  []models.EnvironmentVariable{{Key: "VCAP_APPLICATION", Value: "{}"}},
 				NumInstances: 2,
 				Routes:       []string{"route-to-simple"},
 				StartCommand: "./run",
+				LogGuid:      appId,
 			}
 
 			//start the first two instances
 			err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, "simple-echo-app-the-first-one"), LONG_TIMEOUT).Should(HaveLen(2))
+			Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid), LONG_TIMEOUT).Should(HaveLen(2))
 			poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
 			Eventually(poller, LONG_TIMEOUT*2, 1).Should(Equal([]string{"0", "1"}))
 		})
@@ -92,7 +106,7 @@ var _ = Describe("LRP Consistency", func() {
 			})
 
 			It("should scale up to the correct number of instances", func() {
-				Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, "simple-echo-app-the-first-one"), LONG_TIMEOUT).Should(HaveLen(3))
+				Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid), LONG_TIMEOUT).Should(HaveLen(3))
 
 				poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
 				Eventually(poller, LONG_TIMEOUT).Should(Equal([]string{"0", "1", "2"}))
@@ -108,7 +122,7 @@ var _ = Describe("LRP Consistency", func() {
 			})
 
 			It("should scale down to the correct number of instances", func() {
-				Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, "simple-echo-app-the-first-one"), LONG_TIMEOUT).Should(HaveLen(1))
+				Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid), LONG_TIMEOUT).Should(HaveLen(1))
 
 				poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
 				Eventually(poller, LONG_TIMEOUT, 1).Should(Equal([]string{"0"}))
@@ -124,7 +138,7 @@ var _ = Describe("LRP Consistency", func() {
 			})
 
 			It("should stop all instances of the app", func() {
-				Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, "simple-echo-app-the-first-one"), LONG_TIMEOUT).Should(BeEmpty())
+				Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid), LONG_TIMEOUT).Should(BeEmpty())
 
 				poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
 				Eventually(poller, LONG_TIMEOUT).Should(BeEmpty())

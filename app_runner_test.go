@@ -19,7 +19,6 @@ import (
 
 var _ = Describe("AppRunner", func() {
 	var appId = "simple-echo-app"
-	var appVersion = "the-first-one"
 
 	var tpsProcess ifrit.Process
 	var tpsAddr string
@@ -57,19 +56,18 @@ var _ = Describe("AppRunner", func() {
 			runningMessage = []byte(
 				fmt.Sprintf(
 					`{
-            "app_id": "%s",
-            "app_version": "%s",
-            "droplet_uri": "%s",
-						"stack": "%s",
-            "start_command": "./run",
-            "num_instances": 3,
-            "environment":[{"key":"VCAP_APPLICATION", "value":"{}"}],
-            "routes": ["route-1", "route-2"]
-          }`,
-					appId,
-					appVersion,
+		              "process_guid": "process-guid",
+		              "droplet_uri": "%s",
+			          "stack": "%s",
+		              "start_command": "./run",
+		              "num_instances": 3,
+		              "environment":[{"key":"VCAP_APPLICATION", "value":"{}"}],
+		              "routes": ["route-1", "route-2"],
+		              "log_guid": "%s"
+		            }`,
 					inigo_server.DownloadUrl("simple-echo-droplet.zip"),
 					suiteContext.RepStack,
+					appId,
 				),
 			)
 		})
@@ -96,7 +94,7 @@ var _ = Describe("AppRunner", func() {
 			Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":2`))
 
 			// check lrp instance statuses
-			Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, "simple-echo-app-the-first-one"), LONG_TIMEOUT, 0.5).Should(HaveLen(3))
+			Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, "process-guid"), LONG_TIMEOUT, 0.5).Should(HaveLen(3))
 
 			//both routes should be routable
 			Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-1"), LONG_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
