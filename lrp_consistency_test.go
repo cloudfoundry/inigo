@@ -88,7 +88,7 @@ var _ = Describe("LRP Consistency", func() {
 			err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid), LONG_TIMEOUT).Should(HaveLen(2))
+			Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid), 2*LONG_TIMEOUT).Should(HaveLen(2))
 			poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
 			Eventually(poller, LONG_TIMEOUT*2, 1).Should(Equal([]string{"0", "1"}))
 		})
