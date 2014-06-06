@@ -14,8 +14,24 @@ func (bbs *LRPBBS) RequestStopLRPInstance(stopInstance models.StopLRPInstance) e
 			{
 				Key:   shared.StopLRPInstanceSchemaPath(stopInstance),
 				Value: stopInstance.ToJSON(),
+				TTL:   60,
 			},
 		})
+	})
+}
+
+func (bbs *LRPBBS) RequestStopLRPInstances(stopInstances []models.StopLRPInstance) error {
+	return shared.RetryIndefinitelyOnStoreTimeout(func() error {
+		var nodes []storeadapter.StoreNode
+
+		for _, stopInstance := range stopInstances {
+			nodes = append(nodes, storeadapter.StoreNode{
+				Key:   shared.StopLRPInstanceSchemaPath(stopInstance),
+				Value: stopInstance.ToJSON(),
+				TTL:   60,
+			})
+		}
+		return bbs.store.SetMulti(nodes)
 	})
 }
 

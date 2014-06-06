@@ -30,11 +30,13 @@ type FakeRepBBS struct {
 	completeTaskErr          error
 	convergeTimeToClaimTasks time.Duration
 
-	runningLrps   []models.ActualLRP
-	runningLrpErr error
+	runningLrps            []models.ActualLRP
+	runningLrpsExecutorIDs []string
+	runningLrpErr          error
 
-	startingLrps   []models.ActualLRP
-	startingLrpErr error
+	startingLrps            []models.ActualLRP
+	startingLrpsExecutorIDs []string
+	startingLrpErr          error
 
 	removedLrps []models.ActualLRP
 
@@ -64,6 +66,10 @@ func NewFakeRepBBS() *FakeRepBBS {
 
 func (fakeBBS *FakeRepBBS) WatchForDesiredTask() (<-chan models.Task, chan<- bool, <-chan error) {
 	return fakeBBS.desiredTaskChan, fakeBBS.desiredTaskStopChan, fakeBBS.desiredTaskErrChan
+}
+
+func (fakeBBS *FakeRepBBS) WatchForDesiredTaskError(err error) {
+	fakeBBS.desiredTaskErrChan <- err
 }
 
 func (fakeBBS *FakeRepBBS) EmitDesiredTask(task models.Task) {
@@ -123,7 +129,7 @@ func (fakeBBS *FakeRepBBS) StartTask(task models.Task, containerHandle string) (
 	return task, nil
 }
 
-func (fakeBBS *FakeRepBBS) ReportActualLRPAsStarting(lrp models.ActualLRP) error {
+func (fakeBBS *FakeRepBBS) ReportActualLRPAsStarting(lrp models.ActualLRP, executorID string) error {
 	fakeBBS.RLock()
 	err := fakeBBS.startingLrpErr
 	fakeBBS.RUnlock()
@@ -134,6 +140,7 @@ func (fakeBBS *FakeRepBBS) ReportActualLRPAsStarting(lrp models.ActualLRP) error
 
 	fakeBBS.Lock()
 	fakeBBS.startingLrps = append(fakeBBS.startingLrps, lrp)
+	fakeBBS.startingLrpsExecutorIDs = append(fakeBBS.startingLrpsExecutorIDs, executorID)
 	fakeBBS.Unlock()
 
 	return nil
@@ -149,6 +156,13 @@ func (fakeBBS *FakeRepBBS) StartingLRPs() []models.ActualLRP {
 	return running
 }
 
+func (fakeBBS *FakeRepBBS) StartingLRPExecutorIDs() []string {
+	fakeBBS.RLock()
+	defer fakeBBS.RUnlock()
+
+	return fakeBBS.startingLrpsExecutorIDs
+}
+
 func (fakeBBS *FakeRepBBS) SetStartingError(err error) {
 	fakeBBS.Lock()
 	defer fakeBBS.Unlock()
@@ -156,7 +170,7 @@ func (fakeBBS *FakeRepBBS) SetStartingError(err error) {
 	fakeBBS.startingLrpErr = err
 }
 
-func (fakeBBS *FakeRepBBS) ReportActualLRPAsRunning(lrp models.ActualLRP) error {
+func (fakeBBS *FakeRepBBS) ReportActualLRPAsRunning(lrp models.ActualLRP, executorID string) error {
 	fakeBBS.RLock()
 	err := fakeBBS.runningLrpErr
 	fakeBBS.RUnlock()
@@ -167,6 +181,7 @@ func (fakeBBS *FakeRepBBS) ReportActualLRPAsRunning(lrp models.ActualLRP) error 
 
 	fakeBBS.Lock()
 	fakeBBS.runningLrps = append(fakeBBS.runningLrps, lrp)
+	fakeBBS.runningLrpsExecutorIDs = append(fakeBBS.startingLrpsExecutorIDs, executorID)
 	fakeBBS.Unlock()
 
 	return nil
@@ -180,6 +195,13 @@ func (fakeBBS *FakeRepBBS) RunningLRPs() []models.ActualLRP {
 	copy(running, fakeBBS.runningLrps)
 
 	return running
+}
+
+func (fakeBBS *FakeRepBBS) RunningLRPsExecutorIDs() []string {
+	fakeBBS.RLock()
+	defer fakeBBS.RUnlock()
+
+	return fakeBBS.runningLrpsExecutorIDs
 }
 
 func (fakeBBS *FakeRepBBS) SetRunningError(err error) {
@@ -209,6 +231,10 @@ func (fakeBBS *FakeRepBBS) RemovedLRPs() []models.ActualLRP {
 
 func (fakeBBS *FakeRepBBS) WatchForStopLRPInstance() (<-chan models.StopLRPInstance, chan<- bool, <-chan error) {
 	return fakeBBS.stopLRPInstanceChan, fakeBBS.stopLRPInstanceStopChan, fakeBBS.stopLRPInstanceErrChan
+}
+
+func (fakeBBS *FakeRepBBS) WatchForStopLRPInstanceError(err error) {
+	fakeBBS.stopLRPInstanceErrChan <- err
 }
 
 func (fakeBBS *FakeRepBBS) EmitStopLRPInstance(stopInstance models.StopLRPInstance) {

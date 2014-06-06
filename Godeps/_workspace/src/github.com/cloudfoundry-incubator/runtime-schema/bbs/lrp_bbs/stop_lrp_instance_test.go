@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("StopInstance", func() {
+var _ = Describe("StopLRPInstance", func() {
 	var stopInstance models.StopLRPInstance
 
 	BeforeEach(func() {
@@ -26,6 +26,7 @@ var _ = Describe("StopInstance", func() {
 			node, err := etcdClient.Get("/v1/stop-instance/some-instance-guid")
 			Ω(err).ShouldNot(HaveOccurred())
 
+			Ω(node.TTL).Should(BeNumerically(">", 0))
 			Ω(node.Value).Should(Equal(stopInstance.ToJSON()))
 		})
 
@@ -42,6 +43,47 @@ var _ = Describe("StopInstance", func() {
 		Context("when the store is out of commission", func() {
 			itRetriesUntilStoreComesBack(func() error {
 				return bbs.RequestStopLRPInstance(stopInstance)
+			})
+		})
+	})
+
+	Describe("RequestStopLRPInstances", func() {
+		It("creates multiple /v1/stop-instance/<instance-guid> keys", func() {
+			anotherStopInstance := models.StopLRPInstance{
+				ProcessGuid:  "some-other-process-guid",
+				InstanceGuid: "some-other-instance-guid",
+				Index:        1234,
+			}
+
+			err := bbs.RequestStopLRPInstances([]models.StopLRPInstance{stopInstance, anotherStopInstance})
+			Ω(err).ShouldNot(HaveOccurred())
+
+			node, err := etcdClient.Get("/v1/stop-instance/some-instance-guid")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(node.TTL).Should(BeNumerically(">", 0))
+			Ω(node.Value).Should(Equal(stopInstance.ToJSON()))
+
+			anotherNode, err := etcdClient.Get("/v1/stop-instance/some-other-instance-guid")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(anotherNode.TTL).Should(BeNumerically(">", 0))
+			Ω(anotherNode.Value).Should(Equal(anotherStopInstance.ToJSON()))
+		})
+
+		Context("when the key already exists", func() {
+			It("sets it again", func() {
+				err := bbs.RequestStopLRPInstances([]models.StopLRPInstance{stopInstance})
+				Ω(err).ShouldNot(HaveOccurred())
+
+				err = bbs.RequestStopLRPInstances([]models.StopLRPInstance{stopInstance})
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+		})
+
+		Context("when the store is out of commission", func() {
+			itRetriesUntilStoreComesBack(func() error {
+				return bbs.RequestStopLRPInstances([]models.StopLRPInstance{stopInstance})
 			})
 		})
 	})
@@ -81,7 +123,7 @@ var _ = Describe("StopInstance", func() {
 					ProcessGuid:  stopInstance.ProcessGuid,
 					InstanceGuid: stopInstance.InstanceGuid,
 					Index:        stopInstance.Index,
-				})
+				}, "executor-id")
 				Ω(err).ShouldNot(HaveOccurred())
 
 				err = bbs.ResolveStopLRPInstance(stopInstance)
@@ -103,7 +145,7 @@ var _ = Describe("StopInstance", func() {
 					ProcessGuid:  stopInstance.ProcessGuid,
 					InstanceGuid: stopInstance.InstanceGuid,
 					Index:        stopInstance.Index,
-				})
+				}, "executor-id")
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
