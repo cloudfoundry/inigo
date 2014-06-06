@@ -2,6 +2,7 @@ package inigo_test
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -147,11 +149,48 @@ func (context suiteContextType) Runners() []Runner {
 }
 
 func (context suiteContextType) StopRunners() {
+	errs := make([]string, 0)
 	for _, stoppable := range context.Runners() {
 		if !reflect.ValueOf(stoppable).IsNil() {
-			stoppable.Stop()
+			err := catchPanic(stoppable.Stop)
+			if err != nil {
+				errs = append(errs, err.Error())
+			}
 		}
 	}
+	if len(errs) > 0 {
+		abortTestSuite(errors.New(strings.Join(errs, "\n")))
+	}
+}
+
+func abortTestSuite(abortErr error) {
+	p, err := os.FindProcess(os.Getpid())
+	if err != nil {
+		panic("COULD NOT ABORT: " + err.Error())
+	}
+	println("ABORTING TEST SUITE: ", abortErr.Error())
+	p.Signal(syscall.SIGINT)
+}
+
+func catchPanic(f func()) (err error) {
+	defer func() {
+		result := recover()
+		switch result := result.(type) {
+		case nil:
+			return
+		case error:
+			err = result
+		case string:
+			err = errors.New(result)
+		case fmt.Stringer:
+			err = errors.New(result.String())
+		default:
+			panic(result)
+		}
+	}()
+
+	f()
+	return
 }
 
 var suiteContext suiteContextType
