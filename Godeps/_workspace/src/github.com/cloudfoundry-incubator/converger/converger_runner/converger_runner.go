@@ -31,7 +31,7 @@ func New(binPath, etcdCluster, logLevel string) *ConvergerRunner {
 	}
 }
 
-func (r *ConvergerRunner) Start(convergenceInterval, timeToClaim time.Duration) {
+func (r *ConvergerRunner) Start(kickPendingTaskDuration, expireClaimedTaskDuration, kickPendingLRPStartAuctionDuration, expireClaimedLRPStartAuctionDuration time.Duration) {
 	if r.Session != nil {
 		panic("starting two convergers!!!")
 	}
@@ -41,11 +41,13 @@ func (r *ConvergerRunner) Start(convergenceInterval, timeToClaim time.Duration) 
 			r.binPath,
 			"-etcdCluster", r.config.etcdCluster,
 			"-logLevel", r.config.logLevel,
-			"-convergenceInterval", convergenceInterval.String(),
-			"-timeToClaimTask", timeToClaim.String(),
+			"-kickPendingTaskDuration", kickPendingTaskDuration.String(),
+			"-expireClaimedTaskDuration", expireClaimedTaskDuration.String(),
+			"-kickPendingLRPStartAuctionDuration", kickPendingLRPStartAuctionDuration.String(),
+			"-expireClaimedLRPStartAuctionDuration", expireClaimedLRPStartAuctionDuration.String(),
 		),
-		GinkgoWriter,
-		GinkgoWriter,
+		gexec.NewPrefixedWriter("[converger] ", GinkgoWriter),
+		gexec.NewPrefixedWriter("[converger] ", GinkgoWriter),
 	)
 
 	Ω(err).ShouldNot(HaveOccurred())

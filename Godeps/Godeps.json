@@ -32,7 +32,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/converger/converger_runner",
-			"Rev": "77fed0801001a63ccfa838070609ac457cf94606"
+			"Rev": "141a4fe906c13e860575637ecddd20373a3fa38b"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/delta_force",
@@ -60,7 +60,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/rep/reprunner",
-			"Rev": "1e9fe0a892066b9d329a29997e0efb3f4c809e82"
+			"Rev": "adf4c7b53153146e46527274540e9ed8418fec6a"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/route-emitter/integration/route_emitter_runner",
@@ -68,11 +68,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "342a3348e13e5bcbdaed88e0abfaf6e951f35e7e"
+			"Rev": "7d74d0f04918c159c092ebbec9d090e5f67e1682"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "342a3348e13e5bcbdaed88e0abfaf6e951f35e7e"
+			"Rev": "7d74d0f04918c159c092ebbec9d090e5f67e1682"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/tps/api",

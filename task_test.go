@@ -35,7 +35,7 @@ var _ = Describe("Task", func() {
 		BeforeEach(func() {
 			suiteContext.ExecutorRunner.Start()
 			suiteContext.RepRunner.Start()
-			suiteContext.ConvergerRunner.Start(1*time.Second, 30*time.Minute)
+			suiteContext.ConvergerRunner.Start(1*time.Second, 30*time.Minute, 30*time.Second, 300*time.Second)
 
 			guid = factories.GenerateGuid()
 			task := factories.BuildTaskWithRunAction(
@@ -76,7 +76,7 @@ var _ = Describe("Task", func() {
 
 	Context("when there are no executors listening when a Task is registered", func() {
 		BeforeEach(func() {
-			suiteContext.ConvergerRunner.Start(1*time.Second, 60*time.Second)
+			suiteContext.ConvergerRunner.Start(1*time.Second, 60*time.Second, 30*time.Second, 300*time.Second)
 		})
 
 		It("eventually runs the Task once an executor comes up", func() {
@@ -93,7 +93,7 @@ var _ = Describe("Task", func() {
 
 	Context("when no one picks up the Task", func() {
 		BeforeEach(func() {
-			suiteContext.ConvergerRunner.Start(1*time.Second, 1*time.Second)
+			suiteContext.ConvergerRunner.Start(1*time.Second, 1*time.Second, 30*time.Second, 300*time.Second)
 		})
 
 		It("should be marked as failed, eventually", func() {
@@ -114,7 +114,7 @@ var _ = Describe("Task", func() {
 
 	Context("when an executor disappears", func() {
 		BeforeEach(func() {
-			suiteContext.ConvergerRunner.Start(1*time.Second, 10*time.Second)
+			suiteContext.ConvergerRunner.Start(1*time.Second, 10*time.Second, 30*time.Second, 300*time.Second)
 
 			suiteContext.ExecutorRunner.Start(executor_runner.Config{
 				HeartbeatInterval: 1 * time.Second,
