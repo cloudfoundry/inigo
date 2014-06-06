@@ -40,7 +40,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/inigo/loggregator_runner"
 	"github.com/cloudfoundry-incubator/inigo/router_runner"
-	"github.com/cloudfoundry-incubator/inigo/stager_runner"
+	"github.com/cloudfoundry-incubator/stager/integration/stager_runner"
 )
 
 var SHORT_TIMEOUT = 5.0

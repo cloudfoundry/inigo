@@ -1,6 +1,7 @@
 package inigo_test
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/cloudfoundry-incubator/executor/integration/executor_runner"
@@ -35,7 +36,7 @@ var _ = Describe("Task", func() {
 		BeforeEach(func() {
 			suiteContext.ExecutorRunner.Start()
 			suiteContext.RepRunner.Start()
-			suiteContext.ConvergerRunner.Start(1*time.Second, 30*time.Minute, 30*time.Second, 300*time.Second)
+			suiteContext.ConvergerRunner.Start(5*time.Second, 30*time.Minute, 30*time.Second, 300*time.Second)
 
 			guid = factories.GenerateGuid()
 			task := factories.BuildTaskWithRunAction(
@@ -50,33 +51,51 @@ var _ = Describe("Task", func() {
 		It("eventually runs the Task", func() {
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 		})
+	})
 
-		Context("and another task is registered", func() {
-			var newGuid string
+	Context("when there is no room for a desired task, but room becomes available eventually", func() {
+		var firstTaskGuid string
+		var secondTaskGuid string
 
-			BeforeEach(func() {
-				newGuid = factories.GenerateGuid()
+		BeforeEach(func() {
+			suiteContext.ExecutorRunner.Start()
+			suiteContext.RepRunner.Start()
+			suiteContext.ConvergerRunner.Start(5*time.Second, 30*time.Minute, 30*time.Second, 300*time.Second)
 
-				task := factories.BuildTaskWithRunAction(
-					suiteContext.RepStack,
-					768,
-					768,
-					inigo_server.CurlCommand(newGuid),
-				)
-				bbs.DesireTask(task)
-			})
+			firstTaskGuid = factories.GenerateGuid()
 
-			It("is executed, as the previous task's resources are cleared", func() {
-				Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
+			task := factories.BuildTaskWithRunAction(
+				suiteContext.RepStack,
+				512,
+				512,
+				fmt.Sprintf("%s && sleep 2", inigo_server.CurlCommand(firstTaskGuid)),
+			)
+			bbs.DesireTask(task)
 
-				Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(newGuid))
-			})
+			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(firstTaskGuid))
+
+			secondTaskGuid = factories.GenerateGuid()
+
+			task = factories.BuildTaskWithRunAction(
+				suiteContext.RepStack,
+				768,
+				768,
+				inigo_server.CurlCommand(secondTaskGuid),
+			)
+
+			bbs.DesireTask(task)
+		})
+
+		It("is executed, as the previous task's resources are cleared", func() {
+			Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
+
+			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(secondTaskGuid))
 		})
 	})
 
 	Context("when there are no executors listening when a Task is registered", func() {
 		BeforeEach(func() {
-			suiteContext.ConvergerRunner.Start(1*time.Second, 60*time.Second, 30*time.Second, 300*time.Second)
+			suiteContext.ConvergerRunner.Start(5*time.Second, 60*time.Second, 30*time.Second, 300*time.Second)
 		})
 
 		It("eventually runs the Task once an executor comes up", func() {
@@ -93,7 +112,7 @@ var _ = Describe("Task", func() {
 
 	Context("when no one picks up the Task", func() {
 		BeforeEach(func() {
-			suiteContext.ConvergerRunner.Start(1*time.Second, 1*time.Second, 30*time.Second, 300*time.Second)
+			suiteContext.ConvergerRunner.Start(5*time.Second, 1*time.Second, 30*time.Second, 300*time.Second)
 		})
 
 		It("should be marked as failed, eventually", func() {
@@ -114,7 +133,7 @@ var _ = Describe("Task", func() {
 
 	Context("when an executor disappears", func() {
 		BeforeEach(func() {
-			suiteContext.ConvergerRunner.Start(1*time.Second, 10*time.Second, 30*time.Second, 300*time.Second)
+			suiteContext.ConvergerRunner.Start(5*time.Second, 10*time.Second, 30*time.Second, 300*time.Second)
 
 			suiteContext.ExecutorRunner.Start(executor_runner.Config{
 				HeartbeatInterval: 1 * time.Second,

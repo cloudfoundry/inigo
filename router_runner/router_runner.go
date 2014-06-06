@@ -45,8 +45,8 @@ func New(routerPath string, config *config.Config) *Runner {
 func (runner *Runner) Start() {
 	sess, err := gexec.Start(
 		exec.Command(runner.routerPath, "-c", runner.configFile.Name()),
-		ginkgo.GinkgoWriter,
-		ginkgo.GinkgoWriter,
+		gexec.NewPrefixedWriter("\x1b[32m[o]\x1b[37m[router]\x1b[0m ", ginkgo.GinkgoWriter),
+		gexec.NewPrefixedWriter("\x1b[91m[e]\x1b[37m[router]\x1b[0m ", ginkgo.GinkgoWriter),
 	)
 
 	Ω(err).ShouldNot(HaveOccurred())

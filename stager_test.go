@@ -13,8 +13,8 @@ import (
 	"github.com/fraenkel/candiedyaml"
 
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
-	"github.com/cloudfoundry-incubator/inigo/stager_runner"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
+	"github.com/cloudfoundry-incubator/stager/integration/stager_runner"
 	"github.com/cloudfoundry/yagnats"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

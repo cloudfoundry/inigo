@@ -57,8 +57,8 @@ func (r *FileServerRunner) Start() {
 			"-ccUsername", r.ccUsername,
 			"-ccPassword", r.ccPassword,
 		),
-		ginkgo.GinkgoWriter,
-		ginkgo.GinkgoWriter,
+		gexec.NewPrefixedWriter("\x1b[32m[o]\x1b[91m[fileserver]\x1b[0m ", ginkgo.GinkgoWriter),
+		gexec.NewPrefixedWriter("\x1b[91m[e]\x1b[91m[fileserver]\x1b[0m ", ginkgo.GinkgoWriter),
 	)
 	Ω(err).ShouldNot(HaveOccurred())
 

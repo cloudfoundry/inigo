@@ -53,8 +53,8 @@ func New(loggregatorPath string, config Config) *LoggregatorRunner {
 func (runner *LoggregatorRunner) Start() {
 	sess, err := gexec.Start(
 		exec.Command(runner.loggregatorPath, "--config", runner.configFile.Name()),
-		ginkgo.GinkgoWriter,
-		ginkgo.GinkgoWriter,
+		gexec.NewPrefixedWriter("\x1b[32m[o]\x1b[92m[loggregator]\x1b[0m ", ginkgo.GinkgoWriter),
+		gexec.NewPrefixedWriter("\x1b[91m[e]\x1b[92m[loggregator]\x1b[0m ", ginkgo.GinkgoWriter),
 	)
 
 	Ω(err).ShouldNot(HaveOccurred())
