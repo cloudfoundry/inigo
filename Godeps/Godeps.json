@@ -20,7 +20,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/app-manager/integration/app_manager_runner",
-			"Rev": "c8c64eb204a79d9a18770bb592fab967eb680259"
+			"Rev": "b5ad163a6420766a08afc1caa3278e1ffbea40db"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auctioneer/integration/auctioneer_runner",
@@ -68,11 +68,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "7d74d0f04918c159c092ebbec9d090e5f67e1682"
+			"Rev": "659b15e37a9111074e9b0ec008b989912ec4dafe"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "7d74d0f04918c159c092ebbec9d090e5f67e1682"
+			"Rev": "659b15e37a9111074e9b0ec008b989912ec4dafe"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/tps/api",
@@ -121,7 +121,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
-			"Rev": "8d010407d220f029000b4f21687dd9e3b3b8b190"
+			"Rev": "4ab2c502399a8be4998fb8d76a2cc16654d135ee"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/yagnats",
@@ -138,7 +138,7 @@
 		},
 		{
 			"ImportPath": "github.com/gorilla/websocket",
-			"Rev": "10a95d14a3a215f5e2045d3dbbcd29f1ab209586"
+			"Rev": "f4076986b69612ecb8bc7ce06d742eda6286200d"
 		},
 		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
