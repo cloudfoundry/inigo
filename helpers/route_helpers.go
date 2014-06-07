@@ -1,11 +1,11 @@
 package helpers
 
 import (
+	. "github.com/onsi/gomega"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"sort"
-	. "github.com/onsi/gomega"
 )
 
 func ResponseCodeFromHostPoller(routerAddr string, host string) func() int {

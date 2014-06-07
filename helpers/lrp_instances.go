@@ -2,9 +2,9 @@ package helpers
 
 import (
 	"encoding/json"
-	"net/http"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/router"
+	"net/http"
 
 	tpsapi "github.com/cloudfoundry-incubator/tps/api"
 )
