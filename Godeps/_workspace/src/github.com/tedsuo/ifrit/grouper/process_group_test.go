@@ -1,9 +1,9 @@
 package grouper_test
 
 import (
-	"os"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"os"
 
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"

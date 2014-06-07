@@ -4,8 +4,8 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/nu7hatch/gouuid"
 	steno "github.com/cloudfoundry/gosteno"
+	"github.com/nu7hatch/gouuid"
 )
 
 var log = steno.NewLogger("common.logger")

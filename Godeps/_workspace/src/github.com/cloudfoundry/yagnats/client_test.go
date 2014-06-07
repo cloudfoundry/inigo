@@ -2,11 +2,11 @@ package yagnats
 
 import (
 	"fmt"
+	. "launchpad.net/gocheck"
 	"net"
 	"os/exec"
 	"testing"
 	"time"
-	. "launchpad.net/gocheck"
 )
 
 func Test(t *testing.T) { TestingT(t) }

@@ -5,14 +5,14 @@ import (
 	. "github.com/onsi/ginkgo/internal/suite"
 	. "github.com/onsi/gomega"
 
-	"math/rand"
-	"time"
 	"github.com/onsi/ginkgo/config"
 	"github.com/onsi/ginkgo/internal/codelocation"
 	Failer "github.com/onsi/ginkgo/internal/failer"
 	Writer "github.com/onsi/ginkgo/internal/writer"
 	"github.com/onsi/ginkgo/reporters"
 	"github.com/onsi/ginkgo/types"
+	"math/rand"
+	"time"
 )
 
 var _ = Describe("Suite", func() {

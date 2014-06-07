@@ -2,13 +2,13 @@ package http_server_test
 
 import (
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"syscall"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/http_server"
+	"io/ioutil"
+	"net/http"
+	"syscall"
 )
 
 var _ = Describe("HttpServer", func() {

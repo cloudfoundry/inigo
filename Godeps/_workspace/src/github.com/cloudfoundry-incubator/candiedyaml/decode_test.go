@@ -15,13 +15,13 @@ limitations under the License.
 package candiedyaml
 
 import (
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"math"
 	"os"
 	"strconv"
 	"strings"
 	"time"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Decode", func() {

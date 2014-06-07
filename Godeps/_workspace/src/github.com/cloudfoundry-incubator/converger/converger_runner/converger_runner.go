@@ -31,7 +31,10 @@ func New(binPath, etcdCluster, logLevel string) *ConvergerRunner {
 	}
 }
 
-func (r *ConvergerRunner) Start(kickPendingTaskDuration, expireClaimedTaskDuration, kickPendingLRPStartAuctionDuration, expireClaimedLRPStartAuctionDuration time.Duration) {
+func (r *ConvergerRunner) Start(
+	convergeRepeatInterval, kickPendingTaskDuration, expireClaimedTaskDuration, kickPendingLRPStartAuctionDuration, expireClaimedLRPStartAuctionDuration time.Duration,
+) {
+
 	if r.Session != nil {
 		panic("starting two convergers!!!")
 	}
@@ -41,6 +44,7 @@ func (r *ConvergerRunner) Start(kickPendingTaskDuration, expireClaimedTaskDurati
 			r.binPath,
 			"-etcdCluster", r.config.etcdCluster,
 			"-logLevel", r.config.logLevel,
+			"-convergeRepeatInterval", convergeRepeatInterval.String(),
 			"-kickPendingTaskDuration", kickPendingTaskDuration.String(),
 			"-expireClaimedTaskDuration", expireClaimedTaskDuration.String(),
 			"-kickPendingLRPStartAuctionDuration", kickPendingLRPStartAuctionDuration.String(),
