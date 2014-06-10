@@ -47,8 +47,6 @@ var _ = Describe("Convergence to desired state", func() {
 		processGuid = guid.String()
 
 		suiteContext.FileServerRunner.Start()
-		suiteContext.ExecutorRunner.Start()
-		suiteContext.RepRunner.Start()
 		suiteContext.AuctioneerRunner.Start()
 		suiteContext.AppManagerRunner.Start()
 		suiteContext.RouteEmitterRunner.Start()
@@ -68,24 +66,6 @@ var _ = Describe("Convergence to desired state", func() {
 			fmt.Sprintf("/tail/?app=%s", appId),
 			"App",
 		)
-
-		desiredAppRequest = models.DesireAppRequestFromCC{
-			ProcessGuid:  processGuid,
-			DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
-			Stack:        suiteContext.RepStack,
-			Environment:  []models.EnvironmentVariable{{Key: "VCAP_APPLICATION", Value: "{}"}},
-			NumInstances: 1,
-			Routes:       []string{"route-to-simple"},
-			StartCommand: "./run",
-			LogGuid:      appId,
-		}
-
-		err = suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
-		Ω(err).ShouldNot(HaveOccurred())
-
-		Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid), LONGER_TIMEOUT).Should(HaveLen(1))
-		poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-		Eventually(poller, LONGER_TIMEOUT, 1).Should(Equal([]string{"0"}))
 	})
 
 	AfterEach(func() {
@@ -94,20 +74,137 @@ var _ = Describe("Convergence to desired state", func() {
 		close(stop)
 	})
 
-	Describe("Executor fault tolerance", func() {
+	FDescribe("Executor fault tolerance", func() {
 		Context("When starting a long-running process and then bouncing the executor", func() {
-			FIt("Eventually brings the long-running process up", func() {
+			BeforeEach(func() {
+				suiteContext.ExecutorRunner.Start()
+				suiteContext.RepRunner.Start()
+
+				desiredAppRequest = models.DesireAppRequestFromCC{
+					ProcessGuid:  processGuid,
+					DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
+					Stack:        suiteContext.RepStack,
+					Environment:  []models.EnvironmentVariable{{Key: "VCAP_APPLICATION", Value: "{}"}},
+					NumInstances: 1,
+					Routes:       []string{"route-to-simple"},
+					StartCommand: "./run",
+					LogGuid:      appId,
+				}
+
+				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+				Ω(err).ShouldNot(HaveOccurred())
+
+				running_lrps_poller := helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
+				hello_world_instance_poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
+				Eventually(running_lrps_poller, LONGER_TIMEOUT).Should(HaveLen(1))
+				Eventually(hello_world_instance_poller, LONGER_TIMEOUT, 1).Should(Equal([]string{"0"}))
+			})
+
+			It("Eventually brings the long-running process up", func() {
 				suiteContext.ExecutorRunner.Stop()
 
-				Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid), LONGER_TIMEOUT).Should(BeEmpty())
-				poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-				Eventually(poller, LONGER_TIMEOUT, 1).Should(BeEmpty())
+				running_lrps_poller := helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
+				hello_world_instance_poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
+				Eventually(running_lrps_poller, LONGER_TIMEOUT).Should(BeEmpty())
+				Eventually(hello_world_instance_poller, LONGER_TIMEOUT, 1).Should(BeEmpty())
 
 				suiteContext.ExecutorRunner.Start()
 
-				Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid), LONGER_TIMEOUT).Should(HaveLen(1))
-				poller = helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-				Eventually(poller, LONGER_TIMEOUT, 1).Should(Equal([]string{"0"}))
+				running_lrps_poller = helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
+				hello_world_instance_poller = helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
+				Eventually(running_lrps_poller, LONGER_TIMEOUT).Should(HaveLen(1))
+				Eventually(hello_world_instance_poller, LONGER_TIMEOUT, 1).Should(Equal([]string{"0"}))
+			})
+		})
+
+		Context("When trying to start a long-running process before the executor is up", func() {
+			BeforeEach(func() {
+				suiteContext.RepRunner.Start()
+
+				desiredAppRequest = models.DesireAppRequestFromCC{
+					ProcessGuid:  processGuid,
+					DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
+					Stack:        suiteContext.RepStack,
+					Environment:  []models.EnvironmentVariable{{Key: "VCAP_APPLICATION", Value: "{}"}},
+					NumInstances: 1,
+					Routes:       []string{"route-to-simple"},
+					StartCommand: "./run",
+					LogGuid:      appId,
+				}
+
+				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+				Ω(err).ShouldNot(HaveOccurred())
+
+				running_lrps_poller := helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
+				hello_world_instance_poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
+				Consistently(running_lrps_poller, LONGER_TIMEOUT).Should(BeEmpty())
+				Consistently(hello_world_instance_poller, LONGER_TIMEOUT, 1).Should(BeEmpty())
+			})
+
+			It("Eventually brings the long-running process up", func() {
+				suiteContext.ExecutorRunner.Start()
+
+				running_lrps_poller := helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
+				hello_world_instance_poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
+				Eventually(running_lrps_poller, LONGER_TIMEOUT).Should(HaveLen(1))
+				Eventually(hello_world_instance_poller, LONGER_TIMEOUT, 1).Should(Equal([]string{"0"}))
+			})
+		})
+
+		Context("When the original request to stop a long-running process is lost", func() {
+			BeforeEach(func() {
+				suiteContext.RepRunner.Start()
+				suiteContext.ExecutorRunner.Start()
+
+				desiredAppRequest = models.DesireAppRequestFromCC{
+					ProcessGuid:  processGuid,
+					DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
+					Stack:        suiteContext.RepStack,
+					Environment:  []models.EnvironmentVariable{{Key: "VCAP_APPLICATION", Value: "{}"}},
+					NumInstances: 1,
+					Routes:       []string{"route-to-simple"},
+					StartCommand: "./run",
+					LogGuid:      appId,
+				}
+
+				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+				Ω(err).ShouldNot(HaveOccurred())
+
+				running_lrps_poller := helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
+				hello_world_instance_poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
+				Eventually(running_lrps_poller, LONGER_TIMEOUT).Should(HaveLen(1))
+				Eventually(hello_world_instance_poller, LONGER_TIMEOUT, 1).Should(Equal([]string{"0"}))
+			})
+
+			It("Eventually brings the long-running process down", func() {
+				suiteContext.RepRunner.Stop()
+
+				desiredAppStopRequest := models.DesireAppRequestFromCC{
+					ProcessGuid:  processGuid,
+					DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
+					Stack:        suiteContext.RepStack,
+					Environment:  []models.EnvironmentVariable{{Key: "VCAP_APPLICATION", Value: "{}"}},
+					NumInstances: 0,
+					Routes:       []string{"route-to-simple"},
+					StartCommand: "./run",
+					LogGuid:      appId,
+				}
+
+				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppStopRequest.ToJSON())
+				Ω(err).ShouldNot(HaveOccurred())
+
+				running_lrps_poller := helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
+				Eventually(running_lrps_poller, LONGER_TIMEOUT).Should(HaveLen(1))
+
+				running_lrps_poller = helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
+				Consistently(running_lrps_poller, LONGER_TIMEOUT).Should(HaveLen(1))
+
+				suiteContext.RepRunner.Start()
+
+				running_lrps_poller = helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
+				hello_world_instance_poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
+				Eventually(running_lrps_poller, LONGER_TIMEOUT).Should(BeEmpty())
+				Eventually(hello_world_instance_poller, LONGER_TIMEOUT, 1).Should(BeEmpty())
 			})
 		})
 	})
