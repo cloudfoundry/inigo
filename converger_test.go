@@ -74,7 +74,7 @@ var _ = Describe("Convergence to desired state", func() {
 		close(stop)
 	})
 
-	FDescribe("Executor fault tolerance", func() {
+	Describe("Executor fault tolerance", func() {
 		Context("When starting a long-running process and then bouncing the executor", func() {
 			BeforeEach(func() {
 				suiteContext.ExecutorRunner.Start()
