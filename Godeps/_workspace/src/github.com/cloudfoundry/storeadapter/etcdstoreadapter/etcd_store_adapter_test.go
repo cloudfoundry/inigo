@@ -2,6 +2,7 @@ package etcdstoreadapter_test
 
 import (
 	"fmt"
+	"time"
 	. "github.com/cloudfoundry/storeadapter"
 	. "github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	. "github.com/cloudfoundry/storeadapter/storenodematchers"
@@ -9,7 +10,6 @@ import (
 	"github.com/cloudfoundry/storeadapter/workerpool"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"time"
 )
 
 var counter = 0

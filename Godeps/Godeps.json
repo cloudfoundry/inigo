@@ -88,7 +88,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",
-			"Rev": "b3094fff97ef8fbf83267a7cb5638ea981bbf263"
+			"Rev": "5e86f8f8002a16ac48ec49f98e38c6b044a9058b"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gorouter/common",
@@ -142,7 +142,7 @@
 		},
 		{
 			"ImportPath": "github.com/gorilla/websocket",
-			"Rev": "f4076986b69612ecb8bc7ce06d742eda6286200d"
+			"Rev": "efd7f76a14d91b4a8e9597306f554305ac9b0b9b"
 		},
 		{
 			"ImportPath": "github.com/nu7hatch/gouuid",

@@ -9,8 +9,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 	"github.com/cloudfoundry-incubator/garden/transport"
+	protocol "github.com/cloudfoundry-incubator/garden/protocol"
 )
 
 var _ = Describe("Reading request messages over the wire", func() {
