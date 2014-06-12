@@ -24,7 +24,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auctioneer/integration/auctioneer_runner",
-			"Rev": "7e25e179c2122dffb4528b207b622b7fc95259f7"
+			"Rev": "6ddf34070ce9b3da62ead60a60d9bc73284ba299"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/candiedyaml",
@@ -44,19 +44,19 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/client",
-			"Rev": "005395c17e718bc99096cf20f40afd6e3086d883"
+			"Rev": "fe714b1f5cbae4e6fe1a20a4d5db73329e7da730"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/protocol",
-			"Rev": "005395c17e718bc99096cf20f40afd6e3086d883"
+			"Rev": "fe714b1f5cbae4e6fe1a20a4d5db73329e7da730"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/transport",
-			"Rev": "005395c17e718bc99096cf20f40afd6e3086d883"
+			"Rev": "fe714b1f5cbae4e6fe1a20a4d5db73329e7da730"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/warden",
-			"Rev": "005395c17e718bc99096cf20f40afd6e3086d883"
+			"Rev": "fe714b1f5cbae4e6fe1a20a4d5db73329e7da730"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/rep/reprunner",
@@ -88,7 +88,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",
-			"Rev": "5e86f8f8002a16ac48ec49f98e38c6b044a9058b"
+			"Rev": "5cede89760202f3f081db886747c499c755ddf4e"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gorouter/common",
