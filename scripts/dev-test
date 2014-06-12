@@ -12,6 +12,7 @@ REPOS="
   github.com/cloudfoundry-incubator/rep
   github.com/cloudfoundry-incubator/stager
   github.com/cloudfoundry-incubator/app-manager
+  github.com/cloudfoundry-incubator/nsync
   github.com/cloudfoundry-incubator/file-server
   github.com/cloudfoundry-incubator/linux-circus
   github.com/cloudfoundry-incubator/warden-linux

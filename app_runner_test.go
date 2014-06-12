@@ -43,6 +43,7 @@ var _ = Describe("AppRunner", func() {
 			suiteContext.RepRunner.Start()
 			suiteContext.AuctioneerRunner.Start(AUCTION_MAX_ROUNDS)
 			suiteContext.AppManagerRunner.Start()
+			suiteContext.NsyncRunner.Start()
 			suiteContext.RouteEmitterRunner.Start()
 			suiteContext.RouterRunner.Start()
 

@@ -63,6 +63,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 		suiteContext.FileServerRunner.Start()
 		suiteContext.AppManagerRunner.Start()
+		suiteContext.NsyncRunner.Start()
 		suiteContext.RouteEmitterRunner.Start()
 		suiteContext.RouterRunner.Start()
 		suiteContext.ConvergerRunner.Start(CONVERGE_REPEAT_INTERVAL, 30*time.Second, 5*time.Minute, PENDING_AUCTION_KICK_THRESHOLD, CLAIMED_AUCTION_REAP_THRESHOLD)

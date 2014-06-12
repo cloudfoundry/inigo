@@ -19,6 +19,7 @@ import (
 	"github.com/cloudfoundry-incubator/converger/converger_runner"
 	"github.com/cloudfoundry-incubator/executor/integration/executor_runner"
 	"github.com/cloudfoundry-incubator/garden/warden"
+	"github.com/cloudfoundry-incubator/nsync/integration/nsync_runner"
 	"github.com/cloudfoundry-incubator/rep/reprunner"
 	"github.com/cloudfoundry-incubator/route-emitter/integration/route_emitter_runner"
 	"github.com/cloudfoundry-incubator/tps/integration/tpsrunner"
@@ -53,6 +54,7 @@ type sharedContextType struct {
 	RepPath          string
 	StagerPath       string
 	AppManagerPath   string
+	NsyncPath        string
 	FileServerPath   string
 	LoggregatorPath  string
 	RouteEmitterPath string
@@ -111,6 +113,7 @@ type suiteContextType struct {
 
 	StagerRunner     *stager_runner.StagerRunner
 	AppManagerRunner *app_manager_runner.AppManagerRunner
+	NsyncRunner      *nsync_runner.NsyncRunner
 
 	FakeCC        *fake_cc.FakeCC
 	FakeCCAddress string
@@ -143,6 +146,7 @@ func (context suiteContextType) Runners() []Runner {
 		context.EtcdRunner,
 		context.RouteEmitterRunner,
 		context.RouterRunner,
+		context.NsyncRunner,
 	}
 }
 
@@ -249,10 +253,15 @@ func beforeSuite(encodedSharedContext []byte) {
 		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
 	)
 
+	context.NsyncRunner = nsync_runner.New(
+		context.SharedContext.NsyncPath,
+		context.EtcdRunner.NodeURLS(),
+		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
+	)
+
 	context.AppManagerRunner = app_manager_runner.New(
 		context.SharedContext.AppManagerPath,
 		context.EtcdRunner.NodeURLS(),
-		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
 		map[string]string{context.RepStack: "some-lifecycle-bundle.tgz"},
 		fmt.Sprintf("127.0.0.1:%d", context.RepPort),
 	)
@@ -393,6 +402,9 @@ func (node *nodeOneType) CompileTestedExecutables() {
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.StagerPath, err = gexec.BuildIn(os.Getenv("STAGER_GOPATH"), "github.com/cloudfoundry-incubator/stager", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	node.context.NsyncPath, err = gexec.BuildIn(os.Getenv("NSYNC_GOPATH"), "github.com/cloudfoundry-incubator/nsync", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.AppManagerPath, err = gexec.BuildIn(os.Getenv("APP_MANAGER_GOPATH"), "github.com/cloudfoundry-incubator/app-manager", "-race")
