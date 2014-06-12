@@ -2,6 +2,22 @@
 
 set -e -x
 
+REPOS="
+  github.com/cloudfoundry-incubator/inigo
+  github.com/cloudfoundry-incubator/auctioneer
+  github.com/cloudfoundry-incubator/route-emitter
+  github.com/cloudfoundry/gorouter
+  github.com/cloudfoundry-incubator/executor
+  github.com/cloudfoundry-incubator/converger
+  github.com/cloudfoundry-incubator/rep
+  github.com/cloudfoundry-incubator/stager
+  github.com/cloudfoundry-incubator/app-manager
+  github.com/cloudfoundry-incubator/file-server
+  github.com/cloudfoundry-incubator/linux-circus
+  github.com/cloudfoundry-incubator/warden-linux
+  github.com/cloudfoundry-incubator/tps
+"
+
 DEV_GOPATH=$(cd ${1:-$HOME/go} && pwd)
 TMP_GOPATH=/tmp/inigo
 
@@ -12,61 +28,24 @@ cp $(dirname $0)/.drone.yml ${TMP_GOPATH}/.drone.yml
 go test -c
 rm inigo.test
 
-function copy_to_gopath {
-  mkdir -p ${TMP_GOPATH}/src/${1}
-  rsync --del --exclude '.*' -a ${DEV_GOPATH}/src/${1}/ ${TMP_GOPATH}/src/${1}/
-}
-
 pushd $TMP_GOPATH
-  go get \
-    github.com/cloudfoundry-incubator/inigo/...\
-    github.com/cloudfoundry-incubator/auctioneer/... \
-    github.com/cloudfoundry-incubator/route-emitter/... \
-    github.com/cloudfoundry/gorouter/... \
-    github.com/cloudfoundry-incubator/executor/... \
-    github.com/cloudfoundry-incubator/converger/... \
-    github.com/cloudfoundry-incubator/rep/... \
-    github.com/cloudfoundry-incubator/stager/... \
-    github.com/cloudfoundry-incubator/app-manager/... \
-    github.com/cloudfoundry-incubator/file-server/... \
-    github.com/cloudfoundry-incubator/linux-circus/... \
-    github.com/cloudfoundry-incubator/warden-linux/... \
-    github.com/cloudfoundry-incubator/tps/...
+  # make sure we have all our dependencies (any version)
+  go get $(for repo in $REPOS; do echo -n " $repo/..."; done)
 
-  godep save \
-    github.com/cloudfoundry-incubator/inigo/...\
-    github.com/cloudfoundry-incubator/auctioneer/... \
-    github.com/cloudfoundry-incubator/route-emitter/... \
-    github.com/cloudfoundry/gorouter/... \
-    github.com/cloudfoundry-incubator/executor/... \
-    github.com/cloudfoundry-incubator/converger/... \
-    github.com/cloudfoundry-incubator/rep/... \
-    github.com/cloudfoundry-incubator/stager/... \
-    github.com/cloudfoundry-incubator/app-manager/... \
-    github.com/cloudfoundry-incubator/file-server/... \
-    github.com/cloudfoundry-incubator/linux-circus/... \
-    github.com/cloudfoundry-incubator/warden-linux/... \
-    github.com/cloudfoundry-incubator/tps/...
-
+  # pull in their packages into the temporary gopath, using godep so that
+  # it'll only fetch the packages that are used (not entire repos)
+  godep save $(for repo in $REPOS; do echo -n " $repo/..."; done)
   rsync --del --exclude '.*' -a Godeps/_workspace/src/ src/
   rm -rf Godeps
 popd
 
+function copy_to_gopath {
+  mkdir -p ${TMP_GOPATH}/src/${1}
+  rsync --del --exclude '.*' --exclude '*.test' -a ${DEV_GOPATH}/src/${1}/ ${TMP_GOPATH}/src/${1}/
+}
+
 # grab and set up our components
-for package in \
-    github.com/cloudfoundry-incubator/inigo \
-    github.com/cloudfoundry-incubator/auctioneer \
-    github.com/cloudfoundry-incubator/route-emitter \
-    github.com/cloudfoundry/gorouter \
-    github.com/cloudfoundry-incubator/executor \
-    github.com/cloudfoundry-incubator/converger \
-    github.com/cloudfoundry-incubator/rep \
-    github.com/cloudfoundry-incubator/stager \
-    github.com/cloudfoundry-incubator/app-manager \
-    github.com/cloudfoundry-incubator/file-server \
-    github.com/cloudfoundry-incubator/linux-circus \
-    github.com/cloudfoundry-incubator/warden-linux \
-    github.com/cloudfoundry-incubator/tps; do
+for package in $REPOS; do
   copy_to_gopath $package &
 done
 
