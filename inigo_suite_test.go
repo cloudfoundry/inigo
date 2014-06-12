@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -17,8 +18,6 @@ import (
 	"github.com/cloudfoundry-incubator/auctioneer/integration/auctioneer_runner"
 	"github.com/cloudfoundry-incubator/converger/converger_runner"
 	"github.com/cloudfoundry-incubator/executor/integration/executor_runner"
-	WardenClient "github.com/cloudfoundry-incubator/garden/client"
-	WardenConnection "github.com/cloudfoundry-incubator/garden/client/connection"
 	"github.com/cloudfoundry-incubator/garden/warden"
 	"github.com/cloudfoundry-incubator/rep/reprunner"
 	"github.com/cloudfoundry-incubator/route-emitter/integration/route_emitter_runner"
@@ -45,7 +44,7 @@ var SHORT_TIMEOUT = 5.0
 var LONG_TIMEOUT = 15.0
 var AUCTION_MAX_ROUNDS = 3 //we limit this to prevent overwhelming numbers of auctioneer logs.  it should not impact the behavior of the tests.
 
-var wardenAddr = filepath.Join(os.TempDir(), "warden-temp-socker", "warden.sock")
+var wardenRunner *WardenRunner.Runner
 
 type sharedContextType struct {
 	AuctioneerPath   string
@@ -60,9 +59,7 @@ type sharedContextType struct {
 	RouterPath       string
 	CircusZipPath    string
 	TPSPath          string
-
-	WardenAddr    string
-	WardenNetwork string
+	WardenPath       string
 }
 
 func DecodeSharedContext(data []byte) sharedContextType {
@@ -88,9 +85,11 @@ type suiteContextType struct {
 
 	ExternalAddress string
 
-	RepStack     string
-	EtcdRunner   *etcdstorerunner.ETCDClusterRunner
-	WardenClient warden.Client
+	RepStack   string
+	EtcdRunner *etcdstorerunner.ETCDClusterRunner
+
+	WardenProcess ifrit.Process
+	WardenClient  warden.Client
 
 	NatsRunner *natsrunner.NATSRunner
 	NatsPort   int
@@ -178,6 +177,19 @@ func beforeSuite(encodedSharedContext []byte) {
 
 	Ω(context.ExternalAddress).ShouldNot(BeEmpty())
 
+	wardenBinPath := os.Getenv("WARDEN_BINPATH")
+	wardenRootfs := os.Getenv("WARDEN_ROOTFS")
+
+	if wardenBinPath == "" || wardenRootfs == "" {
+		println("Please define either WARDEN_NETWORK and WARDEN_ADDR (for a running Warden), or")
+		println("WARDEN_BINPATH and WARDEN_ROOTFS (for the tests to start it)")
+		println("")
+
+		Fail("warden is not set up")
+	}
+
+	wardenRunner = WardenRunner.New(context.SharedContext.WardenPath, wardenBinPath, wardenRootfs)
+
 	context.FakeCC = fake_cc.New()
 	context.FakeCCAddress = context.FakeCC.Start()
 
@@ -206,8 +218,8 @@ func beforeSuite(encodedSharedContext []byte) {
 	context.ExecutorRunner = executor_runner.New(
 		context.SharedContext.ExecutorPath,
 		fmt.Sprintf("127.0.0.1:%d", context.ExecutorPort),
-		context.SharedContext.WardenNetwork,
-		context.SharedContext.WardenAddr,
+		wardenRunner.Network(),
+		wardenRunner.Addr(),
 		context.EtcdRunner.NodeURLS(),
 		fmt.Sprintf("127.0.0.1:%d", context.LoggregatorInPort),
 		context.LoggregatorSharedSecret,
@@ -289,13 +301,6 @@ func beforeSuite(encodedSharedContext []byte) {
 		context.EtcdRunner.NodeURLS(),
 	)
 
-	wardenClient := WardenClient.New(&WardenConnection.Info{
-		Network: context.SharedContext.WardenNetwork,
-		Addr:    context.SharedContext.WardenAddr,
-	})
-
-	context.WardenClient = wardenClient
-
 	// make context available to all tests
 	suiteContext = context
 }
@@ -312,7 +317,6 @@ func TestInigo(t *testing.T) {
 	nodeOne := &nodeOneType{}
 
 	SynchronizedBeforeSuite(func() []byte {
-		nodeOne.StartWarden()
 		nodeOne.CompileTestedExecutables()
 
 		return nodeOne.context.Encode()
@@ -324,6 +328,10 @@ func TestInigo(t *testing.T) {
 		suiteContext.NatsRunner.Start()
 		suiteContext.LoggregatorRunner.Start()
 
+		suiteContext.WardenClient = wardenRunner.NewClient()
+		suiteContext.WardenProcess = ifrit.Envoke(wardenRunner)
+		Eventually(wardenRunner.TryDial, 10).ShouldNot(HaveOccurred())
+
 		inigo_server.Start(suiteContext.WardenClient)
 
 		currentTestDescription := CurrentGinkgoTestDescription()
@@ -334,9 +342,10 @@ func TestInigo(t *testing.T) {
 		suiteContext.StopRunners()
 
 		inigo_server.Stop(suiteContext.WardenClient)
-	})
 
-	SynchronizedAfterSuite(afterSuite, nodeOne.StopWarden)
+		suiteContext.WardenProcess.Signal(syscall.SIGKILL)
+		Eventually(suiteContext.WardenProcess.Wait(), 5).Should(Receive())
+	})
 
 	RunSpecs(t, "Inigo Integration Suite")
 }
@@ -359,44 +368,15 @@ func extractTimeoutsFromEnvironment() {
 }
 
 type nodeOneType struct {
-	wardenRunner *WardenRunner.Runner
-	context      sharedContextType
-}
-
-func (node *nodeOneType) StartWarden() {
-	wardenBinPath := os.Getenv("WARDEN_BINPATH")
-	wardenRootfs := os.Getenv("WARDEN_ROOTFS")
-
-	if wardenBinPath == "" || wardenRootfs == "" {
-		println("Please define either WARDEN_NETWORK and WARDEN_ADDR (for a running Warden), or")
-		println("WARDEN_BINPATH and WARDEN_ROOTFS (for the tests to start it)")
-		println("")
-
-		Fail("warden is not set up")
-	}
-
-	var err error
-
-	err = os.MkdirAll(filepath.Dir(wardenAddr), 0700)
-	Ω(err).ShouldNot(HaveOccurred())
-
-	wardenPath, err := gexec.BuildIn(os.Getenv("WARDEN_LINUX_GOPATH"), "github.com/cloudfoundry-incubator/warden-linux", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	node.wardenRunner, err = WardenRunner.New(wardenPath, wardenBinPath, wardenRootfs, "unix", wardenAddr)
-	Ω(err).ShouldNot(HaveOccurred())
-
-	node.wardenRunner.SnapshotsPath = ""
-
-	err = node.wardenRunner.Start()
-	Ω(err).ShouldNot(HaveOccurred())
-
-	node.context.WardenAddr = node.wardenRunner.Addr
-	node.context.WardenNetwork = node.wardenRunner.Network
+	context sharedContextType
 }
 
 func (node *nodeOneType) CompileTestedExecutables() {
 	var err error
+
+	node.context.WardenPath, err = gexec.BuildIn(os.Getenv("WARDEN_LINUX_GOPATH"), "github.com/cloudfoundry-incubator/warden-linux", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
+
 	node.context.LoggregatorPath, err = gexec.BuildIn(os.Getenv("LOGGREGATOR_GOPATH"), "loggregator/loggregator")
 	Ω(err).ShouldNot(HaveOccurred())
 
@@ -463,11 +443,4 @@ func (node *nodeOneType) compileAndZipUpCircus() string {
 	Ω(err).ShouldNot(HaveOccurred())
 
 	return filepath.Join(circusDir, "circus.zip")
-}
-
-func (node *nodeOneType) StopWarden() {
-	if node.wardenRunner != nil {
-		node.wardenRunner.TearDown()
-		node.wardenRunner.Stop()
-	}
 }
