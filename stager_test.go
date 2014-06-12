@@ -37,10 +37,12 @@ func downloadBuildArtifactsCache(appId string) []byte {
 
 var _ = Describe("Stager", func() {
 	var otherStagerRunner *stager_runner.StagerRunner
-	var appId = "some-app-id"
-	var taskId = "some-task-id"
+	var appId string
+	var taskId string
 
 	BeforeEach(func() {
+		appId = factories.GenerateGuid()
+		taskId = factories.GenerateGuid()
 		suiteContext.FileServerRunner.Start()
 		otherStagerRunner = stager_runner.New(
 			suiteContext.SharedContext.StagerPath,
