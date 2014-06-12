@@ -35,46 +35,62 @@ var _ = Describe("Convergence to desired state", func() {
 	CLAIMED_AUCTION_REAP_THRESHOLD := 5 * time.Second
 	WAIT_FOR_MULTIPLE_CONVERGE_INTERVAL := CONVERGE_REPEAT_INTERVAL * 3
 
+	constructDesiredAppRequest := func(numInstances int) models.DesireAppRequestFromCC {
+		return models.DesireAppRequestFromCC{
+			ProcessGuid:  processGuid,
+			DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
+			Stack:        suiteContext.RepStack,
+			Environment:  []models.EnvironmentVariable{{Key: "VCAP_APPLICATION", Value: "{}"}},
+			NumInstances: numInstances,
+			Routes:       []string{"route-to-simple"},
+			StartCommand: "./run",
+			LogGuid:      appId,
+		}
+	}
+
+	BeforeEach(func() {
+		guid, err := uuid.NewV4()
+		if err != nil {
+			panic("Failed to generate App ID")
+		}
+		appId = guid.String()
+
+		guid, err = uuid.NewV4()
+		if err != nil {
+			panic("Failed to generate Process Guid")
+		}
+		processGuid = guid.String()
+
+		suiteContext.FileServerRunner.Start()
+		suiteContext.AppManagerRunner.Start()
+		suiteContext.RouteEmitterRunner.Start()
+		suiteContext.RouterRunner.Start()
+		suiteContext.ConvergerRunner.Start(CONVERGE_REPEAT_INTERVAL, 30*time.Second, 5*time.Minute, PENDING_AUCTION_KICK_THRESHOLD, CLAIMED_AUCTION_REAP_THRESHOLD)
+
+		tpsProcess = ifrit.Envoke(suiteContext.TPSRunner)
+		tpsAddr = fmt.Sprintf("http://127.0.0.1:%d", suiteContext.TPSPort)
+
+		archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
+		inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")
+
+		suiteContext.FileServerRunner.ServeFile("some-lifecycle-bundle.tgz", suiteContext.SharedContext.CircusZipPath)
+
+		logOutput, stop = loggredile.StreamIntoGBuffer(
+			suiteContext.LoggregatorRunner.Config.OutgoingPort,
+			fmt.Sprintf("/tail/?app=%s", appId),
+			"App",
+		)
+	})
+
+	AfterEach(func() {
+		tpsProcess.Signal(syscall.SIGKILL)
+		Eventually(tpsProcess.Wait()).Should(Receive())
+		close(stop)
+	})
+
 	Describe("Executor fault tolerance", func() {
 		BeforeEach(func() {
-			guid, err := uuid.NewV4()
-			if err != nil {
-				panic("Failed to generate App ID")
-			}
-			appId = guid.String()
-
-			guid, err = uuid.NewV4()
-			if err != nil {
-				panic("Failed to generate Process Guid")
-			}
-			processGuid = guid.String()
-
-			suiteContext.FileServerRunner.Start()
 			suiteContext.AuctioneerRunner.Start(AUCTION_MAX_ROUNDS)
-			suiteContext.AppManagerRunner.Start()
-			suiteContext.RouteEmitterRunner.Start()
-			suiteContext.RouterRunner.Start()
-			suiteContext.ConvergerRunner.Start(CONVERGE_REPEAT_INTERVAL, 30*time.Second, 5*time.Minute, PENDING_AUCTION_KICK_THRESHOLD, CLAIMED_AUCTION_REAP_THRESHOLD)
-
-			tpsProcess = ifrit.Envoke(suiteContext.TPSRunner)
-			tpsAddr = fmt.Sprintf("http://127.0.0.1:%d", suiteContext.TPSPort)
-
-			archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
-			inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")
-
-			suiteContext.FileServerRunner.ServeFile("some-lifecycle-bundle.tgz", suiteContext.SharedContext.CircusZipPath)
-
-			logOutput, stop = loggredile.StreamIntoGBuffer(
-				suiteContext.LoggregatorRunner.Config.OutgoingPort,
-				fmt.Sprintf("/tail/?app=%s", appId),
-				"App",
-			)
-		})
-
-		AfterEach(func() {
-			tpsProcess.Signal(syscall.SIGKILL)
-			Eventually(tpsProcess.Wait()).Should(Receive())
-			close(stop)
 		})
 
 		Context("When starting a long-running process and then bouncing the executor", func() {
@@ -123,16 +139,7 @@ var _ = Describe("Convergence to desired state", func() {
 			BeforeEach(func() {
 				suiteContext.RepRunner.Start()
 
-				desiredAppRequest = models.DesireAppRequestFromCC{
-					ProcessGuid:  processGuid,
-					DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
-					Stack:        suiteContext.RepStack,
-					Environment:  []models.EnvironmentVariable{{Key: "VCAP_APPLICATION", Value: "{}"}},
-					NumInstances: 1,
-					Routes:       []string{"route-to-simple"},
-					StartCommand: "./run",
-					LogGuid:      appId,
-				}
+				desiredAppRequest = constructDesiredAppRequest(1)
 
 				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
 				Ω(err).ShouldNot(HaveOccurred())
@@ -160,16 +167,7 @@ var _ = Describe("Convergence to desired state", func() {
 				suiteContext.RepRunner.Start()
 				suiteContext.ExecutorRunner.Start()
 
-				desiredAppRequest = models.DesireAppRequestFromCC{
-					ProcessGuid:  processGuid,
-					DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
-					Stack:        suiteContext.RepStack,
-					Environment:  []models.EnvironmentVariable{{Key: "VCAP_APPLICATION", Value: "{}"}},
-					NumInstances: 1,
-					Routes:       []string{"route-to-simple"},
-					StartCommand: "./run",
-					LogGuid:      appId,
-				}
+				desiredAppRequest = constructDesiredAppRequest(1)
 
 				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
 				Ω(err).ShouldNot(HaveOccurred())
@@ -183,16 +181,7 @@ var _ = Describe("Convergence to desired state", func() {
 			It("Eventually brings the long-running process down", func() {
 				suiteContext.RepRunner.Stop()
 
-				desiredAppStopRequest := models.DesireAppRequestFromCC{
-					ProcessGuid:  processGuid,
-					DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
-					Stack:        suiteContext.RepStack,
-					Environment:  []models.EnvironmentVariable{{Key: "VCAP_APPLICATION", Value: "{}"}},
-					NumInstances: 0,
-					Routes:       []string{"route-to-simple"},
-					StartCommand: "./run",
-					LogGuid:      appId,
-				}
+				desiredAppStopRequest := constructDesiredAppRequest(0)
 
 				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppStopRequest.ToJSON())
 				Ω(err).ShouldNot(HaveOccurred())
@@ -215,16 +204,7 @@ var _ = Describe("Convergence to desired state", func() {
 				suiteContext.RepRunner.Start()
 				suiteContext.ExecutorRunner.Start()
 
-				desiredAppRequest = models.DesireAppRequestFromCC{
-					ProcessGuid:  processGuid,
-					DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
-					Stack:        suiteContext.RepStack,
-					Environment:  []models.EnvironmentVariable{{Key: "VCAP_APPLICATION", Value: "{}"}},
-					NumInstances: 2,
-					Routes:       []string{"route-to-simple"},
-					StartCommand: "./run",
-					LogGuid:      appId,
-				}
+				desiredAppRequest = constructDesiredAppRequest(2)
 
 				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
 				Ω(err).ShouldNot(HaveOccurred())
@@ -238,18 +218,9 @@ var _ = Describe("Convergence to desired state", func() {
 			It("Eventually brings the long-running process down", func() {
 				suiteContext.RepRunner.Stop()
 
-				desiredAppStopRequest := models.DesireAppRequestFromCC{
-					ProcessGuid:  processGuid,
-					DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
-					Stack:        suiteContext.RepStack,
-					Environment:  []models.EnvironmentVariable{{Key: "VCAP_APPLICATION", Value: "{}"}},
-					NumInstances: 1,
-					Routes:       []string{"route-to-simple"},
-					StartCommand: "./run",
-					LogGuid:      appId,
-				}
+				desiredAppScaleDownRequest := constructDesiredAppRequest(1)
 
-				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppStopRequest.ToJSON())
+				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppScaleDownRequest.ToJSON())
 				Ω(err).ShouldNot(HaveOccurred())
 
 				time.Sleep(WAIT_FOR_MULTIPLE_CONVERGE_INTERVAL)
@@ -268,60 +239,14 @@ var _ = Describe("Convergence to desired state", func() {
 
 	Describe("Auctioneer Fault Tolerance", func() {
 		BeforeEach(func() {
-			guid, err := uuid.NewV4()
-			if err != nil {
-				panic("Failed to generate App ID")
-			}
-			appId = guid.String()
-
-			guid, err = uuid.NewV4()
-			if err != nil {
-				panic("Failed to generate Process Guid")
-			}
-			processGuid = guid.String()
-
-			suiteContext.FileServerRunner.Start()
-			suiteContext.AppManagerRunner.Start()
-			suiteContext.RouteEmitterRunner.Start()
-			suiteContext.RouterRunner.Start()
-			suiteContext.ConvergerRunner.Start(CONVERGE_REPEAT_INTERVAL, 30*time.Second, 5*time.Minute, PENDING_AUCTION_KICK_THRESHOLD, CLAIMED_AUCTION_REAP_THRESHOLD)
 			suiteContext.RepRunner.Start()
-
-			tpsProcess = ifrit.Envoke(suiteContext.TPSRunner)
-			tpsAddr = fmt.Sprintf("http://127.0.0.1:%d", suiteContext.TPSPort)
-
-			archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
-			inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")
-
-			suiteContext.FileServerRunner.ServeFile("some-lifecycle-bundle.tgz", suiteContext.SharedContext.CircusZipPath)
-
-			logOutput, stop = loggredile.StreamIntoGBuffer(
-				suiteContext.LoggregatorRunner.Config.OutgoingPort,
-				fmt.Sprintf("/tail/?app=%s", appId),
-				"App",
-			)
-		})
-
-		AfterEach(func() {
-			tpsProcess.Signal(syscall.SIGKILL)
-			Eventually(tpsProcess.Wait()).Should(Receive())
-			close(stop)
 		})
 
 		Context("When trying to start an auction before an Auctioneer is up", func() {
 			BeforeEach(func() {
 				suiteContext.ExecutorRunner.Start()
 
-				desiredAppRequest = models.DesireAppRequestFromCC{
-					ProcessGuid:  processGuid,
-					DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
-					Stack:        suiteContext.RepStack,
-					Environment:  []models.EnvironmentVariable{{Key: "VCAP_APPLICATION", Value: "{}"}},
-					NumInstances: 1,
-					Routes:       []string{"route-to-simple"},
-					StartCommand: "./run",
-					LogGuid:      appId,
-				}
+				desiredAppRequest = constructDesiredAppRequest(1)
 
 				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
 				Ω(err).ShouldNot(HaveOccurred())
@@ -351,16 +276,7 @@ var _ = Describe("Convergence to desired state", func() {
 				//note: there is no executor running so the auction will not succeed
 				suiteContext.AuctioneerRunner.Start(100000000)
 
-				desiredAppRequest = models.DesireAppRequestFromCC{
-					ProcessGuid:  processGuid,
-					DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
-					Stack:        suiteContext.RepStack,
-					Environment:  []models.EnvironmentVariable{{Key: "VCAP_APPLICATION", Value: "{}"}},
-					NumInstances: 1,
-					Routes:       []string{"route-to-simple"},
-					StartCommand: "./run",
-					LogGuid:      appId,
-				}
+				desiredAppRequest = constructDesiredAppRequest(1)
 
 				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
 				Ω(err).ShouldNot(HaveOccurred())
