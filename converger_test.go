@@ -31,50 +31,51 @@ var _ = Describe("Convergence to desired state", func() {
 	var stop chan<- bool
 
 	CONVERGE_REPEAT_INTERVAL := time.Second
+	PENDING_AUCTION_KICK_THRESHOLD := time.Second
 	WAIT_FOR_MULTIPLE_CONVERGE_INTERVAL := CONVERGE_REPEAT_INTERVAL * 3
 
-	BeforeEach(func() {
-		guid, err := uuid.NewV4()
-		if err != nil {
-			panic("Failed to generate App ID")
-		}
-		appId = guid.String()
-
-		guid, err = uuid.NewV4()
-		if err != nil {
-			panic("Failed to generate Process Guid")
-		}
-		processGuid = guid.String()
-
-		suiteContext.FileServerRunner.Start()
-		suiteContext.AuctioneerRunner.Start(AUCTION_MAX_ROUNDS)
-		suiteContext.AppManagerRunner.Start()
-		suiteContext.RouteEmitterRunner.Start()
-		suiteContext.RouterRunner.Start()
-		suiteContext.ConvergerRunner.Start(CONVERGE_REPEAT_INTERVAL, 30*time.Second, 5*time.Minute, 30*time.Second, 300*time.Second)
-
-		tpsProcess = ifrit.Envoke(suiteContext.TPSRunner)
-		tpsAddr = fmt.Sprintf("http://127.0.0.1:%d", suiteContext.TPSPort)
-
-		archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
-		inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")
-
-		suiteContext.FileServerRunner.ServeFile("some-lifecycle-bundle.tgz", suiteContext.SharedContext.CircusZipPath)
-
-		logOutput, stop = loggredile.StreamIntoGBuffer(
-			suiteContext.LoggregatorRunner.Config.OutgoingPort,
-			fmt.Sprintf("/tail/?app=%s", appId),
-			"App",
-		)
-	})
-
-	AfterEach(func() {
-		tpsProcess.Signal(syscall.SIGKILL)
-		Eventually(tpsProcess.Wait()).Should(Receive())
-		close(stop)
-	})
-
 	Describe("Executor fault tolerance", func() {
+		BeforeEach(func() {
+			guid, err := uuid.NewV4()
+			if err != nil {
+				panic("Failed to generate App ID")
+			}
+			appId = guid.String()
+
+			guid, err = uuid.NewV4()
+			if err != nil {
+				panic("Failed to generate Process Guid")
+			}
+			processGuid = guid.String()
+
+			suiteContext.FileServerRunner.Start()
+			suiteContext.AuctioneerRunner.Start(AUCTION_MAX_ROUNDS)
+			suiteContext.AppManagerRunner.Start()
+			suiteContext.RouteEmitterRunner.Start()
+			suiteContext.RouterRunner.Start()
+			suiteContext.ConvergerRunner.Start(CONVERGE_REPEAT_INTERVAL, 30*time.Second, 5*time.Minute, PENDING_AUCTION_KICK_THRESHOLD, 300*time.Second)
+
+			tpsProcess = ifrit.Envoke(suiteContext.TPSRunner)
+			tpsAddr = fmt.Sprintf("http://127.0.0.1:%d", suiteContext.TPSPort)
+
+			archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
+			inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")
+
+			suiteContext.FileServerRunner.ServeFile("some-lifecycle-bundle.tgz", suiteContext.SharedContext.CircusZipPath)
+
+			logOutput, stop = loggredile.StreamIntoGBuffer(
+				suiteContext.LoggregatorRunner.Config.OutgoingPort,
+				fmt.Sprintf("/tail/?app=%s", appId),
+				"App",
+			)
+		})
+
+		AfterEach(func() {
+			tpsProcess.Signal(syscall.SIGKILL)
+			Eventually(tpsProcess.Wait()).Should(Receive())
+			close(stop)
+		})
+
 		Context("When starting a long-running process and then bouncing the executor", func() {
 			BeforeEach(func() {
 				suiteContext.ExecutorRunner.Start()
@@ -257,6 +258,85 @@ var _ = Describe("Convergence to desired state", func() {
 				suiteContext.RepRunner.Start()
 
 				running_lrps_poller = helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
+				hello_world_instance_poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
+				Eventually(running_lrps_poller, LONG_TIMEOUT).Should(HaveLen(1))
+				Eventually(hello_world_instance_poller, LONG_TIMEOUT, 1).Should(Equal([]string{"0"}))
+			})
+		})
+	})
+
+	Describe("Auctioneer Fault Tolerance", func() {
+		BeforeEach(func() {
+			guid, err := uuid.NewV4()
+			if err != nil {
+				panic("Failed to generate App ID")
+			}
+			appId = guid.String()
+
+			guid, err = uuid.NewV4()
+			if err != nil {
+				panic("Failed to generate Process Guid")
+			}
+			processGuid = guid.String()
+
+			suiteContext.FileServerRunner.Start()
+			suiteContext.AppManagerRunner.Start()
+			suiteContext.RouteEmitterRunner.Start()
+			suiteContext.RouterRunner.Start()
+			suiteContext.ConvergerRunner.Start(CONVERGE_REPEAT_INTERVAL, 30*time.Second, 5*time.Minute, PENDING_AUCTION_KICK_THRESHOLD, 300*time.Second)
+			suiteContext.ExecutorRunner.Start()
+			suiteContext.RepRunner.Start()
+
+			tpsProcess = ifrit.Envoke(suiteContext.TPSRunner)
+			tpsAddr = fmt.Sprintf("http://127.0.0.1:%d", suiteContext.TPSPort)
+
+			archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
+			inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")
+
+			suiteContext.FileServerRunner.ServeFile("some-lifecycle-bundle.tgz", suiteContext.SharedContext.CircusZipPath)
+
+			logOutput, stop = loggredile.StreamIntoGBuffer(
+				suiteContext.LoggregatorRunner.Config.OutgoingPort,
+				fmt.Sprintf("/tail/?app=%s", appId),
+				"App",
+			)
+		})
+
+		AfterEach(func() {
+			tpsProcess.Signal(syscall.SIGKILL)
+			Eventually(tpsProcess.Wait()).Should(Receive())
+			close(stop)
+		})
+
+		Context("When trying to start an auction before an Auctioneer is up", func() {
+			BeforeEach(func() {
+				desiredAppRequest = models.DesireAppRequestFromCC{
+					ProcessGuid:  processGuid,
+					DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
+					Stack:        suiteContext.RepStack,
+					Environment:  []models.EnvironmentVariable{{Key: "VCAP_APPLICATION", Value: "{}"}},
+					NumInstances: 1,
+					Routes:       []string{"route-to-simple"},
+					StartCommand: "./run",
+					LogGuid:      appId,
+				}
+
+				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+				Ω(err).ShouldNot(HaveOccurred())
+
+				time.Sleep(PENDING_AUCTION_KICK_THRESHOLD)
+				time.Sleep(WAIT_FOR_MULTIPLE_CONVERGE_INTERVAL)
+
+				running_lrps_poller := helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
+				hello_world_instance_poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
+				Ω(running_lrps_poller()).Should(BeEmpty())
+				Ω(hello_world_instance_poller()).Should(BeEmpty())
+			})
+
+			It("Eventually brings the long-running process up", func() {
+				suiteContext.AuctioneerRunner.Start(AUCTION_MAX_ROUNDS)
+
+				running_lrps_poller := helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
 				hello_world_instance_poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
 				Eventually(running_lrps_poller, LONG_TIMEOUT).Should(HaveLen(1))
 				Eventually(hello_world_instance_poller, LONG_TIMEOUT, 1).Should(Equal([]string{"0"}))
