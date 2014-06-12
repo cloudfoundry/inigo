@@ -41,7 +41,7 @@ var _ = Describe("AppRunner", func() {
 		BeforeEach(func() {
 			suiteContext.ExecutorRunner.Start()
 			suiteContext.RepRunner.Start()
-			suiteContext.AuctioneerRunner.Start()
+			suiteContext.AuctioneerRunner.Start(AUCTION_MAX_ROUNDS)
 			suiteContext.AppManagerRunner.Start()
 			suiteContext.RouteEmitterRunner.Start()
 			suiteContext.RouterRunner.Start()

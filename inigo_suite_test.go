@@ -43,6 +43,7 @@ import (
 
 var SHORT_TIMEOUT = 5.0
 var LONG_TIMEOUT = 15.0
+var AUCTION_MAX_ROUNDS = 3 //we limit this to prevent overwhelming numbers of auctioneer logs.  it should not impact the behavior of the tests.
 
 var wardenAddr = filepath.Join(os.TempDir(), "warden-temp-socker", "warden.sock")
 
