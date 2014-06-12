@@ -25,6 +25,7 @@ TMP_GOPATH=/tmp/inigo
 mkdir -p ${TMP_GOPATH}
 
 cp $(dirname $0)/.drone.yml ${TMP_GOPATH}/.drone.yml
+cp $(dirname $0)/build.yml ${TMP_GOPATH}/build.yml
 
 go test -c
 rm inigo.test
@@ -59,4 +60,10 @@ rsync --del --exclude '.*' -a ~/workspace/loggregator/ ${TMP_GOPATH}/loggregator
 
 wait
 
-drone -privileged build $TMP_GOPATH
+cd $TMP_GOPATH
+
+if [ -n "$REDGREEN_URL" ]; then
+  smith
+else
+  drone -privileged build
+fi
