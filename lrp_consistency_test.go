@@ -49,7 +49,7 @@ var _ = Describe("LRP Consistency", func() {
 		suiteContext.RouterRunner.Start()
 
 		tpsProcess = ifrit.Envoke(suiteContext.TPSRunner)
-		tpsAddr = fmt.Sprintf("http://127.0.0.1:%d", suiteContext.TPSPort)
+		tpsAddr = fmt.Sprintf("http://%s", suiteContext.TPSAddress)
 
 		archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
 		inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")

@@ -69,7 +69,7 @@ var _ = Describe("Convergence to desired state", func() {
 		suiteContext.ConvergerRunner.Start(CONVERGE_REPEAT_INTERVAL, 30*time.Second, 5*time.Minute, PENDING_AUCTION_KICK_THRESHOLD, CLAIMED_AUCTION_REAP_THRESHOLD)
 
 		tpsProcess = ifrit.Envoke(suiteContext.TPSRunner)
-		tpsAddr = fmt.Sprintf("http://127.0.0.1:%d", suiteContext.TPSPort)
+		tpsAddr = fmt.Sprintf("http://%s", suiteContext.TPSAddress)
 
 		archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
 		inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")

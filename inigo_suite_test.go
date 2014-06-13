@@ -126,8 +126,9 @@ type suiteContextType struct {
 	RouterRunner *router_runner.Runner
 	RouterPort   int
 
-	TPSRunner ifrit.Runner
-	TPSPort   uint16
+	TPSRunner            ifrit.Runner
+	TPSAddress           string
+	TPSHeartbeatInterval time.Duration
 
 	EtcdPort int
 }
@@ -176,7 +177,8 @@ func beforeSuite(encodedSharedContext []byte) {
 		FileServerPort:          12760 + config.GinkgoConfig.ParallelNode,
 		EtcdPort:                5001 + config.GinkgoConfig.ParallelNode,
 		RouterPort:              9090 + config.GinkgoConfig.ParallelNode,
-		TPSPort:                 uint16(1518 + config.GinkgoConfig.ParallelNode),
+		TPSAddress:              fmt.Sprintf("127.0.0.1:%d", 1518+config.GinkgoConfig.ParallelNode),
+		TPSHeartbeatInterval:    50 * time.Millisecond,
 	}
 
 	Ω(context.ExternalAddress).ShouldNot(BeEmpty())
@@ -306,8 +308,10 @@ func beforeSuite(encodedSharedContext []byte) {
 
 	context.TPSRunner = tpsrunner.New(
 		context.SharedContext.TPSPath,
-		context.TPSPort,
+		context.TPSAddress,
 		context.EtcdRunner.NodeURLS(),
+		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
+		context.TPSHeartbeatInterval,
 	)
 
 	// make context available to all tests

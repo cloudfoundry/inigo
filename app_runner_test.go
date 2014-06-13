@@ -27,7 +27,7 @@ var _ = Describe("AppRunner", func() {
 		suiteContext.FileServerRunner.Start()
 
 		tpsProcess = ifrit.Envoke(suiteContext.TPSRunner)
-		tpsAddr = fmt.Sprintf("http://127.0.0.1:%d", suiteContext.TPSPort)
+		tpsAddr = fmt.Sprintf("http://%s", suiteContext.TPSAddress)
 	})
 
 	AfterEach(func() {
