@@ -15,7 +15,6 @@ import (
 type AppManagerRunner struct {
 	appManagerBin string
 	etcdCluster   []string
-	natsCluster   []string
 	circuses      map[string]string
 	Session       *gexec.Session
 
@@ -24,15 +23,13 @@ type AppManagerRunner struct {
 
 func New(
 	appManagerBin string,
-	etcdCluster,
-	natsCluster []string,
+	etcdCluster []string,
 	circuses map[string]string,
 	repAddrRelativeToExecutor string,
 ) *AppManagerRunner {
 	return &AppManagerRunner{
 		appManagerBin: appManagerBin,
 		etcdCluster:   etcdCluster,
-		natsCluster:   natsCluster,
 		circuses:      circuses,
 
 		repAddrRelativeToExecutor: repAddrRelativeToExecutor,
@@ -52,7 +49,6 @@ func (r *AppManagerRunner) StartWithoutCheck() {
 		exec.Command(
 			r.appManagerBin,
 			"-etcdCluster", strings.Join(r.etcdCluster, ","),
-			"-natsAddresses", strings.Join(r.natsCluster, ","),
 			"-circuses", string(circusesFlag),
 			"-repAddrRelativeToExecutor", r.repAddrRelativeToExecutor,
 		),

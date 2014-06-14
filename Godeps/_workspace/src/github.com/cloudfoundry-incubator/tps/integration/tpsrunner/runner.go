@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
@@ -14,16 +15,20 @@ import (
 )
 
 type runner struct {
-	bin         string
-	listenPort  uint16
-	etcdCluster []string
+	bin               string
+	listenAddr        string
+	etcdCluster       []string
+	natsAddresses     []string
+	heartbeatInterval time.Duration
 }
 
-func New(bin string, listenPort uint16, etcdCluster []string) ifrit.Runner {
+func New(bin string, listenAddr string, etcdCluster []string, natsAddresses []string, heartbeatInterval time.Duration) ifrit.Runner {
 	return &runner{
-		bin:         bin,
-		listenPort:  listenPort,
-		etcdCluster: etcdCluster,
+		bin:               bin,
+		listenAddr:        listenAddr,
+		etcdCluster:       etcdCluster,
+		natsAddresses:     natsAddresses,
+		heartbeatInterval: heartbeatInterval,
 	}
 }
 
@@ -32,7 +37,9 @@ func (r *runner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 		exec.Command(
 			r.bin,
 			"-etcdCluster", strings.Join(r.etcdCluster, ","),
-			"-listenAddr", fmt.Sprintf("0.0.0.0:%d", r.listenPort),
+			"-natsAddresses", strings.Join(r.natsAddresses, ","),
+			"-heartbeatInterval", fmt.Sprintf("%s", r.heartbeatInterval),
+			"-listenAddr", r.listenAddr,
 		),
 		gexec.NewPrefixedWriter("\x1b[32m[o]\x1b[31m[tps]\x1b[0m ", ginkgo.GinkgoWriter),
 		gexec.NewPrefixedWriter("\x1b[91m[e]\x1b[31m[tps]\x1b[0m ", ginkgo.GinkgoWriter),
