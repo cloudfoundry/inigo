@@ -11,6 +11,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/nu7hatch/gouuid"
 	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/grouper"
 
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	. "github.com/onsi/ginkgo"
@@ -24,7 +25,8 @@ var _ = Describe("Convergence to desired state", func() {
 	var appId string
 	var processGuid string
 
-	var tpsProcess ifrit.Process
+	var processGroup ifrit.Process
+
 	var tpsAddr string
 
 	var logOutput *gbytes.Buffer
@@ -63,12 +65,17 @@ var _ = Describe("Convergence to desired state", func() {
 
 		suiteContext.FileServerRunner.Start()
 		suiteContext.AppManagerRunner.Start()
-		suiteContext.NsyncRunner.Start()
 		suiteContext.RouteEmitterRunner.Start()
 		suiteContext.RouterRunner.Start()
 		suiteContext.ConvergerRunner.Start(CONVERGE_REPEAT_INTERVAL, 30*time.Second, 5*time.Minute, PENDING_AUCTION_KICK_THRESHOLD, CLAIMED_AUCTION_REAP_THRESHOLD)
 
-		tpsProcess = ifrit.Envoke(suiteContext.TPSRunner)
+		processes := grouper.RunGroup{
+			"tps":            suiteContext.TPSRunner,
+			"nsync-listener": suiteContext.NsyncListenerRunner,
+		}
+
+		processGroup = ifrit.Envoke(processes)
+
 		tpsAddr = fmt.Sprintf("http://%s", suiteContext.TPSAddress)
 
 		archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
@@ -84,9 +91,8 @@ var _ = Describe("Convergence to desired state", func() {
 	})
 
 	AfterEach(func() {
-		tpsProcess.Signal(syscall.SIGKILL)
-		Eventually(tpsProcess.Wait()).Should(Receive())
-		close(stop)
+		processGroup.Signal(syscall.SIGKILL)
+		Eventually(processGroup.Wait()).Should(Receive())
 	})
 
 	Describe("Executor fault tolerance", func() {

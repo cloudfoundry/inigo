@@ -19,7 +19,7 @@ import (
 	"github.com/cloudfoundry-incubator/converger/converger_runner"
 	"github.com/cloudfoundry-incubator/executor/integration/executor_runner"
 	"github.com/cloudfoundry-incubator/garden/warden"
-	"github.com/cloudfoundry-incubator/nsync/integration/nsync_runner"
+	"github.com/cloudfoundry-incubator/nsync/integration/runner"
 	"github.com/cloudfoundry-incubator/rep/reprunner"
 	"github.com/cloudfoundry-incubator/route-emitter/integration/route_emitter_runner"
 	"github.com/cloudfoundry-incubator/tps/integration/tpsrunner"
@@ -48,20 +48,20 @@ var AUCTION_MAX_ROUNDS = 3 //we limit this to prevent overwhelming numbers of au
 var wardenRunner *WardenRunner.Runner
 
 type sharedContextType struct {
-	AuctioneerPath   string
-	ExecutorPath     string
-	ConvergerPath    string
-	RepPath          string
-	StagerPath       string
-	AppManagerPath   string
-	NsyncPath        string
-	FileServerPath   string
-	LoggregatorPath  string
-	RouteEmitterPath string
-	RouterPath       string
-	CircusZipPath    string
-	TPSPath          string
-	WardenPath       string
+	AuctioneerPath    string
+	ExecutorPath      string
+	ConvergerPath     string
+	RepPath           string
+	StagerPath        string
+	AppManagerPath    string
+	NsyncListenerPath string
+	FileServerPath    string
+	LoggregatorPath   string
+	RouteEmitterPath  string
+	RouterPath        string
+	CircusZipPath     string
+	TPSPath           string
+	WardenPath        string
 }
 
 func DecodeSharedContext(data []byte) sharedContextType {
@@ -113,7 +113,8 @@ type suiteContextType struct {
 
 	StagerRunner     *stager_runner.StagerRunner
 	AppManagerRunner *app_manager_runner.AppManagerRunner
-	NsyncRunner      *nsync_runner.NsyncRunner
+
+	NsyncListenerRunner ifrit.Runner
 
 	FakeCC        *fake_cc.FakeCC
 	FakeCCAddress string
@@ -147,7 +148,6 @@ func (context suiteContextType) Runners() []Runner {
 		context.EtcdRunner,
 		context.RouteEmitterRunner,
 		context.RouterRunner,
-		context.NsyncRunner,
 	}
 }
 
@@ -255,10 +255,11 @@ func beforeSuite(encodedSharedContext []byte) {
 		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
 	)
 
-	context.NsyncRunner = nsync_runner.New(
-		context.SharedContext.NsyncPath,
-		context.EtcdRunner.NodeURLS(),
-		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
+	context.NsyncListenerRunner = runner.NewRunner(
+		"nsync.listener.started",
+		context.SharedContext.NsyncListenerPath,
+		"-etcdCluster", strings.Join(context.EtcdRunner.NodeURLS(), ","),
+		"-natsAddresses", fmt.Sprintf("127.0.0.1:%d", context.NatsPort),
 	)
 
 	context.AppManagerRunner = app_manager_runner.New(
@@ -408,7 +409,7 @@ func (node *nodeOneType) CompileTestedExecutables() {
 	node.context.StagerPath, err = gexec.BuildIn(os.Getenv("STAGER_GOPATH"), "github.com/cloudfoundry-incubator/stager", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
-	node.context.NsyncPath, err = gexec.BuildIn(os.Getenv("NSYNC_GOPATH"), "github.com/cloudfoundry-incubator/nsync", "-race")
+	node.context.NsyncListenerPath, err = gexec.BuildIn(os.Getenv("NSYNC_GOPATH"), "github.com/cloudfoundry-incubator/nsync/listener", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.AppManagerPath, err = gexec.BuildIn(os.Getenv("APP_MANAGER_GOPATH"), "github.com/cloudfoundry-incubator/app-manager", "-race")

@@ -10,6 +10,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/nu7hatch/gouuid"
 	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/grouper"
 
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	. "github.com/onsi/ginkgo"
@@ -23,7 +24,8 @@ var _ = Describe("LRP Consistency", func() {
 	var appId string
 	var processGuid string
 
-	var tpsProcess ifrit.Process
+	var processGroup ifrit.Process
+
 	var tpsAddr string
 
 	BeforeEach(func() {
@@ -37,6 +39,7 @@ var _ = Describe("LRP Consistency", func() {
 		if err != nil {
 			panic("Failed to generate AppID Guid")
 		}
+
 		processGuid = guid.String()
 
 		suiteContext.FileServerRunner.Start()
@@ -44,23 +47,27 @@ var _ = Describe("LRP Consistency", func() {
 		suiteContext.RepRunner.Start()
 		suiteContext.AuctioneerRunner.Start(AUCTION_MAX_ROUNDS)
 		suiteContext.AppManagerRunner.Start()
-		suiteContext.NsyncRunner.Start()
 		suiteContext.RouteEmitterRunner.Start()
 		suiteContext.RouterRunner.Start()
 
-		tpsProcess = ifrit.Envoke(suiteContext.TPSRunner)
+		processes := grouper.RunGroup{
+			"tps":            suiteContext.TPSRunner,
+			"nsync-listener": suiteContext.NsyncListenerRunner,
+		}
+
+		processGroup = ifrit.Envoke(processes)
+
 		tpsAddr = fmt.Sprintf("http://%s", suiteContext.TPSAddress)
 
 		archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
 		inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")
 
 		suiteContext.FileServerRunner.ServeFile("some-lifecycle-bundle.tgz", suiteContext.SharedContext.CircusZipPath)
-
 	})
 
 	AfterEach(func() {
-		tpsProcess.Signal(syscall.SIGKILL)
-		Eventually(tpsProcess.Wait()).Should(Receive())
+		processGroup.Signal(syscall.SIGKILL)
+		Eventually(processGroup.Wait()).Should(Receive())
 	})
 
 	Context("with an app running", func() {

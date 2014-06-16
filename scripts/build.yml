@@ -2,12 +2,12 @@
 image: cloudfoundry/inigo-ci
 
 env:
-  - GOROOT=/usr/local/go
-  - PATH=$GOROOT/bin:$PATH
-  - GOPATH=/tmp/build/src/inigo
-  - GINKGO_PARALLEL=true
-  - SHORT_TIMEOUT=2.0
-  - LONG_TIMEOUT=10.0
+  - GOROOT: /usr/local/go
+  - PATH: $GOROOT/bin:$PATH
+  - GOPATH: /tmp/build/src/inigo
+  - GINKGO_PARALLEL: true
+  - SHORT_TIMEOUT: 2.0
+  - LONG_TIMEOUT: 10.0
 
 script: |
   set -e

@@ -9,6 +9,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
 	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/grouper"
 
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	. "github.com/onsi/ginkgo"
@@ -20,19 +21,26 @@ import (
 var _ = Describe("AppRunner", func() {
 	var appId = "simple-echo-app"
 
-	var tpsProcess ifrit.Process
+	var processGroup ifrit.Process
+
 	var tpsAddr string
 
 	BeforeEach(func() {
 		suiteContext.FileServerRunner.Start()
 
-		tpsProcess = ifrit.Envoke(suiteContext.TPSRunner)
+		processes := grouper.RunGroup{
+			"tps":            suiteContext.TPSRunner,
+			"nsync-listener": suiteContext.NsyncListenerRunner,
+		}
+
+		processGroup = ifrit.Envoke(processes)
+
 		tpsAddr = fmt.Sprintf("http://%s", suiteContext.TPSAddress)
 	})
 
 	AfterEach(func() {
-		tpsProcess.Signal(syscall.SIGKILL)
-		Eventually(tpsProcess.Wait()).Should(Receive())
+		processGroup.Signal(syscall.SIGKILL)
+		Eventually(processGroup.Wait()).Should(Receive())
 	})
 
 	Describe("Running", func() {
@@ -43,7 +51,6 @@ var _ = Describe("AppRunner", func() {
 			suiteContext.RepRunner.Start()
 			suiteContext.AuctioneerRunner.Start(AUCTION_MAX_ROUNDS)
 			suiteContext.AppManagerRunner.Start()
-			suiteContext.NsyncRunner.Start()
 			suiteContext.RouteEmitterRunner.Start()
 			suiteContext.RouterRunner.Start()
 
@@ -56,16 +63,18 @@ var _ = Describe("AppRunner", func() {
 		JustBeforeEach(func() {
 			runningMessage = []byte(
 				fmt.Sprintf(
-					`{
-		              "process_guid": "process-guid",
-		              "droplet_uri": "%s",
-			          "stack": "%s",
-		              "start_command": "./run",
-		              "num_instances": 3,
-		              "environment":[{"key":"VCAP_APPLICATION", "value":"{}"}],
-		              "routes": ["route-1", "route-2"],
-		              "log_guid": "%s"
-		            }`,
+					`
+						{
+			        "process_guid": "process-guid",
+			        "droplet_uri": "%s",
+				      "stack": "%s",
+			        "start_command": "./run",
+			        "num_instances": 3,
+			        "environment":[{"key":"VCAP_APPLICATION", "value":"{}"}],
+			        "routes": ["route-1", "route-2"],
+			        "log_guid": "%s"
+			      }
+			    `,
 					inigo_server.DownloadUrl("simple-echo-droplet.zip"),
 					suiteContext.RepStack,
 					appId,
