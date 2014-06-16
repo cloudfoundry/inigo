@@ -178,7 +178,7 @@ func beforeSuite(encodedSharedContext []byte) {
 		EtcdPort:                5001 + config.GinkgoConfig.ParallelNode,
 		RouterPort:              9090 + config.GinkgoConfig.ParallelNode,
 		TPSAddress:              fmt.Sprintf("127.0.0.1:%d", 1518+config.GinkgoConfig.ParallelNode),
-		TPSHeartbeatInterval:    50 * time.Millisecond,
+		TPSHeartbeatInterval:    5 * time.Second,
 	}
 
 	Ω(context.ExternalAddress).ShouldNot(BeEmpty())
