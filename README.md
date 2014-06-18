@@ -1,3 +1,5 @@
+#Inigo
+
 ![Inigo Montoya](http://i.imgur.com/QIVPl2n.png)
 
 #### Setup for tests
@@ -51,3 +53,5 @@ To modify what goes into the docker image update the `Dockerfile` in the inigo r
 #### Adding a new component to the tests
 
 Walk through `./scripts/*` and pattern-match your way to victory
+
+####Learn more about Diego and its components at [diego-design-notes](https://github.com/cloudfoundry-incubator/diego-design-notes)
