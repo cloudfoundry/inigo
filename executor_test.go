@@ -131,7 +131,7 @@ var _ = Describe("Executor", func() {
 				},
 			}
 
-			_, err := bbs.DesireTask(task)
+			err := bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
@@ -158,7 +158,7 @@ var _ = Describe("Executor", func() {
 					},
 				}
 
-				_, err := bbs.DesireTask(task)
+				err := bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
@@ -193,7 +193,7 @@ var _ = Describe("Executor", func() {
 					},
 				}
 
-				_, err := bbs.DesireTask(task)
+				err := bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
@@ -216,7 +216,7 @@ var _ = Describe("Executor", func() {
 					},
 				}
 
-				_, err := bbs.DesireTask(task)
+				err := bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
@@ -250,7 +250,7 @@ var _ = Describe("Executor", func() {
 				},
 			}
 
-			_, err := bbs.DesireTask(task)
+			err := bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
@@ -279,7 +279,7 @@ var _ = Describe("Executor", func() {
 				},
 			}
 
-			_, err := bbs.DesireTask(task)
+			err := bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
@@ -314,7 +314,7 @@ var _ = Describe("Executor", func() {
 				},
 			}
 
-			_, err := bbs.DesireTask(task)
+			err := bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
