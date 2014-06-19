@@ -1,11 +1,12 @@
 package helpers
 
 import (
-	. "github.com/onsi/gomega"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"sort"
+
+	. "github.com/onsi/gomega"
 )
 
 func ResponseCodeFromHostPoller(routerAddr string, host string) func() int {
@@ -66,6 +67,11 @@ func HelloWorldInstancePoller(routerAddr, host string) func() []string {
 			if status == http.StatusNotFound {
 				//Ignore 404s as they are coming from the router, but make sure...
 				Ω(body).Should(ContainSubstring("Requested route ('route-to-simple') does not exist"), "Got a 404, but it wasn't from the router!")
+				continue
+			}
+			if status == http.StatusBadGateway {
+				//Ignore 502s as they are coming from the router, but make sure...
+				Ω(body).Should(ContainSubstring("Registered endpoint failed to handle the request"), "Got a 502, but it wasn't from the router!")
 				continue
 			}
 			respondingIndicesHash[string(body)] = true
