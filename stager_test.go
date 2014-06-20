@@ -160,7 +160,7 @@ EOF
 						"stack": "lucid64",
 						"app_bits_download_uri": "%s",
 						"buildpacks" : [{ "name": "test-buildpack", "key": "test-buildpack-key", "url": "%s" }],
-						"environment": [{ "key": "SOME_STAGING_ENV", "value": "%s"}]
+						"environment": [{ "name": "SOME_STAGING_ENV", "value": "%s"}]
 					}`,
 					appId,
 					taskId,

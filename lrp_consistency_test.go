@@ -85,7 +85,7 @@ var _ = Describe("LRP Consistency", func() {
 				ProcessGuid:  processGuid,
 				DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
 				Stack:        suiteContext.RepStack,
-				Environment:  []models.EnvironmentVariable{{Key: "VCAP_APPLICATION", Value: "{}"}},
+				Environment:  []models.EnvironmentVariable{{Name: "VCAP_APPLICATION", Value: "{}"}},
 				NumInstances: 2,
 				Routes:       []string{"route-to-simple"},
 				StartCommand: "./run",

@@ -70,7 +70,7 @@ var _ = Describe("AppRunner", func() {
 				      "stack": "%s",
 			        "start_command": "./run",
 			        "num_instances": 3,
-			        "environment":[{"key":"VCAP_APPLICATION", "value":"{}"}],
+			        "environment":[{"name":"VCAP_APPLICATION", "value":"{}"}],
 			        "routes": ["route-1", "route-2"],
 			        "log_guid": "%s"
 			      }
