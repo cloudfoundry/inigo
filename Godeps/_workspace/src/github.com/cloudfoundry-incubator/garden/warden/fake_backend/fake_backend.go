@@ -15,9 +15,11 @@ type FakeBackend struct {
 
 	Stopped bool
 
-	CreateResult    *FakeContainer
-	CreateError     error
-	DestroyError    error
+	CreateResult *FakeContainer
+	WhenCreating func()
+	CreateError  error
+
+	destroyError    error
 	ContainersError error
 
 	CreatedContainers   map[string]*FakeContainer
@@ -27,6 +29,8 @@ type FakeBackend struct {
 
 	CapacityError  error
 	CapacityResult warden.Capacity
+
+	PingError error
 
 	sync.RWMutex
 }
@@ -64,6 +68,10 @@ func (b *FakeBackend) Stop() {
 	b.Stopped = true
 }
 
+func (b *FakeBackend) Ping() error {
+	return b.PingError
+}
+
 func (b *FakeBackend) Capacity() (warden.Capacity, error) {
 	if b.CapacityError != nil {
 		return warden.Capacity{}, b.CapacityError
@@ -88,14 +96,18 @@ func (b *FakeBackend) Create(spec warden.ContainerSpec) (warden.Container, error
 	b.Lock()
 	defer b.Unlock()
 
+	if b.WhenCreating != nil {
+		b.WhenCreating()
+	}
+
 	b.CreatedContainers[container.Handle()] = container
 
 	return container, nil
 }
 
 func (b *FakeBackend) Destroy(handle string) error {
-	if b.DestroyError != nil {
-		return b.DestroyError
+	if b.destroyError != nil {
+		return b.destroyError
 	}
 
 	b.Lock()
@@ -106,6 +118,13 @@ func (b *FakeBackend) Destroy(handle string) error {
 	b.DestroyedContainers = append(b.DestroyedContainers, handle)
 
 	return nil
+}
+
+func (b *FakeBackend) SetDestroyError(err error) {
+	b.Lock()
+	defer b.Unlock()
+
+	b.destroyError = err
 }
 
 func (b *FakeBackend) Containers(properties warden.Properties) ([]warden.Container, error) {

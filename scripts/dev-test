@@ -62,8 +62,8 @@ wait
 
 cd $TMP_GOPATH
 
-if [ -n "$REDGREEN_URL" ]; then
-  smith
+if [ -n "$GLIDER_URL" ]; then
+  fly
 else
   drone -privileged build
 fi
