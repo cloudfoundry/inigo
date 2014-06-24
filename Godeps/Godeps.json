@@ -120,15 +120,15 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "4c36bdfc4dcd5ca8ef7d219d16a7a375f72a4d04"
+			"Rev": "012c337a96a2bdb48605fcb81d17b1e14ebc06dc"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "4c36bdfc4dcd5ca8ef7d219d16a7a375f72a4d04"
+			"Rev": "012c337a96a2bdb48605fcb81d17b1e14ebc06dc"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/router",
-			"Rev": "4c36bdfc4dcd5ca8ef7d219d16a7a375f72a4d04"
+			"Rev": "012c337a96a2bdb48605fcb81d17b1e14ebc06dc"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/stager/integration/stager_runner",
