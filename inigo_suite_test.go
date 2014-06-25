@@ -226,7 +226,6 @@ func beforeSuite(encodedSharedContext []byte) {
 		fmt.Sprintf("127.0.0.1:%d", context.ExecutorPort),
 		wardenRunner.Network(),
 		wardenRunner.Addr(),
-		context.EtcdRunner.NodeURLS(),
 		fmt.Sprintf("127.0.0.1:%d", context.LoggregatorInPort),
 		context.LoggregatorSharedSecret,
 	)
@@ -246,7 +245,7 @@ func beforeSuite(encodedSharedContext []byte) {
 		strings.Join(context.EtcdRunner.NodeURLS(), ","),
 		fmt.Sprintf("127.0.0.1:%d", context.NatsPort),
 		"debug",
-		5*time.Second,
+		time.Second,
 	)
 
 	context.StagerRunner = stager_runner.New(

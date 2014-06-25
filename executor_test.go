@@ -52,13 +52,11 @@ var _ = Describe("Executor", func() {
 	})
 
 	Describe("Heartbeating", func() {
-		It("should heartbeat its presence", func() {
+		It("should heartbeat its presence (through the rep)", func() {
 			suiteContext.ExecutorRunner.Start()
+			suiteContext.RepRunner.Start()
 
-			Eventually(func() interface{} {
-				executors, _ := bbs.GetAllExecutors()
-				return executors
-			}).Should(HaveLen(1))
+			Eventually(bbs.GetAllExecutors).Should(HaveLen(1))
 		})
 	})
 

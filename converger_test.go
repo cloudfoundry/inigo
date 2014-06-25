@@ -186,6 +186,7 @@ var _ = Describe("Convergence to desired state", func() {
 			})
 
 			It("Eventually brings the long-running process down", func() {
+				suiteContext.ConvergerRunner.Stop()				
 				suiteContext.RepRunner.Stop()
 
 				desiredAppStopRequest := constructDesiredAppRequest(0)
@@ -198,6 +199,7 @@ var _ = Describe("Convergence to desired state", func() {
 				Ω(running_lrps_poller()).Should(HaveLen(1))
 
 				suiteContext.RepRunner.Start()
+				suiteContext.ConvergerRunner.Start(CONVERGE_REPEAT_INTERVAL, 30*time.Second, 5*time.Minute, PENDING_AUCTION_KICK_THRESHOLD, CLAIMED_AUCTION_REAP_THRESHOLD)
 
 				running_lrps_poller = helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
 				hello_world_instance_poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
@@ -223,6 +225,7 @@ var _ = Describe("Convergence to desired state", func() {
 			})
 
 			It("Eventually brings the long-running process down", func() {
+				suiteContext.ConvergerRunner.Stop()				
 				suiteContext.RepRunner.Stop()
 
 				desiredAppScaleDownRequest := constructDesiredAppRequest(1)
@@ -235,6 +238,7 @@ var _ = Describe("Convergence to desired state", func() {
 				Ω(running_lrps_poller()).Should(HaveLen(2))
 
 				suiteContext.RepRunner.Start()
+				suiteContext.ConvergerRunner.Start(CONVERGE_REPEAT_INTERVAL, 30*time.Second, 5*time.Minute, PENDING_AUCTION_KICK_THRESHOLD, CLAIMED_AUCTION_REAP_THRESHOLD)
 
 				running_lrps_poller = helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
 				hello_world_instance_poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")

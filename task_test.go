@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cloudfoundry-incubator/executor/integration/executor_runner"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
@@ -134,11 +133,7 @@ var _ = Describe("Task", func() {
 	Context("when an executor disappears", func() {
 		BeforeEach(func() {
 			suiteContext.ConvergerRunner.Start(5*time.Second, 5*time.Second, 10*time.Second, 30*time.Second, 300*time.Second)
-
-			suiteContext.ExecutorRunner.Start(executor_runner.Config{
-				HeartbeatInterval: 1 * time.Second,
-			})
-
+			suiteContext.ExecutorRunner.Start()
 			suiteContext.RepRunner.Start()
 		})
 
