@@ -17,7 +17,7 @@ const amazingRubyServer = `ruby <<END_MAGIC_SERVER
 require 'webrick'
 require 'json'
 
-server = WEBrick::HTTPServer.new :Port => ENV['PORT']
+server = WEBrick::HTTPServer.new :Port => 8080
 
 registered = []
 files = {}
@@ -63,17 +63,12 @@ END_MAGIC_SERVER
 
 var container warden.Container
 
-var hostPort uint32
 var ipAddress string
 
 func Start(wardenClient warden.Client) {
 	var err error
 
 	container, err = wardenClient.Create(warden.ContainerSpec{})
-	Ω(err).ShouldNot(HaveOccurred())
-
-	var containerPort uint32
-	hostPort, containerPort, err = container.NetIn(0, 0)
 	Ω(err).ShouldNot(HaveOccurred())
 
 	info, err := container.Info()
@@ -83,14 +78,11 @@ func Start(wardenClient warden.Client) {
 
 	_, _, err = container.Run(warden.ProcessSpec{
 		Script: amazingRubyServer,
-		EnvironmentVariables: []warden.EnvironmentVariable{
-			warden.EnvironmentVariable{Key: "PORT", Value: fmt.Sprintf("%d", containerPort)},
-		},
 	})
 	Ω(err).ShouldNot(HaveOccurred())
 
 	Eventually(func() error {
-		_, err := http.Get(fmt.Sprintf("http://%s:%d/registrations", ipAddress, hostPort))
+		_, err := http.Get(fmt.Sprintf("http://%s:8080/registrations", ipAddress))
 		return err
 	}, 2).ShouldNot(HaveOccurred())
 }
@@ -98,21 +90,20 @@ func Start(wardenClient warden.Client) {
 func Stop(wardenClient warden.Client) {
 	wardenClient.Destroy(container.Handle())
 	container = nil
-	hostPort = 0
 	ipAddress = ""
 }
 
 func CurlCommand(guid string) string {
-	curlCommand := fmt.Sprintf("curl http://%s:%d/register?guid=%s", ipAddress, hostPort, guid)
+	curlCommand := fmt.Sprintf("curl http://%s:8080/register?guid=%s", ipAddress, guid)
 	return curlCommand
 }
 
 func DownloadUrl(filename string) string {
-	return fmt.Sprintf("http://%s:%d/file/%s", ipAddress, hostPort, filename)
+	return fmt.Sprintf("http://%s:8080/file/%s", ipAddress, filename)
 }
 
 func UploadUrl(filename string) string {
-	return fmt.Sprintf("http://%s:%d/upload/%s", ipAddress, hostPort, filename)
+	return fmt.Sprintf("http://%s:8080/upload/%s", ipAddress, filename)
 }
 
 func DownloadFileString(filename string) string {
@@ -148,7 +139,7 @@ func DownloadFile(filename string) io.Reader {
 
 func ReportingGuids() []string {
 	var responses []string
-	uri := fmt.Sprintf("http://%s:%d/registrations", ipAddress, hostPort)
+	uri := fmt.Sprintf("http://%s:8080/registrations", ipAddress)
 	response, err := http.Get(uri)
 	if err != nil {
 		panic("Problem getting reporting guids from the tiny server")
