@@ -6,13 +6,14 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/http/httptest"
+	"os"
 	"regexp"
 	"strconv"
 
 	"github.com/cloudfoundry/gunk/test_server"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/tedsuo/ifrit/http_server"
 )
 
 const (
@@ -32,31 +33,27 @@ const (
 )
 
 type FakeCC struct {
+	address string
+
 	UploadedDroplets             map[string][]byte
 	UploadedBuildArtifactsCaches map[string][]byte
-	server                       *httptest.Server
 }
 
-func New() *FakeCC {
+func New(address string) *FakeCC {
 	return &FakeCC{
+		address: address,
+
 		UploadedDroplets:             map[string][]byte{},
 		UploadedBuildArtifactsCaches: map[string][]byte{},
 	}
 }
 
-func (f *FakeCC) Start() (address string) {
-	f.server = httptest.NewServer(f)
+func (f *FakeCC) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
+	err := http_server.New(f.address, f).Run(signals, ready)
 
-	return f.server.URL
-}
-
-func (f *FakeCC) Stop() {
-	f.server.Close()
 	f.Reset()
-}
 
-func (f *FakeCC) Address() string {
-	return f.server.URL
+	return err
 }
 
 func (f *FakeCC) Username() string {

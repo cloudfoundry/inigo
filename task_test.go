@@ -3,176 +3,254 @@ package inigo_test
 import (
 	"fmt"
 	"strings"
+	"syscall"
 	"time"
 
+	"github.com/cloudfoundry-incubator/garden/warden"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	"github.com/cloudfoundry/gunk/timeprovider"
+	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
+	"github.com/cloudfoundry/storeadapter/workerpool"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-golang/lager/lagertest"
+	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/grouper"
 )
 
 var _ = Describe("Task", func() {
 	var bbs *Bbs.BBS
 
+	var wardenClient warden.Client
+
+	var plumbing ifrit.Process
+	var executor ifrit.Process
+
 	BeforeEach(func() {
-		bbs = Bbs.NewBBS(suiteContext.EtcdRunner.Adapter(), timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
+		wardenLinux := componentMaker.WardenLinux()
+		wardenClient = wardenLinux.NewClient()
+
+		plumbing = grouper.EnvokeGroup(grouper.RunGroup{
+			"etcd":         componentMaker.Etcd(),
+			"nats":         componentMaker.NATS(),
+			"warden-linux": wardenLinux,
+		})
+
+		adapter := etcdstoreadapter.NewETCDStoreAdapter([]string{"http://" + componentMaker.Addresses.Etcd}, workerpool.NewWorkerPool(20))
+
+		bbs = Bbs.NewBBS(adapter, timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
+
+		err := adapter.Connect()
+		Ω(err).ShouldNot(HaveOccurred())
+
+		inigo_server.Start(wardenClient)
 	})
 
-	Context("when there is an executor running and a Task is registered", func() {
-		var guid string
+	AfterEach(func() {
+		inigo_server.Stop(wardenClient)
 
+		if executor != nil {
+			executor.Signal(syscall.SIGKILL)
+			Eventually(executor.Wait(), 5*time.Second).Should(Receive())
+		}
+
+		plumbing.Signal(syscall.SIGKILL)
+		Eventually(plumbing.Wait(), 5*time.Second).Should(Receive())
+	})
+
+	Context("when an exec and rep are running", func() {
 		BeforeEach(func() {
-			suiteContext.ExecutorRunner.Start()
-			suiteContext.RepRunner.Start()
-			suiteContext.ConvergerRunner.Start(5*time.Second, 5*time.Second, 30*time.Minute, 30*time.Second, 300*time.Second)
-
-			guid = factories.GenerateGuid()
-			task := factories.BuildTaskWithRunAction(
-				"inigo",
-				suiteContext.RepStack,
-				512,
-				512,
-				"curl",
-				inigo_server.CurlArgs(guid),
-			)
-			bbs.DesireTask(task)
+			executor = grouper.EnvokeGroup(grouper.RunGroup{
+				"exec": componentMaker.Executor("-memoryMB", "1024"),
+				"rep":  componentMaker.Rep(),
+			})
 		})
 
-		It("eventually runs the Task", func() {
-			Eventually(inigo_server.ReportingGuids).Should(ContainElement(guid))
+		Context("and a Task is desired", func() {
+			var task models.Task
+			var thingWeRan string
+
+			runDelay := 10 * time.Second
+
+			BeforeEach(func() {
+				thingWeRan = "fake-" + factories.GenerateGuid()
+
+				task = factories.BuildTaskWithRunAction(
+					"inigo",
+					componentMaker.Stack,
+					512,
+					512,
+					"curl",
+					inigo_server.CurlArgs(thingWeRan),
+				)
+
+				err := bbs.DesireTask(task)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("eventually runs the Task", func() {
+				Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(thingWeRan))
+			})
+
+			Context("when a converger is running", func() {
+				var converger ifrit.Process
+
+				BeforeEach(func() {
+					converger = ifrit.Envoke(componentMaker.Converger())
+				})
+
+				AfterEach(func() {
+					converger.Signal(syscall.SIGKILL)
+					Eventually(converger.Wait()).Should(Receive())
+				})
+
+				Context("after the task starts", func() {
+					BeforeEach(func() {
+						Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(thingWeRan))
+					})
+
+					Context("when the executor disappears", func() {
+						BeforeEach(func() {
+							executor.Signal(syscall.SIGKILL)
+						})
+
+						It("eventually marks the task as failed", func() {
+							Eventually(func() interface{} {
+								tasks, _ := bbs.GetAllCompletedTasks()
+								return tasks
+								// TODO this shouldn't take that long...
+							}, LONG_TIMEOUT*30).Should(HaveLen(1))
+
+							tasks, err := bbs.GetAllCompletedTasks()
+							Ω(err).ShouldNot(HaveOccurred())
+
+							completedTask := tasks[0]
+							Ω(completedTask.Guid).Should(Equal(task.Guid))
+							Ω(completedTask.Failed).To(BeTrue())
+						})
+					})
+
+					Context("and another task is desired, but cannot fit", func() {
+						var secondTask models.Task
+						var secondThingWeRan string
+
+						BeforeEach(func() {
+							secondThingWeRan = "fake-" + factories.GenerateGuid()
+
+							secondTask = factories.BuildTaskWithRunAction(
+								"inigo",
+								componentMaker.Stack,
+								768, // 768 + 512 is more than 1024, as we configured, so this won't fit
+								512,
+								"bash",
+								[]string{"-c", fmt.Sprintf("curl %s && sleep 2", strings.Join(inigo_server.CurlArgs(secondThingWeRan), " "))},
+							)
+
+							err := bbs.DesireTask(secondTask)
+							Ω(err).ShouldNot(HaveOccurred())
+						})
+
+						It("is executed once the first task completes, as its resources are cleared", func() {
+							Eventually(bbs.GetAllCompletedTasks, runDelay+SHORT_TIMEOUT).Should(HaveLen(1)) // Wait for first task to complete
+
+							Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(secondThingWeRan))
+						})
+					})
+				})
+			})
 		})
 	})
 
-	Context("when there is no room for a desired task, but room becomes available eventually", func() {
-		var firstTaskGuid string
-		var secondTaskGuid string
+	Context("when only a converger is running", func() {
+		var converger ifrit.Process
 
 		BeforeEach(func() {
-			suiteContext.ExecutorRunner.Start()
-			suiteContext.RepRunner.Start()
-			suiteContext.ConvergerRunner.Start(5*time.Second, 5*time.Second, 30*time.Minute, 30*time.Second, 300*time.Second)
-
-			firstTaskGuid = factories.GenerateGuid()
-
-			task := factories.BuildTaskWithRunAction(
-				"inigo",
-				suiteContext.RepStack,
-				512,
-				512,
-				"bash",
-				[]string{"-c", fmt.Sprintf("curl %s && sleep 2", strings.Join(inigo_server.CurlArgs(firstTaskGuid), " "))},
-			)
-			bbs.DesireTask(task)
-
-			Eventually(inigo_server.ReportingGuids).Should(ContainElement(firstTaskGuid))
-
-			secondTaskGuid = factories.GenerateGuid()
-
-			task = factories.BuildTaskWithRunAction(
-				"inigo",
-				suiteContext.RepStack,
-				768,
-				768,
-				"curl",
-				inigo_server.CurlArgs(secondTaskGuid),
-			)
-
-			bbs.DesireTask(task)
+			converger = ifrit.Envoke(componentMaker.Converger())
 		})
 
-		It("is executed, as the previous task's resources are cleared", func() {
-			Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
+		AfterEach(func() {
+			converger.Signal(syscall.SIGKILL)
+			Eventually(converger.Wait()).Should(Receive())
+		})
 
-			Eventually(inigo_server.ReportingGuids).Should(ContainElement(secondTaskGuid))
+		Context("and a task is desired", func() {
+			var thingWeRan string
+
+			BeforeEach(func() {
+				thingWeRan = "fake-" + factories.GenerateGuid()
+
+				task := factories.BuildTaskWithRunAction(
+					"inigo",
+					componentMaker.Stack,
+					512,
+					512,
+					"bash",
+					[]string{"-c", fmt.Sprintf("curl %s && sleep 2", strings.Join(inigo_server.CurlArgs(thingWeRan), " "))},
+				)
+
+				err := bbs.DesireTask(task)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			Context("and then an exec and rep come up", func() {
+				BeforeEach(func() {
+					executor = grouper.EnvokeGroup(grouper.RunGroup{
+						"exec": componentMaker.Executor(),
+						"rep":  componentMaker.Rep(),
+					})
+				})
+
+				It("eventually runs the Task", func() {
+					Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(thingWeRan))
+				})
+			})
 		})
 	})
 
-	Context("when there are no executors listening when a Task is registered", func() {
+	Context("when a very impatient converger is running", func() {
+		var converger ifrit.Process
+
 		BeforeEach(func() {
-			suiteContext.ConvergerRunner.Start(5*time.Second, 5*time.Second, 60*time.Second, 30*time.Second, 300*time.Second)
+			converger = ifrit.Envoke(componentMaker.Converger("-expireClaimedTaskDuration", "1s"))
 		})
 
-		It("eventually runs the Task once an executor comes up", func() {
-			guid := factories.GenerateGuid()
-			task := factories.BuildTaskWithRunAction(
-				"inigo",
-				suiteContext.RepStack,
-				100,
-				100,
-				"curl",
-				inigo_server.CurlArgs(guid),
-			)
-			bbs.DesireTask(task)
-
-			suiteContext.ExecutorRunner.Start()
-			suiteContext.RepRunner.Start()
-
-			Eventually(inigo_server.ReportingGuids).Should(ContainElement(guid))
-		})
-	})
-
-	Context("when no one picks up the Task", func() {
-		BeforeEach(func() {
-			suiteContext.ConvergerRunner.Start(5*time.Second, 5*time.Second, 1*time.Second, 30*time.Second, 300*time.Second)
+		AfterEach(func() {
+			converger.Signal(syscall.SIGKILL)
+			Eventually(converger.Wait()).Should(Receive())
 		})
 
-		It("should be marked as failed, eventually", func() {
-			guid := factories.GenerateGuid()
-			task := factories.BuildTaskWithRunAction(
-				"inigo",
-				suiteContext.RepStack,
-				100,
-				100,
-				"curl",
-				inigo_server.CurlArgs(guid),
-			)
-			task.Stack = "donald-duck"
-			bbs.DesireTask(task)
+		Context("and a task is desired", func() {
+			var guid string
 
-			Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
-			tasks, err := bbs.GetAllCompletedTasks()
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(tasks[0].Failed).Should(BeTrue(), "Task should have failed")
-			Ω(tasks[0].FailureReason).Should(ContainSubstring("not claimed within time limit"))
+			BeforeEach(func() {
+				guid = "fake-" + factories.GenerateGuid()
 
-			Ω(inigo_server.ReportingGuids()).Should(BeEmpty())
-		})
-	})
+				task := factories.BuildTaskWithRunAction(
+					"inigo",
+					componentMaker.Stack,
+					100,
+					100,
+					"curl",
+					inigo_server.CurlArgs(guid),
+				)
 
-	Context("when an executor disappears", func() {
-		BeforeEach(func() {
-			suiteContext.ConvergerRunner.Start(5*time.Second, 5*time.Second, 10*time.Second, 30*time.Second, 300*time.Second)
-			suiteContext.ExecutorRunner.Start()
-			suiteContext.RepRunner.Start()
-		})
+				err := bbs.DesireTask(task)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
 
-		It("eventually marks jobs running on that executor as failed", func() {
-			guid := factories.GenerateGuid()
-			task := factories.BuildTaskWithRunAction(
-				"inigo",
-				suiteContext.RepStack,
-				1024,
-				1024,
-				"bash",
-				[]string{"-c", fmt.Sprintf("curl %s; sleep 10", strings.Join(inigo_server.CurlArgs(guid), " "))},
-			)
-			bbs.DesireTask(task)
-			Eventually(inigo_server.ReportingGuids).Should(ContainElement(guid))
+			It("should be marked as failed after the expire duration", func() {
+				Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
 
-			suiteContext.ExecutorRunner.KillWithFire()
+				tasks, err := bbs.GetAllCompletedTasks()
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(tasks[0].Failed).Should(BeTrue(), "Task should have failed")
+				Ω(tasks[0].FailureReason).Should(ContainSubstring("not claimed within time limit"))
 
-			Eventually(func() interface{} {
-				tasks, _ := bbs.GetAllCompletedTasks()
-				return tasks
-			}).Should(HaveLen(1))
-			tasks, _ := bbs.GetAllCompletedTasks()
-
-			completedTask := tasks[0]
-			Ω(completedTask.Guid).Should(Equal(task.Guid))
-			Ω(completedTask.Failed).To(BeTrue())
+				Ω(inigo_server.ReportingGuids()).Should(BeEmpty())
+			})
 		})
 	})
 })

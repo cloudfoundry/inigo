@@ -3,6 +3,7 @@ package helpers
 import (
 	"encoding/json"
 	"net/http"
+
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/rata"
 
@@ -16,7 +17,7 @@ func RunningLRPInstancesPoller(tpsAddr string, guid string) func() []tpsapi.LRPI
 }
 
 func RunningLRPInstances(tpsAddr string, guid string) []tpsapi.LRPInstance {
-	tpsRequestGenerator := rata.NewRequestGenerator(tpsAddr, tpsapi.Routes)
+	tpsRequestGenerator := rata.NewRequestGenerator("http://"+tpsAddr, tpsapi.Routes)
 
 	getLRPs, err := tpsRequestGenerator.CreateRequest(
 		tpsapi.LRPStatus,
@@ -25,20 +26,20 @@ func RunningLRPInstances(tpsAddr string, guid string) []tpsapi.LRPInstance {
 	)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	var instances []tpsapi.LRPInstance
 	response, err := http.DefaultClient.Do(getLRPs)
 	Ω(err).ShouldNot(HaveOccurred())
-
 	defer response.Body.Close()
+
+	var instances []tpsapi.LRPInstance
 	err = json.NewDecoder(response.Body).Decode(&instances)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	instancesToReturn := []tpsapi.LRPInstance{}
+	runningInstances := []tpsapi.LRPInstance{}
 	for _, instance := range instances {
 		if instance.State == "running" {
-			instancesToReturn = append(instancesToReturn, instance)
+			runningInstances = append(runningInstances, instance)
 		}
 	}
 
-	return instancesToReturn
+	return runningInstances
 }

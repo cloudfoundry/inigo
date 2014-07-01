@@ -19,24 +19,12 @@
 			"Rev": "b8a35001b773c267eb260a691f4e5499a3531600"
 		},
 		{
-			"ImportPath": "github.com/cloudfoundry-incubator/auctioneer/integration/auctioneer_runner",
-			"Rev": "a26fbd7ad2b4aa136e92f113cb08256dbd6e312a"
-		},
-		{
 			"ImportPath": "github.com/cloudfoundry-incubator/candiedyaml",
 			"Rev": "9d6da703654a1d6897de218799c1ff4eccf49b85"
 		},
 		{
-			"ImportPath": "github.com/cloudfoundry-incubator/converger/converger_runner",
-			"Rev": "aecc4b9ad2f7053bc8725ee88230661c0dc4520a"
-		},
-		{
 			"ImportPath": "github.com/cloudfoundry-incubator/delta_force/delta_force",
 			"Rev": "8300c5546d32d8533295f666c1cd0941113fd7bb"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry-incubator/executor/integration/executor_runner",
-			"Rev": "16692035b47e9090d3ee69c79c85e238744d7abf"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/client",
@@ -64,18 +52,6 @@
 			"Rev": "6096f589f814546a845c97f073292913feffacb8"
 		},
 		{
-			"ImportPath": "github.com/cloudfoundry-incubator/nsync/integration/runner",
-			"Rev": "5c264d628058db996e61c203e5b20fc4e11e89eb"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry-incubator/rep/reprunner",
-			"Rev": "a3e269967eb6b10fcc8abe0e151433e6339f1c25"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry-incubator/route-emitter/integration/route_emitter_runner",
-			"Rev": "1d9299b6ba803bca528f85d4daf5ea91a5e9c703"
-		},
-		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
 			"Rev": "b30103f18c98748a527aba9370a070bdcd4ac51b"
 		},
@@ -84,15 +60,7 @@
 			"Rev": "b30103f18c98748a527aba9370a070bdcd4ac51b"
 		},
 		{
-			"ImportPath": "github.com/cloudfoundry-incubator/stager/integration/stager_runner",
-			"Rev": "05552a0c7e50e64c3f6184bcc4a697dec24f7439"
-		},
-		{
 			"ImportPath": "github.com/cloudfoundry-incubator/tps/api",
-			"Rev": "47c2d088c629dea679b6eddc83c7311e721a0928"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry-incubator/tps/integration/tpsrunner",
 			"Rev": "47c2d088c629dea679b6eddc83c7311e721a0928"
 		},
 		{
@@ -111,10 +79,6 @@
 			"ImportPath": "github.com/cloudfoundry/gosteno",
 			"Comment": "scotty_09012012-41-g5c1406e",
 			"Rev": "5c1406e9ea0ab919f92e1b194169565def41147b"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
-			"Rev": "2bb7ab04e15bdae68f68e4aa7ef79b43a371e088"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/test_server",

@@ -8,8 +8,10 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	"github.com/cloudfoundry/gunk/timeprovider"
-	"github.com/nu7hatch/gouuid"
+	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
+	"github.com/cloudfoundry/storeadapter/workerpool"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 
@@ -20,44 +22,39 @@ import (
 
 var _ = Describe("Starting an arbitrary LRP", func() {
 	var (
-		processGroup ifrit.Process
-		processGuid  string
-		tpsAddr      string
-		bbs          *Bbs.BBS
+		processGuid string
+		bbs         *Bbs.BBS
+
+		plumbing ifrit.Process
+		runtime  ifrit.Process
 	)
 
 	BeforeEach(func() {
-		bbs = Bbs.NewBBS(
-			suiteContext.EtcdRunner.Adapter(),
-			timeprovider.NewTimeProvider(),
-			lagertest.NewTestLogger("test"),
-		)
+		processGuid = factories.GenerateGuid()
 
-		guid, err := uuid.NewV4()
-		if err != nil {
-			panic("Failed to generate AppID Guid")
-		}
+		plumbing = grouper.EnvokeGroup(grouper.RunGroup{
+			"etcd":         componentMaker.Etcd(),
+			"nats":         componentMaker.NATS(),
+			"warden-linux": componentMaker.WardenLinux(),
+		})
 
-		processGuid = guid.String()
+		runtime = grouper.EnvokeGroup(grouper.RunGroup{
+			"exec":       componentMaker.Executor(),
+			"rep":        componentMaker.Rep(),
+			"auctioneer": componentMaker.Auctioneer(),
+		})
 
-		suiteContext.ExecutorRunner.Start()
-		suiteContext.RepRunner.Start()
-		suiteContext.FileServerRunner.Start()
-		suiteContext.ConvergerRunner.Start(CONVERGE_REPEAT_INTERVAL, 30*time.Second, 5*time.Minute, PENDING_AUCTION_KICK_THRESHOLD, CLAIMED_AUCTION_REAP_THRESHOLD)
-		suiteContext.AuctioneerRunner.Start(AUCTION_MAX_ROUNDS)
+		adapter := etcdstoreadapter.NewETCDStoreAdapter([]string{"http://" + componentMaker.Addresses.Etcd}, workerpool.NewWorkerPool(20))
 
-		processes := grouper.RunGroup{
-			"tps": suiteContext.TPSRunner,
-		}
-
-		processGroup = ifrit.Envoke(processes)
-
-		tpsAddr = fmt.Sprintf("http://%s", suiteContext.TPSAddress)
+		bbs = Bbs.NewBBS(adapter, timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
 	})
 
 	AfterEach(func() {
-		processGroup.Signal(syscall.SIGKILL)
-		Eventually(processGroup.Wait()).Should(Receive())
+		runtime.Signal(syscall.SIGKILL)
+		Eventually(runtime.Wait(), 5*time.Second).Should(Receive())
+
+		plumbing.Signal(syscall.SIGKILL)
+		Eventually(plumbing.Wait(), 5*time.Second).Should(Receive())
 	})
 
 	It("eventually runs on an executor", func() {
@@ -65,7 +62,7 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 			Domain:      "inigo",
 			ProcessGuid: processGuid,
 			Instances:   1,
-			Stack:       suiteContext.RepStack,
+			Stack:       componentMaker.Stack,
 			MemoryMB:    128,
 			DiskMB:      1024,
 			Ports: []models.PortMapping{
@@ -97,7 +94,11 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 
 							HealthyHook: models.HealthRequest{
 								Method: "PUT",
-								URL:    fmt.Sprintf("http://127.0.0.1:%d/lrp_running/%s/PLACEHOLDER_INSTANCE_INDEX/PLACEHOLDER_INSTANCE_GUID", suiteContext.RepPort, processGuid),
+								URL: fmt.Sprintf(
+									"http://%s/lrp_running/%s/PLACEHOLDER_INSTANCE_INDEX/PLACEHOLDER_INSTANCE_GUID",
+									componentMaker.Addresses.Rep,
+									processGuid,
+								),
 							},
 						},
 					},
@@ -106,6 +107,6 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 		})
 		Ω(err).ShouldNot(HaveOccurred())
 
-		Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)).Should(HaveLen(1))
+		Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(1))
 	})
 })

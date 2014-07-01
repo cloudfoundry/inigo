@@ -8,13 +8,20 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"path/filepath"
+	"syscall"
+	"time"
 
+	"github.com/cloudfoundry-incubator/garden/warden"
+	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
+	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/fraenkel/candiedyaml"
+	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/grouper"
 
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
-	"github.com/cloudfoundry-incubator/stager/integration/stager_runner"
 	"github.com/cloudfoundry/yagnats"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -23,7 +30,7 @@ import (
 )
 
 func downloadBuildArtifactsCache(appId string) []byte {
-	fileServerUrl := fmt.Sprintf("http://127.0.0.1:%d/v1/build_artifacts/%s", suiteContext.FileServerPort, appId)
+	fileServerUrl := fmt.Sprintf("http://%s/v1/build_artifacts/%s", componentMaker.Addresses.FileServer, appId)
 	resp, err := http.Get(fileServerUrl)
 	Ω(err).ShouldNot(HaveOccurred())
 
@@ -36,38 +43,77 @@ func downloadBuildArtifactsCache(appId string) []byte {
 }
 
 var _ = Describe("Stager", func() {
-	var otherStagerRunner *stager_runner.StagerRunner
 	var appId string
 	var taskId string
+
+	var wardenClient warden.Client
+
+	var natsClient yagnats.NATSClient
+
+	var fileServerStaticDir string
+
+	var plumbing ifrit.Process
+	var runtime ifrit.Process
+
+	var fakeCC *fake_cc.FakeCC
 
 	BeforeEach(func() {
 		appId = factories.GenerateGuid()
 		taskId = factories.GenerateGuid()
-		suiteContext.FileServerRunner.Start()
-		otherStagerRunner = stager_runner.New(
-			suiteContext.SharedContext.StagerPath,
-			suiteContext.EtcdRunner.NodeURLS(),
-			[]string{fmt.Sprintf("127.0.0.1:%d", suiteContext.NatsPort)},
-		)
+
+		wardenLinux := componentMaker.WardenLinux()
+		wardenClient = wardenLinux.NewClient()
+
+		fileServer, dir := componentMaker.FileServer()
+		fileServerStaticDir = dir
+
+		fakeCC = componentMaker.FakeCC()
+
+		natsClient = yagnats.NewClient()
+
+		plumbing = grouper.EnvokeGroup(grouper.RunGroup{
+			"etcd":         componentMaker.Etcd(),
+			"nats":         componentMaker.NATS(),
+			"warden-linux": wardenLinux,
+		})
+
+		runtime = grouper.EnvokeGroup(grouper.RunGroup{
+			"stager":         componentMaker.Stager("-minDiskMB", "64", "-minMemoryMB", "64"),
+			"cc":             fakeCC,
+			"nsync-listener": componentMaker.NsyncListener(),
+			"exec":           componentMaker.Executor(),
+			"rep":            componentMaker.Rep(),
+			"file-server":    fileServer,
+			"loggregator":    componentMaker.Loggregator(),
+		})
+
+		err := natsClient.Connect(&yagnats.ConnectionInfo{
+			Addr: componentMaker.Addresses.NATS,
+		})
+		Ω(err).ShouldNot(HaveOccurred())
+
+		inigo_server.Start(wardenClient)
+	})
+
+	AfterEach(func() {
+		inigo_server.Stop(wardenClient)
+
+		runtime.Signal(syscall.SIGKILL)
+		Eventually(runtime.Wait(), 5*time.Second).Should(Receive())
+
+		plumbing.Signal(syscall.SIGKILL)
+		Eventually(plumbing.Wait(), 5*time.Second).Should(Receive())
 	})
 
 	Context("when unable to find an appropriate compiler", func() {
-		BeforeEach(func() {
-			suiteContext.ExecutorRunner.Start()
-			suiteContext.RepRunner.Start()
-			suiteContext.StagerRunner.Start(
-				"--minDiskMB", "64",
-				"--minMemoryMB", "64",
-			)
-		})
-
 		It("returns an error", func() {
 			receivedMessages := make(chan *yagnats.Message)
-			suiteContext.NatsRunner.MessageBus.Subscribe("diego.staging.finished", func(message *yagnats.Message) {
+
+			natsClient.Subscribe("diego.staging.finished", func(message *yagnats.Message) {
 				receivedMessages <- message
 			})
 
-			suiteContext.NatsRunner.MessageBus.Publish(
+			natsClient.Publish(
 				"diego.staging.start",
 				[]byte(fmt.Sprintf(`{
 					"app_id": "%s",
@@ -91,13 +137,13 @@ var _ = Describe("Stager", func() {
 		var buildpackToUse string
 
 		BeforeEach(func() {
-			suiteContext.ExecutorRunner.Start()
-			suiteContext.RepRunner.Start()
-
 			buildpackToUse = "admin_buildpack.zip"
 			outputGuid = factories.GenerateGuid()
 
-			suiteContext.FileServerRunner.ServeFile("lifecycle.zip", suiteContext.SharedContext.CircusZipPath)
+			cp(
+				componentMaker.Artifacts.Circuses[componentMaker.Stack],
+				filepath.Join(fileServerStaticDir, world.CircusZipFilename),
+			)
 
 			//make and upload an app
 			var appFiles = []zip_helper.ArchiveFile{
@@ -133,6 +179,7 @@ default_process_types:
 EOF
 				`},
 			}
+
 			zip_helper.CreateZipArchive("/tmp/admin_buildpack.zip", adminBuildpackFiles)
 			inigo_server.UploadFile("admin_buildpack.zip", "/tmp/admin_buildpack.zip")
 
@@ -174,19 +221,11 @@ EOF
 		})
 
 		Context("with one stager running", func() {
-			BeforeEach(func() {
-				suiteContext.StagerRunner.Start(
-					"--circuses", `{"lucid64":"lifecycle.zip"}`,
-					"--minDiskMB", "64",
-					"--minMemoryMB", "64",
-				)
-			})
-
 			It("runs the compiler on the executor with the correct environment variables, bits and log tag, and responds with the detected buildpack", func() {
 				//listen for NATS response
 				payloads := make(chan []byte)
 
-				suiteContext.NatsRunner.MessageBus.Subscribe("diego.staging.finished", func(msg *yagnats.Message) {
+				natsClient.Subscribe("diego.staging.finished", func(msg *yagnats.Message) {
 					payloads <- msg.Payload
 				})
 
@@ -194,7 +233,7 @@ EOF
 				logOutput := gbytes.NewBuffer()
 
 				stop := loggredile.StreamIntoGBuffer(
-					suiteContext.LoggregatorRunner.Config.OutgoingPort,
+					componentMaker.Addresses.LoggregatorOut,
 					fmt.Sprintf("/tail/?app=%s", appId),
 					"STG",
 					logOutput,
@@ -203,7 +242,7 @@ EOF
 				defer close(stop)
 
 				//publish the staging message
-				err := suiteContext.NatsRunner.MessageBus.Publish("diego.staging.start", stagingMessage)
+				err := natsClient.Publish("diego.staging.start", stagingMessage)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				//wait for staging to complete
@@ -254,7 +293,7 @@ EOF
 				Ω(buildArtifactContents).Should(HaveKey("./inserted-into-artifacts-cache"))
 
 				//Fetch the compiled droplet from the fakeCC
-				dropletData, ok := suiteContext.FakeCC.UploadedDroplets[appId]
+				dropletData, ok := fakeCC.UploadedDroplets[appId]
 				Ω(ok).Should(BeTrue())
 				Ω(dropletData).ShouldNot(BeEmpty())
 
@@ -311,14 +350,14 @@ EOF
 				It("responds with the error, and no detected buildpack present", func() {
 					payloads := make(chan []byte)
 
-					suiteContext.NatsRunner.MessageBus.Subscribe("diego.staging.finished", func(msg *yagnats.Message) {
+					natsClient.Subscribe("diego.staging.finished", func(msg *yagnats.Message) {
 						payloads <- msg.Payload
 					})
 
 					logOutput := gbytes.NewBuffer()
 
 					stop := loggredile.StreamIntoGBuffer(
-						suiteContext.LoggregatorRunner.Config.OutgoingPort,
+						componentMaker.Addresses.LoggregatorOut,
 						fmt.Sprintf("/tail/?app=%s", appId),
 						"STG",
 						logOutput,
@@ -326,7 +365,7 @@ EOF
 					)
 					defer close(stop)
 
-					err := suiteContext.NatsRunner.MessageBus.Publish(
+					err := natsClient.Publish(
 						"diego.staging.start",
 						stagingMessage,
 					)
@@ -346,32 +385,26 @@ EOF
 		})
 
 		Context("with two stagers running", func() {
+			var otherStager ifrit.Process
+
 			BeforeEach(func() {
-				suiteContext.StagerRunner.Start(
-					"--circuses", `{"lucid64":"lifecycle.zip"}`,
-					"--minDiskMB", "64",
-					"--minMemoryMB", "64",
-				)
-				otherStagerRunner.Start(
-					"--circuses", `{"lucid64":"lifecycle.zip"}`,
-					"--minDiskMB", "64",
-					"--minMemoryMB", "64",
-				)
+				otherStager = ifrit.Envoke(componentMaker.Stager())
 			})
 
 			AfterEach(func() {
-				otherStagerRunner.Stop()
+				otherStager.Signal(syscall.SIGKILL)
+				Eventually(otherStager.Wait()).Should(Receive())
 			})
 
 			It("only one returns a staging completed response", func() {
 				received := make(chan bool)
 
-				_, err := suiteContext.NatsRunner.MessageBus.Subscribe("diego.staging.finished", func(message *yagnats.Message) {
+				_, err := natsClient.Subscribe("diego.staging.finished", func(message *yagnats.Message) {
 					received <- true
 				})
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = suiteContext.NatsRunner.MessageBus.Publish(
+				err = natsClient.Publish(
 					"diego.staging.start",
 					stagingMessage,
 				)

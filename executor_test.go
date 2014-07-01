@@ -6,12 +6,17 @@ import (
 	"compress/gzip"
 	"fmt"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/cloudfoundry/gunk/timeprovider"
+	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
+	"github.com/cloudfoundry/storeadapter/workerpool"
 	"github.com/pivotal-golang/lager/lagertest"
+	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/grouper"
 
-	"github.com/cloudfoundry-incubator/executor/integration/executor_runner"
+	"github.com/cloudfoundry-incubator/garden/warden"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
@@ -20,69 +25,90 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
-	"github.com/onsi/gomega/gexec"
 )
 
 var _ = Describe("Executor", func() {
 	var bbs *Bbs.BBS
 
+	var wardenClient warden.Client
+
+	var plumbing ifrit.Process
+	var executor ifrit.Process
+
 	BeforeEach(func() {
-		bbs = Bbs.NewBBS(suiteContext.EtcdRunner.Adapter(), timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
+		wardenLinux := componentMaker.WardenLinux()
+		wardenClient = wardenLinux.NewClient()
+
+		plumbing = grouper.EnvokeGroup(grouper.RunGroup{
+			"etcd":         componentMaker.Etcd(),
+			"nats":         componentMaker.NATS(),
+			"warden-linux": wardenLinux,
+		})
+
+		executor = grouper.EnvokeGroup(grouper.RunGroup{
+			"exec":        componentMaker.Executor(),
+			"rep":         componentMaker.Rep(),
+			"loggregator": componentMaker.Loggregator(),
+		})
+
+		adapter := etcdstoreadapter.NewETCDStoreAdapter([]string{"http://" + componentMaker.Addresses.Etcd}, workerpool.NewWorkerPool(20))
+
+		err := adapter.Connect()
+		Ω(err).ShouldNot(HaveOccurred())
+
+		bbs = Bbs.NewBBS(adapter, timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
+
+		inigo_server.Start(wardenClient)
 	})
 
-	Describe("invalid memory and disk limit flags", func() {
-		It("fails when the memory limit is not valid", func() {
-			suiteContext.ExecutorRunner.StartWithoutCheck(executor_runner.Config{MemoryMB: "0", DiskMB: "256"})
-			Eventually(suiteContext.ExecutorRunner.Session).Should(gbytes.Say("memory limit must be a positive number or 'auto'"))
-			Eventually(suiteContext.ExecutorRunner.Session).Should(gexec.Exit(1))
-		})
+	AfterEach(func() {
+		inigo_server.Stop(wardenClient)
 
-		It("fails when the disk limit is not valid", func() {
-			suiteContext.ExecutorRunner.StartWithoutCheck(executor_runner.Config{MemoryMB: "256", DiskMB: "0"})
-			Eventually(suiteContext.ExecutorRunner.Session).Should(gbytes.Say("disk limit must be a positive number or 'auto'"))
-			Eventually(suiteContext.ExecutorRunner.Session).Should(gexec.Exit(1))
-		})
+		if executor != nil {
+			executor.Signal(syscall.SIGKILL)
+			Eventually(executor.Wait(), 5*time.Second).Should(Receive())
+		}
+
+		plumbing.Signal(syscall.SIGKILL)
+		Eventually(plumbing.Wait(), 5*time.Second).Should(Receive())
 	})
 
 	Describe("Heartbeating", func() {
 		It("should heartbeat its presence (through the rep)", func() {
-			suiteContext.ExecutorRunner.Start()
-			suiteContext.RepRunner.Start()
-
 			Eventually(bbs.GetAllExecutors).Should(HaveLen(1))
 		})
 	})
 
 	Describe("Resource limits", func() {
-		BeforeEach(func() {
-			suiteContext.ExecutorRunner.Start()
-			suiteContext.RepRunner.Start()
-		})
-
 		It("should only pick up tasks if it has capacity", func() {
 			firstGuyGuid := factories.GenerateGuid()
 			secondGuyGuid := factories.GenerateGuid()
+
 			firstGuyTask := factories.BuildTaskWithRunAction(
 				"inigo",
-				suiteContext.RepStack,
+				componentMaker.Stack,
 				1024,
 				1024,
 				"bash",
 				[]string{"-c", fmt.Sprintf("curl %s; sleep 5", strings.Join(inigo_server.CurlArgs(firstGuyGuid), " "))},
 			)
-			bbs.DesireTask(firstGuyTask)
+
+			err := bbs.DesireTask(firstGuyTask)
+			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(inigo_server.ReportingGuids).Should(ContainElement(firstGuyGuid))
 
 			secondGuyTask := factories.BuildTaskWithRunAction(
 				"inigo",
-				suiteContext.RepStack,
+				componentMaker.Stack,
 				1024,
 				1024,
 				"curl",
 				inigo_server.CurlArgs(secondGuyGuid),
 			)
-			bbs.DesireTask(secondGuyTask)
+
+			err = bbs.DesireTask(secondGuyTask)
+			Ω(err).ShouldNot(HaveOccurred())
 
 			Consistently(inigo_server.ReportingGuids).ShouldNot(ContainElement(secondGuyGuid))
 		})
@@ -91,16 +117,11 @@ var _ = Describe("Executor", func() {
 	Describe("Stack", func() {
 		var wrongStack = "penguin"
 
-		BeforeEach(func() {
-			suiteContext.ExecutorRunner.Start()
-			suiteContext.RepRunner.Start()
-		})
-
 		It("should only pick up tasks if the stacks match", func() {
 			matchingGuid := factories.GenerateGuid()
 			matchingTask := factories.BuildTaskWithRunAction(
 				"inigo",
-				suiteContext.RepStack,
+				componentMaker.Stack,
 				100,
 				100,
 				"bash",
@@ -117,8 +138,11 @@ var _ = Describe("Executor", func() {
 				[]string{"-c", fmt.Sprintf("curl %s; sleep 10", strings.Join(inigo_server.CurlArgs(nonMatchingGuid), " "))},
 			)
 
-			bbs.DesireTask(matchingTask)
-			bbs.DesireTask(nonMatchingTask)
+			err := bbs.DesireTask(matchingTask)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = bbs.DesireTask(nonMatchingTask)
+			Ω(err).ShouldNot(HaveOccurred())
 
 			Consistently(inigo_server.ReportingGuids).ShouldNot(ContainElement(nonMatchingGuid), "Did not expect to see this app running, as it has the wrong stack.")
 			Eventually(inigo_server.ReportingGuids).Should(ContainElement(matchingGuid))
@@ -127,10 +151,8 @@ var _ = Describe("Executor", func() {
 
 	Describe("Running a command", func() {
 		var guid string
-		BeforeEach(func() {
-			suiteContext.ExecutorRunner.Start()
-			suiteContext.RepRunner.Start()
 
+		BeforeEach(func() {
 			guid = factories.GenerateGuid()
 		})
 
@@ -143,7 +165,7 @@ var _ = Describe("Executor", func() {
 			task := models.Task{
 				Domain:   "inigo",
 				Guid:     factories.GenerateGuid(),
-				Stack:    suiteContext.RepStack,
+				Stack:    componentMaker.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
@@ -173,7 +195,7 @@ var _ = Describe("Executor", func() {
 				task := models.Task{
 					Domain:   "inigo",
 					Guid:     factories.GenerateGuid(),
-					Stack:    suiteContext.RepStack,
+					Stack:    componentMaker.Stack,
 					MemoryMB: 10,
 					DiskMB:   1024,
 					Actions: []models.ExecutorAction{
@@ -213,7 +235,7 @@ var _ = Describe("Executor", func() {
 				task := models.Task{
 					Domain:   "inigo",
 					Guid:     factories.GenerateGuid(),
-					Stack:    suiteContext.RepStack,
+					Stack:    componentMaker.Stack,
 					MemoryMB: 10,
 					DiskMB:   1024,
 					Actions: []models.ExecutorAction{
@@ -244,7 +266,7 @@ var _ = Describe("Executor", func() {
 				task := models.Task{
 					Domain:   "inigo",
 					Guid:     factories.GenerateGuid(),
-					Stack:    suiteContext.RepStack,
+					Stack:    componentMaker.Stack,
 					MemoryMB: 1024,
 					DiskMB:   1024,
 					Actions: []models.ExecutorAction{
@@ -274,10 +296,8 @@ var _ = Describe("Executor", func() {
 
 	Describe("Running a downloaded file", func() {
 		var guid string
-		BeforeEach(func() {
-			suiteContext.ExecutorRunner.Start()
-			suiteContext.RepRunner.Start()
 
+		BeforeEach(func() {
 			guid = factories.GenerateGuid()
 			inigo_server.UploadFileString("curling.sh", fmt.Sprintf("curl %s", strings.Join(inigo_server.CurlArgs(guid), " ")))
 		})
@@ -286,7 +306,7 @@ var _ = Describe("Executor", func() {
 			task := models.Task{
 				Domain:   "inigo",
 				Guid:     factories.GenerateGuid(),
-				Stack:    suiteContext.RepStack,
+				Stack:    componentMaker.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
@@ -307,10 +327,8 @@ var _ = Describe("Executor", func() {
 
 	Describe("Uploading from the container", func() {
 		var guid string
-		BeforeEach(func() {
-			suiteContext.ExecutorRunner.Start()
-			suiteContext.RepRunner.Start()
 
+		BeforeEach(func() {
 			guid = factories.GenerateGuid()
 		})
 
@@ -318,7 +336,7 @@ var _ = Describe("Executor", func() {
 			task := models.Task{
 				Domain:   "inigo",
 				Guid:     factories.GenerateGuid(),
-				Stack:    suiteContext.RepStack,
+				Stack:    componentMaker.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
@@ -352,16 +370,11 @@ var _ = Describe("Executor", func() {
 	})
 
 	Describe("Fetching results", func() {
-		BeforeEach(func() {
-			suiteContext.ExecutorRunner.Start()
-			suiteContext.RepRunner.Start()
-		})
-
 		It("should fetch the contents of the requested file and provide the content in the completed Task", func() {
 			task := models.Task{
 				Domain:   "inigo",
 				Guid:     factories.GenerateGuid(),
-				Stack:    suiteContext.RepStack,
+				Stack:    componentMaker.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
@@ -384,11 +397,6 @@ var _ = Describe("Executor", func() {
 	})
 
 	Describe("A Task with logging configured", func() {
-		BeforeEach(func() {
-			suiteContext.ExecutorRunner.Start()
-			suiteContext.RepRunner.Start()
-		})
-
 		It("has its stdout and stderr emitted to Loggregator", func() {
 			logGuid := factories.GenerateGuid()
 
@@ -396,7 +404,7 @@ var _ = Describe("Executor", func() {
 			errBuf := gbytes.NewBuffer()
 
 			stop := loggredile.StreamIntoGBuffer(
-				suiteContext.LoggregatorRunner.Config.OutgoingPort,
+				componentMaker.Addresses.LoggregatorOut,
 				"/tail/?app="+logGuid,
 				"APP",
 				outBuf,
@@ -406,7 +414,7 @@ var _ = Describe("Executor", func() {
 
 			task := factories.BuildTaskWithRunAction(
 				"inigo",
-				suiteContext.RepStack,
+				componentMaker.Stack,
 				1024,
 				1024,
 				"bash",

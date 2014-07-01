@@ -2,13 +2,20 @@ package inigo_test
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"syscall"
 	"time"
 
+	"github.com/cloudfoundry-incubator/garden/warden"
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
+	"github.com/cloudfoundry-incubator/inigo/world"
+	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
+
+	"github.com/cloudfoundry/yagnats"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 
@@ -20,45 +27,77 @@ import (
 )
 
 var _ = Describe("AppRunner", func() {
-	var appId = "simple-echo-app"
+	var appId string
 
-	var processGroup ifrit.Process
+	var wardenClient warden.Client
 
-	var tpsAddr string
+	var natsClient yagnats.NATSClient
+
+	var fileServerStaticDir string
+
+	var plumbing ifrit.Process
+	var runtime ifrit.Process
 
 	BeforeEach(func() {
-		suiteContext.FileServerRunner.Start()
+		appId = factories.GenerateGuid()
 
-		processes := grouper.RunGroup{
-			"tps":            suiteContext.TPSRunner,
-			"nsync-listener": suiteContext.NsyncListenerRunner,
-		}
+		wardenLinux := componentMaker.WardenLinux()
+		wardenClient = wardenLinux.NewClient()
 
-		processGroup = ifrit.Envoke(processes)
+		fileServer, dir := componentMaker.FileServer()
+		fileServerStaticDir = dir
 
-		tpsAddr = fmt.Sprintf("http://%s", suiteContext.TPSAddress)
+		natsClient = yagnats.NewClient()
+
+		plumbing = grouper.EnvokeGroup(grouper.RunGroup{
+			"etcd":         componentMaker.Etcd(),
+			"nats":         componentMaker.NATS(),
+			"warden-linux": wardenLinux,
+		})
+
+		runtime = grouper.EnvokeGroup(grouper.RunGroup{
+			"cc":             componentMaker.FakeCC(),
+			"tps":            componentMaker.TPS(),
+			"nsync-listener": componentMaker.NsyncListener(),
+			"exec":           componentMaker.Executor(),
+			"rep":            componentMaker.Rep(),
+			"file-server":    fileServer,
+			"auctioneer":     componentMaker.Auctioneer(),
+			"route-emitter":  componentMaker.RouteEmitter(),
+			"converger":      componentMaker.Converger(),
+			"router":         componentMaker.Router(),
+			"loggregator":    componentMaker.Loggregator(),
+		})
+
+		err := natsClient.Connect(&yagnats.ConnectionInfo{
+			Addr: componentMaker.Addresses.NATS,
+		})
+		Ω(err).ShouldNot(HaveOccurred())
+
+		inigo_server.Start(wardenClient)
 	})
 
 	AfterEach(func() {
-		processGroup.Signal(syscall.SIGKILL)
-		Eventually(processGroup.Wait()).Should(Receive())
+		inigo_server.Stop(wardenClient)
+
+		runtime.Signal(syscall.SIGKILL)
+		Eventually(runtime.Wait(), 5*time.Second).Should(Receive())
+
+		plumbing.Signal(syscall.SIGKILL)
+		Eventually(plumbing.Wait(), 5*time.Second).Should(Receive())
 	})
 
 	Describe("Running", func() {
 		var runningMessage []byte
 
 		BeforeEach(func() {
-			suiteContext.ExecutorRunner.Start()
-			suiteContext.RepRunner.Start()
-			suiteContext.AuctioneerRunner.Start(AUCTION_MAX_ROUNDS)
-			suiteContext.ConvergerRunner.Start(CONVERGE_REPEAT_INTERVAL, 30*time.Second, 5*time.Minute, PENDING_AUCTION_KICK_THRESHOLD, CLAIMED_AUCTION_REAP_THRESHOLD)
-			suiteContext.RouteEmitterRunner.Start()
-			suiteContext.RouterRunner.Start()
-
 			archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
 			inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")
 
-			suiteContext.FileServerRunner.ServeFile("some-lifecycle-bundle.tgz", suiteContext.SharedContext.CircusZipPath)
+			cp(
+				componentMaker.Artifacts.Circuses[componentMaker.Stack],
+				filepath.Join(fileServerStaticDir, world.CircusZipFilename),
+			)
 		})
 
 		JustBeforeEach(func() {
@@ -77,7 +116,7 @@ var _ = Describe("AppRunner", func() {
 			      }
 			    `,
 					inigo_server.DownloadUrl("simple-echo-droplet.zip"),
-					suiteContext.RepStack,
+					componentMaker.Stack,
 					appId,
 				),
 			)
@@ -88,7 +127,7 @@ var _ = Describe("AppRunner", func() {
 			logOutput := gbytes.NewBuffer()
 
 			stop := loggredile.StreamIntoGBuffer(
-				suiteContext.LoggregatorRunner.Config.OutgoingPort,
+				componentMaker.Addresses.LoggregatorOut,
 				fmt.Sprintf("/tail/?app=%s", appId),
 				"App",
 				logOutput,
@@ -97,7 +136,7 @@ var _ = Describe("AppRunner", func() {
 			defer close(stop)
 
 			// publish the app run message
-			err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", runningMessage)
+			err := natsClient.Publish("diego.desire.app", runningMessage)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Assert the user saw reasonable output
@@ -106,17 +145,24 @@ var _ = Describe("AppRunner", func() {
 			Eventually(logOutput.Contents).Should(ContainSubstring("Hello World from index '2'"))
 
 			// check lrp instance statuses
-			Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, "process-guid"), DEFAULT_EVENTUALLY_TIMEOUT, 0.5).Should(HaveLen(3))
+			Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, "process-guid"), DEFAULT_EVENTUALLY_TIMEOUT, 0.5).Should(HaveLen(3))
 
 			//both routes should be routable
-			Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-1"), DEFAULT_EVENTUALLY_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
-			Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-2"), DEFAULT_EVENTUALLY_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
+			Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-1"), DEFAULT_EVENTUALLY_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
+			Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-2"), DEFAULT_EVENTUALLY_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
 
 			//a given route should route to all three runninginstances
-			Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-1"), DEFAULT_EVENTUALLY_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
+			Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-1"), DEFAULT_EVENTUALLY_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
 
-			poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-1")
+			poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-1")
 			Eventually(poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0", "1", "2"}))
 		})
 	})
 })
+
+func cp(sourceFilePath, destinationPath string) {
+	data, err := ioutil.ReadFile(sourceFilePath)
+	Ω(err).ShouldNot(HaveOccurred())
+
+	ioutil.WriteFile(destinationPath, data, 0644)
+}
