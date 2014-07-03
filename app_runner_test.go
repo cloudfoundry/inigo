@@ -14,7 +14,6 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 )
 
@@ -96,12 +95,9 @@ var _ = Describe("AppRunner", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Assert the user saw reasonable output
-			Eventually(logOutput, LONG_TIMEOUT).Should(gbytes.Say("hello world"))
-			Eventually(logOutput, LONG_TIMEOUT).Should(gbytes.Say("hello world"))
-			Eventually(logOutput, LONG_TIMEOUT).Should(gbytes.Say("hello world"))
-			Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":0`))
-			Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":1`))
-			Ω(logOutput.Contents()).Should(ContainSubstring(`"instance_index":2`))
+			Eventually(logOutput.Contents, LONG_TIMEOUT).Should(ContainSubstring("Hello World from index '0'"))
+			Eventually(logOutput.Contents, LONG_TIMEOUT).Should(ContainSubstring("Hello World from index '1'"))
+			Eventually(logOutput.Contents, LONG_TIMEOUT).Should(ContainSubstring("Hello World from index '2'"))
 
 			// check lrp instance statuses
 			Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, "process-guid"), LONG_TIMEOUT, 0.5).Should(HaveLen(3))

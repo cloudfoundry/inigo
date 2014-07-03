@@ -186,7 +186,7 @@ var _ = Describe("Convergence to desired state", func() {
 			})
 
 			It("Eventually brings the long-running process down", func() {
-				suiteContext.ConvergerRunner.Stop()				
+				suiteContext.ConvergerRunner.Stop()
 				suiteContext.RepRunner.Stop()
 
 				desiredAppStopRequest := constructDesiredAppRequest(0)
@@ -225,7 +225,7 @@ var _ = Describe("Convergence to desired state", func() {
 			})
 
 			It("Eventually brings the long-running process down", func() {
-				suiteContext.ConvergerRunner.Stop()				
+				suiteContext.ConvergerRunner.Stop()
 				suiteContext.RepRunner.Stop()
 
 				desiredAppScaleDownRequest := constructDesiredAppRequest(1)

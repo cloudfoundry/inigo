@@ -13,8 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const amazingRubyServer = `ruby <<END_MAGIC_SERVER
-require 'webrick'
+const amazingRubyServer = `require 'webrick'
 require 'json'
 
 server = WEBrick::HTTPServer.new :Port => ENV['PORT']
@@ -58,7 +57,6 @@ trap('INT') {
 }
 
 server.start
-END_MAGIC_SERVER
 `
 
 var container warden.Container
@@ -82,7 +80,8 @@ func Start(wardenClient warden.Client) {
 	ipAddress = info.ContainerIP
 
 	_, _, err = container.Run(warden.ProcessSpec{
-		Script: amazingRubyServer,
+		Path: "ruby",
+		Args: []string{"-e", amazingRubyServer},
 		EnvironmentVariables: []warden.EnvironmentVariable{
 			warden.EnvironmentVariable{Key: "PORT", Value: fmt.Sprintf("%d", containerPort)},
 		},
@@ -102,9 +101,8 @@ func Stop(wardenClient warden.Client) {
 	ipAddress = ""
 }
 
-func CurlCommand(guid string) string {
-	curlCommand := fmt.Sprintf("curl http://%s:%d/register?guid=%s", ipAddress, hostPort, guid)
-	return curlCommand
+func CurlArgs(guid string) []string {
+	return []string{fmt.Sprintf("http://%s:%d/register?guid=%s", ipAddress, hostPort, guid)}
 }
 
 func DownloadUrl(filename string) string {

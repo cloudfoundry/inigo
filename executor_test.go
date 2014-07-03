@@ -3,6 +3,8 @@ package inigo_test
 import (
 	"archive/tar"
 	"compress/gzip"
+	"fmt"
+	"strings"
 	"time"
 
 	steno "github.com/cloudfoundry/gosteno"
@@ -69,12 +71,24 @@ var _ = Describe("Executor", func() {
 		It("should only pick up tasks if it has capacity", func() {
 			firstGuyGuid := factories.GenerateGuid()
 			secondGuyGuid := factories.GenerateGuid()
-			firstGuyTask := factories.BuildTaskWithRunAction(suiteContext.RepStack, 1024, 1024, inigo_server.CurlCommand(firstGuyGuid)+"; sleep 5")
+			firstGuyTask := factories.BuildTaskWithRunAction(
+				suiteContext.RepStack,
+				1024,
+				1024,
+				"bash",
+				[]string{"-c", fmt.Sprintf("curl %s; sleep 5", strings.Join(inigo_server.CurlArgs(firstGuyGuid), " "))},
+			)
 			bbs.DesireTask(firstGuyTask)
 
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(firstGuyGuid))
 
-			secondGuyTask := factories.BuildTaskWithRunAction(suiteContext.RepStack, 1024, 1024, inigo_server.CurlCommand(secondGuyGuid))
+			secondGuyTask := factories.BuildTaskWithRunAction(
+				suiteContext.RepStack,
+				1024,
+				1024,
+				"curl",
+				inigo_server.CurlArgs(secondGuyGuid),
+			)
 			bbs.DesireTask(secondGuyTask)
 
 			Consistently(inigo_server.ReportingGuids, SHORT_TIMEOUT).ShouldNot(ContainElement(secondGuyGuid))
@@ -91,10 +105,22 @@ var _ = Describe("Executor", func() {
 
 		It("should only pick up tasks if the stacks match", func() {
 			matchingGuid := factories.GenerateGuid()
-			matchingTask := factories.BuildTaskWithRunAction(suiteContext.RepStack, 100, 100, inigo_server.CurlCommand(matchingGuid)+"; sleep 10")
+			matchingTask := factories.BuildTaskWithRunAction(
+				suiteContext.RepStack,
+				100,
+				100,
+				"bash",
+				[]string{"-c", fmt.Sprintf("curl %s; sleep 10", strings.Join(inigo_server.CurlArgs(matchingGuid), " "))},
+			)
 
 			nonMatchingGuid := factories.GenerateGuid()
-			nonMatchingTask := factories.BuildTaskWithRunAction(wrongStack, 100, 100, inigo_server.CurlCommand(nonMatchingGuid)+"; sleep 10")
+			nonMatchingTask := factories.BuildTaskWithRunAction(
+				wrongStack,
+				100,
+				100,
+				"bash",
+				[]string{"-c", fmt.Sprintf("curl %s; sleep 10", strings.Join(inigo_server.CurlArgs(nonMatchingGuid), " "))},
+			)
 
 			bbs.DesireTask(matchingTask)
 			bbs.DesireTask(nonMatchingTask)
@@ -115,9 +141,9 @@ var _ = Describe("Executor", func() {
 
 		It("should run the command with the provided environment", func() {
 			env := []models.EnvironmentVariable{
-				{"FOO", "BAR"},
+				{"FOO", "OLD-BAR"},
 				{"BAZ", "WIBBLE"},
-				{"FOO", "$FOO-$BAZ"},
+				{"FOO", "NEW-BAR"},
 			}
 			task := models.Task{
 				Guid:     factories.GenerateGuid(),
@@ -125,7 +151,11 @@ var _ = Describe("Executor", func() {
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
-					{Action: models.RunAction{Script: `test $FOO = "BAR-WIBBLE"`, Env: env}},
+					{Action: models.RunAction{
+						Path: "bash",
+						Args: []string{"-c", "test $FOO = NEW-BAR && test $BAZ = WIBBLE"},
+						Env:  env,
+					}},
 				},
 			}
 
@@ -150,9 +180,18 @@ var _ = Describe("Executor", func() {
 					MemoryMB: 10,
 					DiskMB:   1024,
 					Actions: []models.ExecutorAction{
-						{Action: models.RunAction{Script: inigo_server.CurlCommand(guid)}},
-						{Action: models.RunAction{Script: `ruby -e 'arr = "m"*1024*1024*100'`}},
-						{Action: models.RunAction{Script: inigo_server.CurlCommand(otherGuid)}},
+						{Action: models.RunAction{
+							Path: "curl",
+							Args: inigo_server.CurlArgs(guid),
+						}},
+						{Action: models.RunAction{
+							Path: "ruby",
+							Args: []string{"-e", "arr='m'*1024*1024*100"},
+						}},
+						{Action: models.RunAction{
+							Path: "curl",
+							Args: inigo_server.CurlArgs(otherGuid),
+						}},
 					},
 				}
 
@@ -182,7 +221,8 @@ var _ = Describe("Executor", func() {
 					Actions: []models.ExecutorAction{
 						{
 							models.RunAction{
-								Script: `ruby -e '10.times.each { |x| File.open("#{x}","w") }'`,
+								Path: "ruby",
+								Args: []string{"-e", `10.times.each { |x| File.open("#{x}","w") }`},
 								ResourceLimits: models.ResourceLimits{
 									Nofile: &nofile,
 								},
@@ -209,8 +249,15 @@ var _ = Describe("Executor", func() {
 					MemoryMB: 1024,
 					DiskMB:   1024,
 					Actions: []models.ExecutorAction{
-						{Action: models.RunAction{Script: inigo_server.CurlCommand(guid)}},
-						{Action: models.RunAction{Script: `sleep 0.8`, Timeout: 500 * time.Millisecond}},
+						{Action: models.RunAction{
+							Path: "curl",
+							Args: inigo_server.CurlArgs(guid),
+						}},
+						{Action: models.RunAction{
+							Path:    "sleep",
+							Args:    []string{"0.8"},
+							Timeout: 500 * time.Millisecond,
+						}},
 					},
 				}
 
@@ -233,7 +280,7 @@ var _ = Describe("Executor", func() {
 			suiteContext.RepRunner.Start()
 
 			guid = factories.GenerateGuid()
-			inigo_server.UploadFileString("curling.sh", inigo_server.CurlCommand(guid))
+			inigo_server.UploadFileString("curling.sh", fmt.Sprintf("curl %s", strings.Join(inigo_server.CurlArgs(guid), " ")))
 		})
 
 		It("downloads the file", func() {
@@ -244,7 +291,10 @@ var _ = Describe("Executor", func() {
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
 					{Action: models.DownloadAction{From: inigo_server.DownloadUrl("curling.sh"), To: "curling.sh", Extract: false}},
-					{Action: models.RunAction{Script: "bash curling.sh"}},
+					{Action: models.RunAction{
+						Path: "bash",
+						Args: []string{"curling.sh"},
+					}},
 				},
 			}
 
@@ -271,9 +321,15 @@ var _ = Describe("Executor", func() {
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
-					{Action: models.RunAction{Script: `echo "tasty thingy" > thingy`}},
+					{Action: models.RunAction{
+						Path: "bash",
+						Args: []string{"-c", "echo tasty thingy > thingy"},
+					}},
 					{Action: models.UploadAction{From: "thingy", To: inigo_server.UploadUrl("thingy")}},
-					{Action: models.RunAction{Script: inigo_server.CurlCommand(guid)}},
+					{Action: models.RunAction{
+						Path: "curl",
+						Args: inigo_server.CurlArgs(guid),
+					}},
 				},
 			}
 
@@ -307,7 +363,10 @@ var _ = Describe("Executor", func() {
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
-					{Action: models.RunAction{Script: `echo "tasty thingy" > thingy`}},
+					{Action: models.RunAction{
+						Path: "bash",
+						Args: []string{"-c", "echo tasty thingy > thingy"},
+					}},
 					{Action: models.FetchResultAction{File: "thingy"}},
 				},
 			}
@@ -340,7 +399,8 @@ var _ = Describe("Executor", func() {
 				suiteContext.RepStack,
 				1024,
 				1024,
-				"echo out A; echo out B; echo out C; echo err A 1>&2; echo err B 1>&2; echo err C 1>&2",
+				"bash",
+				[]string{"-c", "echo out A; echo out B; echo out C; echo err A 1>&2; echo err B 1>&2; echo err C 1>&2"},
 			)
 			task.Log.Guid = logGuid
 			task.Log.SourceName = "APP"

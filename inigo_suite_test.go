@@ -88,10 +88,12 @@ type suiteContextType struct {
 	ExternalAddress string
 
 	RepStack   string
+	RepID      string
 	EtcdRunner *etcdstorerunner.ETCDClusterRunner
 
 	WardenProcess ifrit.Process
 	WardenClient  warden.Client
+	WardenPort    int
 
 	NatsRunner *natsrunner.NATSRunner
 	NatsPort   int
@@ -168,6 +170,7 @@ func beforeSuite(encodedSharedContext []byte) {
 		SharedContext:           sharedContext,
 		ExternalAddress:         os.Getenv("EXTERNAL_ADDRESS"),
 		RepStack:                "lucid64",
+		RepID:                   "the-rep-id-" + string(config.GinkgoConfig.ParallelNode),
 		NatsPort:                4222 + config.GinkgoConfig.ParallelNode,
 		ExecutorPort:            1700 + config.GinkgoConfig.ParallelNode,
 		RepPort:                 20515 + config.GinkgoConfig.ParallelNode,
@@ -179,6 +182,7 @@ func beforeSuite(encodedSharedContext []byte) {
 		RouterPort:              9090 + config.GinkgoConfig.ParallelNode,
 		TPSAddress:              fmt.Sprintf("127.0.0.1:%d", 1518+config.GinkgoConfig.ParallelNode),
 		TPSHeartbeatInterval:    5 * time.Second,
+		WardenPort:              11997 + config.GinkgoConfig.ParallelNode,
 	}
 
 	Ω(context.ExternalAddress).ShouldNot(BeEmpty())
@@ -194,7 +198,13 @@ func beforeSuite(encodedSharedContext []byte) {
 		Fail("warden is not set up")
 	}
 
-	wardenRunner = WardenRunner.New(context.SharedContext.WardenPath, wardenBinPath, wardenRootfs)
+	wardenAddress := fmt.Sprintf("127.0.0.1:%d", context.WardenPort)
+	wardenRunner = WardenRunner.New(
+		wardenAddress,
+		context.SharedContext.WardenPath,
+		wardenBinPath,
+		wardenRootfs,
+	)
 
 	context.FakeCC = fake_cc.New()
 	context.FakeCCAddress = context.FakeCC.Start()
@@ -224,8 +234,8 @@ func beforeSuite(encodedSharedContext []byte) {
 	context.ExecutorRunner = executor_runner.New(
 		context.SharedContext.ExecutorPath,
 		fmt.Sprintf("127.0.0.1:%d", context.ExecutorPort),
-		wardenRunner.Network(),
-		wardenRunner.Addr(),
+		"tcp",
+		wardenAddress,
 		fmt.Sprintf("127.0.0.1:%d", context.LoggregatorInPort),
 		context.LoggregatorSharedSecret,
 	)
@@ -238,6 +248,7 @@ func beforeSuite(encodedSharedContext []byte) {
 
 	context.RepRunner = reprunner.New(
 		context.SharedContext.RepPath,
+		context.RepID,
 		context.RepStack,
 		context.ExternalAddress,
 		fmt.Sprintf("127.0.0.1:%d", context.RepPort),

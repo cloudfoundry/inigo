@@ -2,6 +2,7 @@ package inigo_test
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
@@ -42,7 +43,8 @@ var _ = Describe("Task", func() {
 				suiteContext.RepStack,
 				512,
 				512,
-				inigo_server.CurlCommand(guid),
+				"curl",
+				inigo_server.CurlArgs(guid),
 			)
 			bbs.DesireTask(task)
 		})
@@ -67,7 +69,8 @@ var _ = Describe("Task", func() {
 				suiteContext.RepStack,
 				512,
 				512,
-				fmt.Sprintf("%s && sleep 2", inigo_server.CurlCommand(firstTaskGuid)),
+				"bash",
+				[]string{"-c", fmt.Sprintf("curl %s && sleep 2", strings.Join(inigo_server.CurlArgs(firstTaskGuid), " "))},
 			)
 			bbs.DesireTask(task)
 
@@ -79,7 +82,8 @@ var _ = Describe("Task", func() {
 				suiteContext.RepStack,
 				768,
 				768,
-				inigo_server.CurlCommand(secondTaskGuid),
+				"curl",
+				inigo_server.CurlArgs(secondTaskGuid),
 			)
 
 			bbs.DesireTask(task)
@@ -99,7 +103,13 @@ var _ = Describe("Task", func() {
 
 		It("eventually runs the Task once an executor comes up", func() {
 			guid := factories.GenerateGuid()
-			task := factories.BuildTaskWithRunAction(suiteContext.RepStack, 100, 100, inigo_server.CurlCommand(guid))
+			task := factories.BuildTaskWithRunAction(
+				suiteContext.RepStack,
+				100,
+				100,
+				"curl",
+				inigo_server.CurlArgs(guid),
+			)
 			bbs.DesireTask(task)
 
 			suiteContext.ExecutorRunner.Start()
@@ -116,7 +126,13 @@ var _ = Describe("Task", func() {
 
 		It("should be marked as failed, eventually", func() {
 			guid := factories.GenerateGuid()
-			task := factories.BuildTaskWithRunAction(suiteContext.RepStack, 100, 100, inigo_server.CurlCommand(guid))
+			task := factories.BuildTaskWithRunAction(
+				suiteContext.RepStack,
+				100,
+				100,
+				"curl",
+				inigo_server.CurlArgs(guid),
+			)
 			task.Stack = "donald-duck"
 			bbs.DesireTask(task)
 
@@ -139,7 +155,13 @@ var _ = Describe("Task", func() {
 
 		It("eventually marks jobs running on that executor as failed", func() {
 			guid := factories.GenerateGuid()
-			task := factories.BuildTaskWithRunAction(suiteContext.RepStack, 1024, 1024, inigo_server.CurlCommand(guid)+"; sleep 10")
+			task := factories.BuildTaskWithRunAction(
+				suiteContext.RepStack,
+				1024,
+				1024,
+				"bash",
+				[]string{"-c", fmt.Sprintf("curl %s; sleep 10", strings.Join(inigo_server.CurlArgs(guid), " "))},
+			)
 			bbs.DesireTask(task)
 			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
 

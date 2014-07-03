@@ -2,9 +2,9 @@ package helpers
 
 import (
 	"encoding/json"
-	. "github.com/onsi/gomega"
-	"github.com/tedsuo/router"
 	"net/http"
+	. "github.com/onsi/gomega"
+	"github.com/tedsuo/rata"
 
 	tpsapi "github.com/cloudfoundry-incubator/tps/api"
 )
@@ -16,11 +16,11 @@ func RunningLRPInstancesPoller(tpsAddr string, guid string) func() []tpsapi.LRPI
 }
 
 func RunningLRPInstances(tpsAddr string, guid string) []tpsapi.LRPInstance {
-	tpsRequestGenerator := router.NewRequestGenerator(tpsAddr, tpsapi.Routes)
+	tpsRequestGenerator := rata.NewRequestGenerator(tpsAddr, tpsapi.Routes)
 
-	getLRPs, err := tpsRequestGenerator.RequestForHandler(
+	getLRPs, err := tpsRequestGenerator.CreateRequest(
 		tpsapi.LRPStatus,
-		router.Params{"guid": guid},
+		rata.Params{"guid": guid},
 		nil,
 	)
 	Ω(err).ShouldNot(HaveOccurred())
