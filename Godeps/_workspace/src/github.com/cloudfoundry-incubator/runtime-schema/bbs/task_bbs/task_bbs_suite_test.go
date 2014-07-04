@@ -1,6 +1,7 @@
 package task_bbs_test
 
 import (
+	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
@@ -13,6 +14,15 @@ import (
 
 var etcdRunner *etcdstorerunner.ETCDClusterRunner
 var etcdClient storeadapter.StoreAdapter
+
+var dummyActions = []models.ExecutorAction{
+	{
+		Action: models.RunAction{
+			Path: "cat",
+			Args: []string{"/tmp/file"},
+		},
+	},
+}
 
 func TestTaskBbs(t *testing.T) {
 	RegisterFailHandler(Fail)

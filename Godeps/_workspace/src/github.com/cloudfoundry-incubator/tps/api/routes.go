@@ -1,11 +1,11 @@
 package api
 
-import "github.com/tedsuo/router"
+import "github.com/tedsuo/rata"
 
 const (
 	LRPStatus = "LRPStatus"
 )
 
-var Routes = router.Routes{
-	{Path: "/lrps/:guid", Method: "GET", Handler: LRPStatus},
+var Routes = rata.Routes{
+	{Path: "/lrps/:guid", Method: "GET", Name: LRPStatus},
 }

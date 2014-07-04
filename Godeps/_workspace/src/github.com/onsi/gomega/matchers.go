@@ -1,6 +1,8 @@
 package gomega
 
 import (
+	"time"
+
 	"github.com/onsi/gomega/matchers"
 )
 
@@ -189,6 +191,18 @@ func HaveKey(key interface{}) OmegaMatcher {
 	}
 }
 
+//HaveKeyWithValue succeeds if actual is a map with the passed in key and value.
+//By default HaveKeyWithValue uses Equal() to perform the match, however a
+//matcher can be passed in instead:
+//    Ω(map[string]string{"Foo": "Bar", "BazFoo": "Duck"}).Should(HaveKeyWithValue("Foo", "Bar"))
+//    Ω(map[string]string{"Foo": "Bar", "BazFoo": "Duck"}).Should(HaveKeyWithValue(MatchRegexp(`.+Foo$`), "Bar"))
+func HaveKeyWithValue(key interface{}, value interface{}) OmegaMatcher {
+	return &matchers.HaveKeyWithValueMatcher{
+		Key:   key,
+		Value: value,
+	}
+}
+
 //BeNumerically performs numerical assertions in a type-agnostic way.
 //Actual and expected should be numbers, though the specific type of
 //number is irrelevant (floa32, float64, uint8, etc...).
@@ -204,6 +218,18 @@ func BeNumerically(comparator string, compareTo ...interface{}) OmegaMatcher {
 	return &matchers.BeNumericallyMatcher{
 		Comparator: comparator,
 		CompareTo:  compareTo,
+	}
+}
+
+//BeTemporally compares time.Time's like BeNumerically
+//Actual and expected must be time.Time. The comparators are the same as for BeNumerically
+//    Ω(time.Now()).Should(BeTemporally(">", time.Time{}))
+//    Ω(time.Now()).Should(BeTemporally("~", time.Now(), time.Second))
+func BeTemporally(comparator string, compareTo time.Time, threshold ...time.Duration) OmegaMatcher {
+	return &matchers.BeTemporallyMatcher{
+		Comparator: comparator,
+		CompareTo:  compareTo,
+		Threshold:  threshold,
 	}
 }
 

@@ -1160,7 +1160,9 @@ var _ = Describe("When a client connects", func() {
 
 		Describe("running", func() {
 			processSpec := warden.ProcessSpec{
-				Script:     "/some/script",
+				Path:       "/some/script",
+				Args:       []string{"arg1", "arg2"},
+				Dir:        "/some/dir",
 				Privileged: true,
 				Limits: warden.ResourceLimits{
 					As:         uint64ptr(1),

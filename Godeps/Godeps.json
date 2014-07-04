@@ -15,136 +15,149 @@
 			"Rev": "f5ac12b15e49095c60ae0acc6da0e28d47e2a29f"
 		},
 		{
+			"ImportPath": "github.com/GaryBoone/GoStats/stats",
+			"Rev": "1993eafbef57be29ee8f5eb9d26a22f20ff3c207"
+		},
+		{
+			"ImportPath": "github.com/ajstarks/svgo",
+			"Comment": "go.weekly.2012-01-27-83-gd36c649",
+			"Rev": "d36c6495cf99387c8e20b945176c4562c78e6f78"
+		},
+		{
+			"ImportPath": "github.com/amitkgupta/match_array_or_slice",
+			"Rev": "7753de6150801a9c8154eab4db8cbbeba317e220"
+		},
+		{
 			"ImportPath": "github.com/bmizerany/pat",
-			"Rev": "48be7df2c27e1cec821a3284a683ce6ef90d9052"
+			"Rev": "b8a35001b773c267eb260a691f4e5499a3531600"
+		},
+		{
+			"ImportPath": "github.com/cheggaaa/pb",
+			"Rev": "3544a53d32f49584597eb8fa0ed3b0873a7bf94a"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/app-manager/integration/app_manager_runner",
-			"Rev": "7f09d24a9189e6639c05af8bc2c8c4b13a5a0914"
+			"Rev": "56af9e561c25d36dad09022e9ca1fe77f852c2a7"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctionrep",
-			"Rev": "2b3c66e9ac8bf0494e9b5c5086a9fffdb1d9e541"
+			"Rev": "98d1d894687f404142c5596af3ff7a6b3b8e4b20"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctionrunner",
-			"Rev": "2b3c66e9ac8bf0494e9b5c5086a9fffdb1d9e541"
+			"Rev": "98d1d894687f404142c5596af3ff7a6b3b8e4b20"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctiontypes",
-			"Rev": "2b3c66e9ac8bf0494e9b5c5086a9fffdb1d9e541"
+			"Rev": "98d1d894687f404142c5596af3ff7a6b3b8e4b20"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/communication/nats",
-			"Rev": "2b3c66e9ac8bf0494e9b5c5086a9fffdb1d9e541"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry-incubator/auction/simulation/repnode",
-			"Rev": "2b3c66e9ac8bf0494e9b5c5086a9fffdb1d9e541"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry-incubator/auction/simulation/simulationrepdelegate",
-			"Rev": "2b3c66e9ac8bf0494e9b5c5086a9fffdb1d9e541"
+			"Rev": "98d1d894687f404142c5596af3ff7a6b3b8e4b20"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auction/util",
-			"Rev": "2b3c66e9ac8bf0494e9b5c5086a9fffdb1d9e541"
+			"Rev": "98d1d894687f404142c5596af3ff7a6b3b8e4b20"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auctioneer/integration/auctioneer_runner",
-			"Rev": "50552b907a6a4a45c0c89bb25a261dbc4de0029f"
+			"Rev": "fc97b81310689deb8926ff31ed22235207f7cba9"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/candiedyaml",
-			"Rev": "50e233a7fb31a32b174c1263c7b786eba1fa79d4"
+			"Rev": "746fed644c930c0635f84866d433fd7de5f444cf"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/converger/converger_runner",
-			"Rev": "b4a2519bfacfaa85a8609f02b5e4582413013634"
+			"Rev": "c002759c8153779c3e7fef85c7ebfc4bb5785730"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/delta_force/delta_force",
 			"Rev": "8300c5546d32d8533295f666c1cd0941113fd7bb"
 		},
 		{
+			"ImportPath": "github.com/cloudfoundry-incubator/dropsonde",
+			"Rev": "126e9de704ff62ec474be824c249d1ddb85a5cac"
+		},
+		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/api",
-			"Rev": "1a56d4d1fe24fb3d5d6cfbf12c183438e5c881ba"
+			"Rev": "0d263f8e807d7d1677957534cc5f3a97a4590493"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/client",
-			"Rev": "1a56d4d1fe24fb3d5d6cfbf12c183438e5c881ba"
+			"Rev": "0d263f8e807d7d1677957534cc5f3a97a4590493"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/integration/executor_runner",
-			"Rev": "1a56d4d1fe24fb3d5d6cfbf12c183438e5c881ba"
+			"Rev": "0d263f8e807d7d1677957534cc5f3a97a4590493"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/client",
-			"Rev": "40518e0a2f29de6492562c2b2ff9bd04c147aef3"
+			"Rev": "b08b228c3cfc85ddbabac43954504f42408b63a6"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/protocol",
-			"Rev": "40518e0a2f29de6492562c2b2ff9bd04c147aef3"
+			"Rev": "b08b228c3cfc85ddbabac43954504f42408b63a6"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/routes",
-			"Rev": "40518e0a2f29de6492562c2b2ff9bd04c147aef3"
+			"Rev": "b08b228c3cfc85ddbabac43954504f42408b63a6"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/server",
-			"Rev": "40518e0a2f29de6492562c2b2ff9bd04c147aef3"
+			"Rev": "b08b228c3cfc85ddbabac43954504f42408b63a6"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/transport",
-			"Rev": "40518e0a2f29de6492562c2b2ff9bd04c147aef3"
+			"Rev": "b08b228c3cfc85ddbabac43954504f42408b63a6"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/warden",
-			"Rev": "40518e0a2f29de6492562c2b2ff9bd04c147aef3"
+			"Rev": "b08b228c3cfc85ddbabac43954504f42408b63a6"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/nsync/integration/runner",
-			"Rev": "90e7c902831bd9093b0962b2636c4acdb1d1fa72"
+			"Rev": "5287dc985aad8e4ca7dd400cea69843e7890c0e4"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/rep/reprunner",
-			"Rev": "1996c591df50e8d8d4a95026c6c60b04ca2731c4"
+			"Rev": "4158001464f4722bdf3d9ce934bb163dc56c1c61"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/rep/routes",
-			"Rev": "1996c591df50e8d8d4a95026c6c60b04ca2731c4"
+			"Rev": "4158001464f4722bdf3d9ce934bb163dc56c1c61"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/route-emitter/integration/route_emitter_runner",
-			"Rev": "691b24c1816c7cd82294945b6386d2a7be880add"
+			"Rev": "37b75853eb6282ac5cedd16fbb3d9b2e315f2dac"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "012c337a96a2bdb48605fcb81d17b1e14ebc06dc"
+			"Rev": "5fb57f46c2dc59cef1afa8f541be71b475bc554e"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "012c337a96a2bdb48605fcb81d17b1e14ebc06dc"
+			"Rev": "5fb57f46c2dc59cef1afa8f541be71b475bc554e"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/router",
-			"Rev": "012c337a96a2bdb48605fcb81d17b1e14ebc06dc"
+			"Rev": "5fb57f46c2dc59cef1afa8f541be71b475bc554e"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/stager/integration/stager_runner",
-			"Rev": "8066e5e08d91c2f6ae71c43dfad0371084947a83"
+			"Rev": "ccb32e98121b5f63e9f12c717be1399e9d6b6ab7"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/tps/api",
-			"Rev": "28c556f78655d45642cc559f76d1b4c011e18458"
+			"Rev": "9c3b7107c741a3f19a733496d900aa7c393a41f3"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/tps/integration/tpsrunner",
-			"Rev": "28c556f78655d45642cc559f76d1b4c011e18458"
+			"Rev": "9c3b7107c741a3f19a733496d900aa7c393a41f3"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",
-			"Rev": "f7885e9908e8b597be9e8a518c13dc39d6063a36"
+			"Rev": "44551a906df97cb33b742271ca793018d76170c8"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gibson",
@@ -152,16 +165,16 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gorouter/common",
-			"Rev": "93fe732d6c20cd59070f8a23f53c0cbf32adc806"
+			"Rev": "6c4e4926b88df60a8fb0be7ed149073993340d05"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gorouter/config",
-			"Rev": "93fe732d6c20cd59070f8a23f53c0cbf32adc806"
+			"Rev": "6c4e4926b88df60a8fb0be7ed149073993340d05"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosigar",
-			"Comment": "scotty_09012012-18-g3641d81",
-			"Rev": "3641d8181aeb33caa99484554ff051e9cfb8e8c7"
+			"Comment": "scotty_09012012-20-ga4cb008",
+			"Rev": "a4cb00834887e549c46e58cb5d5f4e53bd492f32"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -227,108 +240,113 @@
 		},
 		{
 			"ImportPath": "github.com/docker/libcontainer/cgroups",
-			"Comment": "v1.0.1-10-g902319a",
-			"Rev": "902319a3b09aca43b8510c318a7a786646ae6e27"
+			"Comment": "v1.1.0-7-g39ebd07",
+			"Rev": "39ebd07a8267c823e6542b7a8cbb3adcf43fbe65"
 		},
 		{
 			"ImportPath": "github.com/docker/libcontainer/devices",
-			"Comment": "v1.0.1-10-g902319a",
-			"Rev": "902319a3b09aca43b8510c318a7a786646ae6e27"
+			"Comment": "v1.1.0-7-g39ebd07",
+			"Rev": "39ebd07a8267c823e6542b7a8cbb3adcf43fbe65"
 		},
 		{
 			"ImportPath": "github.com/docker/libcontainer/label",
-			"Comment": "v1.0.1-10-g902319a",
-			"Rev": "902319a3b09aca43b8510c318a7a786646ae6e27"
+			"Comment": "v1.1.0-7-g39ebd07",
+			"Rev": "39ebd07a8267c823e6542b7a8cbb3adcf43fbe65"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker/archive",
-			"Comment": "v1.0.1-46-gfa8f89c",
-			"Rev": "fa8f89c5212f10932ebc5650853b356670b6f41a"
+			"Comment": "v1.1.0-10-g0cdda85",
+			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker/daemon/graphdriver",
-			"Comment": "v1.0.1-46-gfa8f89c",
-			"Rev": "fa8f89c5212f10932ebc5650853b356670b6f41a"
+			"Comment": "v1.1.0-10-g0cdda85",
+			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker/dockerversion",
-			"Comment": "v1.0.1-46-gfa8f89c",
-			"Rev": "fa8f89c5212f10932ebc5650853b356670b6f41a"
+			"Comment": "v1.1.0-10-g0cdda85",
+			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker/engine",
-			"Comment": "v1.0.1-46-gfa8f89c",
-			"Rev": "fa8f89c5212f10932ebc5650853b356670b6f41a"
+			"Comment": "v1.1.0-10-g0cdda85",
+			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker/graph",
-			"Comment": "v1.0.1-46-gfa8f89c",
-			"Rev": "fa8f89c5212f10932ebc5650853b356670b6f41a"
+			"Comment": "v1.1.0-10-g0cdda85",
+			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker/image",
-			"Comment": "v1.0.1-46-gfa8f89c",
-			"Rev": "fa8f89c5212f10932ebc5650853b356670b6f41a"
+			"Comment": "v1.1.0-10-g0cdda85",
+			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker/nat",
-			"Comment": "v1.0.1-46-gfa8f89c",
-			"Rev": "fa8f89c5212f10932ebc5650853b356670b6f41a"
+			"Comment": "v1.1.0-10-g0cdda85",
+			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker/opts",
-			"Comment": "v1.0.1-46-gfa8f89c",
-			"Rev": "fa8f89c5212f10932ebc5650853b356670b6f41a"
+			"Comment": "v1.1.0-10-g0cdda85",
+			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker/pkg/mflag",
-			"Comment": "v1.0.1-46-gfa8f89c",
-			"Rev": "fa8f89c5212f10932ebc5650853b356670b6f41a"
+			"Comment": "v1.1.0-10-g0cdda85",
+			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker/pkg/mount",
-			"Comment": "v1.0.1-46-gfa8f89c",
-			"Rev": "fa8f89c5212f10932ebc5650853b356670b6f41a"
+			"Comment": "v1.1.0-10-g0cdda85",
+			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker/pkg/sysinfo",
-			"Comment": "v1.0.1-46-gfa8f89c",
-			"Rev": "fa8f89c5212f10932ebc5650853b356670b6f41a"
+			"Comment": "v1.1.0-10-g0cdda85",
+			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker/pkg/system",
-			"Comment": "v1.0.1-46-gfa8f89c",
-			"Rev": "fa8f89c5212f10932ebc5650853b356670b6f41a"
+			"Comment": "v1.1.0-10-g0cdda85",
+			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker/pkg/term",
-			"Comment": "v1.0.1-46-gfa8f89c",
-			"Rev": "fa8f89c5212f10932ebc5650853b356670b6f41a"
+			"Comment": "v1.1.0-10-g0cdda85",
+			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
+		},
+		{
+			"ImportPath": "github.com/dotcloud/docker/pkg/truncindex",
+			"Comment": "v1.1.0-10-g0cdda85",
+			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker/pkg/units",
-			"Comment": "v1.0.1-46-gfa8f89c",
-			"Rev": "fa8f89c5212f10932ebc5650853b356670b6f41a"
+			"Comment": "v1.1.0-10-g0cdda85",
+			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker/registry",
-			"Comment": "v1.0.1-46-gfa8f89c",
-			"Rev": "fa8f89c5212f10932ebc5650853b356670b6f41a"
+			"Comment": "v1.1.0-10-g0cdda85",
+			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker/runconfig",
-			"Comment": "v1.0.1-46-gfa8f89c",
-			"Rev": "fa8f89c5212f10932ebc5650853b356670b6f41a"
+			"Comment": "v1.1.0-10-g0cdda85",
+			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker/utils",
-			"Comment": "v1.0.1-46-gfa8f89c",
-			"Rev": "fa8f89c5212f10932ebc5650853b356670b6f41a"
+			"Comment": "v1.1.0-10-g0cdda85",
+			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker/vendor/src/code.google.com/p/go/src/pkg/archive/tar",
-			"Comment": "v1.0.1-46-gfa8f89c",
-			"Rev": "fa8f89c5212f10932ebc5650853b356670b6f41a"
+			"Comment": "v1.1.0-10-g0cdda85",
+			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
 		},
 		{
 			"ImportPath": "github.com/fraenkel/candiedyaml",
@@ -336,7 +354,7 @@
 		},
 		{
 			"ImportPath": "github.com/gorilla/websocket",
-			"Rev": "efd7f76a14d91b4a8e9597306f554305ac9b0b9b"
+			"Rev": "0f32413e5e853a1244bc7be242b9afb625dc0aee"
 		},
 		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
@@ -344,12 +362,12 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Comment": "v1.0.0-16-g12446bb",
-			"Rev": "12446bbcc74950944c897e32ea99cc8d058f9c92"
+			"Comment": "v1.0.0-17-gd3d2576",
+			"Rev": "d3d25767b7af0efa7b12a900d0f4ac5477ed9fa1"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Rev": "036273e6f643552b16fe7a6464afd2ae0324992e"
+			"Rev": "bbfdd55e27d6461a4a0c85be991eaae35d68838d"
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/archiver/compressor",
@@ -368,16 +386,25 @@
 			"Rev": "b49bb276c002a7efefbf53e40180d2edd026fdc3"
 		},
 		{
+			"ImportPath": "github.com/pivotal-golang/lager",
+			"Rev": "cb90f6fb0421b0c17072b72c6ec93189431a2057"
+		},
+		{
 			"ImportPath": "github.com/rcrowley/go-metrics",
-			"Rev": "6ffbdf30ba7072d9f9e2afe57ad651a75a544a83"
+			"Rev": "3be59ceb5538550555459fb77d0efe0e218cdfc7"
+		},
+		{
+			"ImportPath": "github.com/tchap/go-patricia/patricia",
+			"Comment": "v1.0.1",
+			"Rev": "f64d0a63cd3363481c898faa9339de04d12213f9"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
-			"Rev": "439138de94ac33aebc7dad33cada3796318845ea"
+			"Rev": "fee34ad3d56f161c5fba8508befe05169d5e5ece"
 		},
 		{
-			"ImportPath": "github.com/tedsuo/router",
-			"Rev": "e148496de27fab9f10ef07f3be00471fa59f58b9"
+			"ImportPath": "github.com/tedsuo/rata",
+			"Rev": "ffbc6810b2dff37aade33e5bf1ee8deadafe867d"
 		}
 	]
 }
