@@ -19,7 +19,7 @@ REPOS="
   github.com/cloudfoundry-incubator/tps
 "
 
-DEV_GOPATH=$(cd ${1:-$HOME/go} && pwd)
+DEV_GOPATH=$(cd $HOME/go && pwd)
 TMP_GOPATH=/tmp/inigo
 
 mkdir -p ${TMP_GOPATH}
@@ -63,7 +63,7 @@ wait
 cd $TMP_GOPATH
 
 if [ -n "$GLIDER_URL" ]; then
-  fly
+  fly -- bogus-argv-0 "$@"
 else
   drone -privileged build
 fi

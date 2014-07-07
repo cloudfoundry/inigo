@@ -1,16 +1,16 @@
 ---
-image: cloudfoundry/inigo-ci
+image: docker:///cloudfoundry/inigo-ci
 
-env:
-  - GOROOT: /usr/local/go
-  - PATH: $GOROOT/bin:$PATH
-  - GOPATH: /tmp/build/src/inigo
-  - GINKGO_PARALLEL: true
-  - SHORT_TIMEOUT: 2.0
-  - LONG_TIMEOUT: 10.0
+params:
+  GOROOT: /usr/local/go
+  GINKGO_PARALLEL: true
+  SHORT_TIMEOUT: 2.0
+  LONG_TIMEOUT: 10.0
 
-script: |
-  set -e
-
-  cd $GOPATH
-  ./src/github.com/cloudfoundry-incubator/inigo/scripts/dev-test-inner
+run:
+  path: bash
+  args:
+    - '-c'
+    - |
+      cd inigo/ &&
+      ./src/github.com/cloudfoundry-incubator/inigo/scripts/dev-test-inner "$@"

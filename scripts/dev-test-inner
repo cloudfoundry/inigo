@@ -4,6 +4,8 @@ set -e -x
 
 GOPATH_ROOT=$PWD
 
+export PATH=${GOROOT}/bin:${PATH}
+
 export GOPATH=${GOPATH_ROOT}
 export PATH=${GOPATH_ROOT}/bin:${PATH}
 
@@ -28,4 +30,4 @@ for package in github.com/coreos/etcd github.com/apcera/gnatsd; do
   go install $package
 done
 
-$(dirname $0)/drone-test
+$(dirname $0)/drone-test "$@"
