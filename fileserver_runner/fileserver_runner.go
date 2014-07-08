@@ -71,7 +71,7 @@ func (r *FileServerRunner) Start() {
 		} else {
 			return 0
 		}
-	}).Should(Equal(http.StatusOK))
+	}, 5).Should(Equal(http.StatusOK))
 }
 
 func (r *FileServerRunner) ServeFile(name string, path string) {
