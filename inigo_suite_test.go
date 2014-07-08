@@ -88,7 +88,7 @@ type suiteContextType struct {
 	ExternalAddress string
 
 	RepStack   string
-	RepID      string
+	ExecutorID string
 	EtcdRunner *etcdstorerunner.ETCDClusterRunner
 
 	WardenProcess ifrit.Process
@@ -170,7 +170,7 @@ func beforeSuite(encodedSharedContext []byte) {
 		SharedContext:           sharedContext,
 		ExternalAddress:         os.Getenv("EXTERNAL_ADDRESS"),
 		RepStack:                "lucid64",
-		RepID:                   "the-rep-id-" + string(config.GinkgoConfig.ParallelNode),
+		ExecutorID:              "the-executor-id-" + string(config.GinkgoConfig.ParallelNode),
 		NatsPort:                4222 + config.GinkgoConfig.ParallelNode,
 		ExecutorPort:            1700 + config.GinkgoConfig.ParallelNode,
 		RepPort:                 20515 + config.GinkgoConfig.ParallelNode,
@@ -248,7 +248,7 @@ func beforeSuite(encodedSharedContext []byte) {
 
 	context.RepRunner = reprunner.New(
 		context.SharedContext.RepPath,
-		context.RepID,
+		context.ExecutorID,
 		context.RepStack,
 		context.ExternalAddress,
 		fmt.Sprintf("127.0.0.1:%d", context.RepPort),
