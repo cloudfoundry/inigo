@@ -15,49 +15,12 @@
 			"Rev": "f5ac12b15e49095c60ae0acc6da0e28d47e2a29f"
 		},
 		{
-			"ImportPath": "github.com/GaryBoone/GoStats/stats",
-			"Rev": "1993eafbef57be29ee8f5eb9d26a22f20ff3c207"
-		},
-		{
-			"ImportPath": "github.com/ajstarks/svgo",
-			"Comment": "go.weekly.2012-01-27-83-gd36c649",
-			"Rev": "d36c6495cf99387c8e20b945176c4562c78e6f78"
-		},
-		{
-			"ImportPath": "github.com/amitkgupta/match_array_or_slice",
-			"Rev": "7753de6150801a9c8154eab4db8cbbeba317e220"
-		},
-		{
 			"ImportPath": "github.com/bmizerany/pat",
 			"Rev": "b8a35001b773c267eb260a691f4e5499a3531600"
 		},
 		{
-			"ImportPath": "github.com/cheggaaa/pb",
-			"Rev": "3544a53d32f49584597eb8fa0ed3b0873a7bf94a"
-		},
-		{
 			"ImportPath": "github.com/cloudfoundry-incubator/app-manager/integration/app_manager_runner",
 			"Rev": "56af9e561c25d36dad09022e9ca1fe77f852c2a7"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctionrep",
-			"Rev": "98d1d894687f404142c5596af3ff7a6b3b8e4b20"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctionrunner",
-			"Rev": "98d1d894687f404142c5596af3ff7a6b3b8e4b20"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry-incubator/auction/auctiontypes",
-			"Rev": "98d1d894687f404142c5596af3ff7a6b3b8e4b20"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry-incubator/auction/communication/nats",
-			"Rev": "98d1d894687f404142c5596af3ff7a6b3b8e4b20"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry-incubator/auction/util",
-			"Rev": "98d1d894687f404142c5596af3ff7a6b3b8e4b20"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auctioneer/integration/auctioneer_runner",
@@ -76,20 +39,8 @@
 			"Rev": "8300c5546d32d8533295f666c1cd0941113fd7bb"
 		},
 		{
-			"ImportPath": "github.com/cloudfoundry-incubator/dropsonde",
-			"Rev": "126e9de704ff62ec474be824c249d1ddb85a5cac"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry-incubator/executor/api",
-			"Rev": "0d263f8e807d7d1677957534cc5f3a97a4590493"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry-incubator/executor/client",
-			"Rev": "0d263f8e807d7d1677957534cc5f3a97a4590493"
-		},
-		{
 			"ImportPath": "github.com/cloudfoundry-incubator/executor/integration/executor_runner",
-			"Rev": "0d263f8e807d7d1677957534cc5f3a97a4590493"
+			"Rev": "fb190a794b8a1fc87ab2d7e9555805c6d77aee70"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/client",
@@ -101,10 +52,6 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/routes",
-			"Rev": "b08b228c3cfc85ddbabac43954504f42408b63a6"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry-incubator/garden/server",
 			"Rev": "b08b228c3cfc85ddbabac43954504f42408b63a6"
 		},
 		{
@@ -121,11 +68,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/rep/reprunner",
-			"Rev": "4158001464f4722bdf3d9ce934bb163dc56c1c61"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry-incubator/rep/routes",
-			"Rev": "4158001464f4722bdf3d9ce934bb163dc56c1c61"
+			"Rev": "c616950f08f17b85f824362eafe1de85a9e2b88f"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/route-emitter/integration/route_emitter_runner",
@@ -137,10 +80,6 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "5fb57f46c2dc59cef1afa8f541be71b475bc554e"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/router",
 			"Rev": "5fb57f46c2dc59cef1afa8f541be71b475bc554e"
 		},
 		{
@@ -160,10 +99,6 @@
 			"Rev": "44551a906df97cb33b742271ca793018d76170c8"
 		},
 		{
-			"ImportPath": "github.com/cloudfoundry/gibson",
-			"Rev": "3c87f29d0cc8bb8be6e4b1df4d6e990119a6185f"
-		},
-		{
 			"ImportPath": "github.com/cloudfoundry/gorouter/common",
 			"Rev": "6c4e4926b88df60a8fb0be7ed149073993340d05"
 		},
@@ -172,18 +107,9 @@
 			"Rev": "6c4e4926b88df60a8fb0be7ed149073993340d05"
 		},
 		{
-			"ImportPath": "github.com/cloudfoundry/gosigar",
-			"Comment": "scotty_09012012-20-ga4cb008",
-			"Rev": "a4cb00834887e549c46e58cb5d5f4e53bd492f32"
-		},
-		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
 			"Comment": "scotty_09012012-40-g5eb8c6e",
 			"Rev": "5eb8c6e554f0dfc39d6468813b8ac19ec28fe74f"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry/gunk/command_runner",
-			"Rev": "64cdd7421c0413dc87e5fca2b254efbb4e7dd9d0"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/natsrunner",
@@ -196,26 +122,6 @@
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/timeprovider",
 			"Rev": "64cdd7421c0413dc87e5fca2b254efbb4e7dd9d0"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry/gunk/urljoiner",
-			"Rev": "64cdd7421c0413dc87e5fca2b254efbb4e7dd9d0"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry/loggregatorlib/cfcomponent/instrumentation",
-			"Rev": "da9f8b85c0175500cbb836bdb9c5488939e20c43"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry/loggregatorlib/cfcomponent/localip",
-			"Rev": "da9f8b85c0175500cbb836bdb9c5488939e20c43"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry/loggregatorlib/emitter",
-			"Rev": "da9f8b85c0175500cbb836bdb9c5488939e20c43"
-		},
-		{
-			"ImportPath": "github.com/cloudfoundry/loggregatorlib/loggregatorclient",
-			"Rev": "da9f8b85c0175500cbb836bdb9c5488939e20c43"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/loggregatorlib/logmessage",
@@ -239,122 +145,12 @@
 			"Rev": "7745cfd7f8e619cc9e6be450238e6253a57a227f"
 		},
 		{
-			"ImportPath": "github.com/docker/libcontainer/cgroups",
-			"Comment": "v1.1.0-7-g39ebd07",
-			"Rev": "39ebd07a8267c823e6542b7a8cbb3adcf43fbe65"
-		},
-		{
-			"ImportPath": "github.com/docker/libcontainer/devices",
-			"Comment": "v1.1.0-7-g39ebd07",
-			"Rev": "39ebd07a8267c823e6542b7a8cbb3adcf43fbe65"
-		},
-		{
-			"ImportPath": "github.com/docker/libcontainer/label",
-			"Comment": "v1.1.0-7-g39ebd07",
-			"Rev": "39ebd07a8267c823e6542b7a8cbb3adcf43fbe65"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/archive",
-			"Comment": "v1.1.0-10-g0cdda85",
-			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/daemon/graphdriver",
-			"Comment": "v1.1.0-10-g0cdda85",
-			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/dockerversion",
-			"Comment": "v1.1.0-10-g0cdda85",
-			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/engine",
-			"Comment": "v1.1.0-10-g0cdda85",
-			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/graph",
-			"Comment": "v1.1.0-10-g0cdda85",
-			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/image",
-			"Comment": "v1.1.0-10-g0cdda85",
-			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/nat",
-			"Comment": "v1.1.0-10-g0cdda85",
-			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/opts",
-			"Comment": "v1.1.0-10-g0cdda85",
-			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/pkg/mflag",
-			"Comment": "v1.1.0-10-g0cdda85",
-			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/pkg/mount",
-			"Comment": "v1.1.0-10-g0cdda85",
-			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/pkg/sysinfo",
-			"Comment": "v1.1.0-10-g0cdda85",
-			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/pkg/system",
-			"Comment": "v1.1.0-10-g0cdda85",
-			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/pkg/term",
-			"Comment": "v1.1.0-10-g0cdda85",
-			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/pkg/truncindex",
-			"Comment": "v1.1.0-10-g0cdda85",
-			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/pkg/units",
-			"Comment": "v1.1.0-10-g0cdda85",
-			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/registry",
-			"Comment": "v1.1.0-10-g0cdda85",
-			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/runconfig",
-			"Comment": "v1.1.0-10-g0cdda85",
-			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/utils",
-			"Comment": "v1.1.0-10-g0cdda85",
-			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/vendor/src/code.google.com/p/go/src/pkg/archive/tar",
-			"Comment": "v1.1.0-10-g0cdda85",
-			"Rev": "0cdda85df2a1aee0350fd344e6128eb2c2e4ef8a"
-		},
-		{
 			"ImportPath": "github.com/fraenkel/candiedyaml",
 			"Rev": "84842532f8194fe186b48a009251dfaec9924ccd"
 		},
 		{
 			"ImportPath": "github.com/gorilla/websocket",
-			"Rev": "0f32413e5e853a1244bc7be242b9afb625dc0aee"
+			"Rev": "aef42a8ae63a680a8c5d4ca25b01ca57a97ffa5c"
 		},
 		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
@@ -362,41 +158,20 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Comment": "v1.0.0-17-gd3d2576",
-			"Rev": "d3d25767b7af0efa7b12a900d0f4ac5477ed9fa1"
+			"Comment": "v1.0.0-18-gb8a1dc9",
+			"Rev": "b8a1dc909067ac17581903a056b5a709fc74c779"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Rev": "bbfdd55e27d6461a4a0c85be991eaae35d68838d"
+			"Rev": "efd113280743f90026f1dc18b93ca5355d8df0bf"
 		},
 		{
-			"ImportPath": "github.com/pivotal-golang/archiver/compressor",
+			"ImportPath": "github.com/pivotal-golang/archiver/extractor/test_helper",
 			"Rev": "02489ef5ef1eaae09e95d0abae099593c8c5e03c"
-		},
-		{
-			"ImportPath": "github.com/pivotal-golang/archiver/extractor",
-			"Rev": "02489ef5ef1eaae09e95d0abae099593c8c5e03c"
-		},
-		{
-			"ImportPath": "github.com/pivotal-golang/bytefmt",
-			"Rev": "fe9b96868d0e4e3440194ed84d42ae8fd79d9b74"
-		},
-		{
-			"ImportPath": "github.com/pivotal-golang/cacheddownloader",
-			"Rev": "b49bb276c002a7efefbf53e40180d2edd026fdc3"
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/lager",
 			"Rev": "cb90f6fb0421b0c17072b72c6ec93189431a2057"
-		},
-		{
-			"ImportPath": "github.com/rcrowley/go-metrics",
-			"Rev": "3be59ceb5538550555459fb77d0efe0e218cdfc7"
-		},
-		{
-			"ImportPath": "github.com/tchap/go-patricia/patricia",
-			"Comment": "v1.0.1",
-			"Rev": "f64d0a63cd3363481c898faa9339de04d12213f9"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
