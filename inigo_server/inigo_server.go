@@ -79,7 +79,7 @@ func Start(wardenClient warden.Client) {
 
 	ipAddress = info.ContainerIP
 
-	_, _, err = container.Run(warden.ProcessSpec{
+	_, stream, err := container.Run(warden.ProcessSpec{
 		Path: "ruby",
 		Args: []string{"-e", amazingRubyServer},
 		EnvironmentVariables: []warden.EnvironmentVariable{
@@ -87,6 +87,11 @@ func Start(wardenClient warden.Client) {
 		},
 	})
 	Ω(err).ShouldNot(HaveOccurred())
+
+	go func() {
+		for _ = range stream {
+		}
+	}()
 
 	Eventually(func() error {
 		_, err := http.Get(fmt.Sprintf("http://%s:%d/registrations", ipAddress, hostPort))
