@@ -368,7 +368,7 @@ func TestInigo(t *testing.T) {
 		inigo_server.Stop(suiteContext.WardenClient)
 
 		suiteContext.WardenProcess.Signal(syscall.SIGKILL)
-		Eventually(suiteContext.WardenProcess.Wait(), 5).Should(Receive())
+		Eventually(suiteContext.WardenProcess.Wait(), 10*time.Second).Should(Receive())
 	})
 
 	RunSpecs(t, "Inigo Integration Suite")
