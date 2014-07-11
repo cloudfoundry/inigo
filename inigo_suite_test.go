@@ -93,7 +93,6 @@ type suiteContextType struct {
 
 	WardenProcess ifrit.Process
 	WardenClient  warden.Client
-	WardenPort    int
 
 	NatsRunner *natsrunner.NATSRunner
 	NatsPort   int
@@ -182,7 +181,6 @@ func beforeSuite(encodedSharedContext []byte) {
 		RouterPort:              9090 + config.GinkgoConfig.ParallelNode,
 		TPSAddress:              fmt.Sprintf("127.0.0.1:%d", 1518+config.GinkgoConfig.ParallelNode),
 		TPSHeartbeatInterval:    5 * time.Second,
-		WardenPort:              11997 + config.GinkgoConfig.ParallelNode,
 	}
 
 	Ω(context.ExternalAddress).ShouldNot(BeEmpty())
@@ -198,8 +196,9 @@ func beforeSuite(encodedSharedContext []byte) {
 		Fail("warden is not set up")
 	}
 
-	wardenAddress := fmt.Sprintf("127.0.0.1:%d", context.WardenPort)
+	wardenAddress := fmt.Sprintf("/tmp/warden_%d.sock", config.GinkgoConfig.ParallelNode)
 	wardenRunner = WardenRunner.New(
+		"unix",
 		wardenAddress,
 		context.SharedContext.WardenPath,
 		wardenBinPath,
@@ -234,7 +233,7 @@ func beforeSuite(encodedSharedContext []byte) {
 	context.ExecutorRunner = executor_runner.New(
 		context.SharedContext.ExecutorPath,
 		fmt.Sprintf("127.0.0.1:%d", context.ExecutorPort),
-		"tcp",
+		"unix",
 		wardenAddress,
 		fmt.Sprintf("127.0.0.1:%d", context.LoggregatorInPort),
 		context.LoggregatorSharedSecret,

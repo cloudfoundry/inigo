@@ -96,7 +96,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",
-			"Rev": "44551a906df97cb33b742271ca793018d76170c8"
+			"Rev": "6a0de70415e6df8263ab8c12a92c69baaa0c1fb7"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gorouter/common",
