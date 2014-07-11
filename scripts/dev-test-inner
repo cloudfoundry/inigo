@@ -2,7 +2,7 @@
 
 set -e -x
 
-GOPATH_ROOT=$PWD
+export GOPATH_ROOT=$PWD
 
 export PATH=${GOROOT}/bin:${PATH}
 
