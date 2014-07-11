@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/garden/warden"
+	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
@@ -76,16 +77,14 @@ func Start(wardenClient warden.Client) {
 
 	ipAddress = info.ContainerIP
 
-	_, stream, err := container.Run(warden.ProcessSpec{
+	_, err = container.Run(warden.ProcessSpec{
 		Path: "ruby",
 		Args: []string{"-e", amazingRubyServer},
+	}, warden.ProcessIO{
+		Stdout: ginkgo.GinkgoWriter,
+		Stderr: ginkgo.GinkgoWriter,
 	})
 	Ω(err).ShouldNot(HaveOccurred())
-
-	go func() {
-		for _ = range stream {
-		}
-	}()
 
 	Eventually(func() error {
 		conn, err := net.DialTimeout("tcp", ipAddress+":8080", 100*time.Millisecond)
