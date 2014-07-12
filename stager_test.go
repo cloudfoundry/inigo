@@ -55,7 +55,10 @@ var _ = Describe("Stager", func() {
 		BeforeEach(func() {
 			suiteContext.ExecutorRunner.Start()
 			suiteContext.RepRunner.Start()
-			suiteContext.StagerRunner.Start()
+			suiteContext.StagerRunner.Start(
+				"--diskMB", "128",
+				"--memoryMB", "128",
+			)
 		})
 
 		It("returns an error", func() {
@@ -173,7 +176,11 @@ EOF
 
 		Context("with one stager running", func() {
 			BeforeEach(func() {
-				suiteContext.StagerRunner.Start("--circuses", `{"lucid64":"lifecycle.zip"}`)
+				suiteContext.StagerRunner.Start(
+					"--circuses", `{"lucid64":"lifecycle.zip"}`,
+					"--diskMB", "128",
+					"--memoryMB", "128",
+				)
 			})
 
 			It("runs the compiler on the executor with the correct environment variables, bits and log tag, and responds with the detected buildpack", func() {
@@ -347,7 +354,11 @@ EOF
 
 		Context("with two stagers running", func() {
 			BeforeEach(func() {
-				suiteContext.StagerRunner.Start("--circuses", `{"lucid64":"lifecycle.zip"}`)
+				suiteContext.StagerRunner.Start(
+					"--circuses", `{"lucid64":"lifecycle.zip"}`,
+					"--diskMB", "128",
+					"--memoryMB", "128",
+				)
 				otherStagerRunner.Start("--circuses", `{"lucid64":"lifecycle.zip"}`)
 			})
 
