@@ -56,8 +56,8 @@ var _ = Describe("Stager", func() {
 			suiteContext.ExecutorRunner.Start()
 			suiteContext.RepRunner.Start()
 			suiteContext.StagerRunner.Start(
-				"--diskMB", "128",
-				"--memoryMB", "128",
+				"--minDiskMB", "64",
+				"--minMemoryMB", "64",
 			)
 		})
 
@@ -178,8 +178,8 @@ EOF
 			BeforeEach(func() {
 				suiteContext.StagerRunner.Start(
 					"--circuses", `{"lucid64":"lifecycle.zip"}`,
-					"--diskMB", "128",
-					"--memoryMB", "128",
+					"--minDiskMB", "64",
+					"--minMemoryMB", "64",
 				)
 			})
 
@@ -356,10 +356,14 @@ EOF
 			BeforeEach(func() {
 				suiteContext.StagerRunner.Start(
 					"--circuses", `{"lucid64":"lifecycle.zip"}`,
-					"--diskMB", "128",
-					"--memoryMB", "128",
+					"--minDiskMB", "64",
+					"--minMemoryMB", "64",
 				)
-				otherStagerRunner.Start("--circuses", `{"lucid64":"lifecycle.zip"}`)
+				otherStagerRunner.Start(
+					"--circuses", `{"lucid64":"lifecycle.zip"}`,
+					"--minDiskMB", "64",
+					"--minMemoryMB", "64",
+				)
 			})
 
 			AfterEach(func() {
