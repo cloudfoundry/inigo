@@ -2,6 +2,7 @@ package inigo_test
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"fmt"
 	"strings"
@@ -16,7 +17,6 @@ import (
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
-	"github.com/cloudfoundry/loggregatorlib/logmessage"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -387,44 +387,71 @@ var _ = Describe("Executor", func() {
 			suiteContext.RepRunner.Start()
 		})
 
-		It("has its stdout and stderr emitted to Loggregator", func(done Done) {
+		It("has its stdout and stderr emitted to Loggregator", func() {
 			logGuid := factories.GenerateGuid()
 
-			messages, stop := loggredile.StreamMessages(
+			outBuf := gbytes.NewBuffer()
+			errBuf := gbytes.NewBuffer()
+
+			stop := loggredile.StreamIntoGBuffer(
 				suiteContext.LoggregatorRunner.Config.OutgoingPort,
 				"/tail/?app="+logGuid,
+				"APP",
+				outBuf,
+				errBuf,
 			)
+			defer close(stop)
 
 			task := factories.BuildTaskWithRunAction(
 				suiteContext.RepStack,
 				1024,
 				1024,
 				"bash",
-				[]string{"-c", "echo out A; echo out B; echo out C; echo err A 1>&2; echo err B 1>&2; echo err C 1>&2"},
+				[]string{"-c", "for i in $(seq 100); do echo $i; echo $i 1>&2; sleep 0.5; done"},
 			)
 			task.Log.Guid = logGuid
 			task.Log.SourceName = "APP"
 
-			bbs.DesireTask(task)
+			err := bbs.DesireTask(task)
+			Ω(err).ShouldNot(HaveOccurred())
 
-			outStream := []string{}
-			errStream := []string{}
+			Eventually(outBuf, LONG_TIMEOUT).Should(gbytes.Say(`(\d+\n){3}`))
+			Eventually(errBuf, LONG_TIMEOUT).Should(gbytes.Say(`(\d+\n){3}`))
 
-			for i := 0; i < 6; i++ {
-				message := <-messages
-				switch message.GetMessageType() {
-				case logmessage.LogMessage_OUT:
-					outStream = append(outStream, string(message.GetMessage()))
-				case logmessage.LogMessage_ERR:
-					errStream = append(errStream, string(message.GetMessage()))
+			outReader := bytes.NewBuffer(outBuf.Contents())
+			errReader := bytes.NewBuffer(errBuf.Contents())
+
+			seenNum := -1
+
+			for {
+				var num int
+				_, err := fmt.Fscanf(outReader, "%d\n", &num)
+				if err != nil {
+					break
 				}
+
+				Ω(num).Should(BeNumerically(">", seenNum))
+
+				seenNum = num
 			}
 
-			Ω(outStream).Should(Equal([]string{"out A", "out B", "out C"}))
-			Ω(errStream).Should(Equal([]string{"err A", "err B", "err C"}))
+			Ω(seenNum).Should(BeNumerically(">=", 3))
 
-			close(stop)
-			close(done)
-		}, LONG_TIMEOUT)
+			seenNum = -1
+
+			for {
+				var num int
+				_, err := fmt.Fscanf(errReader, "%d\n", &num)
+				if err != nil {
+					break
+				}
+
+				Ω(num).Should(BeNumerically(">", seenNum))
+
+				seenNum = num
+			}
+
+			Ω(seenNum).Should(BeNumerically(">=", 3))
+		})
 	})
 })

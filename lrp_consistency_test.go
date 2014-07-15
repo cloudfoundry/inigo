@@ -75,10 +75,14 @@ var _ = Describe("LRP Consistency", func() {
 		var stop chan<- bool
 
 		BeforeEach(func() {
-			logOutput, stop = loggredile.StreamIntoGBuffer(
+			logOutput = gbytes.NewBuffer()
+
+			stop = loggredile.StreamIntoGBuffer(
 				suiteContext.LoggregatorRunner.Config.OutgoingPort,
 				fmt.Sprintf("/tail/?app=%s", appId),
 				"App",
+				logOutput,
+				logOutput,
 			)
 
 			desiredAppRequest = models.DesireAppRequestFromCC{

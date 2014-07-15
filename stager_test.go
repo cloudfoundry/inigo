@@ -192,19 +192,16 @@ EOF
 				})
 
 				//stream logs
-				messages, stop := loggredile.StreamMessages(
+				logOutput := gbytes.NewBuffer()
+
+				stop := loggredile.StreamIntoGBuffer(
 					suiteContext.LoggregatorRunner.Config.OutgoingPort,
 					fmt.Sprintf("/tail/?app=%s", appId),
+					"STG",
+					logOutput,
+					logOutput,
 				)
 				defer close(stop)
-
-				logOutput := gbytes.NewBuffer()
-				go func() {
-					for message := range messages {
-						Ω(message.GetSourceName()).To(Equal("STG"))
-						logOutput.Write([]byte(string(message.GetMessage()) + "\n"))
-					}
-				}()
 
 				//publish the staging message
 				err := suiteContext.NatsRunner.MessageBus.Publish("diego.staging.start", stagingMessage)
@@ -319,19 +316,16 @@ EOF
 						payloads <- msg.Payload
 					})
 
-					messages, stop := loggredile.StreamMessages(
+					logOutput := gbytes.NewBuffer()
+
+					stop := loggredile.StreamIntoGBuffer(
 						suiteContext.LoggregatorRunner.Config.OutgoingPort,
 						fmt.Sprintf("/tail/?app=%s", appId),
+						"STG",
+						logOutput,
+						logOutput,
 					)
 					defer close(stop)
-
-					logOutput := gbytes.NewBuffer()
-					go func() {
-						for message := range messages {
-							Ω(message.GetSourceName()).To(Equal("STG"))
-							logOutput.Write([]byte(string(message.GetMessage()) + "\n"))
-						}
-					}()
 
 					err := suiteContext.NatsRunner.MessageBus.Publish(
 						"diego.staging.start",

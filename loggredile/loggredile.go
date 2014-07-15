@@ -8,13 +8,54 @@ import (
 	"code.google.com/p/gogoprotobuf/proto"
 	"github.com/cloudfoundry/loggregatorlib/logmessage"
 	"github.com/gorilla/websocket"
-	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 )
 
-func StreamMessages(port int, path string) (<-chan *logmessage.LogMessage, chan<- bool) {
-	receivedMessages := make(chan *logmessage.LogMessage)
+func StreamIntoGBuffer(port int, path string, sourceName string, outBuf, errBuf *gbytes.Buffer) chan<- bool {
+	outMessages := make(chan *logmessage.LogMessage)
+	errMessages := make(chan *logmessage.LogMessage)
+
+	stop := streamMessages(port, path, outMessages, errMessages)
+
+	go func() {
+		outOpen := true
+		errOpen := true
+
+		for outOpen || errOpen {
+			var message *logmessage.LogMessage
+
+			select {
+			case message, outOpen = <-outMessages:
+				if !outOpen {
+					outMessages = nil
+					break
+				}
+
+				if message.GetSourceName() != sourceName {
+					continue
+				}
+
+				outBuf.Write([]byte(string(message.GetMessage()) + "\n"))
+			case message, errOpen = <-errMessages:
+				if !errOpen {
+					errMessages = nil
+					break
+				}
+
+				if message.GetSourceName() != sourceName {
+					continue
+				}
+
+				errBuf.Write([]byte(string(message.GetMessage()) + "\n"))
+			}
+		}
+	}()
+
+	return stop
+}
+
+func streamMessages(port int, path string, outMessages, errMessages chan<- *logmessage.LogMessage) chan<- bool {
 	stop := make(chan bool, 1)
 
 	var ws *websocket.Conn
@@ -29,7 +70,7 @@ func StreamMessages(port int, path string) (<-chan *logmessage.LogMessage, chan<
 			i++
 			if i > 10 {
 				fmt.Printf("Unable to connect to Server in 100ms, giving up.\n")
-				return nil, nil
+				return nil
 			}
 
 			time.Sleep(10 * time.Millisecond)
@@ -44,7 +85,8 @@ func StreamMessages(port int, path string) (<-chan *logmessage.LogMessage, chan<
 			_, data, err := ws.ReadMessage()
 
 			if err != nil {
-				close(receivedMessages)
+				close(outMessages)
+				close(errMessages)
 				return
 			}
 
@@ -52,7 +94,11 @@ func StreamMessages(port int, path string) (<-chan *logmessage.LogMessage, chan<
 			err = proto.Unmarshal(data, receivedMessage)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			receivedMessages <- receivedMessage
+			if receivedMessage.GetMessageType() == logmessage.LogMessage_OUT {
+				outMessages <- receivedMessage
+			} else {
+				errMessages <- receivedMessage
+			}
 		}
 	}()
 
@@ -74,22 +120,5 @@ func StreamMessages(port int, path string) (<-chan *logmessage.LogMessage, chan<
 		}
 	}()
 
-	return receivedMessages, stop
-}
-
-func StreamIntoGBuffer(port int, path string, sourceName string) (*gbytes.Buffer, chan<- bool) {
-	messages, stop := StreamMessages(port, path)
-	logOutput := gbytes.NewBuffer()
-
-	go func() {
-		for message := range messages {
-			defer ginkgo.GinkgoRecover()
-
-			if message.GetSourceName() == sourceName {
-				logOutput.Write([]byte(string(message.GetMessage()) + "\n"))
-			}
-		}
-	}()
-
-	return logOutput, stop
+	return stop
 }

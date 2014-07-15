@@ -83,10 +83,14 @@ var _ = Describe("Convergence to desired state", func() {
 
 		suiteContext.FileServerRunner.ServeFile("some-lifecycle-bundle.tgz", suiteContext.SharedContext.CircusZipPath)
 
-		logOutput, stop = loggredile.StreamIntoGBuffer(
+		logOutput = gbytes.NewBuffer()
+
+		stop = loggredile.StreamIntoGBuffer(
 			suiteContext.LoggregatorRunner.Config.OutgoingPort,
 			fmt.Sprintf("/tail/?app=%s", appId),
 			"App",
+			logOutput,
+			logOutput,
 		)
 	})
 

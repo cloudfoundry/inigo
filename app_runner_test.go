@@ -14,6 +14,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 )
 
@@ -83,10 +84,14 @@ var _ = Describe("AppRunner", func() {
 
 		It("runs the app on the executor, registers routes, and shows that they are running via the tps", func() {
 			//stream logs
-			logOutput, stop := loggredile.StreamIntoGBuffer(
+			logOutput := gbytes.NewBuffer()
+
+			stop := loggredile.StreamIntoGBuffer(
 				suiteContext.LoggregatorRunner.Config.OutgoingPort,
 				fmt.Sprintf("/tail/?app=%s", appId),
 				"App",
+				logOutput,
+				logOutput,
 			)
 			defer close(stop)
 
