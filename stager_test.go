@@ -82,7 +82,6 @@ var _ = Describe("Stager", func() {
 			var receivedMessage *yagnats.Message
 			Eventually(receivedMessages, SHORT_TIMEOUT).Should(Receive(&receivedMessage))
 			Ω(receivedMessage.Payload).Should(ContainSubstring("no compiler defined for requested stack"))
-			Consistently(receivedMessages, SHORT_TIMEOUT).ShouldNot(Receive())
 		})
 	})
 
