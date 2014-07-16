@@ -333,7 +333,7 @@ EOF
 					Ω(err).ShouldNot(HaveOccurred())
 
 					var payload []byte
-					Eventually(payloads, 10.0).Should(Receive(&payload))
+					Eventually(payloads, LONG_TIMEOUT).Should(Receive(&payload))
 					Ω(string(payload)).Should(MatchJSON(fmt.Sprintf(`{
 						"app_id":"%s",
 						"task_id":"%s",
@@ -378,7 +378,7 @@ EOF
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Eventually(received, LONG_TIMEOUT).Should(Receive())
-				Consistently(received, SHORT_TIMEOUT).ShouldNot(Receive())
+				Consistently(received, 10).ShouldNot(Receive())
 			})
 		})
 	})
