@@ -80,7 +80,7 @@ var _ = Describe("Executor", func() {
 			)
 			bbs.DesireTask(firstGuyTask)
 
-			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(firstGuyGuid))
+			Eventually(inigo_server.ReportingGuids).Should(ContainElement(firstGuyGuid))
 
 			secondGuyTask := factories.BuildTaskWithRunAction(
 				suiteContext.RepStack,
@@ -91,7 +91,7 @@ var _ = Describe("Executor", func() {
 			)
 			bbs.DesireTask(secondGuyTask)
 
-			Consistently(inigo_server.ReportingGuids, SHORT_TIMEOUT).ShouldNot(ContainElement(secondGuyGuid))
+			Consistently(inigo_server.ReportingGuids).ShouldNot(ContainElement(secondGuyGuid))
 		})
 	})
 
@@ -125,8 +125,8 @@ var _ = Describe("Executor", func() {
 			bbs.DesireTask(matchingTask)
 			bbs.DesireTask(nonMatchingTask)
 
-			Consistently(inigo_server.ReportingGuids, SHORT_TIMEOUT).ShouldNot(ContainElement(nonMatchingGuid), "Did not expect to see this app running, as it has the wrong stack.")
-			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(matchingGuid))
+			Consistently(inigo_server.ReportingGuids).ShouldNot(ContainElement(nonMatchingGuid), "Did not expect to see this app running, as it has the wrong stack.")
+			Eventually(inigo_server.ReportingGuids).Should(ContainElement(matchingGuid))
 		})
 	})
 
@@ -162,7 +162,7 @@ var _ = Describe("Executor", func() {
 			err := bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
+			Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
 
 			tasks, _ := bbs.GetAllCompletedTasks()
 			Ω(tasks[0].FailureReason).Should(BeEmpty())
@@ -198,9 +198,9 @@ var _ = Describe("Executor", func() {
 				err := bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
+				Eventually(inigo_server.ReportingGuids).Should(ContainElement(guid))
 
-				Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
+				Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
 				tasks, _ := bbs.GetAllCompletedTasks()
 				Ω(tasks[0].Failed).Should(BeTrue())
 				Ω(tasks[0].FailureReason).Should(ContainSubstring("out of memory"))
@@ -234,7 +234,7 @@ var _ = Describe("Executor", func() {
 				err := bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
+				Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
 				tasks, _ := bbs.GetAllCompletedTasks()
 				Ω(tasks[0].Failed).Should(BeTrue())
 				Ω(tasks[0].FailureReason).Should(ContainSubstring("127"))
@@ -264,8 +264,8 @@ var _ = Describe("Executor", func() {
 				err := bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
-				Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
+				Eventually(inigo_server.ReportingGuids).Should(ContainElement(guid))
+				Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
 				tasks, _ := bbs.GetAllCompletedTasks()
 				Ω(tasks[0].Failed).Should(BeTrue())
 				Ω(tasks[0].FailureReason).Should(ContainSubstring("Timed out after 500ms"))
@@ -301,7 +301,7 @@ var _ = Describe("Executor", func() {
 			err := bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
+			Eventually(inigo_server.ReportingGuids).Should(ContainElement(guid))
 		})
 	})
 
@@ -336,7 +336,7 @@ var _ = Describe("Executor", func() {
 			err := bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
+			Eventually(inigo_server.ReportingGuids).Should(ContainElement(guid))
 
 			downloadStream := inigo_server.DownloadFile("thingy")
 
@@ -374,7 +374,7 @@ var _ = Describe("Executor", func() {
 			err := bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
+			Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
 
 			tasks, _ := bbs.GetAllCompletedTasks()
 			Ω(tasks[0].Result).Should(Equal("tasty thingy\n"))
@@ -415,8 +415,8 @@ var _ = Describe("Executor", func() {
 			err := bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(outBuf, LONG_TIMEOUT).Should(gbytes.Say(`(\d+\n){3}`))
-			Eventually(errBuf, LONG_TIMEOUT).Should(gbytes.Say(`(\d+\n){3}`))
+			Eventually(outBuf).Should(gbytes.Say(`(\d+\n){3}`))
+			Eventually(errBuf).Should(gbytes.Say(`(\d+\n){3}`))
 
 			outReader := bytes.NewBuffer(outBuf.Contents())
 			errReader := bytes.NewBuffer(errBuf.Contents())

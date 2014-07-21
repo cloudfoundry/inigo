@@ -4,8 +4,6 @@ image: docker:///cloudfoundry/inigo-ci
 params:
   GOROOT: /usr/local/go
   GINKGO_PARALLEL: true
-  SHORT_TIMEOUT: 2.0
-  LONG_TIMEOUT: 10.0
 
 run:
   path: bash

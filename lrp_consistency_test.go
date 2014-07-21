@@ -100,9 +100,9 @@ var _ = Describe("LRP Consistency", func() {
 			err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid), 2*LONG_TIMEOUT).Should(HaveLen(2))
+			Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid), 2*DEFAULT_EVENTUALLY_TIMEOUT).Should(HaveLen(2))
 			poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-			Eventually(poller, LONG_TIMEOUT*2, 1).Should(Equal([]string{"0", "1"}))
+			Eventually(poller, 2*DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0", "1"}))
 		})
 
 		AfterEach(func() {
@@ -118,10 +118,10 @@ var _ = Describe("LRP Consistency", func() {
 			})
 
 			It("should scale up to the correct number of instances", func() {
-				Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid), LONG_TIMEOUT).Should(HaveLen(3))
+				Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)).Should(HaveLen(3))
 
 				poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-				Eventually(poller, LONG_TIMEOUT).Should(Equal([]string{"0", "1", "2"}))
+				Eventually(poller).Should(Equal([]string{"0", "1", "2"}))
 			})
 		})
 
@@ -134,10 +134,10 @@ var _ = Describe("LRP Consistency", func() {
 			})
 
 			It("should scale down to the correct number of instances", func() {
-				Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid), LONG_TIMEOUT).Should(HaveLen(1))
+				Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)).Should(HaveLen(1))
 
 				poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-				Eventually(poller, LONG_TIMEOUT, 1).Should(Equal([]string{"0"}))
+				Eventually(poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0"}))
 			})
 		})
 
@@ -150,10 +150,10 @@ var _ = Describe("LRP Consistency", func() {
 			})
 
 			It("should stop all instances of the app", func() {
-				Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid), LONG_TIMEOUT).Should(BeEmpty())
+				Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)).Should(BeEmpty())
 
 				poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-				Eventually(poller, LONG_TIMEOUT).Should(BeEmpty())
+				Eventually(poller).Should(BeEmpty())
 			})
 		})
 	})

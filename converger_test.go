@@ -125,8 +125,8 @@ var _ = Describe("Convergence to desired state", func() {
 
 				running_lrps_poller := helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
 				hello_world_instance_poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-				Eventually(running_lrps_poller, LONG_TIMEOUT).Should(HaveLen(1))
-				Eventually(hello_world_instance_poller, LONG_TIMEOUT, 1).Should(Equal([]string{"0"}))
+				Eventually(running_lrps_poller).Should(HaveLen(1))
+				Eventually(hello_world_instance_poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0"}))
 			})
 
 			It("Eventually brings the long-running process up", func() {
@@ -134,15 +134,15 @@ var _ = Describe("Convergence to desired state", func() {
 
 				running_lrps_poller := helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
 				hello_world_instance_poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-				Eventually(running_lrps_poller, LONG_TIMEOUT).Should(BeEmpty())
-				Eventually(hello_world_instance_poller, LONG_TIMEOUT, 1).Should(BeEmpty())
+				Eventually(running_lrps_poller).Should(BeEmpty())
+				Eventually(hello_world_instance_poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(BeEmpty())
 
 				suiteContext.ExecutorRunner.Start()
 
 				running_lrps_poller = helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
 				hello_world_instance_poller = helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-				Eventually(running_lrps_poller, LONG_TIMEOUT).Should(HaveLen(1))
-				Eventually(hello_world_instance_poller, LONG_TIMEOUT, 1).Should(Equal([]string{"0"}))
+				Eventually(running_lrps_poller).Should(HaveLen(1))
+				Eventually(hello_world_instance_poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0"}))
 			})
 		})
 
@@ -168,8 +168,8 @@ var _ = Describe("Convergence to desired state", func() {
 
 				running_lrps_poller := helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
 				hello_world_instance_poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-				Eventually(running_lrps_poller, LONG_TIMEOUT).Should(HaveLen(1))
-				Eventually(hello_world_instance_poller, LONG_TIMEOUT, 1).Should(Equal([]string{"0"}))
+				Eventually(running_lrps_poller).Should(HaveLen(1))
+				Eventually(hello_world_instance_poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0"}))
 			})
 		})
 
@@ -185,8 +185,8 @@ var _ = Describe("Convergence to desired state", func() {
 
 				running_lrps_poller := helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
 				hello_world_instance_poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-				Eventually(running_lrps_poller, LONG_TIMEOUT).Should(HaveLen(1))
-				Eventually(hello_world_instance_poller, LONG_TIMEOUT, 1).Should(Equal([]string{"0"}))
+				Eventually(running_lrps_poller).Should(HaveLen(1))
+				Eventually(hello_world_instance_poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0"}))
 			})
 
 			It("Eventually brings the long-running process down", func() {
@@ -207,8 +207,8 @@ var _ = Describe("Convergence to desired state", func() {
 
 				running_lrps_poller = helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
 				hello_world_instance_poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-				Eventually(running_lrps_poller, LONG_TIMEOUT).Should(BeEmpty())
-				Eventually(hello_world_instance_poller, LONG_TIMEOUT, 1).Should(BeEmpty())
+				Eventually(running_lrps_poller).Should(BeEmpty())
+				Eventually(hello_world_instance_poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(BeEmpty())
 			})
 		})
 
@@ -224,8 +224,8 @@ var _ = Describe("Convergence to desired state", func() {
 
 				running_lrps_poller := helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
 				hello_world_instance_poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-				Eventually(running_lrps_poller, LONG_TIMEOUT).Should(HaveLen(2))
-				Eventually(hello_world_instance_poller, LONG_TIMEOUT, 1).Should(Equal([]string{"0", "1"}))
+				Eventually(running_lrps_poller).Should(HaveLen(2))
+				Eventually(hello_world_instance_poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0", "1"}))
 			})
 
 			It("Eventually brings the long-running process down", func() {
@@ -246,8 +246,8 @@ var _ = Describe("Convergence to desired state", func() {
 
 				running_lrps_poller = helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
 				hello_world_instance_poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-				Eventually(running_lrps_poller, LONG_TIMEOUT).Should(HaveLen(1))
-				Eventually(hello_world_instance_poller, LONG_TIMEOUT, 1).Should(Equal([]string{"0"}))
+				Eventually(running_lrps_poller).Should(HaveLen(1))
+				Eventually(hello_world_instance_poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0"}))
 			})
 		})
 	})
@@ -280,8 +280,8 @@ var _ = Describe("Convergence to desired state", func() {
 
 				running_lrps_poller := helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
 				hello_world_instance_poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-				Eventually(running_lrps_poller, LONG_TIMEOUT).Should(HaveLen(1))
-				Eventually(hello_world_instance_poller, LONG_TIMEOUT, 1).Should(Equal([]string{"0"}))
+				Eventually(running_lrps_poller).Should(HaveLen(1))
+				Eventually(hello_world_instance_poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0"}))
 			})
 		})
 
@@ -313,8 +313,8 @@ var _ = Describe("Convergence to desired state", func() {
 
 				running_lrps_poller := helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)
 				hello_world_instance_poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-				Eventually(running_lrps_poller, LONG_TIMEOUT).Should(HaveLen(1))
-				Eventually(hello_world_instance_poller, LONG_TIMEOUT, 1).Should(Equal([]string{"0"}))
+				Eventually(running_lrps_poller).Should(HaveLen(1))
+				Eventually(hello_world_instance_poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0"}))
 			})
 		})
 	})

@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -41,8 +40,8 @@ import (
 	"github.com/cloudfoundry-incubator/stager/integration/stager_runner"
 )
 
-var SHORT_TIMEOUT = 5.0
-var LONG_TIMEOUT = 15.0
+var DEFAULT_EVENTUALLY_TIMEOUT = 15 * time.Second
+var DEFAULT_CONSISTENTLY_TIMEOUT = 5 * time.Second
 var AUCTION_MAX_ROUNDS = 3 //we limit this to prevent overwhelming numbers of auctioneer logs.  it should not impact the behavior of the tests.
 
 var wardenRunner *WardenRunner.Runner
@@ -333,7 +332,7 @@ func afterSuite() {
 }
 
 func TestInigo(t *testing.T) {
-	extractTimeoutsFromEnvironment()
+	registerDefaultTimeouts()
 
 	RegisterFailHandler(Fail)
 
@@ -373,21 +372,24 @@ func TestInigo(t *testing.T) {
 	RunSpecs(t, "Inigo Integration Suite")
 }
 
-func extractTimeoutsFromEnvironment() {
+func registerDefaultTimeouts() {
 	var err error
-	if os.Getenv("SHORT_TIMEOUT") != "" {
-		SHORT_TIMEOUT, err = strconv.ParseFloat(os.Getenv("SHORT_TIMEOUT"), 64)
+	if os.Getenv("DEFAULT_EVENTUALLY_TIMEOUT") != "" {
+		DEFAULT_EVENTUALLY_TIMEOUT, err = time.ParseDuration(os.Getenv("DEFAULT_EVENTUALLY_TIMEOUT"))
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	if os.Getenv("LONG_TIMEOUT") != "" {
-		LONG_TIMEOUT, err = strconv.ParseFloat(os.Getenv("LONG_TIMEOUT"), 64)
+	if os.Getenv("DEFAULT_CONSISTENTLY_TIMEOUT") != "" {
+		DEFAULT_CONSISTENTLY_TIMEOUT, err = time.ParseDuration(os.Getenv("DEFAULT_CONSISTENTLY_TIMEOUT"))
 		if err != nil {
 			panic(err)
 		}
 	}
+
+	SetDefaultEventuallyTimeout(DEFAULT_EVENTUALLY_TIMEOUT)
+	SetDefaultConsistentlyDuration(DEFAULT_CONSISTENTLY_TIMEOUT)
 }
 
 type nodeOneType struct {

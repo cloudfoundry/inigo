@@ -80,7 +80,7 @@ var _ = Describe("Stager", func() {
 			)
 
 			var receivedMessage *yagnats.Message
-			Eventually(receivedMessages, SHORT_TIMEOUT).Should(Receive(&receivedMessage))
+			Eventually(receivedMessages).Should(Receive(&receivedMessage))
 			Ω(receivedMessage.Payload).Should(ContainSubstring("no compiler defined for requested stack"))
 		})
 	})
@@ -208,7 +208,7 @@ EOF
 
 				//wait for staging to complete
 				var payload []byte
-				Eventually(payloads, LONG_TIMEOUT).Should(Receive(&payload))
+				Eventually(payloads).Should(Receive(&payload))
 
 				//Assert on the staging output (detected buildpack)
 				Ω(string(payload)).Should(MatchJSON(fmt.Sprintf(`{
@@ -333,7 +333,7 @@ EOF
 					Ω(err).ShouldNot(HaveOccurred())
 
 					var payload []byte
-					Eventually(payloads, LONG_TIMEOUT).Should(Receive(&payload))
+					Eventually(payloads).Should(Receive(&payload))
 					Ω(string(payload)).Should(MatchJSON(fmt.Sprintf(`{
 						"app_id":"%s",
 						"task_id":"%s",
@@ -377,7 +377,7 @@ EOF
 				)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(received, LONG_TIMEOUT).Should(Receive())
+				Eventually(received).Should(Receive())
 				Consistently(received, 10).ShouldNot(Receive())
 			})
 		})

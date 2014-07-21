@@ -100,22 +100,22 @@ var _ = Describe("AppRunner", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Assert the user saw reasonable output
-			Eventually(logOutput.Contents, LONG_TIMEOUT).Should(ContainSubstring("Hello World from index '0'"))
-			Eventually(logOutput.Contents, LONG_TIMEOUT).Should(ContainSubstring("Hello World from index '1'"))
-			Eventually(logOutput.Contents, LONG_TIMEOUT).Should(ContainSubstring("Hello World from index '2'"))
+			Eventually(logOutput.Contents).Should(ContainSubstring("Hello World from index '0'"))
+			Eventually(logOutput.Contents).Should(ContainSubstring("Hello World from index '1'"))
+			Eventually(logOutput.Contents).Should(ContainSubstring("Hello World from index '2'"))
 
 			// check lrp instance statuses
-			Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, "process-guid"), LONG_TIMEOUT, 0.5).Should(HaveLen(3))
+			Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, "process-guid"), DEFAULT_EVENTUALLY_TIMEOUT, 0.5).Should(HaveLen(3))
 
 			//both routes should be routable
-			Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-1"), LONG_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
-			Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-2"), LONG_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
+			Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-1"), DEFAULT_EVENTUALLY_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
+			Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-2"), DEFAULT_EVENTUALLY_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
 
 			//a given route should route to all three runninginstances
-			Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-1"), LONG_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
+			Eventually(helpers.ResponseCodeFromHostPoller(suiteContext.RouterRunner.Addr(), "route-1"), DEFAULT_EVENTUALLY_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
 
 			poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-1")
-			Eventually(poller, LONG_TIMEOUT, 1).Should(Equal([]string{"0", "1", "2"}))
+			Eventually(poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0", "1", "2"}))
 		})
 	})
 })

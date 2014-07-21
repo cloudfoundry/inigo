@@ -50,7 +50,7 @@ var _ = Describe("Task", func() {
 		})
 
 		It("eventually runs the Task", func() {
-			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
+			Eventually(inigo_server.ReportingGuids).Should(ContainElement(guid))
 		})
 	})
 
@@ -74,7 +74,7 @@ var _ = Describe("Task", func() {
 			)
 			bbs.DesireTask(task)
 
-			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(firstTaskGuid))
+			Eventually(inigo_server.ReportingGuids).Should(ContainElement(firstTaskGuid))
 
 			secondTaskGuid = factories.GenerateGuid()
 
@@ -90,9 +90,9 @@ var _ = Describe("Task", func() {
 		})
 
 		It("is executed, as the previous task's resources are cleared", func() {
-			Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
+			Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
 
-			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(secondTaskGuid))
+			Eventually(inigo_server.ReportingGuids).Should(ContainElement(secondTaskGuid))
 		})
 	})
 
@@ -115,7 +115,7 @@ var _ = Describe("Task", func() {
 			suiteContext.ExecutorRunner.Start()
 			suiteContext.RepRunner.Start()
 
-			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
+			Eventually(inigo_server.ReportingGuids).Should(ContainElement(guid))
 		})
 	})
 
@@ -136,7 +136,7 @@ var _ = Describe("Task", func() {
 			task.Stack = "donald-duck"
 			bbs.DesireTask(task)
 
-			Eventually(bbs.GetAllCompletedTasks, LONG_TIMEOUT).Should(HaveLen(1))
+			Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
 			tasks, err := bbs.GetAllCompletedTasks()
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(tasks[0].Failed).Should(BeTrue(), "Task should have failed")
@@ -163,14 +163,14 @@ var _ = Describe("Task", func() {
 				[]string{"-c", fmt.Sprintf("curl %s; sleep 10", strings.Join(inigo_server.CurlArgs(guid), " "))},
 			)
 			bbs.DesireTask(task)
-			Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(guid))
+			Eventually(inigo_server.ReportingGuids).Should(ContainElement(guid))
 
 			suiteContext.ExecutorRunner.KillWithFire()
 
 			Eventually(func() interface{} {
 				tasks, _ := bbs.GetAllCompletedTasks()
 				return tasks
-			}, LONG_TIMEOUT).Should(HaveLen(1))
+			}).Should(HaveLen(1))
 			tasks, _ := bbs.GetAllCompletedTasks()
 
 			completedTask := tasks[0]
