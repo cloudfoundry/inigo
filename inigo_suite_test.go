@@ -41,7 +41,7 @@ import (
 )
 
 var DEFAULT_EVENTUALLY_TIMEOUT = 15 * time.Second
-var DEFAULT_CONSISTENTLY_TIMEOUT = 5 * time.Second
+var DEFAULT_CONSISTENTLY_DURATION = 5 * time.Second
 var AUCTION_MAX_ROUNDS = 3 //we limit this to prevent overwhelming numbers of auctioneer logs.  it should not impact the behavior of the tests.
 
 var wardenRunner *WardenRunner.Runner
@@ -381,15 +381,15 @@ func registerDefaultTimeouts() {
 		}
 	}
 
-	if os.Getenv("DEFAULT_CONSISTENTLY_TIMEOUT") != "" {
-		DEFAULT_CONSISTENTLY_TIMEOUT, err = time.ParseDuration(os.Getenv("DEFAULT_CONSISTENTLY_TIMEOUT"))
+	if os.Getenv("DEFAULT_CONSISTENTLY_DURATION") != "" {
+		DEFAULT_CONSISTENTLY_DURATION, err = time.ParseDuration(os.Getenv("DEFAULT_CONSISTENTLY_DURATION"))
 		if err != nil {
 			panic(err)
 		}
 	}
 
 	SetDefaultEventuallyTimeout(DEFAULT_EVENTUALLY_TIMEOUT)
-	SetDefaultConsistentlyDuration(DEFAULT_CONSISTENTLY_TIMEOUT)
+	SetDefaultConsistentlyDuration(DEFAULT_CONSISTENTLY_DURATION)
 }
 
 type nodeOneType struct {
