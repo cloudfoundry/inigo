@@ -402,7 +402,7 @@ func (node *nodeOneType) CompileTestedExecutables() {
 	node.context.WardenPath, err = gexec.BuildIn(os.Getenv("WARDEN_LINUX_GOPATH"), "github.com/cloudfoundry-incubator/warden-linux", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
-	node.context.LoggregatorPath, err = gexec.BuildIn(os.Getenv("LOGGREGATOR_GOPATH"), "loggregator/loggregator")
+	node.context.LoggregatorPath, err = gexec.BuildIn(os.Getenv("LOGGREGATOR_GOPATH"), "loggregator")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.AuctioneerPath, err = gexec.BuildIn(os.Getenv("AUCTIONEER_GOPATH"), "github.com/cloudfoundry-incubator/auctioneer", "-race")
