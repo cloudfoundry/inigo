@@ -2,9 +2,10 @@
 
 set -e -x
 
-export GOPATH_ROOT=$PWD
-
+export GOROOT=/usr/local/go
 export PATH=${GOROOT}/bin:${PATH}
+
+export GOPATH_ROOT=$PWD
 
 export GOPATH=${GOPATH_ROOT}
 export PATH=${GOPATH_ROOT}/bin:${PATH}
