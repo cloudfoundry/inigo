@@ -126,35 +126,52 @@ var _ = Describe("LRP Consistency", func() {
 		})
 
 		Describe("Scaling an app down", func() {
-			BeforeEach(func() {
-				desiredAppRequest.NumInstances = 1
+			Measure("should scale down to the correct number of instancs", func(b Benchmarker) {
+				b.Time("scale down", func() {
+					desiredAppRequest.NumInstances = 1
+					err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+					Ω(err).ShouldNot(HaveOccurred())
 
-				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
-				Ω(err).ShouldNot(HaveOccurred())
-			})
+					Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)).Should(HaveLen(1))
 
-			It("should scale down to the correct number of instances", func() {
-				Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)).Should(HaveLen(1))
+					poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
+					Eventually(poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0"}))
+				})
 
-				poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-				Eventually(poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0"}))
-			})
+				b.Time("scale up", func() {
+					desiredAppRequest.NumInstances = 2
+					err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)).Should(HaveLen(2))
+
+					poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
+					Eventually(poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0", "1"}))
+				})
+			}, helpers.RepeatCount())
 		})
 
 		Describe("Stopping an app", func() {
-			BeforeEach(func() {
-				desiredAppRequest.NumInstances = 0
+			Measure("should stop all instances of the app", func(b Benchmarker) {
+				b.Time("stop", func() {
+					desiredAppRequest.NumInstances = 0
+					err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+					Ω(err).ShouldNot(HaveOccurred())
 
-				err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
-				Ω(err).ShouldNot(HaveOccurred())
-			})
+					Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)).Should(BeEmpty())
 
-			It("should stop all instances of the app", func() {
-				Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)).Should(BeEmpty())
+					poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
+					Eventually(poller).Should(BeEmpty())
+				})
 
-				poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-				Eventually(poller).Should(BeEmpty())
-			})
+				b.Time("start", func() {
+					desiredAppRequest.NumInstances = 2
+					err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)).Should(HaveLen(2))
+				})
+			}, helpers.RepeatCount())
 		})
 	})
 })

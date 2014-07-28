@@ -3,6 +3,7 @@ image: cloudfoundry/inigo-ci
 env:
   - GINKGO_PARALLEL=true
   - DEFAULT_EVENTUALLY_TIMEOUT=15s
+  - INIGO_REPEAT_COUNT=1
 
 script:
   - ./src/github.com/cloudfoundry-incubator/inigo/scripts/dev-test-inner

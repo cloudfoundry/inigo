@@ -4,6 +4,7 @@ image: docker:///cloudfoundry/inigo-ci
 params:
   GINKGO_PARALLEL: true
   DEFAULT_EVENTUALLY_TIMEOUT: 15s
+  INIGO_REPEAT_COUNT: 1
 
 run:
   path: bash
