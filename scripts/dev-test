@@ -19,7 +19,6 @@ REPOS="
   github.com/cloudfoundry-incubator/tps
 "
 
-DEV_GOPATH=$(cd $HOME/go && pwd)
 TMP_GOPATH=/tmp/inigo
 
 mkdir -p ${TMP_GOPATH}
@@ -43,7 +42,7 @@ popd
 
 function copy_to_gopath {
   mkdir -p ${TMP_GOPATH}/src/${1}
-  rsync --del --exclude '.*' --exclude '*.test' -a ${DEV_GOPATH}/src/${1}/ ${TMP_GOPATH}/src/${1}/
+  rsync --del --exclude '.*' --exclude '*.test' -a ${GOPATH}/src/${1}/ ${TMP_GOPATH}/src/${1}/
 }
 
 # grab and set up our components
