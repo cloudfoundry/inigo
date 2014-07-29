@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -168,7 +169,7 @@ func beforeSuite(encodedSharedContext []byte) {
 		SharedContext:           sharedContext,
 		ExternalAddress:         os.Getenv("EXTERNAL_ADDRESS"),
 		RepStack:                "lucid64",
-		ExecutorID:              "the-executor-id-" + string(config.GinkgoConfig.ParallelNode),
+		ExecutorID:              "the-executor-id-" + strconv.Itoa(config.GinkgoConfig.ParallelNode),
 		NatsPort:                4222 + config.GinkgoConfig.ParallelNode,
 		ExecutorPort:            1700 + config.GinkgoConfig.ParallelNode,
 		RepPort:                 20515 + config.GinkgoConfig.ParallelNode,
