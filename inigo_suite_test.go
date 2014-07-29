@@ -269,13 +269,13 @@ func beforeSuite(encodedSharedContext []byte) {
 		context.SharedContext.NsyncListenerPath,
 		"-etcdCluster", strings.Join(context.EtcdRunner.NodeURLS(), ","),
 		"-natsAddresses", fmt.Sprintf("127.0.0.1:%d", context.NatsPort),
+		"-circuses", `{"`+context.RepStack+`":"some-lifecycle-bundle.tgz"}`,
+		"-repAddrRelativeToExecutor", fmt.Sprintf("127.0.0.1:%d", context.RepPort),
 	)
 
 	context.AppManagerRunner = app_manager_runner.New(
 		context.SharedContext.AppManagerPath,
 		context.EtcdRunner.NodeURLS(),
-		map[string]string{context.RepStack: "some-lifecycle-bundle.tgz"},
-		fmt.Sprintf("127.0.0.1:%d", context.RepPort),
 	)
 
 	context.FileServerRunner = fileserver_runner.New(
