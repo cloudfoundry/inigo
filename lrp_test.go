@@ -17,7 +17,7 @@ import (
 	"github.com/pivotal-golang/lager/lagertest"
 )
 
-var _ = FDescribe("Starting an arbitrary LRP", func() {
+var _ = Describe("Starting an arbitrary LRP", func() {
 	var (
 		processGroup ifrit.Process
 		processGuid  string
