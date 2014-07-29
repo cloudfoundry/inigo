@@ -1,7 +1,6 @@
 package app_manager_runner
 
 import (
-	"encoding/json"
 	"os/exec"
 	"strings"
 	"time"
@@ -15,24 +14,13 @@ import (
 type AppManagerRunner struct {
 	appManagerBin string
 	etcdCluster   []string
-	circuses      map[string]string
 	Session       *gexec.Session
-
-	repAddrRelativeToExecutor string
 }
 
-func New(
-	appManagerBin string,
-	etcdCluster []string,
-	circuses map[string]string,
-	repAddrRelativeToExecutor string,
-) *AppManagerRunner {
+func New(appManagerBin string, etcdCluster []string) *AppManagerRunner {
 	return &AppManagerRunner{
 		appManagerBin: appManagerBin,
 		etcdCluster:   etcdCluster,
-		circuses:      circuses,
-
-		repAddrRelativeToExecutor: repAddrRelativeToExecutor,
 	}
 }
 
@@ -42,15 +30,10 @@ func (r *AppManagerRunner) Start() {
 }
 
 func (r *AppManagerRunner) StartWithoutCheck() {
-	circusesFlag, err := json.Marshal(r.circuses)
-	Ω(err).ShouldNot(HaveOccurred())
-
 	executorSession, err := gexec.Start(
 		exec.Command(
 			r.appManagerBin,
 			"-etcdCluster", strings.Join(r.etcdCluster, ","),
-			"-circuses", string(circusesFlag),
-			"-repAddrRelativeToExecutor", r.repAddrRelativeToExecutor,
 		),
 		gexec.NewPrefixedWriter("\x1b[32m[o]\x1b[35m[app-manager]\x1b[0m ", ginkgo.GinkgoWriter),
 		gexec.NewPrefixedWriter("\x1b[91m[e]\x1b[35m[app-manager]\x1b[0m ", ginkgo.GinkgoWriter),
