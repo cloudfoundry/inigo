@@ -14,10 +14,16 @@ export WARDEN_ROOTFS=/opt/warden/rootfs
 # used for routing to apps; same logic that Warden uses.
 export EXTERNAL_ADDRESS=$(ip route get 8.8.8.8 | sed 's/.*src\s\(.*\)\s/\1/;tx;d;:x')
 
+color_flag=""
+if [ -n "$GO_PIPELINE_COUNTER" ]; then
+  color_flag="-noColor"
+fi
+
+nodes_flag=""
+if [ "$GINKGO_PARALLEL" = "true" ]; then
+  nodes_flag="-nodes=4"
+fi
+
 pushd $GOPATH_ROOT/src/github.com/cloudfoundry-incubator/inigo
-  if [ "$GINKGO_PARALLEL" = "true" ]; then
-    ginkgo -r -failOnPending -randomizeAllSpecs -trace -nodes=4 -race -slowSpecThreshold=10 "$@"
-  else
-    ginkgo -r -failOnPending -randomizeAllSpecs -trace -race -slowSpecThreshold=10 "$@"
-  fi
+  ginkgo $color_flag $nodes_flag -r -failOnPending -randomizeAllSpecs -trace -race -slowSpecThreshold=10 "$@"
 popd
