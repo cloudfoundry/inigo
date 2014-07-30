@@ -32,11 +32,6 @@ var _ = Describe("Convergence to desired state", func() {
 	var logOutput *gbytes.Buffer
 	var stop chan<- bool
 
-	CONVERGE_REPEAT_INTERVAL := time.Second
-	PENDING_AUCTION_KICK_THRESHOLD := time.Second
-	CLAIMED_AUCTION_REAP_THRESHOLD := 5 * time.Second
-	WAIT_FOR_MULTIPLE_CONVERGE_INTERVAL := CONVERGE_REPEAT_INTERVAL * 3
-
 	constructDesiredAppRequest := func(numInstances int) models.DesireAppRequestFromCC {
 		return models.DesireAppRequestFromCC{
 			ProcessGuid:  processGuid,
@@ -64,7 +59,6 @@ var _ = Describe("Convergence to desired state", func() {
 		processGuid = guid.String()
 
 		suiteContext.FileServerRunner.Start()
-		suiteContext.AppManagerRunner.Start()
 		suiteContext.RouteEmitterRunner.Start()
 		suiteContext.RouterRunner.Start()
 		suiteContext.ConvergerRunner.Start(CONVERGE_REPEAT_INTERVAL, 30*time.Second, 5*time.Minute, PENDING_AUCTION_KICK_THRESHOLD, CLAIMED_AUCTION_REAP_THRESHOLD)

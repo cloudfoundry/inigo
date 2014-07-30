@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"syscall"
+	"time"
 
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
@@ -50,7 +51,7 @@ var _ = Describe("AppRunner", func() {
 			suiteContext.ExecutorRunner.Start()
 			suiteContext.RepRunner.Start()
 			suiteContext.AuctioneerRunner.Start(AUCTION_MAX_ROUNDS)
-			suiteContext.AppManagerRunner.Start()
+			suiteContext.ConvergerRunner.Start(CONVERGE_REPEAT_INTERVAL, 30*time.Second, 5*time.Minute, PENDING_AUCTION_KICK_THRESHOLD, CLAIMED_AUCTION_REAP_THRESHOLD)
 			suiteContext.RouteEmitterRunner.Start()
 			suiteContext.RouterRunner.Start()
 

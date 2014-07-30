@@ -3,6 +3,7 @@ package inigo_test
 import (
 	"fmt"
 	"syscall"
+	"time"
 
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
@@ -42,7 +43,7 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 		suiteContext.ExecutorRunner.Start()
 		suiteContext.RepRunner.Start()
 		suiteContext.FileServerRunner.Start()
-		suiteContext.AppManagerRunner.Start()
+		suiteContext.ConvergerRunner.Start(CONVERGE_REPEAT_INTERVAL, 30*time.Second, 5*time.Minute, PENDING_AUCTION_KICK_THRESHOLD, CLAIMED_AUCTION_REAP_THRESHOLD)
 		suiteContext.AuctioneerRunner.Start(AUCTION_MAX_ROUNDS)
 
 		processes := grouper.RunGroup{
