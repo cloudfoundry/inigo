@@ -31,6 +31,7 @@ var _ = Describe("Task", func() {
 
 			guid = factories.GenerateGuid()
 			task := factories.BuildTaskWithRunAction(
+				"inigo",
 				suiteContext.RepStack,
 				512,
 				512,
@@ -57,6 +58,7 @@ var _ = Describe("Task", func() {
 			firstTaskGuid = factories.GenerateGuid()
 
 			task := factories.BuildTaskWithRunAction(
+				"inigo",
 				suiteContext.RepStack,
 				512,
 				512,
@@ -70,6 +72,7 @@ var _ = Describe("Task", func() {
 			secondTaskGuid = factories.GenerateGuid()
 
 			task = factories.BuildTaskWithRunAction(
+				"inigo",
 				suiteContext.RepStack,
 				768,
 				768,
@@ -95,6 +98,7 @@ var _ = Describe("Task", func() {
 		It("eventually runs the Task once an executor comes up", func() {
 			guid := factories.GenerateGuid()
 			task := factories.BuildTaskWithRunAction(
+				"inigo",
 				suiteContext.RepStack,
 				100,
 				100,
@@ -118,6 +122,7 @@ var _ = Describe("Task", func() {
 		It("should be marked as failed, eventually", func() {
 			guid := factories.GenerateGuid()
 			task := factories.BuildTaskWithRunAction(
+				"inigo",
 				suiteContext.RepStack,
 				100,
 				100,
@@ -147,6 +152,7 @@ var _ = Describe("Task", func() {
 		It("eventually marks jobs running on that executor as failed", func() {
 			guid := factories.GenerateGuid()
 			task := factories.BuildTaskWithRunAction(
+				"inigo",
 				suiteContext.RepStack,
 				1024,
 				1024,

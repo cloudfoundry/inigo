@@ -62,6 +62,7 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 
 	It("eventually runs on an executor", func() {
 		err := bbs.DesireLRP(models.DesiredLRP{
+			Domain:      "inigo",
 			ProcessGuid: processGuid,
 			Instances:   1,
 			Stack:       suiteContext.RepStack,

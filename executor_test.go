@@ -63,6 +63,7 @@ var _ = Describe("Executor", func() {
 			firstGuyGuid := factories.GenerateGuid()
 			secondGuyGuid := factories.GenerateGuid()
 			firstGuyTask := factories.BuildTaskWithRunAction(
+				"inigo",
 				suiteContext.RepStack,
 				1024,
 				1024,
@@ -74,6 +75,7 @@ var _ = Describe("Executor", func() {
 			Eventually(inigo_server.ReportingGuids).Should(ContainElement(firstGuyGuid))
 
 			secondGuyTask := factories.BuildTaskWithRunAction(
+				"inigo",
 				suiteContext.RepStack,
 				1024,
 				1024,
@@ -97,6 +99,7 @@ var _ = Describe("Executor", func() {
 		It("should only pick up tasks if the stacks match", func() {
 			matchingGuid := factories.GenerateGuid()
 			matchingTask := factories.BuildTaskWithRunAction(
+				"inigo",
 				suiteContext.RepStack,
 				100,
 				100,
@@ -106,6 +109,7 @@ var _ = Describe("Executor", func() {
 
 			nonMatchingGuid := factories.GenerateGuid()
 			nonMatchingTask := factories.BuildTaskWithRunAction(
+				"inigo",
 				wrongStack,
 				100,
 				100,
@@ -137,6 +141,7 @@ var _ = Describe("Executor", func() {
 				{"FOO", "NEW-BAR"},
 			}
 			task := models.Task{
+				Domain:   "inigo",
 				Guid:     factories.GenerateGuid(),
 				Stack:    suiteContext.RepStack,
 				MemoryMB: 1024,
@@ -166,6 +171,7 @@ var _ = Describe("Executor", func() {
 			It("should fail the Task", func() {
 				otherGuid = factories.GenerateGuid()
 				task := models.Task{
+					Domain:   "inigo",
 					Guid:     factories.GenerateGuid(),
 					Stack:    suiteContext.RepStack,
 					MemoryMB: 10,
@@ -205,6 +211,7 @@ var _ = Describe("Executor", func() {
 				nofile := uint64(1)
 
 				task := models.Task{
+					Domain:   "inigo",
 					Guid:     factories.GenerateGuid(),
 					Stack:    suiteContext.RepStack,
 					MemoryMB: 10,
@@ -235,6 +242,7 @@ var _ = Describe("Executor", func() {
 		Context("when the command times out", func() {
 			It("should fail the Task", func() {
 				task := models.Task{
+					Domain:   "inigo",
 					Guid:     factories.GenerateGuid(),
 					Stack:    suiteContext.RepStack,
 					MemoryMB: 1024,
@@ -276,6 +284,7 @@ var _ = Describe("Executor", func() {
 
 		It("downloads the file", func() {
 			task := models.Task{
+				Domain:   "inigo",
 				Guid:     factories.GenerateGuid(),
 				Stack:    suiteContext.RepStack,
 				MemoryMB: 1024,
@@ -307,6 +316,7 @@ var _ = Describe("Executor", func() {
 
 		It("uploads a tarball containing the specified files", func() {
 			task := models.Task{
+				Domain:   "inigo",
 				Guid:     factories.GenerateGuid(),
 				Stack:    suiteContext.RepStack,
 				MemoryMB: 1024,
@@ -349,6 +359,7 @@ var _ = Describe("Executor", func() {
 
 		It("should fetch the contents of the requested file and provide the content in the completed Task", func() {
 			task := models.Task{
+				Domain:   "inigo",
 				Guid:     factories.GenerateGuid(),
 				Stack:    suiteContext.RepStack,
 				MemoryMB: 1024,
@@ -394,6 +405,7 @@ var _ = Describe("Executor", func() {
 			defer close(stop)
 
 			task := factories.BuildTaskWithRunAction(
+				"inigo",
 				suiteContext.RepStack,
 				1024,
 				1024,
