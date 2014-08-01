@@ -109,9 +109,12 @@ var _ = Describe("Stager", func() {
 		It("returns an error", func() {
 			receivedMessages := make(chan *yagnats.Message)
 
-			natsClient.Subscribe("diego.staging.finished", func(message *yagnats.Message) {
+			sid, err := natsClient.Subscribe("diego.staging.finished", func(message *yagnats.Message) {
 				receivedMessages <- message
 			})
+			Ω(err).ShouldNot(HaveOccurred())
+
+			defer natsClient.Unsubscribe(sid)
 
 			natsClient.Publish(
 				"diego.staging.start",
@@ -225,9 +228,12 @@ EOF
 				//listen for NATS response
 				payloads := make(chan []byte)
 
-				natsClient.Subscribe("diego.staging.finished", func(msg *yagnats.Message) {
+				sid, err := natsClient.Subscribe("diego.staging.finished", func(msg *yagnats.Message) {
 					payloads <- msg.Payload
 				})
+				Ω(err).ShouldNot(HaveOccurred())
+
+				defer natsClient.Unsubscribe(sid)
 
 				//stream logs
 				logOutput := gbytes.NewBuffer()
@@ -242,7 +248,7 @@ EOF
 				defer close(stop)
 
 				//publish the staging message
-				err := natsClient.Publish("diego.staging.start", stagingMessage)
+				err = natsClient.Publish("diego.staging.start", stagingMessage)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				//wait for staging to complete
@@ -350,9 +356,12 @@ EOF
 				It("responds with the error, and no detected buildpack present", func() {
 					payloads := make(chan []byte)
 
-					natsClient.Subscribe("diego.staging.finished", func(msg *yagnats.Message) {
+					sid, err := natsClient.Subscribe("diego.staging.finished", func(msg *yagnats.Message) {
 						payloads <- msg.Payload
 					})
+					Ω(err).ShouldNot(HaveOccurred())
+
+					defer natsClient.Unsubscribe(sid)
 
 					logOutput := gbytes.NewBuffer()
 
@@ -365,10 +374,7 @@ EOF
 					)
 					defer close(stop)
 
-					err := natsClient.Publish(
-						"diego.staging.start",
-						stagingMessage,
-					)
+					err = natsClient.Publish("diego.staging.start", stagingMessage)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					var payload []byte
@@ -399,10 +405,12 @@ EOF
 			It("only one returns a staging completed response", func() {
 				received := make(chan bool)
 
-				_, err := natsClient.Subscribe("diego.staging.finished", func(message *yagnats.Message) {
+				sid, err := natsClient.Subscribe("diego.staging.finished", func(message *yagnats.Message) {
 					received <- true
 				})
 				Ω(err).ShouldNot(HaveOccurred())
+
+				defer natsClient.Unsubscribe(sid)
 
 				err = natsClient.Publish(
 					"diego.staging.start",
