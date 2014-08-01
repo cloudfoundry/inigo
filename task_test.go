@@ -73,8 +73,6 @@ var _ = Describe("Task", func() {
 			var task models.Task
 			var thingWeRan string
 
-			runDelay := 10 * time.Second
-
 			BeforeEach(func() {
 				thingWeRan = "fake-" + factories.GenerateGuid()
 
@@ -83,8 +81,13 @@ var _ = Describe("Task", func() {
 					componentMaker.Stack,
 					512,
 					512,
-					"curl",
-					inigo_server.CurlArgs(thingWeRan),
+					"bash",
+					[]string{
+						"-c",
+						// sleep a bit so that we can make assertions around behavior as it's
+						// running
+						fmt.Sprintf("curl %s; sleep 10", strings.Join(inigo_server.CurlArgs(thingWeRan), " ")),
+					},
 				)
 
 				err := bbs.DesireTask(task)
@@ -99,7 +102,10 @@ var _ = Describe("Task", func() {
 				var converger ifrit.Process
 
 				BeforeEach(func() {
-					converger = ifrit.Envoke(componentMaker.Converger())
+					converger = ifrit.Envoke(componentMaker.Converger(
+						"-convergeRepeatInterval", "1s",
+						"-kickPendingTaskDuration", "1s",
+					))
 				})
 
 				AfterEach(func() {
@@ -115,14 +121,12 @@ var _ = Describe("Task", func() {
 					Context("when the executor disappears", func() {
 						BeforeEach(func() {
 							executor.Signal(syscall.SIGKILL)
+							Eventually(executor.Wait()).Should(Receive())
 						})
 
 						It("eventually marks the task as failed", func() {
-							Eventually(func() interface{} {
-								tasks, _ := bbs.GetAllCompletedTasks()
-								return tasks
-								// TODO this shouldn't take that long...
-							}, LONG_TIMEOUT*30).Should(HaveLen(1))
+							// time is primarily influenced by rep's heartbeat interval
+							Eventually(bbs.GetAllCompletedTasks, 10*time.Second).Should(HaveLen(1))
 
 							tasks, err := bbs.GetAllCompletedTasks()
 							Ω(err).ShouldNot(HaveOccurred())
@@ -154,9 +158,8 @@ var _ = Describe("Task", func() {
 						})
 
 						It("is executed once the first task completes, as its resources are cleared", func() {
-							Eventually(bbs.GetAllCompletedTasks, runDelay+SHORT_TIMEOUT).Should(HaveLen(1)) // Wait for first task to complete
-
-							Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(secondThingWeRan))
+							Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1)) // Wait for first task to complete
+							Eventually(inigo_server.ReportingGuids).Should(ContainElement(secondThingWeRan))
 						})
 					})
 				})
@@ -168,7 +171,10 @@ var _ = Describe("Task", func() {
 		var converger ifrit.Process
 
 		BeforeEach(func() {
-			converger = ifrit.Envoke(componentMaker.Converger())
+			converger = ifrit.Envoke(componentMaker.Converger(
+				"-convergeRepeatInterval", "1s",
+				"-kickPendingTaskDuration", "1s",
+			))
 		})
 
 		AfterEach(func() {
@@ -214,7 +220,10 @@ var _ = Describe("Task", func() {
 		var converger ifrit.Process
 
 		BeforeEach(func() {
-			converger = ifrit.Envoke(componentMaker.Converger("-expireClaimedTaskDuration", "1s"))
+			converger = ifrit.Envoke(componentMaker.Converger(
+				"-convergeRepeatInterval", "1s",
+				"-expireClaimedTaskDuration", "1s",
+			))
 		})
 
 		AfterEach(func() {

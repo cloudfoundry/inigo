@@ -27,12 +27,6 @@ type BuiltCircuses map[string]string
 
 const CircusZipFilename = "some-circus.tgz"
 
-const CONVERGE_REPEAT_INTERVAL = time.Second
-const KICK_PENDING_TASK_DURATION = time.Second
-const KICK_PENDING_LRP_START_AUCTION_DURATION = time.Second
-const EXPIRE_CLAIMED_TASK_DURATION = 5 * time.Second
-const EXPIRE_CLAIMED_LRP_START_AUCTION_DURATION = 5 * time.Second
-
 type BuiltArtifacts struct {
 	Executables BuiltExecutables
 	Circuses    BuiltCircuses
@@ -158,7 +152,7 @@ func (maker ComponentMaker) Rep(argv ...string) ifrit.Runner {
 					"-natsAddresses", maker.Addresses.NATS,
 					"-executorID", "the-executor-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()),
 					"-executorURL", "http://" + maker.Addresses.Executor,
-					// "-heartbeatInterval", "TODO",
+					"-heartbeatInterval", "1s",
 				},
 				argv...,
 			)...,
@@ -167,7 +161,6 @@ func (maker ComponentMaker) Rep(argv ...string) ifrit.Runner {
 }
 
 func (maker ComponentMaker) Converger(argv ...string) ifrit.Runner {
-
 	return &ginkgomon.Runner{
 		Name:              "converger",
 		AnsiColorCode:     "32",
@@ -178,13 +171,6 @@ func (maker ComponentMaker) Converger(argv ...string) ifrit.Runner {
 			maker.Artifacts.Executables["converger"],
 			append([]string{
 				"-etcdCluster", "http://" + maker.Addresses.Etcd,
-
-				// shorter base intervals so tests don't have to wait so long
-				"-convergeRepeatInterval", CONVERGE_REPEAT_INTERVAL.String(),
-				"-kickPendingTaskDuration", KICK_PENDING_TASK_DURATION.String(),
-				"-kickPendingLRPStartAuctionDuration", KICK_PENDING_LRP_START_AUCTION_DURATION.String(),
-				"-expireClaimedTaskDuration", EXPIRE_CLAIMED_TASK_DURATION.String(),
-				"-expireClaimedLRPStartAuctionDuration", EXPIRE_CLAIMED_LRP_START_AUCTION_DURATION.String(),
 			}, argv...)...,
 		),
 	}
