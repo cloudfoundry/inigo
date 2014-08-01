@@ -46,7 +46,10 @@ var _ = Describe("Executor", func() {
 		})
 
 		executor = grouper.EnvokeGroup(grouper.RunGroup{
-			"exec":        componentMaker.Executor(),
+			"exec": componentMaker.Executor(
+				// some tests assert on capacity
+				"-memoryMB", "1024",
+			),
 			"rep":         componentMaker.Rep(),
 			"loggregator": componentMaker.Loggregator(),
 		})
