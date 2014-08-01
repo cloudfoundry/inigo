@@ -1,178 +1,204 @@
 package inigo_test
 
-//import (
-//"fmt"
-//"syscall"
-//"time"
+import (
+	"fmt"
+	"path/filepath"
+	"syscall"
+	"time"
 
-//"github.com/cloudfoundry-incubator/inigo/fixtures"
-//"github.com/cloudfoundry-incubator/inigo/helpers"
-//"github.com/cloudfoundry-incubator/inigo/loggredile"
-//"github.com/cloudfoundry-incubator/runtime-schema/models"
-//"github.com/nu7hatch/gouuid"
-//"github.com/tedsuo/ifrit"
-//"github.com/tedsuo/ifrit/grouper"
+	"github.com/cloudfoundry-incubator/garden/warden"
+	"github.com/cloudfoundry-incubator/inigo/fixtures"
+	"github.com/cloudfoundry-incubator/inigo/helpers"
+	"github.com/cloudfoundry-incubator/inigo/loggredile"
+	"github.com/cloudfoundry-incubator/inigo/world"
+	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
+	"github.com/cloudfoundry/yagnats"
+	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/grouper"
 
-//"github.com/cloudfoundry-incubator/inigo/inigo_server"
-//. "github.com/onsi/ginkgo"
-//. "github.com/onsi/gomega"
-//"github.com/onsi/gomega/gbytes"
-//archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
-//)
+	"github.com/cloudfoundry-incubator/inigo/inigo_server"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
+	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
+)
 
-//var _ = Describe("LRP Consistency", func() {
-//var desiredAppRequest models.DesireAppRequestFromCC
-//var appId string
-//var processGuid string
+var _ = Describe("LRP Consistency", func() {
+	var plumbing ifrit.Process
+	var runtime ifrit.Process
 
-//var processGroup ifrit.Process
+	var natsClient yagnats.NATSClient
+	var wardenClient warden.Client
 
-//var tpsAddr string
+	var fileServerStaticDir string
 
-//BeforeEach(func() {
-//guid, err := uuid.NewV4()
-//if err != nil {
-//panic("Failed to generate AppID Guid")
-//}
-//appId = guid.String()
+	var appId string
+	var processGuid string
 
-//guid, err = uuid.NewV4()
-//if err != nil {
-//panic("Failed to generate AppID Guid")
-//}
+	var desiredAppRequest models.DesireAppRequestFromCC
 
-//processGuid = guid.String()
+	BeforeEach(func() {
+		appId = factories.GenerateGuid()
 
-//suiteContext.FileServerRunner.Start()
-//suiteContext.ExecutorRunner.Start()
-//suiteContext.RepRunner.Start()
-//suiteContext.AuctioneerRunner.Start(AUCTION_MAX_ROUNDS)
-//suiteContext.ConvergerRunner.Start(CONVERGE_REPEAT_INTERVAL, 30*time.Second, 5*time.Minute, PENDING_AUCTION_KICK_THRESHOLD, CLAIMED_AUCTION_REAP_THRESHOLD)
-//suiteContext.RouteEmitterRunner.Start()
-//suiteContext.RouterRunner.Start()
+		processGuid = factories.GenerateGuid()
 
-//processes := grouper.RunGroup{
-//"tps":            suiteContext.TPSRunner,
-//"nsync-listener": suiteContext.NsyncListenerRunner,
-//}
+		wardenLinux := componentMaker.WardenLinux()
+		wardenClient = wardenLinux.NewClient()
 
-//processGroup = ifrit.Envoke(processes)
+		fileServer, dir := componentMaker.FileServer()
+		fileServerStaticDir = dir
 
-//tpsAddr = fmt.Sprintf("http://%s", suiteContext.TPSAddress)
+		natsClient = yagnats.NewClient()
 
-//archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
-//inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")
+		plumbing = grouper.EnvokeGroup(grouper.RunGroup{
+			"etcd":         componentMaker.Etcd(),
+			"nats":         componentMaker.NATS(),
+			"warden-linux": wardenLinux,
+		})
 
-//suiteContext.FileServerRunner.ServeFile("some-lifecycle-bundle.tgz", suiteContext.SharedContext.CircusZipPath)
-//})
+		runtime = grouper.EnvokeGroup(grouper.RunGroup{
+			"cc":             componentMaker.FakeCC(),
+			"tps":            componentMaker.TPS(),
+			"nsync-listener": componentMaker.NsyncListener(),
+			"exec":           componentMaker.Executor(),
+			"rep":            componentMaker.Rep(),
+			"file-server":    fileServer,
+			"auctioneer":     componentMaker.Auctioneer(),
+			"route-emitter":  componentMaker.RouteEmitter(),
+			"converger":      componentMaker.Converger(),
+			"router":         componentMaker.Router(),
+			"loggregator":    componentMaker.Loggregator(),
+		})
 
-//AfterEach(func() {
-//processGroup.Signal(syscall.SIGKILL)
-//Eventually(processGroup.Wait()).Should(Receive())
-//})
+		err := natsClient.Connect(&yagnats.ConnectionInfo{
+			Addr: componentMaker.Addresses.NATS,
+		})
+		Ω(err).ShouldNot(HaveOccurred())
 
-//Context("with an app running", func() {
-//var logOutput *gbytes.Buffer
-//var stop chan<- bool
+		inigo_server.Start(wardenClient)
 
-//BeforeEach(func() {
-//logOutput = gbytes.NewBuffer()
+		archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
+		inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")
 
-//stop = loggredile.StreamIntoGBuffer(
-//suiteContext.LoggregatorRunner.Config.OutgoingPort,
-//fmt.Sprintf("/tail/?app=%s", appId),
-//"App",
-//logOutput,
-//logOutput,
-//)
+		cp(
+			componentMaker.Artifacts.Circuses[componentMaker.Stack],
+			filepath.Join(fileServerStaticDir, world.CircusZipFilename),
+		)
+	})
 
-//desiredAppRequest = models.DesireAppRequestFromCC{
-//ProcessGuid:  processGuid,
-//DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
-//Stack:        suiteContext.RepStack,
-//Environment:  []models.EnvironmentVariable{{Name: "VCAP_APPLICATION", Value: "{}"}},
-//NumInstances: 2,
-//Routes:       []string{"route-to-simple"},
-//StartCommand: "./run",
-//LogGuid:      appId,
-//}
+	AfterEach(func() {
+		inigo_server.Stop(wardenClient)
 
-////start the first two instances
-//err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
-//Ω(err).ShouldNot(HaveOccurred())
+		runtime.Signal(syscall.SIGKILL)
+		Eventually(runtime.Wait(), 5*time.Second).Should(Receive())
 
-//Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid), 2*DEFAULT_EVENTUALLY_TIMEOUT).Should(HaveLen(2))
-//poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-//Eventually(poller, 2*DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0", "1"}))
-//})
+		plumbing.Signal(syscall.SIGKILL)
+		Eventually(plumbing.Wait(), 5*time.Second).Should(Receive())
+	})
 
-//AfterEach(func() {
-//close(stop)
-//})
+	Context("with an app running", func() {
+		var logOutput *gbytes.Buffer
+		var stop chan<- bool
 
-//Describe("Scaling an app up", func() {
-//BeforeEach(func() {
-//desiredAppRequest.NumInstances = 3
+		BeforeEach(func() {
+			logOutput = gbytes.NewBuffer()
 
-//err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
-//Ω(err).ShouldNot(HaveOccurred())
-//})
+			stop = loggredile.StreamIntoGBuffer(
+				componentMaker.Addresses.LoggregatorOut,
+				fmt.Sprintf("/tail/?app=%s", appId),
+				"App",
+				logOutput,
+				logOutput,
+			)
 
-//It("should scale up to the correct number of instances", func() {
-//Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)).Should(HaveLen(3))
+			desiredAppRequest = models.DesireAppRequestFromCC{
+				ProcessGuid:  processGuid,
+				DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
+				Stack:        componentMaker.Stack,
+				Environment:  []models.EnvironmentVariable{{Name: "VCAP_APPLICATION", Value: "{}"}},
+				NumInstances: 2,
+				Routes:       []string{"route-to-simple"},
+				StartCommand: "./run",
+				LogGuid:      appId,
+			}
 
-//poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-//Eventually(poller).Should(Equal([]string{"0", "1", "2"}))
-//})
-//})
+			//start the first two instances
+			err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+			Ω(err).ShouldNot(HaveOccurred())
 
-//Describe("Scaling an app down", func() {
-//Measure("should scale down to the correct number of instancs", func(b Benchmarker) {
-//b.Time("scale down", func() {
-//desiredAppRequest.NumInstances = 1
-//err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
-//Ω(err).ShouldNot(HaveOccurred())
+			Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid), 2*DEFAULT_EVENTUALLY_TIMEOUT).Should(HaveLen(2))
+			poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-to-simple")
+			Eventually(poller, 2*DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0", "1"}))
+		})
 
-//Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)).Should(HaveLen(1))
+		AfterEach(func() {
+			close(stop)
+		})
 
-//poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-//Eventually(poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0"}))
-//})
+		Describe("Scaling an app up", func() {
+			BeforeEach(func() {
+				desiredAppRequest.NumInstances = 3
 
-//b.Time("scale up", func() {
-//desiredAppRequest.NumInstances = 2
-//err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
-//Ω(err).ShouldNot(HaveOccurred())
+				err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+				Ω(err).ShouldNot(HaveOccurred())
+			})
 
-//Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)).Should(HaveLen(2))
+			It("should scale up to the correct number of instances", func() {
+				Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(3))
 
-//poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-//Eventually(poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0", "1"}))
-//})
-//}, helpers.RepeatCount())
-//})
+				poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-to-simple")
+				Eventually(poller).Should(Equal([]string{"0", "1", "2"}))
+			})
+		})
 
-//Describe("Stopping an app", func() {
-//Measure("should stop all instances of the app", func(b Benchmarker) {
-//b.Time("stop", func() {
-//desiredAppRequest.NumInstances = 0
-//err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
-//Ω(err).ShouldNot(HaveOccurred())
+		Describe("Scaling an app down", func() {
+			FMeasure("should scale down to the correct number of instancs", func(b Benchmarker) {
+				b.Time("scale down", func() {
+					desiredAppRequest.NumInstances = 1
+					err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+					Ω(err).ShouldNot(HaveOccurred())
 
-//Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)).Should(BeEmpty())
+					Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(1))
 
-//poller := helpers.HelloWorldInstancePoller(suiteContext.RouterRunner.Addr(), "route-to-simple")
-//Eventually(poller).Should(BeEmpty())
-//})
+					poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-to-simple")
+					Eventually(poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0"}))
+				})
 
-//b.Time("start", func() {
-//desiredAppRequest.NumInstances = 2
-//err := suiteContext.NatsRunner.MessageBus.Publish("diego.desire.app", desiredAppRequest.ToJSON())
-//Ω(err).ShouldNot(HaveOccurred())
+				b.Time("scale up", func() {
+					desiredAppRequest.NumInstances = 2
+					err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+					Ω(err).ShouldNot(HaveOccurred())
 
-//Eventually(helpers.RunningLRPInstancesPoller(tpsAddr, processGuid)).Should(HaveLen(2))
-//})
-//}, helpers.RepeatCount())
-//})
-//})
-//})
+					Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(2))
+
+					poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-to-simple")
+					Eventually(poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0", "1"}))
+				})
+			}, helpers.RepeatCount())
+		})
+
+		Describe("Stopping an app", func() {
+			Measure("should stop all instances of the app", func(b Benchmarker) {
+				b.Time("stop", func() {
+					desiredAppRequest.NumInstances = 0
+					err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(BeEmpty())
+
+					poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-to-simple")
+					Eventually(poller).Should(BeEmpty())
+				})
+
+				b.Time("start", func() {
+					desiredAppRequest.NumInstances = 2
+					err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(2))
+				})
+			}, helpers.RepeatCount())
+		})
+	})
+})
