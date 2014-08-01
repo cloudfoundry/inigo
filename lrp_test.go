@@ -38,13 +38,22 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 			"warden-linux": componentMaker.WardenLinux(),
 		})
 
+		// need a file server to be able to preprocess. not actually used.
+		fileServer, _ := componentMaker.FileServer()
+
 		runtime = grouper.EnvokeGroup(grouper.RunGroup{
-			"exec":       componentMaker.Executor(),
-			"rep":        componentMaker.Rep(),
-			"auctioneer": componentMaker.Auctioneer(),
+			"exec":        componentMaker.Executor(),
+			"rep":         componentMaker.Rep(),
+			"converger":   componentMaker.Converger(),
+			"auctioneer":  componentMaker.Auctioneer(),
+			"file-server": fileServer,
+			"tps":         componentMaker.TPS(),
 		})
 
 		adapter := etcdstoreadapter.NewETCDStoreAdapter([]string{"http://" + componentMaker.Addresses.Etcd}, workerpool.NewWorkerPool(20))
+
+		err := adapter.Connect()
+		Ω(err).ShouldNot(HaveOccurred())
 
 		bbs = Bbs.NewBBS(adapter, timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
 	})
