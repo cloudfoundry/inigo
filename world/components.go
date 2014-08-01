@@ -66,7 +66,7 @@ func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
 
 	return &ginkgomon.Runner{
 		Name:              "gnatsd",
-		AnsiColorCode:     "30",
+		AnsiColorCode:     "30m",
 		StartCheck:        "gnatsd is ready",
 		StartCheckTimeout: 5 * time.Second,
 		Command: exec.Command(
@@ -85,7 +85,7 @@ func (maker ComponentMaker) Etcd(argv ...string) ifrit.Runner {
 
 	return &ginkgomon.Runner{
 		Name:              "etcd",
-		AnsiColorCode:     "30",
+		AnsiColorCode:     "31m",
 		StartCheck:        "leader changed",
 		StartCheckTimeout: 5 * time.Second,
 		Command: exec.Command(
@@ -117,8 +117,8 @@ func (maker ComponentMaker) WardenLinux(argv ...string) *wardenrunner.Runner {
 
 func (maker ComponentMaker) Executor(argv ...string) ifrit.Runner {
 	return &ginkgomon.Runner{
-		Name:              "exec",
-		AnsiColorCode:     "31",
+		Name:              "executor",
+		AnsiColorCode:     "91m",
 		StartCheck:        "executor.started",
 		StartCheckTimeout: 5 * time.Second,
 		Command: exec.Command(
@@ -138,7 +138,7 @@ func (maker ComponentMaker) Executor(argv ...string) ifrit.Runner {
 func (maker ComponentMaker) Rep(argv ...string) ifrit.Runner {
 	return &ginkgomon.Runner{
 		Name:              "rep",
-		AnsiColorCode:     "32",
+		AnsiColorCode:     "92m",
 		StartCheck:        "rep.started",
 		StartCheckTimeout: 5 * time.Second,
 		Command: exec.Command(
@@ -163,7 +163,7 @@ func (maker ComponentMaker) Rep(argv ...string) ifrit.Runner {
 func (maker ComponentMaker) Converger(argv ...string) ifrit.Runner {
 	return &ginkgomon.Runner{
 		Name:              "converger",
-		AnsiColorCode:     "32",
+		AnsiColorCode:     "93m",
 		StartCheck:        "converger.started",
 		StartCheckTimeout: 5 * time.Second,
 
@@ -179,7 +179,7 @@ func (maker ComponentMaker) Converger(argv ...string) ifrit.Runner {
 func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 	return &ginkgomon.Runner{
 		Name:          "auctioneer",
-		AnsiColorCode: "33",
+		AnsiColorCode: "94m",
 		StartCheck:    "auctioneer.started",
 		Command: exec.Command(
 			maker.Artifacts.Executables["auctioneer"],
@@ -198,7 +198,7 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 func (maker ComponentMaker) RouteEmitter(argv ...string) ifrit.Runner {
 	return &ginkgomon.Runner{
 		Name:          "route-emitter",
-		AnsiColorCode: "35",
+		AnsiColorCode: "95m",
 		StartCheck:    "route-emitter.started",
 		Command: exec.Command(
 			maker.Artifacts.Executables["route-emitter"],
@@ -213,7 +213,7 @@ func (maker ComponentMaker) RouteEmitter(argv ...string) ifrit.Runner {
 func (maker ComponentMaker) TPS(argv ...string) ifrit.Runner {
 	return &ginkgomon.Runner{
 		Name:          "tps",
-		AnsiColorCode: "36",
+		AnsiColorCode: "96m",
 		StartCheck:    "tps.started",
 		Command: exec.Command(
 			maker.Artifacts.Executables["tps"],
@@ -229,7 +229,7 @@ func (maker ComponentMaker) TPS(argv ...string) ifrit.Runner {
 func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 	return &ginkgomon.Runner{
 		Name:          "nsync-listener",
-		AnsiColorCode: "37",
+		AnsiColorCode: "97m",
 		StartCheck:    "nsync.listener.started",
 		Command: exec.Command(
 			maker.Artifacts.Executables["nsync-listener"],
@@ -252,7 +252,7 @@ func (maker ComponentMaker) FileServer(argv ...string) (ifrit.Runner, string) {
 
 	return &ginkgomon.Runner{
 		Name:          "file-server",
-		AnsiColorCode: "31",
+		AnsiColorCode: "90m",
 		StartCheck:    "file-server.ready",
 		Command: exec.Command(
 			maker.Artifacts.Executables["file-server"],
@@ -317,7 +317,7 @@ func (maker ComponentMaker) Router() ifrit.Runner {
 
 	return &ginkgomon.Runner{
 		Name:              "router",
-		AnsiColorCode:     "32",
+		AnsiColorCode:     "32m",
 		StartCheck:        "router.started",
 		StartCheckTimeout: 5 * time.Second, // it waits 1 second before listening. yep.
 		Command: exec.Command(
@@ -369,7 +369,7 @@ func (maker ComponentMaker) Loggregator() ifrit.Runner {
 
 	return &ginkgomon.Runner{
 		Name:          "loggregator",
-		AnsiColorCode: "33",
+		AnsiColorCode: "33m",
 		StartCheck:    "Listening on port",
 		Command: exec.Command(
 			maker.Artifacts.Executables["loggregator"],
@@ -389,7 +389,7 @@ func (maker ComponentMaker) FakeCC() *fake_cc.FakeCC {
 func (maker ComponentMaker) Stager(argv ...string) ifrit.Runner {
 	return &ginkgomon.Runner{
 		Name:          "stager",
-		AnsiColorCode: "34",
+		AnsiColorCode: "94m",
 		StartCheck:    "Listening for staging requests!",
 		Command: exec.Command(
 			maker.Artifacts.Executables["stager"],
