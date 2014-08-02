@@ -153,7 +153,7 @@ var _ = Describe("LRP Consistency", func() {
 		})
 
 		Describe("Scaling an app down", func() {
-			FMeasure("should scale down to the correct number of instancs", func(b Benchmarker) {
+			Measure("should scale down to the correct number of instancs", func(b Benchmarker) {
 				b.Time("scale down", func() {
 					desiredAppRequest.NumInstances = 1
 					err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
