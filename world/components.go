@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
-	"github.com/cloudfoundry-incubator/inigo/loggregator_runner"
 	wardenrunner "github.com/cloudfoundry-incubator/warden-linux/integration/runner"
 	gorouterconfig "github.com/cloudfoundry/gorouter/config"
 	"github.com/fraenkel/candiedyaml"
@@ -59,6 +58,16 @@ type ComponentMaker struct {
 	WardenBinPath    string
 	WardenRootFSPath string
 	WardenGraphPath  string
+}
+
+type LoggregatorConfig struct {
+	IncomingPort           int
+	OutgoingPort           int
+	MaxRetainedLogMessages int
+	SharedSecret           string
+
+	NatsHost string
+	NatsPort int
 }
 
 func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
@@ -357,7 +366,7 @@ func (maker ComponentMaker) Loggregator() ifrit.Runner {
 	natsPortInt, err := strconv.Atoi(natsPort)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	loggregatorConfig := loggregator_runner.Config{
+	loggregatorConfig := LoggregatorConfig{
 		IncomingPort:           inPortInt,
 		OutgoingPort:           outPortInt,
 		MaxRetainedLogMessages: 1000,
