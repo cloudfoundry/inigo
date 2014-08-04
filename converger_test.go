@@ -252,10 +252,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 		Context("when an auctioneer is running with no executor or rep", func() {
 			BeforeEach(func() {
-				auctioneer = ifrit.Envoke(componentMaker.Auctioneer(
-					// have it keep trying the auction for ever
-					"-maxRounds", "9999999999",
-				))
+				auctioneer = ifrit.Envoke(componentMaker.Auctioneer())
 			})
 
 			Context("and an LRP is desired", func() {
