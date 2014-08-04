@@ -1,6 +1,7 @@
 package inigo_test
 
 import (
+	"fmt"
 	"path/filepath"
 	"syscall"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 
-	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	tpsapi "github.com/cloudfoundry-incubator/tps/api"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -40,7 +40,7 @@ var _ = Describe("Convergence to desired state", func() {
 	constructDesiredAppRequest := func(numInstances int) models.DesireAppRequestFromCC {
 		return models.DesireAppRequestFromCC{
 			ProcessGuid:  processGuid,
-			DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
+			DropletUri:   fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "droplet.zip"),
 			Stack:        componentMaker.Stack,
 			Environment:  []models.EnvironmentVariable{{Name: "VCAP_APPLICATION", Value: "{}"}},
 			NumInstances: numInstances,
@@ -64,8 +64,10 @@ var _ = Describe("Convergence to desired state", func() {
 			"loggregator":    componentMaker.Loggregator(),
 		})
 
-		archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
-		inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")
+		archive_helper.CreateZipArchive(
+			filepath.Join(fileServerStaticDir, "droplet.zip"),
+			fixtures.HelloWorldIndexApp(),
+		)
 
 		cp(
 			componentMaker.Artifacts.Circuses[componentMaker.Stack],
@@ -105,16 +107,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 			Context("and an LRP starts running", func() {
 				BeforeEach(func() {
-					desiredAppRequest := models.DesireAppRequestFromCC{
-						ProcessGuid:  processGuid,
-						NumInstances: 2,
-						DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
-						Stack:        componentMaker.Stack,
-						Environment:  []models.EnvironmentVariable{{Name: "VCAP_APPLICATION", Value: "{}"}},
-						Routes:       []string{"route-to-simple"},
-						StartCommand: "./run",
-						LogGuid:      appId,
-					}
+					desiredAppRequest := constructDesiredAppRequest(2)
 
 					err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
 					Ω(err).ShouldNot(HaveOccurred())

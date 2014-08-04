@@ -5,6 +5,10 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -19,13 +23,21 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"github.com/onsi/gomega/ghttp"
 )
 
 var _ = Describe("Executor", func() {
 	var executor ifrit.Process
 
+	var fileServerStaticDir string
+
 	BeforeEach(func() {
+		var fileServer ifrit.Runner
+
+		fileServer, fileServerStaticDir = componentMaker.FileServer()
+
 		executor = grouper.EnvokeGroup(grouper.RunGroup{
+			"file-server": fileServer,
 			"exec": componentMaker.Executor(
 				// some tests assert on capacity
 				"-memoryMB", "1024",
@@ -265,7 +277,13 @@ var _ = Describe("Executor", func() {
 
 		BeforeEach(func() {
 			guid = factories.GenerateGuid()
-			inigo_server.UploadFileString("curling.sh", fmt.Sprintf("curl %s", strings.Join(inigo_server.CurlArgs(guid), " ")))
+
+			err := ioutil.WriteFile(
+				filepath.Join(fileServerStaticDir, "curling.sh"),
+				[]byte(fmt.Sprintf("curl %s", strings.Join(inigo_server.CurlArgs(guid), " "))),
+				0644,
+			)
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("downloads the file", func() {
@@ -276,11 +294,19 @@ var _ = Describe("Executor", func() {
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
-					{Action: models.DownloadAction{From: inigo_server.DownloadUrl("curling.sh"), To: "curling.sh", Extract: false}},
-					{Action: models.RunAction{
-						Path: "bash",
-						Args: []string{"curling.sh"},
-					}},
+					{
+						models.DownloadAction{
+							From:    fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "curling.sh"),
+							To:      "curling.sh",
+							Extract: false,
+						},
+					},
+					{
+						models.RunAction{
+							Path: "bash",
+							Args: []string{"curling.sh"},
+						},
+					},
 				},
 			}
 
@@ -294,8 +320,39 @@ var _ = Describe("Executor", func() {
 	Describe("Uploading from the container", func() {
 		var guid string
 
+		var server *httptest.Server
+		var uploadAddr string
+
+		var gotRequest chan struct{}
+
 		BeforeEach(func() {
 			guid = factories.GenerateGuid()
+
+			gotRequest = make(chan struct{})
+
+			server, uploadAddr = helpers.Callback(componentMaker.ExternalAddress, ghttp.CombineHandlers(
+				ghttp.VerifyRequest("POST", "/thingy"),
+				func(w http.ResponseWriter, r *http.Request) {
+					gw, err := gzip.NewReader(r.Body)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					tw := tar.NewReader(gw)
+
+					_, err = tw.Next()
+					Ω(err).ShouldNot(HaveOccurred())
+
+					contents, err := ioutil.ReadAll(tw)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Ω(string(contents)).Should(Equal("tasty thingy\n"))
+
+					close(gotRequest)
+				},
+			))
+		})
+
+		AfterEach(func() {
+			server.Close()
 		})
 
 		It("uploads a tarball containing the specified files", func() {
@@ -306,32 +363,33 @@ var _ = Describe("Executor", func() {
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
-					{Action: models.RunAction{
-						Path: "bash",
-						Args: []string{"-c", "echo tasty thingy > thingy"},
-					}},
-					{Action: models.UploadAction{From: "thingy", To: inigo_server.UploadUrl("thingy")}},
-					{Action: models.RunAction{
-						Path: "curl",
-						Args: inigo_server.CurlArgs(guid),
-					}},
+					{
+						models.RunAction{
+							Path: "bash",
+							Args: []string{"-c", "echo tasty thingy > thingy"},
+						},
+					},
+					{
+						models.UploadAction{
+							From: "thingy",
+							To:   fmt.Sprintf("http://%s/thingy", uploadAddr),
+						},
+					},
+					{
+						models.RunAction{
+							Path: "curl",
+							Args: inigo_server.CurlArgs(guid),
+						},
+					},
 				},
 			}
 
 			err := bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
+			Eventually(gotRequest).Should(BeClosed())
+
 			Eventually(inigo_server.ReportingGuids).Should(ContainElement(guid))
-
-			downloadStream := inigo_server.DownloadFile("thingy")
-
-			gw, err := gzip.NewReader(downloadStream)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			tw := tar.NewReader(gw)
-
-			_, err = tw.Next()
-			Ω(err).ShouldNot(HaveOccurred())
 		})
 	})
 
