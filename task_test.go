@@ -23,6 +23,8 @@ var _ = Describe("Task", func() {
 		helpers.StopProcess(executor)
 	})
 
+	kickPendingDuration := 10 * time.Second
+
 	Context("when an exec and rep are running", func() {
 		BeforeEach(func() {
 			executor = grouper.EnvokeGroup(grouper.RunGroup{
@@ -68,7 +70,7 @@ var _ = Describe("Task", func() {
 						"-convergeRepeatInterval", "1s",
 
 						// 1s would be ideal, but this also limits container creation time
-						"-kickPendingTaskDuration", "10s",
+						"-kickPendingTaskDuration", kickPendingDuration.String(),
 					))
 				})
 
@@ -121,7 +123,7 @@ var _ = Describe("Task", func() {
 
 						It("is executed once the first task completes, as its resources are cleared", func() {
 							Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1)) // Wait for first task to complete
-							Eventually(inigo_server.ReportingGuids).Should(ContainElement(secondThingWeRan))
+							Eventually(inigo_server.ReportingGuids, DEFAULT_EVENTUALLY_TIMEOUT+kickPendingDuration).Should(ContainElement(secondThingWeRan))
 						})
 					})
 				})
@@ -137,7 +139,7 @@ var _ = Describe("Task", func() {
 				"-convergeRepeatInterval", "1s",
 
 				// 1s would be ideal, but this also limits container creation time
-				"-kickPendingTaskDuration", "10s",
+				"-kickPendingTaskDuration", kickPendingDuration.String(),
 			))
 		})
 
@@ -173,7 +175,7 @@ var _ = Describe("Task", func() {
 				})
 
 				It("eventually runs the Task", func() {
-					Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(thingWeRan))
+					Eventually(inigo_server.ReportingGuids, DEFAULT_EVENTUALLY_TIMEOUT+kickPendingDuration).Should(ContainElement(thingWeRan))
 				})
 			})
 		})
