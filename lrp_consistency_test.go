@@ -3,16 +3,13 @@ package inigo_test
 import (
 	"fmt"
 	"path/filepath"
-	"syscall"
 
-	"github.com/cloudfoundry-incubator/garden/warden"
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
 	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
-	"github.com/cloudfoundry/yagnats"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 
@@ -24,11 +21,7 @@ import (
 )
 
 var _ = Describe("LRP Consistency", func() {
-	var plumbing ifrit.Process
 	var runtime ifrit.Process
-
-	var natsClient yagnats.NATSClient
-	var wardenClient warden.Client
 
 	var fileServerStaticDir string
 
@@ -42,19 +35,8 @@ var _ = Describe("LRP Consistency", func() {
 
 		processGuid = factories.GenerateGuid()
 
-		wardenLinux := componentMaker.WardenLinux()
-		wardenClient = wardenLinux.NewClient()
-
 		fileServer, dir := componentMaker.FileServer()
 		fileServerStaticDir = dir
-
-		natsClient = yagnats.NewClient()
-
-		plumbing = grouper.EnvokeGroup(grouper.RunGroup{
-			"etcd":         componentMaker.Etcd(),
-			"nats":         componentMaker.NATS(),
-			"warden-linux": wardenLinux,
-		})
 
 		runtime = grouper.EnvokeGroup(grouper.RunGroup{
 			"cc":             componentMaker.FakeCC(),
@@ -70,13 +52,6 @@ var _ = Describe("LRP Consistency", func() {
 			"loggregator":    componentMaker.Loggregator(),
 		})
 
-		err := natsClient.Connect(&yagnats.ConnectionInfo{
-			Addr: componentMaker.Addresses.NATS,
-		})
-		Ω(err).ShouldNot(HaveOccurred())
-
-		inigo_server.Start(wardenClient)
-
 		archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
 		inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")
 
@@ -87,13 +62,7 @@ var _ = Describe("LRP Consistency", func() {
 	})
 
 	AfterEach(func() {
-		inigo_server.Stop(wardenClient)
-
-		runtime.Signal(syscall.SIGKILL)
-		Eventually(runtime.Wait()).Should(Receive())
-
-		plumbing.Signal(syscall.SIGKILL)
-		Eventually(plumbing.Wait()).Should(Receive())
+		helpers.StopProcess(runtime)
 	})
 
 	Context("with an app running", func() {

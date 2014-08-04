@@ -5,16 +5,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
-	"syscall"
 
-	"github.com/cloudfoundry-incubator/garden/warden"
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
 	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 
-	"github.com/cloudfoundry/yagnats"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 
@@ -28,31 +25,15 @@ import (
 var _ = Describe("AppRunner", func() {
 	var appId string
 
-	var wardenClient warden.Client
-
-	var natsClient yagnats.NATSClient
-
 	var fileServerStaticDir string
 
-	var plumbing ifrit.Process
 	var runtime ifrit.Process
 
 	BeforeEach(func() {
 		appId = factories.GenerateGuid()
 
-		wardenLinux := componentMaker.WardenLinux()
-		wardenClient = wardenLinux.NewClient()
-
 		fileServer, dir := componentMaker.FileServer()
 		fileServerStaticDir = dir
-
-		natsClient = yagnats.NewClient()
-
-		plumbing = grouper.EnvokeGroup(grouper.RunGroup{
-			"etcd":         componentMaker.Etcd(),
-			"nats":         componentMaker.NATS(),
-			"warden-linux": wardenLinux,
-		})
 
 		runtime = grouper.EnvokeGroup(grouper.RunGroup{
 			"cc":             componentMaker.FakeCC(),
@@ -67,23 +48,10 @@ var _ = Describe("AppRunner", func() {
 			"router":         componentMaker.Router(),
 			"loggregator":    componentMaker.Loggregator(),
 		})
-
-		err := natsClient.Connect(&yagnats.ConnectionInfo{
-			Addr: componentMaker.Addresses.NATS,
-		})
-		Ω(err).ShouldNot(HaveOccurred())
-
-		inigo_server.Start(wardenClient)
 	})
 
 	AfterEach(func() {
-		inigo_server.Stop(wardenClient)
-
-		runtime.Signal(syscall.SIGKILL)
-		Eventually(runtime.Wait(), DEFAULT_EVENTUALLY_TIMEOUT).Should(Receive())
-
-		plumbing.Signal(syscall.SIGKILL)
-		Eventually(plumbing.Wait(), DEFAULT_EVENTUALLY_TIMEOUT).Should(Receive())
+		helpers.StopProcess(runtime)
 	})
 
 	Describe("Running", func() {

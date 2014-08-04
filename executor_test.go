@@ -6,20 +6,14 @@ import (
 	"compress/gzip"
 	"fmt"
 	"strings"
-	"syscall"
 	"time"
 
-	"github.com/cloudfoundry/gunk/timeprovider"
-	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
-	"github.com/cloudfoundry/storeadapter/workerpool"
-	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 
-	"github.com/cloudfoundry-incubator/garden/warden"
+	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
-	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	. "github.com/onsi/ginkgo"
@@ -28,23 +22,9 @@ import (
 )
 
 var _ = Describe("Executor", func() {
-	var bbs *Bbs.BBS
-
-	var wardenClient warden.Client
-
-	var plumbing ifrit.Process
 	var executor ifrit.Process
 
 	BeforeEach(func() {
-		wardenLinux := componentMaker.WardenLinux()
-		wardenClient = wardenLinux.NewClient()
-
-		plumbing = grouper.EnvokeGroup(grouper.RunGroup{
-			"etcd":         componentMaker.Etcd(),
-			"nats":         componentMaker.NATS(),
-			"warden-linux": wardenLinux,
-		})
-
 		executor = grouper.EnvokeGroup(grouper.RunGroup{
 			"exec": componentMaker.Executor(
 				// some tests assert on capacity
@@ -53,27 +33,10 @@ var _ = Describe("Executor", func() {
 			"rep":         componentMaker.Rep(),
 			"loggregator": componentMaker.Loggregator(),
 		})
-
-		adapter := etcdstoreadapter.NewETCDStoreAdapter([]string{"http://" + componentMaker.Addresses.Etcd}, workerpool.NewWorkerPool(20))
-
-		err := adapter.Connect()
-		Ω(err).ShouldNot(HaveOccurred())
-
-		bbs = Bbs.NewBBS(adapter, timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
-
-		inigo_server.Start(wardenClient)
 	})
 
 	AfterEach(func() {
-		inigo_server.Stop(wardenClient)
-
-		if executor != nil {
-			executor.Signal(syscall.SIGKILL)
-			Eventually(executor.Wait()).Should(Receive())
-		}
-
-		plumbing.Signal(syscall.SIGKILL)
-		Eventually(plumbing.Wait()).Should(Receive())
+		helpers.StopProcess(executor)
 	})
 
 	Describe("Heartbeating", func() {

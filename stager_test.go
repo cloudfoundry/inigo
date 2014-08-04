@@ -9,10 +9,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
-	"syscall"
 
-	"github.com/cloudfoundry-incubator/garden/warden"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
+	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
 	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/fraenkel/candiedyaml"
@@ -28,30 +27,12 @@ import (
 	zip_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 )
 
-func downloadBuildArtifactsCache(appId string) []byte {
-	fileServerUrl := fmt.Sprintf("http://%s/v1/build_artifacts/%s", componentMaker.Addresses.FileServer, appId)
-	resp, err := http.Get(fileServerUrl)
-	Ω(err).ShouldNot(HaveOccurred())
-
-	Ω(resp.StatusCode).Should(Equal(http.StatusOK))
-
-	bytes, err := ioutil.ReadAll(resp.Body)
-	Ω(err).ShouldNot(HaveOccurred())
-
-	return bytes
-}
-
 var _ = Describe("Stager", func() {
 	var appId string
 	var taskId string
 
-	var wardenClient warden.Client
-
-	var natsClient yagnats.NATSClient
-
 	var fileServerStaticDir string
 
-	var plumbing ifrit.Process
 	var runtime ifrit.Process
 
 	var fakeCC *fake_cc.FakeCC
@@ -60,21 +41,10 @@ var _ = Describe("Stager", func() {
 		appId = factories.GenerateGuid()
 		taskId = factories.GenerateGuid()
 
-		wardenLinux := componentMaker.WardenLinux()
-		wardenClient = wardenLinux.NewClient()
-
 		fileServer, dir := componentMaker.FileServer()
 		fileServerStaticDir = dir
 
 		fakeCC = componentMaker.FakeCC()
-
-		natsClient = yagnats.NewClient()
-
-		plumbing = grouper.EnvokeGroup(grouper.RunGroup{
-			"etcd":         componentMaker.Etcd(),
-			"nats":         componentMaker.NATS(),
-			"warden-linux": wardenLinux,
-		})
 
 		runtime = grouper.EnvokeGroup(grouper.RunGroup{
 			"stager":         componentMaker.Stager("-minDiskMB", "64", "-minMemoryMB", "64"),
@@ -85,23 +55,10 @@ var _ = Describe("Stager", func() {
 			"file-server":    fileServer,
 			"loggregator":    componentMaker.Loggregator(),
 		})
-
-		err := natsClient.Connect(&yagnats.ConnectionInfo{
-			Addr: componentMaker.Addresses.NATS,
-		})
-		Ω(err).ShouldNot(HaveOccurred())
-
-		inigo_server.Start(wardenClient)
 	})
 
 	AfterEach(func() {
-		inigo_server.Stop(wardenClient)
-
-		runtime.Signal(syscall.SIGKILL)
-		Eventually(runtime.Wait()).Should(Receive())
-
-		plumbing.Signal(syscall.SIGKILL)
-		Eventually(plumbing.Wait()).Should(Receive())
+		helpers.StopProcess(runtime)
 	})
 
 	Context("when unable to find an appropriate compiler", func() {
@@ -397,8 +354,7 @@ EOF
 			})
 
 			AfterEach(func() {
-				otherStager.Signal(syscall.SIGKILL)
-				Eventually(otherStager.Wait()).Should(Receive())
+				helpers.StopProcess(otherStager)
 			})
 
 			It("only one returns a staging completed response", func() {
@@ -423,3 +379,16 @@ EOF
 		})
 	})
 })
+
+func downloadBuildArtifactsCache(appId string) []byte {
+	fileServerUrl := fmt.Sprintf("http://%s/v1/build_artifacts/%s", componentMaker.Addresses.FileServer, appId)
+	resp, err := http.Get(fileServerUrl)
+	Ω(err).ShouldNot(HaveOccurred())
+
+	Ω(resp.StatusCode).Should(Equal(http.StatusOK))
+
+	bytes, err := ioutil.ReadAll(resp.Body)
+	Ω(err).ShouldNot(HaveOccurred())
+
+	return bytes
+}
