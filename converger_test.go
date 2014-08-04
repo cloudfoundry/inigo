@@ -234,7 +234,7 @@ var _ = Describe("Convergence to desired state", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
-					Consistently(helloWorldInstancePoller).Should(BeEmpty())
+					Consistently(helloWorldInstancePoller, DEFAULT_CONSISTENTLY_DURATION, 1).Should(BeEmpty())
 				})
 
 				Context("and then an auctioneer comes up", func() {
@@ -263,7 +263,7 @@ var _ = Describe("Convergence to desired state", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
-					Consistently(helloWorldInstancePoller).Should(BeEmpty())
+					Consistently(helloWorldInstancePoller, DEFAULT_CONSISTENTLY_DURATION, 1).Should(BeEmpty())
 				})
 
 				Context("and the executor and rep come up", func() {
