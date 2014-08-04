@@ -18,6 +18,7 @@ import (
 	"github.com/fraenkel/candiedyaml"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
@@ -111,16 +112,18 @@ func (maker ComponentMaker) WardenLinux(argv ...string) *wardenrunner.Runner {
 		maker.Artifacts.Executables["warden-linux"],
 		maker.WardenBinPath,
 		maker.WardenRootFSPath,
+		maker.WardenGraphPath,
 		argv...,
 	)
 }
 
-func (maker ComponentMaker) Executor(argv ...string) ifrit.Runner {
+func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
 	return &ginkgomon.Runner{
 		Name:              "executor",
 		AnsiColorCode:     "91m",
 		StartCheck:        "executor.started",
 		StartCheckTimeout: 5 * time.Second,
+		BufferChan:        make(chan *gbytes.Buffer),
 		Command: exec.Command(
 			maker.Artifacts.Executables["exec"],
 			append([]string{

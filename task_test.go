@@ -54,11 +54,11 @@ var _ = Describe("Task", func() {
 
 		if executor != nil {
 			executor.Signal(syscall.SIGKILL)
-			Eventually(executor.Wait(), 5*time.Second).Should(Receive())
+			Eventually(executor.Wait()).Should(Receive())
 		}
 
 		plumbing.Signal(syscall.SIGKILL)
-		Eventually(plumbing.Wait(), 5*time.Second).Should(Receive())
+		Eventually(plumbing.Wait()).Should(Receive())
 	})
 
 	Context("when an exec and rep are running", func() {

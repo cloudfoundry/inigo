@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"path/filepath"
 	"syscall"
-	"time"
 
 	"github.com/cloudfoundry-incubator/garden/warden"
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
@@ -81,10 +80,10 @@ var _ = Describe("AppRunner", func() {
 		inigo_server.Stop(wardenClient)
 
 		runtime.Signal(syscall.SIGKILL)
-		Eventually(runtime.Wait(), 5*time.Second).Should(Receive())
+		Eventually(runtime.Wait(), DEFAULT_EVENTUALLY_TIMEOUT).Should(Receive())
 
 		plumbing.Signal(syscall.SIGKILL)
-		Eventually(plumbing.Wait(), 5*time.Second).Should(Receive())
+		Eventually(plumbing.Wait(), DEFAULT_EVENTUALLY_TIMEOUT).Should(Receive())
 	})
 
 	Describe("Running", func() {

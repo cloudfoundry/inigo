@@ -69,11 +69,11 @@ var _ = Describe("Executor", func() {
 
 		if executor != nil {
 			executor.Signal(syscall.SIGKILL)
-			Eventually(executor.Wait(), 5*time.Second).Should(Receive())
+			Eventually(executor.Wait()).Should(Receive())
 		}
 
 		plumbing.Signal(syscall.SIGKILL)
-		Eventually(plumbing.Wait(), 5*time.Second).Should(Receive())
+		Eventually(plumbing.Wait()).Should(Receive())
 	})
 
 	Describe("Heartbeating", func() {

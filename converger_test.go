@@ -3,7 +3,6 @@ package inigo_test
 import (
 	"path/filepath"
 	"syscall"
-	"time"
 
 	"github.com/cloudfoundry-incubator/garden/warden"
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
@@ -107,31 +106,31 @@ var _ = Describe("Convergence to desired state", func() {
 	AfterEach(func() {
 		if auctioneer != nil {
 			auctioneer.Signal(syscall.SIGKILL)
-			Eventually(auctioneer.Wait(), 5*time.Second).Should(Receive())
+			Eventually(auctioneer.Wait()).Should(Receive())
 		}
 
 		if executor != nil {
 			executor.Signal(syscall.SIGKILL)
-			Eventually(executor.Wait(), 5*time.Second).Should(Receive())
+			Eventually(executor.Wait()).Should(Receive())
 		}
 
 		if rep != nil {
 			rep.Signal(syscall.SIGKILL)
-			Eventually(rep.Wait(), 5*time.Second).Should(Receive())
+			Eventually(rep.Wait()).Should(Receive())
 		}
 
 		if converger != nil {
 			converger.Signal(syscall.SIGKILL)
-			Eventually(converger.Wait(), 5*time.Second).Should(Receive())
+			Eventually(converger.Wait()).Should(Receive())
 		}
 
 		inigo_server.Stop(wardenClient)
 
 		runtime.Signal(syscall.SIGKILL)
-		Eventually(runtime.Wait(), 5*time.Second).Should(Receive())
+		Eventually(runtime.Wait()).Should(Receive())
 
 		plumbing.Signal(syscall.SIGKILL)
-		Eventually(plumbing.Wait(), 5*time.Second).Should(Receive())
+		Eventually(plumbing.Wait()).Should(Receive())
 	})
 
 	Describe("Executor fault tolerance", func() {

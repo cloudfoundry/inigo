@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"syscall"
-	"time"
 
 	"github.com/cloudfoundry-incubator/garden/warden"
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
@@ -91,10 +90,10 @@ var _ = Describe("LRP Consistency", func() {
 		inigo_server.Stop(wardenClient)
 
 		runtime.Signal(syscall.SIGKILL)
-		Eventually(runtime.Wait(), 5*time.Second).Should(Receive())
+		Eventually(runtime.Wait()).Should(Receive())
 
 		plumbing.Signal(syscall.SIGKILL)
-		Eventually(plumbing.Wait(), 5*time.Second).Should(Receive())
+		Eventually(plumbing.Wait()).Should(Receive())
 	})
 
 	Context("with an app running", func() {
