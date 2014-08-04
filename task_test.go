@@ -66,7 +66,9 @@ var _ = Describe("Task", func() {
 				BeforeEach(func() {
 					converger = ifrit.Envoke(componentMaker.Converger(
 						"-convergeRepeatInterval", "1s",
-						"-kickPendingTaskDuration", "1s",
+
+						// 1s would be ideal, but this also limits container creation time
+						"-kickPendingTaskDuration", "10s",
 					))
 				})
 
@@ -133,7 +135,9 @@ var _ = Describe("Task", func() {
 		BeforeEach(func() {
 			converger = ifrit.Envoke(componentMaker.Converger(
 				"-convergeRepeatInterval", "1s",
-				"-kickPendingTaskDuration", "1s",
+
+				// 1s would be ideal, but this also limits container creation time
+				"-kickPendingTaskDuration", "10s",
 			))
 		})
 
