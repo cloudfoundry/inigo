@@ -4,13 +4,11 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/cloudfoundry-incubator/garden/warden"
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
-	"github.com/cloudfoundry/yagnats"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 
@@ -23,16 +21,12 @@ import (
 
 var _ = Describe("Convergence to desired state", func() {
 	var (
-		plumbing ifrit.Process
-		runtime  ifrit.Process
+		runtime ifrit.Process
 
 		auctioneer ifrit.Process
 		executor   ifrit.Process
 		rep        ifrit.Process
 		converger  ifrit.Process
-
-		natsClient   yagnats.NATSClient
-		wardenClient warden.Client
 
 		fileServerStaticDir string
 
@@ -57,19 +51,8 @@ var _ = Describe("Convergence to desired state", func() {
 	}
 
 	BeforeEach(func() {
-		wardenLinux := componentMaker.WardenLinux()
-		wardenClient = wardenLinux.NewClient()
-
 		fileServer, dir := componentMaker.FileServer()
 		fileServerStaticDir = dir
-
-		natsClient = yagnats.NewClient()
-
-		plumbing = grouper.EnvokeGroup(grouper.RunGroup{
-			"etcd":         componentMaker.Etcd(),
-			"nats":         componentMaker.NATS(),
-			"warden-linux": wardenLinux,
-		})
 
 		runtime = grouper.EnvokeGroup(grouper.RunGroup{
 			"cc":             componentMaker.FakeCC(),
@@ -80,12 +63,6 @@ var _ = Describe("Convergence to desired state", func() {
 			"router":         componentMaker.Router(),
 			"loggregator":    componentMaker.Loggregator(),
 		})
-
-		err := natsClient.Connect(&yagnats.ConnectionInfo{
-			Addr: componentMaker.Addresses.NATS,
-		})
-		Ω(err).ShouldNot(HaveOccurred())
-		inigo_server.Start(wardenClient)
 
 		archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
 		inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")
@@ -104,33 +81,11 @@ var _ = Describe("Convergence to desired state", func() {
 	})
 
 	AfterEach(func() {
-		if auctioneer != nil {
-			auctioneer.Signal(syscall.SIGKILL)
-			Eventually(auctioneer.Wait()).Should(Receive())
-		}
-
-		if executor != nil {
-			executor.Signal(syscall.SIGKILL)
-			Eventually(executor.Wait()).Should(Receive())
-		}
-
-		if rep != nil {
-			rep.Signal(syscall.SIGKILL)
-			Eventually(rep.Wait()).Should(Receive())
-		}
-
-		if converger != nil {
-			converger.Signal(syscall.SIGKILL)
-			Eventually(converger.Wait()).Should(Receive())
-		}
-
-		inigo_server.Stop(wardenClient)
-
-		runtime.Signal(syscall.SIGKILL)
-		Eventually(runtime.Wait()).Should(Receive())
-
-		plumbing.Signal(syscall.SIGKILL)
-		Eventually(plumbing.Wait()).Should(Receive())
+		helpers.StopProcess(auctioneer)
+		helpers.StopProcess(executor)
+		helpers.StopProcess(rep)
+		helpers.StopProcess(converger)
+		helpers.StopProcess(runtime)
 	})
 
 	Describe("Executor fault tolerance", func() {

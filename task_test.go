@@ -3,62 +3,24 @@ package inigo_test
 import (
 	"fmt"
 	"strings"
-	"syscall"
 	"time"
 
-	"github.com/cloudfoundry-incubator/garden/warden"
+	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
-	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
-	"github.com/cloudfoundry/gunk/timeprovider"
-	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
-	"github.com/cloudfoundry/storeadapter/workerpool"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 )
 
 var _ = Describe("Task", func() {
-	var bbs *Bbs.BBS
-
-	var wardenClient warden.Client
-
-	var plumbing ifrit.Process
 	var executor ifrit.Process
 
-	BeforeEach(func() {
-		wardenLinux := componentMaker.WardenLinux()
-		wardenClient = wardenLinux.NewClient()
-
-		plumbing = grouper.EnvokeGroup(grouper.RunGroup{
-			"etcd":         componentMaker.Etcd(),
-			"nats":         componentMaker.NATS(),
-			"warden-linux": wardenLinux,
-		})
-
-		adapter := etcdstoreadapter.NewETCDStoreAdapter([]string{"http://" + componentMaker.Addresses.Etcd}, workerpool.NewWorkerPool(20))
-
-		bbs = Bbs.NewBBS(adapter, timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
-
-		err := adapter.Connect()
-		Ω(err).ShouldNot(HaveOccurred())
-
-		inigo_server.Start(wardenClient)
-	})
-
 	AfterEach(func() {
-		inigo_server.Stop(wardenClient)
-
-		if executor != nil {
-			executor.Signal(syscall.SIGKILL)
-			Eventually(executor.Wait()).Should(Receive())
-		}
-
-		plumbing.Signal(syscall.SIGKILL)
-		Eventually(plumbing.Wait()).Should(Receive())
+		helpers.StopProcess(executor)
 	})
 
 	Context("when an exec and rep are running", func() {
@@ -109,8 +71,7 @@ var _ = Describe("Task", func() {
 				})
 
 				AfterEach(func() {
-					converger.Signal(syscall.SIGKILL)
-					Eventually(converger.Wait()).Should(Receive())
+					helpers.StopProcess(converger)
 				})
 
 				Context("after the task starts", func() {
@@ -120,8 +81,7 @@ var _ = Describe("Task", func() {
 
 					Context("when the executor disappears", func() {
 						BeforeEach(func() {
-							executor.Signal(syscall.SIGKILL)
-							Eventually(executor.Wait()).Should(Receive())
+							helpers.StopProcess(executor)
 						})
 
 						It("eventually marks the task as failed", func() {
@@ -178,8 +138,7 @@ var _ = Describe("Task", func() {
 		})
 
 		AfterEach(func() {
-			converger.Signal(syscall.SIGKILL)
-			Eventually(converger.Wait()).Should(Receive())
+			helpers.StopProcess(converger)
 		})
 
 		Context("and a task is desired", func() {
@@ -227,8 +186,7 @@ var _ = Describe("Task", func() {
 		})
 
 		AfterEach(func() {
-			converger.Signal(syscall.SIGKILL)
-			Eventually(converger.Wait()).Should(Receive())
+			helpers.StopProcess(converger)
 		})
 
 		Context("and a task is desired", func() {

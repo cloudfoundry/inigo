@@ -15,8 +15,19 @@ import (
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pivotal-golang/lager/lagertest"
+	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/grouper"
 
+	"github.com/cloudfoundry-incubator/garden/warden"
+	"github.com/cloudfoundry-incubator/inigo/helpers"
+	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/inigo/world"
+	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry/gunk/timeprovider"
+	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
+	"github.com/cloudfoundry/storeadapter/workerpool"
+	"github.com/cloudfoundry/yagnats"
 )
 
 var DEFAULT_EVENTUALLY_TIMEOUT = 15 * time.Second
@@ -29,6 +40,47 @@ const StackName = "lucid64"
 
 var builtArtifacts world.BuiltArtifacts
 var componentMaker world.ComponentMaker
+
+var (
+	plumbing     ifrit.Process
+	bbs          *Bbs.BBS
+	natsClient   yagnats.NATSClient
+	wardenClient warden.Client
+)
+
+var _ = BeforeEach(func() {
+	wardenLinux := componentMaker.WardenLinux()
+
+	plumbing = grouper.EnvokeGroup(grouper.RunGroup{
+		"etcd":         componentMaker.Etcd(),
+		"nats":         componentMaker.NATS(),
+		"warden-linux": wardenLinux,
+	})
+
+	wardenClient = wardenLinux.NewClient()
+
+	natsClient = yagnats.NewClient()
+
+	err := natsClient.Connect(&yagnats.ConnectionInfo{
+		Addr: componentMaker.Addresses.NATS,
+	})
+	Ω(err).ShouldNot(HaveOccurred())
+
+	adapter := etcdstoreadapter.NewETCDStoreAdapter([]string{"http://" + componentMaker.Addresses.Etcd}, workerpool.NewWorkerPool(20))
+
+	err = adapter.Connect()
+	Ω(err).ShouldNot(HaveOccurred())
+
+	bbs = Bbs.NewBBS(adapter, timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
+
+	inigo_server.Start(wardenClient)
+})
+
+var _ = AfterEach(func() {
+	inigo_server.Stop(wardenClient)
+
+	helpers.StopProcess(plumbing)
+})
 
 func TestInigo(t *testing.T) {
 	registerDefaultTimeouts()
