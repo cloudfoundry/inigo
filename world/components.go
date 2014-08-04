@@ -128,10 +128,11 @@ func (maker ComponentMaker) WardenLinux(argv ...string) *wardenrunner.Runner {
 
 func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
 	return &ginkgomon.Runner{
-		Name:              "executor",
-		AnsiColorCode:     "91m",
-		StartCheck:        "executor.started",
-		StartCheckTimeout: 5 * time.Second,
+		Name:          "executor",
+		AnsiColorCode: "91m",
+		StartCheck:    "executor.started",
+		// executor may destroy containers on start, which can take a bit
+		StartCheckTimeout: 30 * time.Second,
 		BufferChan:        make(chan *gbytes.Buffer),
 		Command: exec.Command(
 			maker.Artifacts.Executables["exec"],
@@ -149,10 +150,12 @@ func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
 
 func (maker ComponentMaker) Rep(argv ...string) ifrit.Runner {
 	return &ginkgomon.Runner{
-		Name:              "rep",
-		AnsiColorCode:     "92m",
-		StartCheck:        "rep.started",
-		StartCheckTimeout: 5 * time.Second,
+		Name:          "rep",
+		AnsiColorCode: "92m",
+		StartCheck:    "rep.started",
+		// rep is not started until it can ping an executor; executor can take a
+		// bit to start, so account for it
+		StartCheckTimeout: 30 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["rep"],
 			append(
