@@ -187,6 +187,10 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 				"-etcdCluster", "http://" + maker.Addresses.Etcd,
 				"-natsAddresses", maker.Addresses.NATS,
 
+				// inigo runs everything on the same machine, so there will be more
+				// load; this timeout is a bit sensitive to that.
+				"-natsAuctionTimeout", "5s",
+
 				// we limit this to prevent overwhelming numbers of auctioneer logs.  it
 				// should not impact the behavior of the tests.
 				"-maxRounds", "3",
