@@ -18,7 +18,6 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 
-	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	"github.com/cloudfoundry/yagnats"
 	. "github.com/onsi/ginkgo"
@@ -96,7 +95,7 @@ var _ = Describe("Stager", func() {
 		var buildpackToUse string
 
 		BeforeEach(func() {
-			buildpackToUse = "admin_buildpack.zip"
+			buildpackToUse = "buildpack.zip"
 			outputGuid = factories.GenerateGuid()
 
 			cp(
@@ -109,8 +108,7 @@ var _ = Describe("Stager", func() {
 				{Name: "my-app", Body: "scooby-doo"},
 			}
 
-			zip_helper.CreateZipArchive("/tmp/app.zip", appFiles)
-			inigo_server.UploadFile("app.zip", "/tmp/app.zip")
+			zip_helper.CreateZipArchive(filepath.Join(fileServerStaticDir, "app.zip"), appFiles)
 
 			//make and upload a buildpack
 			var adminBuildpackFiles = []zip_helper.ArchiveFile{
@@ -139,8 +137,10 @@ EOF
 				`},
 			}
 
-			zip_helper.CreateZipArchive("/tmp/admin_buildpack.zip", adminBuildpackFiles)
-			inigo_server.UploadFile("admin_buildpack.zip", "/tmp/admin_buildpack.zip")
+			zip_helper.CreateZipArchive(
+				filepath.Join(fileServerStaticDir, "buildpack.zip"),
+				adminBuildpackFiles,
+			)
 
 			var bustedAdminBuildpackFiles = []zip_helper.ArchiveFile{
 				{
@@ -152,8 +152,10 @@ EOF
 				{Name: "bin/release", Body: `#!/bin/bash`},
 			}
 
-			zip_helper.CreateZipArchive("/tmp/busted_admin_buildpack.zip", bustedAdminBuildpackFiles)
-			inigo_server.UploadFile("busted_admin_buildpack.zip", "/tmp/busted_admin_buildpack.zip")
+			zip_helper.CreateZipArchive(
+				filepath.Join(fileServerStaticDir, "busted_buildpack.zip"),
+				bustedAdminBuildpackFiles,
+			)
 		})
 
 		JustBeforeEach(func() {
@@ -172,8 +174,8 @@ EOF
 					}`,
 					appId,
 					taskId,
-					inigo_server.DownloadUrl("app.zip"),
-					inigo_server.DownloadUrl(buildpackToUse),
+					fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "app.zip"),
+					fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, buildpackToUse),
 					outputGuid,
 				),
 			)
@@ -306,7 +308,7 @@ EOF
 
 			Context("when compilation fails", func() {
 				BeforeEach(func() {
-					buildpackToUse = "busted_admin_buildpack.zip"
+					buildpackToUse = "busted_buildpack.zip"
 				})
 
 				It("responds with the error, and no detected buildpack present", func() {

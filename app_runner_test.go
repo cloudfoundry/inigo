@@ -15,7 +15,6 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 
-	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -58,8 +57,10 @@ var _ = Describe("AppRunner", func() {
 		var runningMessage []byte
 
 		BeforeEach(func() {
-			archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
-			inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")
+			archive_helper.CreateZipArchive(
+				filepath.Join(fileServerStaticDir, "droplet.zip"),
+				fixtures.HelloWorldIndexApp(),
+			)
 
 			cp(
 				componentMaker.Artifacts.Circuses[componentMaker.Stack],
@@ -82,7 +83,7 @@ var _ = Describe("AppRunner", func() {
 			        "log_guid": "%s"
 			      }
 			    `,
-					inigo_server.DownloadUrl("simple-echo-droplet.zip"),
+					fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "droplet.zip"),
 					componentMaker.Stack,
 					appId,
 				),
