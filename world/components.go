@@ -127,6 +127,9 @@ func (maker ComponentMaker) WardenLinux(argv ...string) *wardenrunner.Runner {
 }
 
 func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
+	tmpPath := path.Join(os.TempDir(), fmt.Sprintf("executor_%d", ginkgo.GinkgoParallelNode()))
+	cachePath := path.Join(tmpPath, "cache")
+
 	return &ginkgomon.Runner{
 		Name:          "executor",
 		AnsiColorCode: "91m",
@@ -143,6 +146,8 @@ func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
 				"-loggregatorServer", maker.Addresses.LoggregatorIn,
 				"-loggregatorSecret", "loggregator-secret",
 				"-containerMaxCpuShares", "1024",
+				"-cachePath", cachePath,
+				"-tempDir", tmpPath,
 			}, argv...)...,
 		),
 	}
