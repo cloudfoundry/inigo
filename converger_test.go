@@ -113,7 +113,7 @@ var _ = Describe("Convergence to desired state", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Eventually(runningLRPsPoller).Should(HaveLen(1))
-					Eventually(helloWorldInstancePoller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0", "1"}))
+					Eventually(helloWorldInstancePoller).Should(Equal([]string{"0", "1"}))
 				})
 
 				Context("and the LRP goes away because its executor dies", func() {
@@ -121,7 +121,7 @@ var _ = Describe("Convergence to desired state", func() {
 						executor.Signal(syscall.SIGKILL)
 
 						Eventually(runningLRPsPoller).Should(BeEmpty())
-						Eventually(helloWorldInstancePoller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(BeEmpty())
+						Eventually(helloWorldInstancePoller).Should(BeEmpty())
 					})
 
 					Context("once the executor comes back", func() {
@@ -131,7 +131,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 						It("eventually brings the long-running process up", func() {
 							Eventually(runningLRPsPoller).Should(HaveLen(1))
-							Eventually(helloWorldInstancePoller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0", "1"}))
+							Eventually(helloWorldInstancePoller).Should(Equal([]string{"0", "1"}))
 						})
 					})
 				})
@@ -163,7 +163,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 							It("eventually scales the LRP down", func() {
 								Eventually(runningLRPsPoller).Should(HaveLen(1))
-								Eventually(helloWorldInstancePoller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0"}))
+								Eventually(helloWorldInstancePoller).Should(Equal([]string{"0"}))
 							})
 						})
 					})
@@ -187,7 +187,7 @@ var _ = Describe("Convergence to desired state", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
-					Consistently(helloWorldInstancePoller, DEFAULT_CONSISTENTLY_DURATION, 1).Should(BeEmpty())
+					Consistently(helloWorldInstancePoller).Should(BeEmpty())
 				})
 
 				Context("and then a rep and executor come up", func() {
@@ -198,7 +198,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 					It("eventually brings the LRP up", func() {
 						Eventually(runningLRPsPoller).Should(HaveLen(1))
-						Eventually(helloWorldInstancePoller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0"}))
+						Eventually(helloWorldInstancePoller).Should(Equal([]string{"0"}))
 					})
 				})
 			})
@@ -227,7 +227,7 @@ var _ = Describe("Convergence to desired state", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
-					Consistently(helloWorldInstancePoller, DEFAULT_CONSISTENTLY_DURATION, 1).Should(BeEmpty())
+					Consistently(helloWorldInstancePoller).Should(BeEmpty())
 				})
 
 				Context("and then an auctioneer comes up", func() {
@@ -237,7 +237,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 					It("eventually brings it up", func() {
 						Eventually(runningLRPsPoller).Should(HaveLen(1))
-						Eventually(helloWorldInstancePoller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0"}))
+						Eventually(helloWorldInstancePoller).Should(Equal([]string{"0"}))
 					})
 				})
 			})
@@ -256,7 +256,7 @@ var _ = Describe("Convergence to desired state", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
-					Consistently(helloWorldInstancePoller, DEFAULT_CONSISTENTLY_DURATION, 1).Should(BeEmpty())
+					Consistently(helloWorldInstancePoller).Should(BeEmpty())
 				})
 
 				Context("and the executor and rep come up", func() {
@@ -267,7 +267,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 					It("eventually brings it up", func() {
 						Eventually(runningLRPsPoller).Should(HaveLen(1))
-						Eventually(helloWorldInstancePoller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0"}))
+						Eventually(helloWorldInstancePoller).Should(Equal([]string{"0"}))
 					})
 				})
 			})

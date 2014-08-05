@@ -98,7 +98,7 @@ var _ = Describe("LRP Consistency", func() {
 
 			Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid), 2*DEFAULT_EVENTUALLY_TIMEOUT).Should(HaveLen(2))
 			poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-to-simple")
-			Eventually(poller, 2*DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0", "1"}))
+			Eventually(poller, 2*DEFAULT_EVENTUALLY_TIMEOUT).Should(Equal([]string{"0", "1"}))
 		})
 
 		AfterEach(func() {
@@ -131,7 +131,7 @@ var _ = Describe("LRP Consistency", func() {
 					Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(1))
 
 					poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-to-simple")
-					Eventually(poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0"}))
+					Eventually(poller).Should(Equal([]string{"0"}))
 				})
 
 				b.Time("scale up", func() {
@@ -142,7 +142,7 @@ var _ = Describe("LRP Consistency", func() {
 					Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(2))
 
 					poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-to-simple")
-					Eventually(poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0", "1"}))
+					Eventually(poller).Should(Equal([]string{"0", "1"}))
 				})
 			}, helpers.RepeatCount())
 		})

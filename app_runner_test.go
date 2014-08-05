@@ -113,17 +113,17 @@ var _ = Describe("AppRunner", func() {
 			Eventually(logOutput.Contents).Should(ContainSubstring("Hello World from index '2'"))
 
 			// check lrp instance statuses
-			Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, "process-guid"), DEFAULT_EVENTUALLY_TIMEOUT, 0.5).Should(HaveLen(3))
+			Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, "process-guid")).Should(HaveLen(3))
 
 			//both routes should be routable
-			Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-1"), DEFAULT_EVENTUALLY_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
-			Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-2"), DEFAULT_EVENTUALLY_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
+			Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-1")).Should(Equal(http.StatusOK))
+			Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-2")).Should(Equal(http.StatusOK))
 
 			//a given route should route to all three runninginstances
-			Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-1"), DEFAULT_EVENTUALLY_TIMEOUT, 0.5).Should(Equal(http.StatusOK))
+			Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-1")).Should(Equal(http.StatusOK))
 
 			poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-1")
-			Eventually(poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0", "1", "2"}))
+			Eventually(poller).Should(Equal([]string{"0", "1", "2"}))
 		})
 	})
 })

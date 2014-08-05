@@ -179,6 +179,10 @@ func registerDefaultTimeouts() {
 
 	SetDefaultEventuallyTimeout(DEFAULT_EVENTUALLY_TIMEOUT)
 	SetDefaultConsistentlyDuration(DEFAULT_CONSISTENTLY_DURATION)
+
+	// most things hit some component; don't hammer it
+	SetDefaultConsistentlyPollingInterval(100 * time.Millisecond)
+	SetDefaultEventuallyPollingInterval(500 * time.Millisecond)
 }
 
 func CompileTestedExecutables() world.BuiltExecutables {
