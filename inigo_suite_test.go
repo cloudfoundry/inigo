@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
@@ -90,12 +89,7 @@ var _ = AfterEach(func() {
 		Ω(err).ShouldNot(HaveOccurred())
 	}
 
-	wardenProcess.Signal(syscall.SIGTERM)
-
-	var waitErr error
-	Eventually(wardenProcess.Wait()).Should(Receive(&waitErr))
-	Ω(waitErr).ShouldNot(HaveOccurred())
-
+	helpers.StopProcess(wardenProcess)
 	helpers.StopProcess(plumbing)
 })
 
