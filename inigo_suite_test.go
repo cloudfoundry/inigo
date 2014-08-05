@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -42,20 +43,22 @@ var builtArtifacts world.BuiltArtifacts
 var componentMaker world.ComponentMaker
 
 var (
-	plumbing     ifrit.Process
-	bbs          *Bbs.BBS
-	natsClient   yagnats.NATSClient
-	wardenClient warden.Client
+	plumbing      ifrit.Process
+	wardenProcess ifrit.Process
+	bbs           *Bbs.BBS
+	natsClient    yagnats.NATSClient
+	wardenClient  warden.Client
 )
 
 var _ = BeforeEach(func() {
 	wardenLinux := componentMaker.WardenLinux()
 
 	plumbing = grouper.EnvokeGroup(grouper.RunGroup{
-		"etcd":         componentMaker.Etcd(),
-		"nats":         componentMaker.NATS(),
-		"warden-linux": wardenLinux,
+		"etcd": componentMaker.Etcd(),
+		"nats": componentMaker.NATS(),
 	})
+
+	wardenProcess = ifrit.Envoke(wardenLinux)
 
 	wardenClient = wardenLinux.NewClient()
 
@@ -78,6 +81,20 @@ var _ = BeforeEach(func() {
 
 var _ = AfterEach(func() {
 	inigo_server.Stop(wardenClient)
+
+	containers, err := wardenClient.Containers(nil)
+	Ω(err).ShouldNot(HaveOccurred())
+
+	for _, container := range containers {
+		err := wardenClient.Destroy(container.Handle())
+		Ω(err).ShouldNot(HaveOccurred())
+	}
+
+	wardenProcess.Signal(syscall.SIGTERM)
+
+	var waitErr error
+	Eventually(wardenProcess.Wait()).Should(Receive(&waitErr))
+	Ω(waitErr).ShouldNot(HaveOccurred())
 
 	helpers.StopProcess(plumbing)
 })
