@@ -76,7 +76,7 @@ var _ = BeforeEach(func() {
 
 	bbs = Bbs.NewBBS(adapter, timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
 
-	inigo_server.Start(wardenClient)
+	inigo_server.Start(componentMaker.ExternalAddress)
 })
 
 var _ = AfterEach(func() {
