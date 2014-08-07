@@ -61,10 +61,11 @@ type ComponentMaker struct {
 }
 
 type LoggregatorConfig struct {
-	IncomingPort           int
-	OutgoingPort           int
-	MaxRetainedLogMessages int
-	SharedSecret           string
+	LegacyIncomingMessagesPort int
+	OutgoingPort               int
+	WSMessageBufferSize        int
+	MaxRetainedLogMessages     int
+	SharedSecret               string
 
 	NatsHost string
 	NatsPort int
@@ -380,12 +381,13 @@ func (maker ComponentMaker) Loggregator() ifrit.Runner {
 	Ω(err).ShouldNot(HaveOccurred())
 
 	loggregatorConfig := LoggregatorConfig{
-		IncomingPort:           inPortInt,
-		OutgoingPort:           outPortInt,
-		MaxRetainedLogMessages: 1000,
-		SharedSecret:           "loggregator-secret",
-		NatsHost:               natsHost,
-		NatsPort:               natsPortInt,
+		LegacyIncomingMessagesPort: inPortInt,
+		OutgoingPort:               outPortInt,
+		MaxRetainedLogMessages:     1000,
+		WSMessageBufferSize:        100,
+		SharedSecret:               "loggregator-secret",
+		NatsHost:                   natsHost,
+		NatsPort:                   natsPortInt,
 	}
 
 	configFile, err := ioutil.TempFile(os.TempDir(), "loggregator-config")
