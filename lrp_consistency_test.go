@@ -135,14 +135,14 @@ var _ = Describe("LRP Consistency", func() {
 				})
 
 				b.Time("scale up", func() {
-					desiredAppRequest.NumInstances = 2
+					desiredAppRequest.NumInstances = 3
 					err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
 					Ω(err).ShouldNot(HaveOccurred())
 
-					Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(2))
+					Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(3))
 
 					poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-to-simple")
-					Eventually(poller).Should(Equal([]string{"0", "1"}))
+					Eventually(poller).Should(Equal([]string{"0", "1", "2"}))
 				})
 			}, helpers.RepeatCount())
 		})
@@ -164,10 +164,13 @@ var _ = Describe("LRP Consistency", func() {
 					desiredAppRequest.NumInstances = 2
 					err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
 					Ω(err).ShouldNot(HaveOccurred())
-
 					Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(2))
+
+					poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-to-simple")
+					Eventually(poller).Should(Equal([]string{"0", "1"}))
 				})
 			}, helpers.RepeatCount())
 		})
+
 	})
 })

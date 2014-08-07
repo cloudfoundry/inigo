@@ -19,10 +19,6 @@ import (
 var _ = Describe("Task", func() {
 	var executor ifrit.Process
 
-	AfterEach(func() {
-		helpers.StopProcess(executor)
-	})
-
 	kickPendingDuration := 10 * time.Second
 
 	Context("when an exec and rep are running", func() {
@@ -31,6 +27,10 @@ var _ = Describe("Task", func() {
 				"exec": componentMaker.Executor("-memoryMB", "1024"),
 				"rep":  componentMaker.Rep(),
 			})
+		})
+
+		AfterEach(func() {
+			helpers.StopProcess(executor)
 		})
 
 		Context("and a Task is desired", func() {
@@ -172,6 +172,10 @@ var _ = Describe("Task", func() {
 						"exec": componentMaker.Executor(),
 						"rep":  componentMaker.Rep(),
 					})
+				})
+
+				AfterEach(func() {
+					helpers.StopProcess(executor)
 				})
 
 				It("eventually runs the Task", func() {
