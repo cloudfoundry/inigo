@@ -20,7 +20,7 @@ export WARDEN_GRAPH_PATH=/tmp/warden-tmp
 mkdir -p $WARDEN_GRAPH_PATH
 
 if [ "$USE_TMPFS" = "true" ]; then
-  mount -t tmpfs -o size=2G none $WARDEN_GRAPH_PATH
+  mount -t tmpfs none $WARDEN_GRAPH_PATH
 else
   warden_graph_loopback="$WARDEN_GRAPH_PATH.img"
 
