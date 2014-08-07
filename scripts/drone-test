@@ -57,7 +57,7 @@ popd
 
 # unmount and delete warden graph fs
 if [ "$USE_TMPFS" = "" ]; then
-  umount $WARDEN_GRAPH_PATH
+  umount -l $WARDEN_GRAPH_PATH
   losetup --all | grep $warden_graph_loopback | cut --delimiter=: --fields=1 | xargs --no-run-if-empty --max-args=1 losetup --detach
   rm $warden_graph_loopback
 fi
