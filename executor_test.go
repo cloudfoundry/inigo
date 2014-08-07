@@ -5,47 +5,39 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
-	"github.com/cloudfoundry/gunk/timeprovider"
-	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
-	"github.com/cloudfoundry/storeadapter/workerpool"
-	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 
-	"github.com/cloudfoundry-incubator/garden/warden"
+	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
-	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"github.com/onsi/gomega/ghttp"
 )
 
 var _ = Describe("Executor", func() {
-	var bbs *Bbs.BBS
-
-	var wardenClient warden.Client
-
-	var plumbing ifrit.Process
 	var executor ifrit.Process
 
-	BeforeEach(func() {
-		wardenLinux := componentMaker.WardenLinux()
-		wardenClient = wardenLinux.NewClient()
+	var fileServerStaticDir string
 
-		plumbing = grouper.EnvokeGroup(grouper.RunGroup{
-			"etcd":         componentMaker.Etcd(),
-			"nats":         componentMaker.NATS(),
-			"warden-linux": wardenLinux,
-		})
+	BeforeEach(func() {
+		var fileServer ifrit.Runner
+
+		fileServer, fileServerStaticDir = componentMaker.FileServer()
 
 		executor = grouper.EnvokeGroup(grouper.RunGroup{
+			"file-server": fileServer,
 			"exec": componentMaker.Executor(
 				// some tests assert on capacity
 				"-memoryMB", "1024",
@@ -53,27 +45,10 @@ var _ = Describe("Executor", func() {
 			"rep":         componentMaker.Rep(),
 			"loggregator": componentMaker.Loggregator(),
 		})
-
-		adapter := etcdstoreadapter.NewETCDStoreAdapter([]string{"http://" + componentMaker.Addresses.Etcd}, workerpool.NewWorkerPool(20))
-
-		err := adapter.Connect()
-		Ω(err).ShouldNot(HaveOccurred())
-
-		bbs = Bbs.NewBBS(adapter, timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
-
-		inigo_server.Start(wardenClient)
 	})
 
 	AfterEach(func() {
-		inigo_server.Stop(wardenClient)
-
-		if executor != nil {
-			executor.Signal(syscall.SIGKILL)
-			Eventually(executor.Wait()).Should(Receive())
-		}
-
-		plumbing.Signal(syscall.SIGKILL)
-		Eventually(plumbing.Wait()).Should(Receive())
+		helpers.StopProcess(executor)
 	})
 
 	Describe("Heartbeating", func() {
@@ -302,7 +277,13 @@ var _ = Describe("Executor", func() {
 
 		BeforeEach(func() {
 			guid = factories.GenerateGuid()
-			inigo_server.UploadFileString("curling.sh", fmt.Sprintf("curl %s", strings.Join(inigo_server.CurlArgs(guid), " ")))
+
+			err := ioutil.WriteFile(
+				filepath.Join(fileServerStaticDir, "curling.sh"),
+				[]byte(fmt.Sprintf("curl %s", strings.Join(inigo_server.CurlArgs(guid), " "))),
+				0644,
+			)
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		It("downloads the file", func() {
@@ -313,11 +294,19 @@ var _ = Describe("Executor", func() {
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
-					{Action: models.DownloadAction{From: inigo_server.DownloadUrl("curling.sh"), To: "curling.sh", Extract: false}},
-					{Action: models.RunAction{
-						Path: "bash",
-						Args: []string{"curling.sh"},
-					}},
+					{
+						models.DownloadAction{
+							From:    fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "curling.sh"),
+							To:      "curling.sh",
+							Extract: false,
+						},
+					},
+					{
+						models.RunAction{
+							Path: "bash",
+							Args: []string{"curling.sh"},
+						},
+					},
 				},
 			}
 
@@ -331,8 +320,39 @@ var _ = Describe("Executor", func() {
 	Describe("Uploading from the container", func() {
 		var guid string
 
+		var server *httptest.Server
+		var uploadAddr string
+
+		var gotRequest chan struct{}
+
 		BeforeEach(func() {
 			guid = factories.GenerateGuid()
+
+			gotRequest = make(chan struct{})
+
+			server, uploadAddr = helpers.Callback(componentMaker.ExternalAddress, ghttp.CombineHandlers(
+				ghttp.VerifyRequest("POST", "/thingy"),
+				func(w http.ResponseWriter, r *http.Request) {
+					gw, err := gzip.NewReader(r.Body)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					tw := tar.NewReader(gw)
+
+					_, err = tw.Next()
+					Ω(err).ShouldNot(HaveOccurred())
+
+					contents, err := ioutil.ReadAll(tw)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Ω(string(contents)).Should(Equal("tasty thingy\n"))
+
+					close(gotRequest)
+				},
+			))
+		})
+
+		AfterEach(func() {
+			server.Close()
 		})
 
 		It("uploads a tarball containing the specified files", func() {
@@ -343,32 +363,33 @@ var _ = Describe("Executor", func() {
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Actions: []models.ExecutorAction{
-					{Action: models.RunAction{
-						Path: "bash",
-						Args: []string{"-c", "echo tasty thingy > thingy"},
-					}},
-					{Action: models.UploadAction{From: "thingy", To: inigo_server.UploadUrl("thingy")}},
-					{Action: models.RunAction{
-						Path: "curl",
-						Args: inigo_server.CurlArgs(guid),
-					}},
+					{
+						models.RunAction{
+							Path: "bash",
+							Args: []string{"-c", "echo tasty thingy > thingy"},
+						},
+					},
+					{
+						models.UploadAction{
+							From: "thingy",
+							To:   fmt.Sprintf("http://%s/thingy", uploadAddr),
+						},
+					},
+					{
+						models.RunAction{
+							Path: "curl",
+							Args: inigo_server.CurlArgs(guid),
+						},
+					},
 				},
 			}
 
 			err := bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
+			Eventually(gotRequest).Should(BeClosed())
+
 			Eventually(inigo_server.ReportingGuids).Should(ContainElement(guid))
-
-			downloadStream := inigo_server.DownloadFile("thingy")
-
-			gw, err := gzip.NewReader(downloadStream)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			tw := tar.NewReader(gw)
-
-			_, err = tw.Next()
-			Ω(err).ShouldNot(HaveOccurred())
 		})
 	})
 

@@ -3,63 +3,27 @@ package inigo_test
 import (
 	"fmt"
 	"strings"
-	"syscall"
 	"time"
 
-	"github.com/cloudfoundry-incubator/garden/warden"
+	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
-	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
-	"github.com/cloudfoundry/gunk/timeprovider"
-	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
-	"github.com/cloudfoundry/storeadapter/workerpool"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 )
 
 var _ = Describe("Task", func() {
-	var bbs *Bbs.BBS
-
-	var wardenClient warden.Client
-
-	var plumbing ifrit.Process
 	var executor ifrit.Process
 
-	BeforeEach(func() {
-		wardenLinux := componentMaker.WardenLinux()
-		wardenClient = wardenLinux.NewClient()
-
-		plumbing = grouper.EnvokeGroup(grouper.RunGroup{
-			"etcd":         componentMaker.Etcd(),
-			"nats":         componentMaker.NATS(),
-			"warden-linux": wardenLinux,
-		})
-
-		adapter := etcdstoreadapter.NewETCDStoreAdapter([]string{"http://" + componentMaker.Addresses.Etcd}, workerpool.NewWorkerPool(20))
-
-		bbs = Bbs.NewBBS(adapter, timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
-
-		err := adapter.Connect()
-		Ω(err).ShouldNot(HaveOccurred())
-
-		inigo_server.Start(wardenClient)
-	})
-
 	AfterEach(func() {
-		inigo_server.Stop(wardenClient)
-
-		if executor != nil {
-			executor.Signal(syscall.SIGKILL)
-			Eventually(executor.Wait()).Should(Receive())
-		}
-
-		plumbing.Signal(syscall.SIGKILL)
-		Eventually(plumbing.Wait()).Should(Receive())
+		helpers.StopProcess(executor)
 	})
+
+	kickPendingDuration := 10 * time.Second
 
 	Context("when an exec and rep are running", func() {
 		BeforeEach(func() {
@@ -104,13 +68,14 @@ var _ = Describe("Task", func() {
 				BeforeEach(func() {
 					converger = ifrit.Envoke(componentMaker.Converger(
 						"-convergeRepeatInterval", "1s",
-						"-kickPendingTaskDuration", "1s",
+
+						// 1s would be ideal, but this also limits container creation time
+						"-kickPendingTaskDuration", kickPendingDuration.String(),
 					))
 				})
 
 				AfterEach(func() {
-					converger.Signal(syscall.SIGKILL)
-					Eventually(converger.Wait()).Should(Receive())
+					helpers.StopProcess(converger)
 				})
 
 				Context("after the task starts", func() {
@@ -120,8 +85,7 @@ var _ = Describe("Task", func() {
 
 					Context("when the executor disappears", func() {
 						BeforeEach(func() {
-							executor.Signal(syscall.SIGKILL)
-							Eventually(executor.Wait()).Should(Receive())
+							helpers.StopProcess(executor)
 						})
 
 						It("eventually marks the task as failed", func() {
@@ -159,7 +123,7 @@ var _ = Describe("Task", func() {
 
 						It("is executed once the first task completes, as its resources are cleared", func() {
 							Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1)) // Wait for first task to complete
-							Eventually(inigo_server.ReportingGuids).Should(ContainElement(secondThingWeRan))
+							Eventually(inigo_server.ReportingGuids, DEFAULT_EVENTUALLY_TIMEOUT+kickPendingDuration).Should(ContainElement(secondThingWeRan))
 						})
 					})
 				})
@@ -173,13 +137,14 @@ var _ = Describe("Task", func() {
 		BeforeEach(func() {
 			converger = ifrit.Envoke(componentMaker.Converger(
 				"-convergeRepeatInterval", "1s",
-				"-kickPendingTaskDuration", "1s",
+
+				// 1s would be ideal, but this also limits container creation time
+				"-kickPendingTaskDuration", kickPendingDuration.String(),
 			))
 		})
 
 		AfterEach(func() {
-			converger.Signal(syscall.SIGKILL)
-			Eventually(converger.Wait()).Should(Receive())
+			helpers.StopProcess(converger)
 		})
 
 		Context("and a task is desired", func() {
@@ -210,7 +175,7 @@ var _ = Describe("Task", func() {
 				})
 
 				It("eventually runs the Task", func() {
-					Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(thingWeRan))
+					Eventually(inigo_server.ReportingGuids, DEFAULT_EVENTUALLY_TIMEOUT+kickPendingDuration).Should(ContainElement(thingWeRan))
 				})
 			})
 		})
@@ -227,8 +192,7 @@ var _ = Describe("Task", func() {
 		})
 
 		AfterEach(func() {
-			converger.Signal(syscall.SIGKILL)
-			Eventually(converger.Wait()).Should(Receive())
+			helpers.StopProcess(converger)
 		})
 
 		Context("and a task is desired", func() {

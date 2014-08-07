@@ -3,20 +3,16 @@ package inigo_test
 import (
 	"fmt"
 	"path/filepath"
-	"syscall"
 
-	"github.com/cloudfoundry-incubator/garden/warden"
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
 	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
-	"github.com/cloudfoundry/yagnats"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 
-	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -24,11 +20,7 @@ import (
 )
 
 var _ = Describe("LRP Consistency", func() {
-	var plumbing ifrit.Process
 	var runtime ifrit.Process
-
-	var natsClient yagnats.NATSClient
-	var wardenClient warden.Client
 
 	var fileServerStaticDir string
 
@@ -42,19 +34,8 @@ var _ = Describe("LRP Consistency", func() {
 
 		processGuid = factories.GenerateGuid()
 
-		wardenLinux := componentMaker.WardenLinux()
-		wardenClient = wardenLinux.NewClient()
-
 		fileServer, dir := componentMaker.FileServer()
 		fileServerStaticDir = dir
-
-		natsClient = yagnats.NewClient()
-
-		plumbing = grouper.EnvokeGroup(grouper.RunGroup{
-			"etcd":         componentMaker.Etcd(),
-			"nats":         componentMaker.NATS(),
-			"warden-linux": wardenLinux,
-		})
 
 		runtime = grouper.EnvokeGroup(grouper.RunGroup{
 			"cc":             componentMaker.FakeCC(),
@@ -70,15 +51,10 @@ var _ = Describe("LRP Consistency", func() {
 			"loggregator":    componentMaker.Loggregator(),
 		})
 
-		err := natsClient.Connect(&yagnats.ConnectionInfo{
-			Addr: componentMaker.Addresses.NATS,
-		})
-		Ω(err).ShouldNot(HaveOccurred())
-
-		inigo_server.Start(wardenClient)
-
-		archive_helper.CreateZipArchive("/tmp/simple-echo-droplet.zip", fixtures.HelloWorldIndexApp())
-		inigo_server.UploadFile("simple-echo-droplet.zip", "/tmp/simple-echo-droplet.zip")
+		archive_helper.CreateZipArchive(
+			filepath.Join(fileServerStaticDir, "droplet.zip"),
+			fixtures.HelloWorldIndexApp(),
+		)
 
 		cp(
 			componentMaker.Artifacts.Circuses[componentMaker.Stack],
@@ -87,13 +63,7 @@ var _ = Describe("LRP Consistency", func() {
 	})
 
 	AfterEach(func() {
-		inigo_server.Stop(wardenClient)
-
-		runtime.Signal(syscall.SIGKILL)
-		Eventually(runtime.Wait()).Should(Receive())
-
-		plumbing.Signal(syscall.SIGKILL)
-		Eventually(plumbing.Wait()).Should(Receive())
+		helpers.StopProcess(runtime)
 	})
 
 	Context("with an app running", func() {
@@ -113,7 +83,7 @@ var _ = Describe("LRP Consistency", func() {
 
 			desiredAppRequest = models.DesireAppRequestFromCC{
 				ProcessGuid:  processGuid,
-				DropletUri:   inigo_server.DownloadUrl("simple-echo-droplet.zip"),
+				DropletUri:   fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "droplet.zip"),
 				Stack:        componentMaker.Stack,
 				Environment:  []models.EnvironmentVariable{{Name: "VCAP_APPLICATION", Value: "{}"}},
 				NumInstances: 2,
@@ -128,7 +98,7 @@ var _ = Describe("LRP Consistency", func() {
 
 			Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid), 2*DEFAULT_EVENTUALLY_TIMEOUT).Should(HaveLen(2))
 			poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-to-simple")
-			Eventually(poller, 2*DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0", "1"}))
+			Eventually(poller, 2*DEFAULT_EVENTUALLY_TIMEOUT).Should(Equal([]string{"0", "1"}))
 		})
 
 		AfterEach(func() {
@@ -161,7 +131,7 @@ var _ = Describe("LRP Consistency", func() {
 					Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(1))
 
 					poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-to-simple")
-					Eventually(poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0"}))
+					Eventually(poller).Should(Equal([]string{"0"}))
 				})
 
 				b.Time("scale up", func() {
@@ -172,7 +142,7 @@ var _ = Describe("LRP Consistency", func() {
 					Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(2))
 
 					poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-to-simple")
-					Eventually(poller, DEFAULT_EVENTUALLY_TIMEOUT, 1).Should(Equal([]string{"0", "1"}))
+					Eventually(poller).Should(Equal([]string{"0", "1"}))
 				})
 			}, helpers.RepeatCount())
 		})
