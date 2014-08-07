@@ -2,8 +2,6 @@
 
 set -e -x
 
-apt-get install aufs-tools
-
 pushd $GOPATH_ROOT/src/github.com/cloudfoundry-incubator/warden-linux
   make # compile wshd/etc.
   export WARDEN_BINPATH=$PWD/linux_backend/bin
@@ -15,7 +13,6 @@ export WARDEN_ROOTFS=/opt/warden/rootfs
 
 # used for routing to apps; same logic that Warden uses.
 export EXTERNAL_ADDRESS=$(ip route get 8.8.8.8 | sed 's/.*src\s\(.*\)\s/\1/;tx;d;:x')
-
 
 # WARDEN_GRAPH_PATH is the root of the docker image filesystem
 export WARDEN_GRAPH_PATH=/tmp/warden-tmp
