@@ -191,7 +191,7 @@ var _ = Describe("Task", func() {
 		BeforeEach(func() {
 			converger = ifrit.Envoke(componentMaker.Converger(
 				"-convergeRepeatInterval", "1s",
-				"-expireClaimedTaskDuration", "1s",
+				"-expirePendingTaskDuration", "1s",
 			))
 		})
 
