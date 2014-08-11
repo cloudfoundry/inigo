@@ -18,18 +18,18 @@ REPOS="
   github.com/cloudfoundry-incubator/tps
 "
 
-DEV_GOPATH=$(cd $HOME/go && pwd)
-TMP_GOPATH=/tmp/inigo
+LOGGREGATOR_PATH=${LOGGREGATOR_PATH:-~/workspace/loggregator}
+BUILD_DIR=${BUILD_DIR:-/tmp/inigo}
 
-mkdir -p ${TMP_GOPATH}
+mkdir -p ${BUILD_DIR}
 
-cp $(dirname $0)/.drone.yml ${TMP_GOPATH}/.drone.yml
-cp $(dirname $0)/build.yml ${TMP_GOPATH}/build.yml
+cp $(dirname $0)/.drone.yml ${BUILD_DIR}/
+cp $(dirname $0)/build.yml ${BUILD_DIR}/
 
 go test -c
 rm inigo.test
 
-pushd $TMP_GOPATH
+pushd $BUILD_DIR
   # make sure we have all our dependencies (any version)
   go get $(for repo in $REPOS; do echo -n " $repo/..."; done)
 
@@ -41,8 +41,8 @@ pushd $TMP_GOPATH
 popd
 
 function copy_to_gopath {
-  mkdir -p ${TMP_GOPATH}/src/${1}
-  rsync --del --exclude '.*' --exclude '*.test' -a ${DEV_GOPATH}/src/${1}/ ${TMP_GOPATH}/src/${1}/
+  mkdir -p ${BUILD_DIR}/src/${1}
+  rsync --del --exclude '.*' --exclude '*.test' -a ${GOPATH}/src/${1}/ ${BUILD_DIR}/src/${1}/
 }
 
 # grab and set up our components
@@ -55,11 +55,11 @@ for package in github.com/coreos/etcd github.com/apcera/gnatsd; do
   copy_to_gopath $package &
 done
 
-rsync --del --exclude '.*' -a ~/workspace/loggregator/ ${TMP_GOPATH}/loggregator/ &
+rsync --del --exclude '.*' -a ${LOGGREGATOR_PATH} ${BUILD_DIR}/loggregator/ &
 
 wait
 
-cd $TMP_GOPATH
+cd $BUILD_DIR
 
 if [ -n "$GLIDER_URL" ]; then
   fly -- bogus-argv-0 "$@"
