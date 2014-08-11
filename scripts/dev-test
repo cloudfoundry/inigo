@@ -21,13 +21,16 @@ REPOS="
 LOGGREGATOR_PATH=${LOGGREGATOR_PATH:-~/workspace/loggregator}
 BUILD_DIR=${BUILD_DIR:-/tmp/inigo}
 
+SCRIPTS_DIR=$(cd $(dirname $0) && pwd)
 mkdir -p ${BUILD_DIR}
 
-cp $(dirname $0)/.drone.yml ${BUILD_DIR}/
-cp $(dirname $0)/build.yml ${BUILD_DIR}/
+cp $SCRIPTS_DIR/.drone.yml ${BUILD_DIR}/
+cp $SCRIPTS_DIR/build.yml ${BUILD_DIR}/
 
-go test -c
-rm inigo.test
+pushd $(dirname $SCRIPTS_DIR)
+  go test -c
+  rm inigo.test
+popd
 
 pushd $BUILD_DIR
   # make sure we have all our dependencies (any version)
@@ -38,31 +41,29 @@ pushd $BUILD_DIR
   godep save $(for repo in $REPOS; do echo -n " $repo/..."; done)
   rsync --del --exclude '.*' -a Godeps/_workspace/src/ src/
   rm -rf Godeps
+
+  function copy_to_gopath {
+    mkdir -p ${BUILD_DIR}/src/${1}
+    rsync --del --exclude '.*' --exclude '*.test' -a ${GOPATH}/src/${1}/ ${BUILD_DIR}/src/${1}/
+  }
+
+  # grab and set up our components
+  for package in $REPOS; do
+    copy_to_gopath $package &
+  done
+
+  # install application dependencies
+  for package in github.com/coreos/etcd github.com/apcera/gnatsd; do
+    copy_to_gopath $package &
+  done
+
+  rsync --del --exclude '.*' -a ${LOGGREGATOR_PATH} ${BUILD_DIR}/loggregator/ &
+
+  wait
+
+  if [ -n "$GLIDER_URL" ]; then
+    fly -- bogus-argv-0 "$@"
+  else
+    drone -privileged build
+  fi
 popd
-
-function copy_to_gopath {
-  mkdir -p ${BUILD_DIR}/src/${1}
-  rsync --del --exclude '.*' --exclude '*.test' -a ${GOPATH}/src/${1}/ ${BUILD_DIR}/src/${1}/
-}
-
-# grab and set up our components
-for package in $REPOS; do
-  copy_to_gopath $package &
-done
-
-# install application dependencies
-for package in github.com/coreos/etcd github.com/apcera/gnatsd; do
-  copy_to_gopath $package &
-done
-
-rsync --del --exclude '.*' -a ${LOGGREGATOR_PATH} ${BUILD_DIR}/loggregator/ &
-
-wait
-
-cd $BUILD_DIR
-
-if [ -n "$GLIDER_URL" ]; then
-  fly -- bogus-argv-0 "$@"
-else
-  drone -privileged build
-fi
