@@ -27,15 +27,6 @@ mkdir -p ${BUILD_DIR}
 cp $SCRIPTS_DIR/.drone.yml ${BUILD_DIR}/
 cp $SCRIPTS_DIR/build.yml ${BUILD_DIR}/
 
-# make sure we have all our dependencies (any version)
-go get $(for repo in $REPOS; do echo -n " $repo/..."; done)
-
-# check that the tests compile
-pushd $(dirname $SCRIPTS_DIR)
-  go test -c
-  rm inigo.test
-popd
-
 pushd $BUILD_DIR
   # pull dependent packages into the temporary gopath, using godep so that
   # it'll only fetch the packages that are used (not entire repos)
