@@ -267,6 +267,7 @@ func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 				"-natsAddresses", maker.Addresses.NATS,
 				"-repAddrRelativeToExecutor", maker.Addresses.Rep,
 				"-circuses", fmt.Sprintf(`{"%s": "%s"}`, maker.Stack, CircusZipFilename),
+				"-dockerCircusPath", "/the-docker/circus-path.tgz",
 			}, argv...)...,
 		),
 	}
