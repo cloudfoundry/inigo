@@ -3,51 +3,30 @@
 set -e -x
 
 export GOROOT=/usr/local/go
-export PATH=${GOROOT}/bin:${PATH}
-
 export GOPATH_ROOT=$PWD
+export INIGO_GOPATH=${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/inigo/Godeps/_workspace
+export GOPATH=${INIGO_GOPATH}:${GOPATH_ROOT}
 
-export GOPATH=${GOPATH_ROOT}
-export PATH=${GOPATH_ROOT}/bin:${PATH}
+export PATH=${INIGO_GOPATH}/bin:${GOPATH_ROOT}/bin:${GOROOT}/bin:${PATH}
 
 # set up compile-time $GOPATHs for each component
 export LOGGREGATOR_GOPATH=${GOPATH_ROOT}/loggregator
-export EXECUTOR_GOPATH=${GOPATH_ROOT}
-export AUCTIONEER_GOPATH=${GOPATH_ROOT}
-export CONVERGER_GOPATH=${GOPATH_ROOT}
-export REP_GOPATH=${GOPATH_ROOT}
-export STAGER_GOPATH=${GOPATH_ROOT}
-export FILE_SERVER_GOPATH=${GOPATH_ROOT}
-export WARDEN_LINUX_GOPATH=${GOPATH_ROOT}
-export ROUTE_EMITTER_GOPATH=${GOPATH_ROOT}
-export ROUTER_GOPATH=${GOPATH_ROOT}
-export LINUX_CIRCUS_GOPATH=${GOPATH_ROOT}
-export TPS_GOPATH=${GOPATH_ROOT}
-export NSYNC_GOPATH=${GOPATH_ROOT}
+export ROUTER_GOPATH=${GOPATH_ROOT}:${GOPATH_ROOT}/src/github.com/cloudfoundry/gorouter/Godeps/_workspace
+export AUCTIONEER_GOPATH=${GOPATH_ROOT}:${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/auctioneer/Godeps/_workspace
+export CONVERGER_GOPATH=${GOPATH_ROOT}:${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/converger/Godeps/_workspace
+export EXECUTOR_GOPATH=${GOPATH_ROOT}:${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/executor/Godeps/_workspace
+export FILE_SERVER_GOPATH=${GOPATH_ROOT}:${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/file-server/Godeps/_workspace
+export LINUX_CIRCUS_GOPATH=${GOPATH_ROOT}:${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/linux-circus/Godeps/_workspace
+export NSYNC_GOPATH=${GOPATH_ROOT}:${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/nsync/Godeps/_workspace
+export REP_GOPATH=${GOPATH_ROOT}:${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/rep/Godeps/_workspace
+export ROUTE_EMITTER_GOPATH=${GOPATH_ROOT}:${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/route-emitter/Godeps/_workspace
+export STAGER_GOPATH=${GOPATH_ROOT}:${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/stager/Godeps/_workspace
+export TPS_GOPATH=${GOPATH_ROOT}:${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/tps/Godeps/_workspace
+export WARDEN_LINUX_GOPATH=${GOPATH_ROOT}:${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/warden-linux/Godeps/_workspace
 
 # install application dependencies
 for package in github.com/coreos/etcd github.com/apcera/gnatsd; do
   go install $package
 done
-
-REPOS="
-  github.com/cloudfoundry-incubator/inigo
-  github.com/cloudfoundry-incubator/auctioneer
-  github.com/cloudfoundry-incubator/route-emitter
-  github.com/cloudfoundry/gorouter
-  github.com/cloudfoundry-incubator/executor
-  github.com/cloudfoundry-incubator/converger
-  github.com/cloudfoundry-incubator/rep
-  github.com/cloudfoundry-incubator/stager
-  github.com/cloudfoundry-incubator/nsync
-  github.com/cloudfoundry-incubator/file-server
-  github.com/cloudfoundry-incubator/linux-circus
-  github.com/cloudfoundry-incubator/warden-linux
-  github.com/cloudfoundry-incubator/tps
-"
-
-# pull dependent packages into the temporary gopath, using godep so that
-# it'll only fetch the packages that are used (not entire repos)
-go get -v $(for repo in $REPOS; do echo -n " $repo/..."; done)
 
 $(dirname $0)/drone-test "$@"

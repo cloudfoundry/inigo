@@ -28,6 +28,17 @@ cp $SCRIPTS_DIR/.drone.yml ${BUILD_DIR}/
 cp $SCRIPTS_DIR/build.yml ${BUILD_DIR}/
 
 pushd $BUILD_DIR
+
+  # If godep is available, use it to gather up the versions of our
+  # repos' dependencies that exist on our GOPATH. Otherwise, use
+  # the versions that are saved in the repos' Godeps directories.
+  if which -s godep; then
+    go get $(for repo in $REPOS; do echo -n " $repo/..."; done)
+    godep save $(for repo in $REPOS; do echo -n " $repo/..."; done)
+    rsync --del --exclude '.*' -a Godeps/_workspace/src/ src/
+    rm -rf Godeps
+  fi
+
   function copy_to_gopath {
     mkdir -p ${BUILD_DIR}/src/${1}
     rsync --del --exclude '.*' --exclude '*.test' -a ${GOPATH}/src/${1}/ ${BUILD_DIR}/src/${1}/
@@ -52,4 +63,5 @@ pushd $BUILD_DIR
   else
     drone -privileged build
   fi
+
 popd
