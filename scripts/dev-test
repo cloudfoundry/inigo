@@ -27,9 +27,11 @@ mkdir -p ${BUILD_DIR}
 cp $SCRIPTS_DIR/.drone.yml ${BUILD_DIR}/
 cp $SCRIPTS_DIR/build.yml ${BUILD_DIR}/
 
+
 pushd $BUILD_DIR
   # pull dependent packages into the temporary gopath, using godep so that
   # it'll only fetch the packages that are used (not entire repos)
+  go get github.com/tools/godep
   godep save $(for repo in $REPOS; do echo -n " $repo/..."; done)
   rsync --del --exclude '.*' -a Godeps/_workspace/src/ src/
   rm -rf Godeps
