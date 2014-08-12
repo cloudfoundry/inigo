@@ -19,7 +19,7 @@ import (
 var _ = Describe("Task", func() {
 	var executor ifrit.Process
 
-	kickPendingDuration := 10 * time.Second
+	kickPendingDuration := 1 * time.Second
 
 	Context("when an exec and rep are running", func() {
 		BeforeEach(func() {
@@ -68,8 +68,6 @@ var _ = Describe("Task", func() {
 				BeforeEach(func() {
 					converger = ifrit.Envoke(componentMaker.Converger(
 						"-convergeRepeatInterval", "1s",
-
-						// 1s would be ideal, but this also limits container creation time
 						"-kickPendingTaskDuration", kickPendingDuration.String(),
 					))
 				})
@@ -137,8 +135,6 @@ var _ = Describe("Task", func() {
 		BeforeEach(func() {
 			converger = ifrit.Envoke(componentMaker.Converger(
 				"-convergeRepeatInterval", "1s",
-
-				// 1s would be ideal, but this also limits container creation time
 				"-kickPendingTaskDuration", kickPendingDuration.String(),
 			))
 		})
