@@ -80,7 +80,9 @@ var _ = BeforeEach(func() {
 
 var _ = AfterEach(func() {
 	inigo_server.Stop(wardenClient)
+})
 
+var _ = AfterEach(func() {
 	containers, err := wardenClient.Containers(nil)
 	Ω(err).ShouldNot(HaveOccurred())
 
@@ -90,6 +92,9 @@ var _ = AfterEach(func() {
 	}
 
 	helpers.StopProcess(wardenProcess)
+})
+
+var _ = AfterEach(func() {
 	helpers.StopProcess(plumbing)
 })
 
