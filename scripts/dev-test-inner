@@ -30,4 +30,24 @@ for package in github.com/coreos/etcd github.com/apcera/gnatsd; do
   go install $package
 done
 
+REPOS="
+  github.com/cloudfoundry-incubator/inigo
+  github.com/cloudfoundry-incubator/auctioneer
+  github.com/cloudfoundry-incubator/route-emitter
+  github.com/cloudfoundry/gorouter
+  github.com/cloudfoundry-incubator/executor
+  github.com/cloudfoundry-incubator/converger
+  github.com/cloudfoundry-incubator/rep
+  github.com/cloudfoundry-incubator/stager
+  github.com/cloudfoundry-incubator/nsync
+  github.com/cloudfoundry-incubator/file-server
+  github.com/cloudfoundry-incubator/linux-circus
+  github.com/cloudfoundry-incubator/warden-linux
+  github.com/cloudfoundry-incubator/tps
+"
+
+# pull dependent packages into the temporary gopath, using godep so that
+# it'll only fetch the packages that are used (not entire repos)
+go get -v $(for repo in $REPOS; do echo -n " $repo/..."; done)
+
 $(dirname $0)/drone-test "$@"
