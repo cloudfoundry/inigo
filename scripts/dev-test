@@ -43,7 +43,7 @@ pushd $BUILD_DIR
     copy_to_gopath $package &
   done
 
-  rsync --del --exclude '.*' -a ${LOGGREGATOR_PATH} ${BUILD_DIR}/loggregator/ &
+  rsync --del --exclude '.*' -a ${LOGGREGATOR_PATH}/ ${BUILD_DIR}/loggregator/ &
 
   wait
 
