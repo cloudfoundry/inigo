@@ -123,19 +123,15 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 					models.Parallel(
 						models.ExecutorAction{
 							models.RunAction{
-								Path: "bash",
-								Args: []string{
-									"-c",
-									"/dockerapp",
-								},
+								Path: "/dockerapp",
 							},
 						},
 						models.ExecutorAction{
 							models.MonitorAction{
 								Action: models.ExecutorAction{
 									models.RunAction{
-										Path: "bash",
-										Args: []string{"-c", "echo all good"},
+										Path: "echo",
+										Args: []string{"all good"},
 									},
 								},
 
