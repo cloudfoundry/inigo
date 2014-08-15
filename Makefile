@@ -1,7 +1,7 @@
 all: ci-image
 
 ci-image: inigo-test-rootfs.tar
-	docker build -t cloudfoundry/inigo-ci --rm .
+	docker build --no-cache -t cloudfoundry/inigo-ci --rm .
 	rm inigo-test-rootfs.tar
 
 inigo-test-rootfs.tar: inigo-test-rootfs.cid

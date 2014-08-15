@@ -11,12 +11,11 @@ ENV PATH /root/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin
 RUN mkdir -p /root/go
 
 # apt
-RUN echo "deb http://mirror.anl.gov/pub/ubuntu trusty main universe" > /etc/apt/sources.list
 RUN apt-get update
 RUN apt-get install -y build-essential mercurial git-core subversion wget
 
-# go 1.3 tarball
-RUN wget -qO- http://golang.org/dl/go1.3.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+# go 1.3.1 tarball
+RUN wget -qO- http://golang.org/dl/go1.3.1.linux-amd64.tar.gz | tar -C /usr/local -xzf -
 
 # generate locales to shut perl up
 RUN locale-gen en_US.UTF-8
