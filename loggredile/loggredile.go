@@ -83,7 +83,6 @@ func streamMessages(addr string, path string, outMessages, errMessages chan<- *l
 	go func() {
 		for {
 			_, data, err := ws.ReadMessage()
-
 			if err != nil {
 				close(outMessages)
 				close(errMessages)
@@ -98,24 +97,6 @@ func streamMessages(addr string, path string, outMessages, errMessages chan<- *l
 				outMessages <- receivedMessage
 			} else {
 				errMessages <- receivedMessage
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			err := ws.WriteMessage(websocket.BinaryMessage, []byte{42})
-			if err != nil {
-				break
-			}
-
-			select {
-			case <-stop:
-				ws.Close()
-				return
-
-			case <-time.After(1 * time.Second):
-				// keep-alive
 			}
 		}
 	}()
