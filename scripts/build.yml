@@ -2,7 +2,7 @@
 image: docker:///cloudfoundry/inigo-ci
 
 params:
-  GINKGO_PARALLEL: "GINKGO_PARALLEL_PLACEHOLDER"
+  GINKGO_PARALLEL:
   DEFAULT_EVENTUALLY_TIMEOUT:
   INIGO_REPEAT_COUNT: 1
   USE_TMPFS: true

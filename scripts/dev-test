@@ -25,13 +25,10 @@ BUILD_DIR=${BUILD_DIR:-/tmp/inigo}
 SCRIPTS_DIR=$(cd $(dirname $0) && pwd)
 mkdir -p ${BUILD_DIR}
 
-for build_file in .drone.yml build.yml; do
-  cat $SCRIPTS_DIR/$build_file | \
-    sed "s/GINKGO_PARALLEL_PLACEHOLDER/${GINKGO_PARALLEL}/" > \
-    ${BUILD_DIR}/$build_file
-done
-
 pushd $BUILD_DIR
+
+  $SCRIPTS_DIR/create_drone_yml $SCRIPTS_DIR/drone.yml.template .drone.yml
+  cp $SCRIPTS_DIR/build.yml build.yml
 
   # If godep is available, use it to gather up the versions of our
   # repos' dependencies that exist on our GOPATH. Otherwise, use
