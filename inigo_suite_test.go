@@ -105,8 +105,9 @@ func TestInigo(t *testing.T) {
 
 	SynchronizedBeforeSuite(func() []byte {
 		payload, err := json.Marshal(world.BuiltArtifacts{
-			Executables: CompileTestedExecutables(),
-			Circuses:    CompileAndZipUpCircuses(),
+			Executables:  CompileTestedExecutables(),
+			Circuses:     CompileAndZipUpCircuses(),
+			DockerCircus: CompileAndZipUpDockerCircus(),
 		})
 		Ω(err).ShouldNot(HaveOccurred())
 
@@ -282,4 +283,36 @@ func CompileAndZipUpCircuses() world.BuiltCircuses {
 	builtCircuses[StackName] = filepath.Join(circusDir, "circus.zip")
 
 	return builtCircuses
+}
+
+func CompileAndZipUpDockerCircus() string {
+	tailorPath, err := gexec.BuildIn(os.Getenv("DOCKER_CIRCUS_GOPATH"), "github.com/cloudfoundry-incubator/docker-circus/tailor", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	spyPath, err := gexec.BuildIn(os.Getenv("DOCKER_CIRCUS_GOPATH"), "github.com/cloudfoundry-incubator/docker-circus/spy", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	soldierPath, err := gexec.BuildIn(os.Getenv("DOCKER_CIRCUS_GOPATH"), "github.com/cloudfoundry-incubator/docker-circus/soldier", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	circusDir, err := ioutil.TempDir("", "circus-dir")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	err = os.Rename(tailorPath, filepath.Join(circusDir, "tailor"))
+	Ω(err).ShouldNot(HaveOccurred())
+
+	err = os.Rename(spyPath, filepath.Join(circusDir, "spy"))
+	Ω(err).ShouldNot(HaveOccurred())
+
+	err = os.Rename(soldierPath, filepath.Join(circusDir, "soldier"))
+	Ω(err).ShouldNot(HaveOccurred())
+
+	cmd := exec.Command("zip", "-v", "docker-circus.zip", "tailor", "soldier", "spy")
+	cmd.Stderr = GinkgoWriter
+	cmd.Stdout = GinkgoWriter
+	cmd.Dir = circusDir
+	err = cmd.Run()
+	Ω(err).ShouldNot(HaveOccurred())
+
+	return filepath.Join(circusDir, "docker-circus.zip")
 }

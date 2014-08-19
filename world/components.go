@@ -25,11 +25,13 @@ import (
 type BuiltExecutables map[string]string
 type BuiltCircuses map[string]string
 
-const CircusZipFilename = "some-circus.tgz"
+const CircusFilename = "some-circus.zip"
+const DockerCircusFilename = "docker-circus.zip"
 
 type BuiltArtifacts struct {
-	Executables BuiltExecutables
-	Circuses    BuiltCircuses
+	Executables  BuiltExecutables
+	Circuses     BuiltCircuses
+	DockerCircus string
 }
 
 type ComponentAddresses struct {
@@ -266,8 +268,8 @@ func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 				"-etcdCluster", "http://" + maker.Addresses.Etcd,
 				"-natsAddresses", maker.Addresses.NATS,
 				"-repAddrRelativeToExecutor", maker.Addresses.Rep,
-				"-circuses", fmt.Sprintf(`{"%s": "%s"}`, maker.Stack, CircusZipFilename),
-				"-dockerCircusPath", "/the-docker/circus-path.tgz",
+				"-circuses", fmt.Sprintf(`{"%s": "%s"}`, maker.Stack, CircusFilename),
+				"-dockerCircusPath", DockerCircusFilename,
 			}, argv...)...,
 		),
 	}
@@ -430,7 +432,7 @@ func (maker ComponentMaker) Stager(argv ...string) ifrit.Runner {
 			append([]string{
 				"-etcdCluster", "http://" + maker.Addresses.Etcd,
 				"-natsAddresses", maker.Addresses.NATS,
-				"-circuses", fmt.Sprintf(`{"%s": "%s"}`, maker.Stack, CircusZipFilename),
+				"-circuses", fmt.Sprintf(`{"%s": "%s"}`, maker.Stack, CircusFilename),
 			}, argv...)...,
 		),
 	}

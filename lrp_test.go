@@ -124,6 +124,11 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 						models.ExecutorAction{
 							models.RunAction{
 								Path: "/dockerapp",
+
+								// app expects $VCAP_APPLICATION
+								Env: []models.EnvironmentVariable{
+									{Name: "VCAP_APPLICATION", Value: `{"instance_index":0}`},
+								},
 							},
 						},
 						models.ExecutorAction{
@@ -168,8 +173,8 @@ func HelloWorld() error {
 	if statusCode != http.StatusOK {
 		return fmt.Errorf("Status code %d should be 200", statusCode)
 	}
-	if string(body) != "Hello World\n" {
-		return fmt.Errorf("Body Contains '%s' instead of 'Hello World'", string(body))
+	if string(body) != "0" {
+		return fmt.Errorf("Body Contains '%s' instead of '0'", string(body))
 	}
 	return nil
 }

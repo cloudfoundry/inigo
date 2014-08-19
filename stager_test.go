@@ -100,7 +100,7 @@ var _ = Describe("Stager", func() {
 
 			cp(
 				componentMaker.Artifacts.Circuses[componentMaker.Stack],
-				filepath.Join(fileServerStaticDir, world.CircusZipFilename),
+				filepath.Join(fileServerStaticDir, world.CircusFilename),
 			)
 
 			//make and upload an app

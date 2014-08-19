@@ -58,7 +58,7 @@ var _ = Describe("LRP Consistency", func() {
 
 		cp(
 			componentMaker.Artifacts.Circuses[componentMaker.Stack],
-			filepath.Join(fileServerStaticDir, world.CircusZipFilename),
+			filepath.Join(fileServerStaticDir, world.CircusFilename),
 		)
 	})
 

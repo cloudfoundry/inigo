@@ -71,7 +71,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 		cp(
 			componentMaker.Artifacts.Circuses[componentMaker.Stack],
-			filepath.Join(fileServerStaticDir, world.CircusZipFilename),
+			filepath.Join(fileServerStaticDir, world.CircusFilename),
 		)
 
 		appId = factories.GenerateGuid()
