@@ -148,7 +148,7 @@ var _ = Describe("AppRunner", func() {
 			)
 
 			// publish the app run message
-			err := natsClient.Publish("diego.desire.app", runningMessage)
+			err := natsClient.Publish("diego.docker.desire.app", runningMessage)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// check lrp instance statuses
