@@ -56,6 +56,10 @@ func (f *FakeCC) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	return err
 }
 
+func (f *FakeCC) Address() string {
+	return "http://" + f.address
+}
+
 func (f *FakeCC) Username() string {
 	return CC_USERNAME
 }
