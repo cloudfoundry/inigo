@@ -15,6 +15,7 @@ import (
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pivotal-golang/lager/ginkgoreporter"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
@@ -175,7 +176,9 @@ func TestInigo(t *testing.T) {
 		fmt.Fprintf(GinkgoWriter, "\n%s\n%s\n\n", strings.Repeat("~", 50), currentTestDescription.FullTestText)
 	})
 
-	RunSpecs(t, "Inigo Integration Suite")
+	RunSpecsWithDefaultAndCustomReporters(t, "Inigo Integration Suite", []Reporter{
+		ginkgoreporter.New(GinkgoWriter),
+	})
 }
 
 func registerDefaultTimeouts() {

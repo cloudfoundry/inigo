@@ -1,18 +1,18 @@
 {
 	"ImportPath": "github.com/cloudfoundry-incubator/inigo",
-	"GoVersion": "go1.3",
+	"GoVersion": "go1.3.1",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
 		{
 			"ImportPath": "code.google.com/p/gogoprotobuf/proto",
-			"Rev": "192f37e7ccf753f5963f9bfc63d93b6494e8f141"
+			"Rev": "d228c1a206c3a756d7ec6cc3579d92d00c35a161"
 		},
 		{
 			"ImportPath": "code.google.com/p/goprotobuf/proto",
-			"Comment": "go.r60-150",
-			"Rev": "74b407a42099a47c7cf14dc526472d991ecbd1a3"
+			"Comment": "go.r60-152",
+			"Rev": "36be16571e14f67e114bb0af619e5de2c1591679"
 		},
 		{
 			"ImportPath": "github.com/bmizerany/pat",
@@ -20,7 +20,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/candiedyaml",
-			"Rev": "9d6da703654a1d6897de218799c1ff4eccf49b85"
+			"Rev": "64a15c83a0d6a2580cc3971d5f821e36f849a604"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/delta_force/delta_force",
@@ -28,52 +28,56 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/client",
-			"Comment": "go-wshd-592-g769eaa8",
-			"Rev": "769eaa8c8888dc993f2d4a8f146fce2a7afdd65f"
+			"Comment": "go-wshd-602-g14c2119",
+			"Rev": "14c2119a5cf4ec1ff3025a8398b68bd4cc21a5d5"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/protocol",
-			"Comment": "go-wshd-592-g769eaa8",
-			"Rev": "769eaa8c8888dc993f2d4a8f146fce2a7afdd65f"
+			"Comment": "go-wshd-602-g14c2119",
+			"Rev": "14c2119a5cf4ec1ff3025a8398b68bd4cc21a5d5"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/routes",
-			"Comment": "go-wshd-592-g769eaa8",
-			"Rev": "769eaa8c8888dc993f2d4a8f146fce2a7afdd65f"
+			"Comment": "go-wshd-602-g14c2119",
+			"Rev": "14c2119a5cf4ec1ff3025a8398b68bd4cc21a5d5"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/transport",
-			"Comment": "go-wshd-592-g769eaa8",
-			"Rev": "769eaa8c8888dc993f2d4a8f146fce2a7afdd65f"
+			"Comment": "go-wshd-602-g14c2119",
+			"Rev": "14c2119a5cf4ec1ff3025a8398b68bd4cc21a5d5"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/warden",
-			"Comment": "go-wshd-592-g769eaa8",
-			"Rev": "769eaa8c8888dc993f2d4a8f146fce2a7afdd65f"
+			"Comment": "go-wshd-602-g14c2119",
+			"Rev": "14c2119a5cf4ec1ff3025a8398b68bd4cc21a5d5"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "b30103f18c98748a527aba9370a070bdcd4ac51b"
+			"Rev": "290ca505f2ecc164ba4651b1878a4676537544ee"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/heartbeater",
+			"Rev": "290ca505f2ecc164ba4651b1878a4676537544ee"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "b30103f18c98748a527aba9370a070bdcd4ac51b"
+			"Rev": "290ca505f2ecc164ba4651b1878a4676537544ee"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/tps/api",
-			"Rev": "47c2d088c629dea679b6eddc83c7311e721a0928"
+			"Rev": "b1b522898b0d50d1844b53b01606900acf676ca0"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",
-			"Rev": "4f6125131d4ad55c1f732f599a3c45d99dda3b1c"
+			"Rev": "bec638793529e573de256c70c54072a7ad16d59f"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gorouter/common",
-			"Rev": "64d2d54ca558fd3e58a2e9bc2db501246276199b"
+			"Rev": "09751babee2a9364730fd8fedfa096b335ba7430"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gorouter/config",
-			"Rev": "64d2d54ca558fd3e58a2e9bc2db501246276199b"
+			"Rev": "09751babee2a9364730fd8fedfa096b335ba7430"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -82,32 +86,32 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/test_server",
-			"Rev": "2bb7ab04e15bdae68f68e4aa7ef79b43a371e088"
+			"Rev": "d3d2d94e738fb19b5ae6504be161fd0eacc3f22d"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/timeprovider",
-			"Rev": "2bb7ab04e15bdae68f68e4aa7ef79b43a371e088"
+			"Rev": "d3d2d94e738fb19b5ae6504be161fd0eacc3f22d"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/loggregatorlib/logmessage",
-			"Rev": "74a795a011194a889b82a082f342233bbf192e7a"
+			"Rev": "b8f5328b834053bf1f29afa2984265ff6867863e"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/loggregatorlib/signature",
-			"Rev": "74a795a011194a889b82a082f342233bbf192e7a"
+			"Rev": "b8f5328b834053bf1f29afa2984265ff6867863e"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/storeadapter",
-			"Rev": "a697022fe6e9677a6bb5eae8544de042ba0d7365"
+			"Rev": "652efe1a1fcf3fdb5b08d7474594eb250be6009c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/yagnats",
-			"Rev": "8e98f972ab3eabfb6d44065cd0b30f170d3db794"
+			"Rev": "07171a8863c377fb14a44dee402dff9e1282bc49"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-etcd/etcd",
-			"Comment": "v0.2.0-rc1-114-g7745cfd",
-			"Rev": "7745cfd7f8e619cc9e6be450238e6253a57a227f"
+			"Comment": "v0.2.0-rc1-120-g23142f6",
+			"Rev": "23142f6773a676cc2cae8dd0cb90b2ea761c853f"
 		},
 		{
 			"ImportPath": "github.com/fraenkel/candiedyaml",
@@ -115,7 +119,7 @@
 		},
 		{
 			"ImportPath": "github.com/gorilla/websocket",
-			"Rev": "bda3d7d128858cbd3902a0f46e1ff31629e84895"
+			"Rev": "4292df70df546334d4174bcd77271253c9b7835c"
 		},
 		{
 			"ImportPath": "github.com/nu7hatch/gouuid",
@@ -123,8 +127,8 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Comment": "v1.1.0",
-			"Rev": "aa7870df5380d9da6904a29ba19e208694e0d0c1"
+			"Comment": "v1.1.0-3-gd79a7e7",
+			"Rev": "d79a7e77e6d3738a0e83e9f6564a1aa1dfcbfeaa"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
@@ -137,11 +141,11 @@
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/lager",
-			"Rev": "a004360d09b571b9479b56638e60a0a6b26d5b21"
+			"Rev": "24bc7249ba26ad2f1493363b9dcedf86023f47d7"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
-			"Rev": "af08fa508af584a5dcce105e889a21ab44181351"
+			"Rev": "82dbb8f9b53dba16c9d5c3e0c74fa581d65f8579"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/rata",

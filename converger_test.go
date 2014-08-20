@@ -112,7 +112,7 @@ var _ = Describe("Convergence to desired state", func() {
 					err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
 					Ω(err).ShouldNot(HaveOccurred())
 
-					Eventually(runningLRPsPoller).Should(HaveLen(1))
+					Eventually(runningLRPsPoller).Should(HaveLen(2))
 					Eventually(helloWorldInstancePoller).Should(Equal([]string{"0", "1"}))
 				})
 
@@ -130,7 +130,7 @@ var _ = Describe("Convergence to desired state", func() {
 						})
 
 						It("eventually brings the long-running process up", func() {
-							Eventually(runningLRPsPoller).Should(HaveLen(1))
+							Eventually(runningLRPsPoller).Should(HaveLen(2))
 							Eventually(helloWorldInstancePoller).Should(Equal([]string{"0", "1"}))
 						})
 					})
