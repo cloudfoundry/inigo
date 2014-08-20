@@ -3,7 +3,6 @@ package inigo_test
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -158,8 +157,8 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 			})
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid), 5*time.Minute).Should(HaveLen(1))
-			Eventually(HelloWorld, DEFAULT_EVENTUALLY_TIMEOUT).ShouldNot(HaveOccurred())
+			Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid), DOCKER_PULL_ESTIMATE).Should(HaveLen(1))
+			Eventually(HelloWorld).ShouldNot(HaveOccurred())
 			Ω(<-execRunner.BufferChan).ShouldNot(gbytes.Say("destroying-container-after-failed-init"))
 		})
 	})

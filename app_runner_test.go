@@ -152,7 +152,7 @@ var _ = Describe("AppRunner", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// check lrp instance statuses
-			Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, "process-guid")).Should(HaveLen(2))
+			Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, "process-guid"), DOCKER_PULL_ESTIMATE).Should(HaveLen(2))
 
 			//both routes should be routable
 			Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-1")).Should(Equal(http.StatusOK))

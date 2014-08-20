@@ -37,6 +37,9 @@ var DEFAULT_CONSISTENTLY_DURATION = 5 * time.Second
 var SHORT_TIMEOUT = 5 * time.Second
 var LONG_TIMEOUT = 15 * time.Second
 
+// use this for tests exercising docker; pulling can take a while
+const DOCKER_PULL_ESTIMATE = 5 * time.Minute
+
 const StackName = "lucid64"
 
 var builtArtifacts world.BuiltArtifacts
