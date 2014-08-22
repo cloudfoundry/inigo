@@ -194,6 +194,7 @@ func (maker ComponentMaker) Converger(argv ...string) ifrit.Runner {
 			maker.Artifacts.Executables["converger"],
 			append([]string{
 				"-etcdCluster", "http://" + maker.Addresses.Etcd,
+				"-heartbeatInterval", "1s",
 			}, argv...)...,
 		),
 	}
