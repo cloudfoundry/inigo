@@ -71,6 +71,8 @@ type LoggregatorConfig struct {
 
 	NatsHost string
 	NatsPort int
+
+	InactivityDurationInMilliseconds int
 }
 
 func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
@@ -392,6 +394,7 @@ func (maker ComponentMaker) Loggregator() ifrit.Runner {
 		SharedSecret:               "loggregator-secret",
 		NatsHost:                   natsHost,
 		NatsPort:                   natsPortInt,
+		InactivityDurationInMilliseconds: int((1 * time.Hour).Seconds()) * 1000,
 	}
 
 	configFile, err := ioutil.TempFile(os.TempDir(), "loggregator-config")
