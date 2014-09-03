@@ -65,7 +65,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/tps/api",
-			"Rev": "e8c6f642acc9272190d2a41f5b1a6f717ec8d41a"
+			"Rev": "de4c325187978187868d1a40f9bc46f9f79ee9a1"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",
