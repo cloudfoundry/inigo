@@ -17,7 +17,6 @@ import (
 	"github.com/fraenkel/candiedyaml"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
@@ -79,7 +78,7 @@ func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
 	host, port, err := net.SplitHostPort(maker.Addresses.NATS)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	return &ginkgomon.Runner{
+	return ginkgomon.New(ginkgomon.Config{
 		Name:              "gnatsd",
 		AnsiColorCode:     "30m",
 		StartCheck:        "gnatsd is ready",
@@ -91,14 +90,14 @@ func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
 				"--port", port,
 			}, argv...)...,
 		),
-	}
+	})
 }
 
 func (maker ComponentMaker) Etcd(argv ...string) ifrit.Runner {
 	nodeName := fmt.Sprintf("etcd_%d", ginkgo.GinkgoParallelNode())
 	dataDir := path.Join(os.TempDir(), nodeName)
 
-	return &ginkgomon.Runner{
+	return ginkgomon.New(ginkgomon.Config{
 		Name:              "etcd",
 		AnsiColorCode:     "31m",
 		StartCheck:        "leader changed",
@@ -116,7 +115,7 @@ func (maker ComponentMaker) Etcd(argv ...string) ifrit.Runner {
 			err := os.RemoveAll(dataDir)
 			Ω(err).ShouldNot(HaveOccurred())
 		},
-	}
+	})
 }
 
 func (maker ComponentMaker) WardenLinux(argv ...string) *wardenrunner.Runner {
@@ -135,13 +134,12 @@ func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
 	tmpPath := path.Join(os.TempDir(), fmt.Sprintf("executor_%d", ginkgo.GinkgoParallelNode()))
 	cachePath := path.Join(tmpPath, "cache")
 
-	return &ginkgomon.Runner{
+	return ginkgomon.New(ginkgomon.Config{
 		Name:          "executor",
 		AnsiColorCode: "91m",
 		StartCheck:    "executor.started",
 		// executor may destroy containers on start, which can take a bit
 		StartCheckTimeout: 30 * time.Second,
-		BufferChan:        make(chan *gbytes.Buffer),
 		Command: exec.Command(
 			maker.Artifacts.Executables["exec"],
 			append([]string{
@@ -155,11 +153,11 @@ func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
 				"-tempDir", tmpPath,
 			}, argv...)...,
 		),
-	}
+	})
 }
 
 func (maker ComponentMaker) Rep(argv ...string) ifrit.Runner {
-	return &ginkgomon.Runner{
+	return ginkgomon.New(ginkgomon.Config{
 		Name:          "rep",
 		AnsiColorCode: "92m",
 		StartCheck:    "rep.started",
@@ -182,11 +180,11 @@ func (maker ComponentMaker) Rep(argv ...string) ifrit.Runner {
 				argv...,
 			)...,
 		),
-	}
+	})
 }
 
 func (maker ComponentMaker) Converger(argv ...string) ifrit.Runner {
-	return &ginkgomon.Runner{
+	return ginkgomon.New(ginkgomon.Config{
 		Name:              "converger",
 		AnsiColorCode:     "93m",
 		StartCheck:        "converger.started",
@@ -199,11 +197,11 @@ func (maker ComponentMaker) Converger(argv ...string) ifrit.Runner {
 				"-heartbeatInterval", "1s",
 			}, argv...)...,
 		),
-	}
+	})
 }
 
 func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
-	return &ginkgomon.Runner{
+	return ginkgomon.New(ginkgomon.Config{
 		Name:              "auctioneer",
 		AnsiColorCode:     "94m",
 		StartCheck:        "auctioneer.started",
@@ -223,11 +221,11 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 				"-maxRounds", "3",
 			}, argv...)...,
 		),
-	}
+	})
 }
 
 func (maker ComponentMaker) RouteEmitter(argv ...string) ifrit.Runner {
-	return &ginkgomon.Runner{
+	return ginkgomon.New(ginkgomon.Config{
 		Name:              "route-emitter",
 		AnsiColorCode:     "95m",
 		StartCheck:        "route-emitter.started",
@@ -239,11 +237,11 @@ func (maker ComponentMaker) RouteEmitter(argv ...string) ifrit.Runner {
 				"-natsAddresses", maker.Addresses.NATS,
 			}, argv...)...,
 		),
-	}
+	})
 }
 
 func (maker ComponentMaker) TPS(argv ...string) ifrit.Runner {
-	return &ginkgomon.Runner{
+	return ginkgomon.New(ginkgomon.Config{
 		Name:              "tps",
 		AnsiColorCode:     "96m",
 		StartCheck:        "tps.started",
@@ -256,11 +254,11 @@ func (maker ComponentMaker) TPS(argv ...string) ifrit.Runner {
 				"-listenAddr", maker.Addresses.TPS,
 			}, argv...)...,
 		),
-	}
+	})
 }
 
 func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
-	return &ginkgomon.Runner{
+	return ginkgomon.New(ginkgomon.Config{
 		Name:              "nsync-listener",
 		AnsiColorCode:     "97m",
 		StartCheck:        "nsync.listener.started",
@@ -275,7 +273,7 @@ func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 				"-dockerCircusPath", DockerCircusFilename,
 			}, argv...)...,
 		),
-	}
+	})
 }
 
 func (maker ComponentMaker) FileServer(argv ...string) (ifrit.Runner, string) {
@@ -285,7 +283,7 @@ func (maker ComponentMaker) FileServer(argv ...string) (ifrit.Runner, string) {
 	host, port, err := net.SplitHostPort(maker.Addresses.FileServer)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	return &ginkgomon.Runner{
+	return ginkgomon.New(ginkgomon.Config{
 		Name:              "file-server",
 		AnsiColorCode:     "90m",
 		StartCheck:        "file-server.ready",
@@ -307,7 +305,7 @@ func (maker ComponentMaker) FileServer(argv ...string) (ifrit.Runner, string) {
 			err := os.RemoveAll(servedFilesDir)
 			Ω(err).ShouldNot(HaveOccurred())
 		},
-	}, servedFilesDir
+	}), servedFilesDir
 }
 
 func (maker ComponentMaker) Router() ifrit.Runner {
@@ -351,7 +349,7 @@ func (maker ComponentMaker) Router() ifrit.Runner {
 	err = candiedyaml.NewEncoder(configFile).Encode(routerConfig)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	return &ginkgomon.Runner{
+	return ginkgomon.New(ginkgomon.Config{
 		Name:              "router",
 		AnsiColorCode:     "32m",
 		StartCheck:        "router.started",
@@ -364,7 +362,7 @@ func (maker ComponentMaker) Router() ifrit.Runner {
 			err := os.Remove(configFile.Name())
 			Ω(err).ShouldNot(HaveOccurred())
 		},
-	}
+	})
 }
 
 func (maker ComponentMaker) Loggregator() ifrit.Runner {
@@ -405,7 +403,7 @@ func (maker ComponentMaker) Loggregator() ifrit.Runner {
 	err = json.NewEncoder(configFile).Encode(loggregatorConfig)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	return &ginkgomon.Runner{
+	return ginkgomon.New(ginkgomon.Config{
 		Name:              "loggregator",
 		AnsiColorCode:     "33m",
 		StartCheck:        "Listening on port",
@@ -418,7 +416,7 @@ func (maker ComponentMaker) Loggregator() ifrit.Runner {
 			err := os.Remove(configFile.Name())
 			Ω(err).ShouldNot(HaveOccurred())
 		},
-	}
+	})
 }
 
 func (maker ComponentMaker) FakeCC() *fake_cc.FakeCC {
@@ -426,7 +424,7 @@ func (maker ComponentMaker) FakeCC() *fake_cc.FakeCC {
 }
 
 func (maker ComponentMaker) Stager(argv ...string) ifrit.Runner {
-	return &ginkgomon.Runner{
+	return ginkgomon.New(ginkgomon.Config{
 		Name:              "stager",
 		AnsiColorCode:     "94m",
 		StartCheck:        "Listening for staging requests!",
@@ -439,5 +437,5 @@ func (maker ComponentMaker) Stager(argv ...string) ifrit.Runner {
 				"-circuses", fmt.Sprintf(`{"%s": "%s"}`, maker.Stack, CircusFilename),
 			}, argv...)...,
 		),
-	}
+	})
 }

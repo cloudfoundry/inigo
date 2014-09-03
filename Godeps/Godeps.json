@@ -65,11 +65,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/tps/api",
-			"Rev": "a328f032e803e359a49af78608f8ee7388ac8310"
+			"Rev": "e8c6f642acc9272190d2a41f5b1a6f717ec8d41a"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",
-			"Rev": "1048f2436dadd801e2eaf8d8a8f83c88fb839905"
+			"Rev": "ddc1fb07404470099a0fab22ee79a211d755d965"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gorouter/common",
@@ -86,11 +86,11 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/test_server",
-			"Rev": "d3d2d94e738fb19b5ae6504be161fd0eacc3f22d"
+			"Rev": "48b03ff5d4d966a0954af043646abe60a04f6934"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gunk/timeprovider",
-			"Rev": "d3d2d94e738fb19b5ae6504be161fd0eacc3f22d"
+			"Rev": "48b03ff5d4d966a0954af043646abe60a04f6934"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/loggregatorlib/logmessage",
@@ -145,7 +145,7 @@
 		},
 		{
 			"ImportPath": "github.com/tedsuo/ifrit",
-			"Rev": "0addc90d7dcebcf87ef0fc89240c58bd1c475d8f"
+			"Rev": "8084b96f4d9e395019d2208322e062bbf3046378"
 		},
 		{
 			"ImportPath": "github.com/tedsuo/rata",
