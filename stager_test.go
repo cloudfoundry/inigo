@@ -182,7 +182,7 @@ EOF
 		})
 
 		Context("with one stager running", func() {
-			It("runs the compiler on the executor with the correct environment variables, bits and log tag, and responds with the detected buildpack", func() {
+			FIt("runs the compiler on the executor with the correct environment variables, bits and log tag, and responds with the detected buildpack", func() {
 				//listen for NATS response
 				payloads := make(chan []byte)
 
@@ -382,6 +382,109 @@ EOF
 				Consistently(received, 10).ShouldNot(Receive())
 			})
 		})
+	})
+	FDescribe("Staging Docker", func() {
+		var stagingMessage []byte
+		var dockerImage = "docker:///cloudfoundry/inigodockertest"
+
+		BeforeEach(func() {
+			cp(
+				componentMaker.Artifacts.DockerCircus,
+				filepath.Join(fileServerStaticDir, world.DockerCircusFilename),
+			)
+		})
+
+		JustBeforeEach(func() {
+			stagingMessage = []byte(
+				fmt.Sprintf(
+					`{
+						"app_id": "%s",
+						"task_id": "%s",
+						"memory_mb": 128,
+						"disk_mb": 128,
+						"docker_image": "%s",
+						"file_descriptors": 1024,
+						"stack": "lucid64"
+					}`,
+					appId,
+					taskId,
+					dockerImage,
+				),
+			)
+		})
+		Context("with one stager running", func() {
+			It("runs the metadata extraction on the executor and responds with the detected start command", func() {
+				//listen for NATS response
+				payloads := make(chan []byte)
+
+				sid, err := natsClient.Subscribe("diego.docker.staging.finished", func(msg *yagnats.Message) {
+					payloads <- msg.Payload
+				})
+				Ω(err).ShouldNot(HaveOccurred())
+
+				defer natsClient.Unsubscribe(sid)
+
+				//stream logs
+				logOutput := gbytes.NewBuffer()
+
+				stop := loggredile.StreamIntoGBuffer(
+					componentMaker.Addresses.LoggregatorOut,
+					fmt.Sprintf("/tail/?app=%s", appId),
+					"STG",
+					logOutput,
+					logOutput,
+				)
+				defer close(stop)
+
+				//publish the staging message
+				err = natsClient.Publish("diego.docker.staging.start", stagingMessage)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				//wait for staging to complete
+				var payload []byte
+				Eventually(payloads).Should(Receive(&payload))
+
+				//Assert on the staging output (detected buildpack)
+				Ω(string(payload)).Should(MatchJSON(fmt.Sprintf(`{
+						"app_id": "%s",
+						"task_id": "%s",
+						"detected_start_command": "{\"cmd\":[\"/dockerapp\"]}"
+					}`, appId, taskId)))
+
+			})
+		})
+		Context("with two stagers running", func() {
+			var otherStager ifrit.Process
+
+			BeforeEach(func() {
+				otherStager = ifrit.Envoke(componentMaker.Stager())
+			})
+
+			AfterEach(func() {
+				helpers.StopProcess(otherStager)
+			})
+
+			It("only one returns a staging completed response", func() {
+				received := make(chan bool)
+
+				sid, err := natsClient.Subscribe("diego.docker.staging.finished", func(message *yagnats.Message) {
+					received <- true
+				})
+				Ω(err).ShouldNot(HaveOccurred())
+
+				defer natsClient.Unsubscribe(sid)
+
+				err = natsClient.Publish(
+					"diego.docker.staging.start",
+					stagingMessage,
+				)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Eventually(received).Should(Receive())
+				Consistently(received, 10).ShouldNot(Receive())
+			})
+		})
+
 	})
 })
 
