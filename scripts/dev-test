@@ -59,7 +59,7 @@ pushd $BUILD_DIR
 
   wait
 
-  if [ -n "$INIGO_CONCOURSE" ]; then
+  if which fly; then
     fly -- bogus-argv-0 "$@"
   else
     drone -privileged build
