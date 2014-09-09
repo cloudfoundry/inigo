@@ -59,7 +59,7 @@ pushd $BUILD_DIR
 
   wait
 
-  if [ -n "$GLIDER_URL" ]; then
+  if [ -n "$INIGO_CONCOURSE" ]; then
     fly -- bogus-argv-0 "$@"
   else
     drone -privileged build
