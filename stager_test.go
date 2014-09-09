@@ -132,7 +132,7 @@ touch $2/inserted-into-artifacts-cache
 cat <<EOF
 ---
 default_process_types:
-  web: start-command
+  web: the-start-command
 EOF
 				`},
 			}
@@ -219,7 +219,7 @@ EOF
 					"task_id": "%s",
 					"buildpack_key":"test-buildpack-key",
 					"detected_buildpack":"My Buildpack",
-					"detected_start_command":"start-command"
+					"execution_metadata":"{\"start_command\":\"the-start-command\"}"
 				}`, appId, taskId)))
 
 				//Asser the user saw reasonable output
@@ -300,7 +300,7 @@ EOF
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(stagingInfo["detected_buildpack"]).Should(Equal("My Buildpack"))
-				Ω(stagingInfo["start_command"]).Should(Equal("start-command"))
+				Ω(stagingInfo["start_command"]).Should(Equal("the-start-command"))
 
 				//Assert nothing else crept into the droplet
 				Ω(dropletContents).Should(HaveLen(7))
