@@ -20,7 +20,7 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/candiedyaml",
-			"Rev": "968e922e9557c432350b462028d611ce465fc75a"
+			"Rev": "f1eaf927056e1b069eae3c47444f4b420b238277"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/delta_force/delta_force",
@@ -53,19 +53,19 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "a9a3fc068132d884988ddbd47743c4825121360b"
+			"Rev": "659b02a538550b0f02b346ad3ff6418be8b8bc0f"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/heartbeater",
-			"Rev": "a9a3fc068132d884988ddbd47743c4825121360b"
+			"Rev": "659b02a538550b0f02b346ad3ff6418be8b8bc0f"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "a9a3fc068132d884988ddbd47743c4825121360b"
+			"Rev": "659b02a538550b0f02b346ad3ff6418be8b8bc0f"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/tps/api",
-			"Rev": "d4de33f40abac27bbecd2bca1471fd1418c5cacb"
+			"Rev": "5509131454f56455e48dd698b1983f31d1956c52"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",
