@@ -182,7 +182,7 @@ EOF
 		})
 
 		Context("with one stager running", func() {
-			FIt("runs the compiler on the executor with the correct environment variables, bits and log tag, and responds with the detected buildpack", func() {
+			It("runs the compiler on the executor with the correct environment variables, bits and log tag, and responds with the detected buildpack", func() {
 				//listen for NATS response
 				payloads := make(chan []byte)
 
@@ -383,7 +383,7 @@ EOF
 			})
 		})
 	})
-	FDescribe("Staging Docker", func() {
+	Describe("Staging Docker", func() {
 		var stagingMessage []byte
 		var dockerImage = "docker:///cloudfoundry/inigodockertest"
 
@@ -413,7 +413,7 @@ EOF
 			)
 		})
 		Context("with one stager running", func() {
-			It("runs the metadata extraction on the executor and responds with the detected start command", func() {
+			It("runs the metadata extracted on the executor and responds with the execution metadata", func() {
 				//listen for NATS response
 				payloads := make(chan []byte)
 
@@ -448,11 +448,12 @@ EOF
 				Ω(string(payload)).Should(MatchJSON(fmt.Sprintf(`{
 						"app_id": "%s",
 						"task_id": "%s",
-						"detected_start_command": "{\"cmd\":[\"/dockerapp\"]}"
+						"execution_metadata": "{\"cmd\":[\"/dockerapp\"]}"
 					}`, appId, taskId)))
 
 			})
 		})
+
 		Context("with two stagers running", func() {
 			var otherStager ifrit.Process
 
