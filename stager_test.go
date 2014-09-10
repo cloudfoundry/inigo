@@ -339,6 +339,9 @@ EOF
 					Eventually(payloads).Should(Receive(&payload))
 					Ω(string(payload)).Should(MatchJSON(fmt.Sprintf(`{
 						"app_id":"%s",
+						"buildpack_key": "",
+						"detected_buildpack": "",
+						"execution_metadata": "",
 						"task_id":"%s",
 						"error":"Exited with status 1"
 					}`, appId, taskId)))
