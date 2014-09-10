@@ -15,7 +15,7 @@ REPOS="
   github.com/cloudfoundry-incubator/file-server
   github.com/cloudfoundry-incubator/linux-circus
   github.com/cloudfoundry-incubator/docker-circus
-  github.com/cloudfoundry-incubator/warden-linux
+  github.com/cloudfoundry-incubator/garden-linux
   github.com/cloudfoundry-incubator/tps
 "
 

@@ -27,6 +27,10 @@
 			"Rev": "8300c5546d32d8533295f666c1cd0941113fd7bb"
 		},
 		{
+			"ImportPath": "github.com/cloudfoundry-incubator/garden-linux/integration/runner",
+			"Rev": "2ed50159f2ba32b3e1cedcb8761ef443739bd796"
+		},
+		{
 			"ImportPath": "github.com/cloudfoundry-incubator/garden/client",
 			"Comment": "go-wshd-607-g40d9849",
 			"Rev": "40d984940cfc36e6d552dc2985c4e7350881b059"
@@ -53,31 +57,27 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/bbs",
-			"Rev": "659b02a538550b0f02b346ad3ff6418be8b8bc0f"
+			"Rev": "0c0b066206f07e8a375dede2f5d031a8fb4e1661"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/heartbeater",
-			"Rev": "659b02a538550b0f02b346ad3ff6418be8b8bc0f"
+			"Rev": "0c0b066206f07e8a375dede2f5d031a8fb4e1661"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/runtime-schema/models",
-			"Rev": "659b02a538550b0f02b346ad3ff6418be8b8bc0f"
+			"Rev": "0c0b066206f07e8a375dede2f5d031a8fb4e1661"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry-incubator/tps/api",
 			"Rev": "5509131454f56455e48dd698b1983f31d1956c52"
 		},
 		{
-			"ImportPath": "github.com/cloudfoundry-incubator/warden-linux/integration/runner",
-			"Rev": "8dc1280b5654f15ef7119961cc456c1164ae7d2f"
-		},
-		{
 			"ImportPath": "github.com/cloudfoundry/gorouter/common",
-			"Rev": "96a7240d9c4247930e00155e08d0f1a11390a460"
+			"Rev": "250c714b74c1bce271f64b9f82e211cebbba0fbf"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gorouter/config",
-			"Rev": "96a7240d9c4247930e00155e08d0f1a11390a460"
+			"Rev": "250c714b74c1bce271f64b9f82e211cebbba0fbf"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gosteno",
@@ -132,8 +132,8 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Comment": "v1.0-4-gc9914be",
-			"Rev": "c9914bed6a0c5fd914a6d3ca57c59c5935a5cfd0"
+			"Comment": "v1.0-6-g1224b95",
+			"Rev": "1224b954d632bccc9b85d92362809f7774d2f8c4"
 		},
 		{
 			"ImportPath": "github.com/pivotal-golang/archiver/extractor/test_helper",

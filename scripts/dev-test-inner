@@ -23,7 +23,7 @@ export REP_GOPATH=${GOPATH_ROOT}:${GOPATH_ROOT}/src/github.com/cloudfoundry-incu
 export ROUTE_EMITTER_GOPATH=${GOPATH_ROOT}:${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/route-emitter/Godeps/_workspace
 export STAGER_GOPATH=${GOPATH_ROOT}:${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/stager/Godeps/_workspace
 export TPS_GOPATH=${GOPATH_ROOT}:${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/tps/Godeps/_workspace
-export WARDEN_LINUX_GOPATH=${GOPATH_ROOT}:${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/warden-linux/Godeps/_workspace
+export WARDEN_LINUX_GOPATH=${GOPATH_ROOT}:${GOPATH_ROOT}/src/github.com/cloudfoundry-incubator/garden-linux/Godeps/_workspace
 
 # install application dependencies
 for package in github.com/coreos/etcd github.com/apcera/gnatsd; do

@@ -2,7 +2,7 @@
 
 set -e -x
 
-pushd $GOPATH_ROOT/src/github.com/cloudfoundry-incubator/warden-linux
+pushd $GOPATH_ROOT/src/github.com/cloudfoundry-incubator/garden-linux
   make # compile wshd/etc.
   export WARDEN_BINPATH=$PWD/linux_backend/bin
 popd

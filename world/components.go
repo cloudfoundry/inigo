@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"time"
 
+	wardenrunner "github.com/cloudfoundry-incubator/garden-linux/integration/runner"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
-	wardenrunner "github.com/cloudfoundry-incubator/warden-linux/integration/runner"
 	gorouterconfig "github.com/cloudfoundry/gorouter/config"
 	"github.com/fraenkel/candiedyaml"
 	"github.com/onsi/ginkgo"
@@ -122,7 +122,7 @@ func (maker ComponentMaker) WardenLinux(argv ...string) *wardenrunner.Runner {
 	return wardenrunner.New(
 		"tcp",
 		maker.Addresses.WardenLinux,
-		maker.Artifacts.Executables["warden-linux"],
+		maker.Artifacts.Executables["garden-linux"],
 		maker.WardenBinPath,
 		maker.WardenRootFSPath,
 		maker.WardenGraphPath,
