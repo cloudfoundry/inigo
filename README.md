@@ -46,4 +46,4 @@ These instructions are for Mac OS X and Linux. You can run the test suite in eit
 
 #### inigo-ci docker image
 
-Inigo runs inside a docker container, using an image called `cloudfoundry/inigo-ci`. Notably, this docker image contains a rootfs which garden will use by default. The Dockerfile and make tools can be found in [diego-dockerfiles](https://github.com/cloudfoundry-incubator/diego-dockerfiles).
+Inigo runs inside a docker container, using an image called `cloudfoundry/inigo-ci`. Notably, this docker image contains *within it* a rootfs which garden will use by default. The Dockerfile and make tools can be found in [diego-dockerfiles](https://github.com/cloudfoundry-incubator/diego-dockerfiles).
