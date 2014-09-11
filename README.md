@@ -2,9 +2,26 @@
 
 ![Inigo Montoya](http://i.imgur.com/QIVPl2n.png)
 
-####Learn more about Diego and its components at [diego-design-notes](https://github.com/cloudfoundry-incubator/diego-design-notes)
+Inigo is the integration test suite for Diego, the new container management system for Cloud Foundry.  Learn more about Diego and its components at [diego-design-notes](https://github.com/cloudfoundry-incubator/diego-design-notes)
 
-#### Setup for tests
+These instructions are for Mac OS X and Linux. You can run the test suite in either Concourse or Drone.
+
+#### Setup for Concourse
+
+1. Install and start [Concourse](https://github.com/concourse/concourse)
+
+1. Install the Concourse CLI `go get github.com/concourse/fly`
+
+1. Run the tests
+
+    ```
+    cd inigo
+    ./scripts/dev-test
+    ```
+
+#### Setup for Drone
+
+1. Uninstall the Concourse CLI if it is installed
 
 1. Start Docker (via boot2docker)
 
@@ -23,35 +40,10 @@
 1. Run the tests
 
     ```
-    goto inigo
+    cd inigo
     ./scripts/dev-test
     ```
 
+#### inigo-ci docker image
 
-#### Updating the inigo-ci image
-
-To update the root-fs that the containers use:
-
-    ```
-    git clone https://github.com/cloudfoundry/stacks
-    pushd stacks
-    git checkout docker
-    popd
-    ```
-
-And follow the instructions in `stacks/README.md`
-
-These also include instructions for updating the inigo-ci docker image.  These are reproduced here:
-
-    ```
-    goto inigo
-    make
-    /scripts/dev-test
-    docker push cloudfoundry/inigo-ci
-    ```
-
-To modify what goes into the docker image update the `Dockerfile` in the inigo repo.
-
-#### Adding a new component to the tests
-
-Walk through `./scripts/*` and pattern-match your way to victory
+Inigo runs inside a docker container, using an image called `cloudfoundry/inigo-ci`. Notably, this docker image contains a rootfs which garden will use by default. The Dockerfile and make tools can be found in [diego-dockerfiles](https://github.com/cloudfoundry-incubator/diego-dockerfiles).
