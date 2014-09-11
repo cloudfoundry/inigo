@@ -46,6 +46,10 @@ type StagingResult struct {
 	ExecutionMetadata string `json:"execution_metadata"`
 }
 
+type StagingDockerResult struct {
+	ExecutionMetadata string `json:"execution_metadata"`
+}
+
 type StagingTaskAnnotation struct {
 	AppId  string `json:"app_id"`
 	TaskId string `json:"task_id"`
