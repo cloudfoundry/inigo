@@ -385,7 +385,7 @@ EOF
 	})
 	Describe("Staging Docker", func() {
 		var stagingMessage []byte
-		var dockerImage = "docker:///cloudfoundry/inigodockertest"
+		var dockerImage = "cloudfoundry/inigodockertest"
 
 		BeforeEach(func() {
 			cp(
