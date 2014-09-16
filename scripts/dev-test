@@ -2,67 +2,14 @@
 
 set -e -x
 
-REPOS="
-  github.com/cloudfoundry-incubator/inigo
-  github.com/cloudfoundry-incubator/auctioneer
-  github.com/cloudfoundry-incubator/route-emitter
-  github.com/cloudfoundry/gorouter
-  github.com/cloudfoundry-incubator/executor
-  github.com/cloudfoundry-incubator/converger
-  github.com/cloudfoundry-incubator/rep
-  github.com/cloudfoundry-incubator/stager
-  github.com/cloudfoundry-incubator/nsync
-  github.com/cloudfoundry-incubator/file-server
-  github.com/cloudfoundry-incubator/linux-circus
-  github.com/cloudfoundry-incubator/docker-circus
-  github.com/cloudfoundry-incubator/garden-linux
-  github.com/cloudfoundry-incubator/tps
-"
+scripts_dir=$(cd $(dirname $0) && pwd)
 
-LOGGREGATOR_PATH=${LOGGREGATOR_PATH:-~/workspace/loggregator}
-BUILD_DIR=${BUILD_DIR:-/tmp/inigo}
-
-SCRIPTS_DIR=$(cd $(dirname $0) && pwd)
-mkdir -p ${BUILD_DIR}
-
-pushd $BUILD_DIR
-
-  $SCRIPTS_DIR/create_drone_yml $SCRIPTS_DIR/drone.yml.template .drone.yml
-  cp $SCRIPTS_DIR/build.yml build.yml
-
-  # If godep is available, use it to gather up the versions of our
-  # repos' dependencies that exist on our GOPATH. Otherwise, use
-  # the versions that are saved in the repos' Godeps directories.
-  if which -s godep; then
-    go get $(for repo in $REPOS; do echo -n " $repo/..."; done)
-    godep save $(for repo in $REPOS; do echo -n " $repo/..."; done)
-    rsync --del --exclude '.*' -a Godeps/_workspace/src/ src/
-    rm -rf Godeps
-  fi
-
-  function copy_to_gopath {
-    mkdir -p ${BUILD_DIR}/src/${1}
-    rsync --del --exclude '.*' --exclude '*.test' -a ${GOPATH}/src/${1}/ ${BUILD_DIR}/src/${1}/
-  }
-
-  # grab and set up our components
-  for package in $REPOS; do
-    copy_to_gopath $package &
-  done
-
-  # install application dependencies
-  for package in github.com/coreos/etcd github.com/apcera/gnatsd; do
-    copy_to_gopath $package &
-  done
-
-  rsync --del --exclude '.*' -a ${LOGGREGATOR_PATH}/ ${BUILD_DIR}/loggregator/ &
-
-  wait
-
+pushd $(dirname $0)/../../../../.. # root of GOSPACE
   if which fly; then
+    cp $scripts_dir/build.yml build.yml
     fly -- bogus-argv-0 "$@"
   else
+    $scripts_dir/create_drone_yml $scripts_dir/drone.yml.template .drone.yml
     drone -privileged build
   fi
-
 popd
