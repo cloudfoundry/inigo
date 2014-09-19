@@ -10,11 +10,11 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
 	"github.com/cloudfoundry-incubator/inigo/world"
-	"github.com/fraenkel/candiedyaml"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 

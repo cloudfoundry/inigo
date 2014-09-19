@@ -11,10 +11,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/cloudfoundry-incubator/candiedyaml"
 	wardenrunner "github.com/cloudfoundry-incubator/garden-linux/integration/runner"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	gorouterconfig "github.com/cloudfoundry/gorouter/config"
-	"github.com/fraenkel/candiedyaml"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
