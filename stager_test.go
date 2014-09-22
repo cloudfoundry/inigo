@@ -219,7 +219,8 @@ EOF
 					"task_id": "%s",
 					"buildpack_key":"test-buildpack-key",
 					"detected_buildpack":"My Buildpack",
-					"execution_metadata":"{\"start_command\":\"the-start-command\"}"
+					"execution_metadata":"{\"start_command\":\"the-start-command\"}",
+					"detected_start_command":{"web":"the-start-command"}
 				}`, appId, taskId)))
 
 				//Asser the user saw reasonable output
@@ -342,6 +343,7 @@ EOF
 						"buildpack_key": "",
 						"detected_buildpack": "",
 						"execution_metadata": "",
+						"detected_start_command": null,
 						"task_id":"%s",
 						"error":"Exited with status 1"
 					}`, appId, taskId)))
@@ -448,9 +450,9 @@ EOF
 				Ω(string(payload)).Should(MatchJSON(fmt.Sprintf(`{
 						"app_id": "%s",
 						"task_id": "%s",
-						"execution_metadata": "{\"cmd\":[\"/dockerapp\"]}"
+						"execution_metadata": "{\"cmd\":[\"/dockerapp\"]}",
+						"detected_start_command":{"web":"/dockerapp"}
 					}`, appId, taskId)))
-
 			})
 		})
 
