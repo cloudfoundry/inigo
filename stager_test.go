@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"github.com/apcera/nats"
 	"github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
@@ -19,7 +20,6 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
-	"github.com/cloudfoundry/yagnats"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -62,9 +62,9 @@ var _ = Describe("Stager", func() {
 
 	Context("when unable to find an appropriate compiler", func() {
 		It("returns an error", func() {
-			receivedMessages := make(chan *yagnats.Message)
+			receivedMessages := make(chan *nats.Msg)
 
-			sid, err := natsClient.Subscribe("diego.staging.finished", func(message *yagnats.Message) {
+			sid, err := natsClient.Subscribe("diego.staging.finished", func(message *nats.Msg) {
 				receivedMessages <- message
 			})
 			Ω(err).ShouldNot(HaveOccurred())
@@ -83,9 +83,9 @@ var _ = Describe("Stager", func() {
 				}`, appId, taskId)),
 			)
 
-			var receivedMessage *yagnats.Message
+			var receivedMessage *nats.Msg
 			Eventually(receivedMessages).Should(Receive(&receivedMessage))
-			Ω(receivedMessage.Payload).Should(ContainSubstring("no compiler defined for requested stack"))
+			Ω(receivedMessage.Data).Should(ContainSubstring("no compiler defined for requested stack"))
 		})
 	})
 
@@ -186,8 +186,8 @@ EOF
 				//listen for NATS response
 				payloads := make(chan []byte)
 
-				sid, err := natsClient.Subscribe("diego.staging.finished", func(msg *yagnats.Message) {
-					payloads <- msg.Payload
+				sid, err := natsClient.Subscribe("diego.staging.finished", func(msg *nats.Msg) {
+					payloads <- msg.Data
 				})
 				Ω(err).ShouldNot(HaveOccurred())
 
@@ -315,8 +315,8 @@ EOF
 				It("responds with the error, and no detected buildpack present", func() {
 					payloads := make(chan []byte)
 
-					sid, err := natsClient.Subscribe("diego.staging.finished", func(msg *yagnats.Message) {
-						payloads <- msg.Payload
+					sid, err := natsClient.Subscribe("diego.staging.finished", func(msg *nats.Msg) {
+						payloads <- msg.Data
 					})
 					Ω(err).ShouldNot(HaveOccurred())
 
@@ -367,7 +367,7 @@ EOF
 			It("only one returns a staging completed response", func() {
 				received := make(chan bool)
 
-				sid, err := natsClient.Subscribe("diego.staging.finished", func(message *yagnats.Message) {
+				sid, err := natsClient.Subscribe("diego.staging.finished", func(message *nats.Msg) {
 					received <- true
 				})
 				Ω(err).ShouldNot(HaveOccurred())
@@ -419,8 +419,8 @@ EOF
 				//listen for NATS response
 				payloads := make(chan []byte)
 
-				sid, err := natsClient.Subscribe("diego.docker.staging.finished", func(msg *yagnats.Message) {
-					payloads <- msg.Payload
+				sid, err := natsClient.Subscribe("diego.docker.staging.finished", func(msg *nats.Msg) {
+					payloads <- msg.Data
 				})
 				Ω(err).ShouldNot(HaveOccurred())
 
@@ -470,7 +470,7 @@ EOF
 			It("only one returns a staging completed response", func() {
 				received := make(chan bool)
 
-				sid, err := natsClient.Subscribe("diego.docker.staging.finished", func(message *yagnats.Message) {
+				sid, err := natsClient.Subscribe("diego.docker.staging.finished", func(message *nats.Msg) {
 					received <- true
 				})
 				Ω(err).ShouldNot(HaveOccurred())
