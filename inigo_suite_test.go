@@ -25,7 +25,6 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/inigo/world"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
-	"github.com/cloudfoundry/gunk/natsclientrunner"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
@@ -50,7 +49,7 @@ var (
 	plumbing      ifrit.Process
 	wardenProcess ifrit.Process
 	bbs           *Bbs.BBS
-	natsClient    yagnats.ApceraWrapperNATSClient
+	natsClient    yagnats.NATSConn
 	wardenClient  warden.Client
 )
 
@@ -66,8 +65,8 @@ var _ = BeforeEach(func() {
 
 	wardenClient = wardenLinux.NewClient()
 
-	natsClient = natsclientrunner.NewClient(componentMaker.Addresses.NATS, "", "")
-	err := natsClient.Connect()
+	var err error
+	natsClient, err = yagnats.Connect([]string{"nats://" + componentMaker.Addresses.NATS})
 	Ω(err).ShouldNot(HaveOccurred())
 
 	adapter := etcdstoreadapter.NewETCDStoreAdapter([]string{"http://" + componentMaker.Addresses.Etcd}, workerpool.NewWorkerPool(20))
