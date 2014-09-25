@@ -32,16 +32,16 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 
 		execRunner = componentMaker.Executor()
 
-		runtime = grouper.EnvokeGroup(grouper.RunGroup{
-			"exec":          execRunner,
-			"rep":           componentMaker.Rep(),
-			"converger":     componentMaker.Converger(),
-			"auctioneer":    componentMaker.Auctioneer(),
-			"file-server":   fileServer,
-			"tps":           componentMaker.TPS(),
-			"router":        componentMaker.Router(),
-			"route-emitter": componentMaker.RouteEmitter(),
-		})
+		runtime = ifrit.Invoke(grouper.NewOrdered(nil, grouper.Members{
+			{"exec", execRunner},
+			{"rep", componentMaker.Rep()},
+			{"converger", componentMaker.Converger()},
+			{"auctioneer", componentMaker.Auctioneer()},
+			{"file-server", fileServer},
+			{"tps", componentMaker.TPS()},
+			{"router", componentMaker.Router()},
+			{"route-emitter", componentMaker.RouteEmitter()},
+		}))
 	})
 
 	AfterEach(func() {

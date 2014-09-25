@@ -23,10 +23,10 @@ var _ = Describe("Task", func() {
 
 	Context("when an exec and rep are running", func() {
 		BeforeEach(func() {
-			executor = grouper.EnvokeGroup(grouper.RunGroup{
-				"exec": componentMaker.Executor("-memoryMB", "1024"),
-				"rep":  componentMaker.Rep(),
-			})
+			executor = ifrit.Invoke(grouper.NewOrdered(nil, grouper.Members{
+				{"exec", componentMaker.Executor("-memoryMB", "1024")},
+				{"rep", componentMaker.Rep()},
+			}))
 		})
 
 		AfterEach(func() {
@@ -164,10 +164,10 @@ var _ = Describe("Task", func() {
 
 			Context("and then an exec and rep come up", func() {
 				BeforeEach(func() {
-					executor = grouper.EnvokeGroup(grouper.RunGroup{
-						"exec": componentMaker.Executor(),
-						"rep":  componentMaker.Rep(),
-					})
+					executor = ifrit.Invoke(grouper.NewOrdered(nil, grouper.Members{
+						{"exec", componentMaker.Executor()},
+						{"rep", componentMaker.Rep()},
+					}))
 				})
 
 				AfterEach(func() {

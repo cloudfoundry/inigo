@@ -54,15 +54,15 @@ var _ = Describe("Convergence to desired state", func() {
 		fileServer, dir := componentMaker.FileServer()
 		fileServerStaticDir = dir
 
-		runtime = grouper.EnvokeGroup(grouper.RunGroup{
-			"cc":             componentMaker.FakeCC(),
-			"tps":            componentMaker.TPS(),
-			"nsync-listener": componentMaker.NsyncListener(),
-			"file-server":    fileServer,
-			"route-emitter":  componentMaker.RouteEmitter(),
-			"router":         componentMaker.Router(),
-			"loggregator":    componentMaker.Loggregator(),
-		})
+		runtime = ifrit.Invoke(grouper.NewOrdered(nil, grouper.Members{
+			{"cc", componentMaker.FakeCC()},
+			{"tps", componentMaker.TPS()},
+			{"nsync-listener", componentMaker.NsyncListener()},
+			{"file-server", fileServer},
+			{"route-emitter", componentMaker.RouteEmitter()},
+			{"router", componentMaker.Router()},
+			{"loggregator", componentMaker.Loggregator()},
+		}))
 
 		archive_helper.CreateZipArchive(
 			filepath.Join(fileServerStaticDir, "droplet.zip"),

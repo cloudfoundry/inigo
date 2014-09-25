@@ -37,19 +37,19 @@ var _ = Describe("LRP Consistency", func() {
 		fileServer, dir := componentMaker.FileServer()
 		fileServerStaticDir = dir
 
-		runtime = grouper.EnvokeGroup(grouper.RunGroup{
-			"cc":             componentMaker.FakeCC(),
-			"tps":            componentMaker.TPS(),
-			"nsync-listener": componentMaker.NsyncListener(),
-			"exec":           componentMaker.Executor(),
-			"rep":            componentMaker.Rep(),
-			"file-server":    fileServer,
-			"auctioneer":     componentMaker.Auctioneer(),
-			"route-emitter":  componentMaker.RouteEmitter(),
-			"converger":      componentMaker.Converger(),
-			"router":         componentMaker.Router(),
-			"loggregator":    componentMaker.Loggregator(),
-		})
+		runtime = ifrit.Invoke(grouper.NewOrdered(nil, grouper.Members{
+			{"cc", componentMaker.FakeCC()},
+			{"tps", componentMaker.TPS()},
+			{"nsync-listener", componentMaker.NsyncListener()},
+			{"exec", componentMaker.Executor()},
+			{"rep", componentMaker.Rep()},
+			{"file-server", fileServer},
+			{"auctioneer", componentMaker.Auctioneer()},
+			{"route-emitter", componentMaker.RouteEmitter()},
+			{"converger", componentMaker.Converger()},
+			{"router", componentMaker.Router()},
+			{"loggregator", componentMaker.Loggregator()},
+		}))
 
 		archive_helper.CreateZipArchive(
 			filepath.Join(fileServerStaticDir, "droplet.zip"),

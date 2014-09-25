@@ -45,15 +45,15 @@ var _ = Describe("Stager", func() {
 
 		fakeCC = componentMaker.FakeCC()
 
-		runtime = grouper.EnvokeGroup(grouper.RunGroup{
-			"stager":         componentMaker.Stager("-minDiskMB", "64", "-minMemoryMB", "64"),
-			"cc":             fakeCC,
-			"nsync-listener": componentMaker.NsyncListener(),
-			"exec":           componentMaker.Executor(),
-			"rep":            componentMaker.Rep(),
-			"file-server":    fileServer,
-			"loggregator":    componentMaker.Loggregator(),
-		})
+		runtime = ifrit.Invoke(grouper.NewOrdered(nil, grouper.Members{
+			{"stager", componentMaker.Stager("-minDiskMB", "64", "-minMemoryMB", "64")},
+			{"cc", fakeCC},
+			{"nsync-listener", componentMaker.NsyncListener()},
+			{"exec", componentMaker.Executor()},
+			{"rep", componentMaker.Rep()},
+			{"file-server", fileServer},
+			{"loggregator", componentMaker.Loggregator()},
+		}))
 	})
 
 	AfterEach(func() {
