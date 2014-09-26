@@ -23,7 +23,7 @@ var _ = Describe("Task", func() {
 
 	Context("when an exec and rep are running", func() {
 		BeforeEach(func() {
-			executor = ifrit.Invoke(grouper.NewOrdered(nil, grouper.Members{
+			executor = ifrit.Invoke(grouper.NewParallel(nil, grouper.Members{
 				{"exec", componentMaker.Executor("-memoryMB", "1024")},
 				{"rep", componentMaker.Rep()},
 			}))
@@ -164,7 +164,7 @@ var _ = Describe("Task", func() {
 
 			Context("and then an exec and rep come up", func() {
 				BeforeEach(func() {
-					executor = ifrit.Invoke(grouper.NewOrdered(nil, grouper.Members{
+					executor = ifrit.Invoke(grouper.NewParallel(nil, grouper.Members{
 						{"exec", componentMaker.Executor()},
 						{"rep", componentMaker.Rep()},
 					}))

@@ -34,7 +34,7 @@ var _ = Describe("AppRunner", func() {
 		fileServer, dir := componentMaker.FileServer()
 		fileServerStaticDir = dir
 
-		runtime = ifrit.Invoke(grouper.NewOrdered(nil, grouper.Members{
+		runtime = ifrit.Invoke(grouper.NewParallel(nil, grouper.Members{
 			{"cc", componentMaker.FakeCC()},
 			{"tps", componentMaker.TPS()},
 			{"nsync-listener", componentMaker.NsyncListener()},

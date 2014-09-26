@@ -56,7 +56,7 @@ var (
 var _ = BeforeEach(func() {
 	wardenLinux := componentMaker.WardenLinux()
 
-	plumbing = ifrit.Invoke(grouper.NewOrdered(nil, grouper.Members{
+	plumbing = ifrit.Invoke(grouper.NewParallel(nil, grouper.Members{
 		{"etcd", componentMaker.Etcd()},
 		{"nats", componentMaker.NATS()},
 	}))

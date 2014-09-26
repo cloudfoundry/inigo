@@ -36,7 +36,7 @@ var _ = Describe("Executor", func() {
 
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
 
-		executor = ifrit.Invoke(grouper.NewOrdered(nil, grouper.Members{
+		executor = ifrit.Invoke(grouper.NewParallel(nil, grouper.Members{
 			{"file-server", fileServer},
 			{"exec", componentMaker.Executor("-memoryMB", "1024")},
 			{"rep", componentMaker.Rep()},

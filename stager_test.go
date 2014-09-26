@@ -45,7 +45,7 @@ var _ = Describe("Stager", func() {
 
 		fakeCC = componentMaker.FakeCC()
 
-		runtime = ifrit.Invoke(grouper.NewOrdered(nil, grouper.Members{
+		runtime = ifrit.Invoke(grouper.NewParallel(nil, grouper.Members{
 			{"stager", componentMaker.Stager("-minDiskMB", "64", "-minMemoryMB", "64")},
 			{"cc", fakeCC},
 			{"nsync-listener", componentMaker.NsyncListener()},

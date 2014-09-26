@@ -32,7 +32,7 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 
 		execRunner = componentMaker.Executor()
 
-		runtime = ifrit.Invoke(grouper.NewOrdered(nil, grouper.Members{
+		runtime = ifrit.Invoke(grouper.NewParallel(nil, grouper.Members{
 			{"exec", execRunner},
 			{"rep", componentMaker.Rep()},
 			{"converger", componentMaker.Converger()},
