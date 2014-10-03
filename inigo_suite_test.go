@@ -20,7 +20,7 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 
-	"github.com/cloudfoundry-incubator/garden/warden"
+	garden_api "github.com/cloudfoundry-incubator/garden/api"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/inigo/world"
@@ -47,23 +47,23 @@ var componentMaker world.ComponentMaker
 
 var (
 	plumbing      ifrit.Process
-	wardenProcess ifrit.Process
+	gardenProcess ifrit.Process
 	bbs           *Bbs.BBS
 	natsClient    yagnats.NATSConn
-	wardenClient  warden.Client
+	gardenClient  garden_api.Client
 )
 
 var _ = BeforeEach(func() {
-	wardenLinux := componentMaker.WardenLinux()
+	gardenLinux := componentMaker.GardenLinux()
 
 	plumbing = ifrit.Invoke(grouper.NewParallel(nil, grouper.Members{
 		{"etcd", componentMaker.Etcd()},
 		{"nats", componentMaker.NATS()},
 	}))
 
-	wardenProcess = ifrit.Envoke(wardenLinux)
+	gardenProcess = ifrit.Envoke(gardenLinux)
 
-	wardenClient = wardenLinux.NewClient()
+	gardenClient = gardenLinux.NewClient()
 
 	var err error
 	natsClient, err = yagnats.Connect([]string{"nats://" + componentMaker.Addresses.NATS})
@@ -80,19 +80,19 @@ var _ = BeforeEach(func() {
 })
 
 var _ = AfterEach(func() {
-	inigo_server.Stop(wardenClient)
+	inigo_server.Stop(gardenClient)
 })
 
 var _ = AfterEach(func() {
-	containers, err := wardenClient.Containers(nil)
+	containers, err := gardenClient.Containers(nil)
 	Ω(err).ShouldNot(HaveOccurred())
 
 	for _, container := range containers {
-		err := wardenClient.Destroy(container.Handle())
+		err := gardenClient.Destroy(container.Handle())
 		Ω(err).ShouldNot(HaveOccurred())
 	}
 
-	helpers.StopProcess(wardenProcess)
+	helpers.StopProcess(gardenProcess)
 })
 
 var _ = AfterEach(func() {
@@ -130,7 +130,7 @@ func TestInigo(t *testing.T) {
 		Ω(err).ShouldNot(HaveOccurred())
 
 		addresses := world.ComponentAddresses{
-			WardenLinux:    fmt.Sprintf("127.0.0.1:%d", 10000+config.GinkgoConfig.ParallelNode),
+			GardenLinux:    fmt.Sprintf("127.0.0.1:%d", 10000+config.GinkgoConfig.ParallelNode),
 			NATS:           fmt.Sprintf("127.0.0.1:%d", 11000+config.GinkgoConfig.ParallelNode),
 			Etcd:           fmt.Sprintf("127.0.0.1:%d", 12000+config.GinkgoConfig.ParallelNode),
 			EtcdPeer:       fmt.Sprintf("127.0.0.1:%d", 12500+config.GinkgoConfig.ParallelNode),
@@ -144,17 +144,17 @@ func TestInigo(t *testing.T) {
 			FakeCC:         fmt.Sprintf("127.0.0.1:%d", 20000+config.GinkgoConfig.ParallelNode),
 		}
 
-		wardenBinPath := os.Getenv("WARDEN_BINPATH")
-		wardenRootFSPath := os.Getenv("WARDEN_ROOTFS")
-		wardenGraphPath := os.Getenv("WARDEN_GRAPH_PATH")
+		gardenBinPath := os.Getenv("GARDEN_BINPATH")
+		gardenRootFSPath := os.Getenv("GARDEN_ROOTFS")
+		gardenGraphPath := os.Getenv("GARDEN_GRAPH_PATH")
 		externalAddress := os.Getenv("EXTERNAL_ADDRESS")
 
-		if wardenGraphPath == "" {
-			wardenGraphPath = os.TempDir()
+		if gardenGraphPath == "" {
+			gardenGraphPath = os.TempDir()
 		}
 
-		Ω(wardenBinPath).ShouldNot(BeEmpty(), "must provide $WARDEN_BINPATH")
-		Ω(wardenRootFSPath).ShouldNot(BeEmpty(), "must provide $WARDEN_ROOTFS")
+		Ω(gardenBinPath).ShouldNot(BeEmpty(), "must provide $GARDEN_BINPATH")
+		Ω(gardenRootFSPath).ShouldNot(BeEmpty(), "must provide $GARDEN_ROOTFS")
 		Ω(externalAddress).ShouldNot(BeEmpty(), "must provide $EXTERNAL_ADDRESS")
 
 		componentMaker = world.ComponentMaker{
@@ -165,9 +165,9 @@ func TestInigo(t *testing.T) {
 
 			ExternalAddress: externalAddress,
 
-			WardenBinPath:    wardenBinPath,
-			WardenRootFSPath: wardenRootFSPath,
-			WardenGraphPath:  wardenGraphPath,
+			GardenBinPath:    gardenBinPath,
+			GardenRootFSPath: gardenRootFSPath,
+			GardenGraphPath:  gardenGraphPath,
 		}
 	})
 

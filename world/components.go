@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
-	wardenrunner "github.com/cloudfoundry-incubator/garden-linux/integration/runner"
+	gardenrunner "github.com/cloudfoundry-incubator/garden-linux/old/integration/runner"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	gorouterconfig "github.com/cloudfoundry/gorouter/config"
 	"github.com/onsi/ginkgo"
@@ -45,7 +45,7 @@ type ComponentAddresses struct {
 	FileServer     string
 	Router         string
 	TPS            string
-	WardenLinux    string
+	GardenLinux    string
 }
 
 type ComponentMaker struct {
@@ -56,9 +56,9 @@ type ComponentMaker struct {
 
 	Stack string
 
-	WardenBinPath    string
-	WardenRootFSPath string
-	WardenGraphPath  string
+	GardenBinPath    string
+	GardenRootFSPath string
+	GardenGraphPath  string
 }
 
 type LoggregatorConfig struct {
@@ -118,14 +118,14 @@ func (maker ComponentMaker) Etcd(argv ...string) ifrit.Runner {
 	})
 }
 
-func (maker ComponentMaker) WardenLinux(argv ...string) *wardenrunner.Runner {
-	return wardenrunner.New(
+func (maker ComponentMaker) GardenLinux(argv ...string) *gardenrunner.Runner {
+	return gardenrunner.New(
 		"tcp",
-		maker.Addresses.WardenLinux,
+		maker.Addresses.GardenLinux,
 		maker.Artifacts.Executables["garden-linux"],
-		maker.WardenBinPath,
-		maker.WardenRootFSPath,
-		maker.WardenGraphPath,
+		maker.GardenBinPath,
+		maker.GardenRootFSPath,
+		maker.GardenGraphPath,
 		argv...,
 	)
 }
@@ -144,8 +144,8 @@ func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
 			maker.Artifacts.Executables["exec"],
 			append([]string{
 				"-listenAddr", maker.Addresses.Executor,
-				"-wardenNetwork", "tcp",
-				"-wardenAddr", maker.Addresses.WardenLinux,
+				"-gardenNetwork", "tcp",
+				"-gardenAddr", maker.Addresses.GardenLinux,
 				"-loggregatorServer", maker.Addresses.LoggregatorIn,
 				"-loggregatorSecret", "loggregator-secret",
 				"-containerMaxCpuShares", "1024",
