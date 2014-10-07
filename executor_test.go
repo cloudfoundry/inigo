@@ -1,9 +1,7 @@
 package inigo_test
 
 import (
-	"archive/tar"
 	"bytes"
-	"compress/gzip"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -330,15 +328,7 @@ var _ = Describe("Executor", func() {
 			server, uploadAddr = helpers.Callback(componentMaker.ExternalAddress, ghttp.CombineHandlers(
 				ghttp.VerifyRequest("POST", "/thingy"),
 				func(w http.ResponseWriter, r *http.Request) {
-					gw, err := gzip.NewReader(r.Body)
-					Ω(err).ShouldNot(HaveOccurred())
-
-					tw := tar.NewReader(gw)
-
-					_, err = tw.Next()
-					Ω(err).ShouldNot(HaveOccurred())
-
-					contents, err := ioutil.ReadAll(tw)
+					contents, err := ioutil.ReadAll(r.Body)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Ω(string(contents)).Should(Equal("tasty thingy\n"))
@@ -352,7 +342,7 @@ var _ = Describe("Executor", func() {
 			server.Close()
 		})
 
-		It("uploads a tarball containing the specified files", func() {
+		It("uploads the specified files", func() {
 			task := models.Task{
 				Domain:   "inigo",
 				Guid:     factories.GenerateGuid(),
