@@ -223,7 +223,7 @@ EOF
 					"detected_start_command":{"web":"the-start-command"}
 				}`, appId, taskId)))
 
-				//Asser the user saw reasonable output
+				//Assert the user saw reasonable output
 				Eventually(logOutput).Should(gbytes.Say("COMPILING BUILDPACK"))
 				Ω(logOutput.Contents()).Should(ContainSubstring(outputGuid))
 
