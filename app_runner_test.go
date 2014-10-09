@@ -14,6 +14,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 
 	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
 
 	. "github.com/onsi/ginkgo"
@@ -35,7 +36,7 @@ var _ = Describe("AppRunner", func() {
 		fileServer, dir := componentMaker.FileServer()
 		fileServerStaticDir = dir
 
-		runtime = invokeAndCheck(grouper.NewParallel(os.Kill, grouper.Members{
+		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"cc", componentMaker.FakeCC()},
 			{"tps", componentMaker.TPS()},
 			{"nsync-listener", componentMaker.NsyncListener()},

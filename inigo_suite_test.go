@@ -18,6 +18,7 @@ import (
 	"github.com/pivotal-golang/lager/ginkgoreporter"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
 
 	garden_api "github.com/cloudfoundry-incubator/garden/api"
@@ -53,27 +54,15 @@ var (
 	gardenClient  garden_api.Client
 )
 
-func invokeAndCheck(runner ifrit.Runner) ifrit.Process {
-	process := ifrit.Background(runner)
-
-	select {
-	case err := <-process.Wait():
-		Fail(fmt.Sprintf("process failed to start: %s", err))
-	case <-process.Ready():
-	}
-
-	return process
-}
-
 var _ = BeforeEach(func() {
 	gardenLinux := componentMaker.GardenLinux()
 
-	plumbing = invokeAndCheck(grouper.NewParallel(os.Kill, grouper.Members{
+	plumbing = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 		{"etcd", componentMaker.Etcd()},
 		{"nats", componentMaker.NATS()},
 	}))
 
-	gardenProcess = invokeAndCheck(gardenLinux)
+	gardenProcess = ginkgomon.Invoke(gardenLinux)
 
 	gardenClient = gardenLinux.NewClient()
 

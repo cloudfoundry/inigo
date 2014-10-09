@@ -14,6 +14,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
 )
 
@@ -24,7 +25,7 @@ var _ = Describe("Task", func() {
 
 	Context("when an exec and rep are running", func() {
 		BeforeEach(func() {
-			executor = invokeAndCheck(grouper.NewParallel(os.Kill, grouper.Members{
+			executor = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 				{"exec", componentMaker.Executor("-memoryMB", "1024")},
 				{"rep", componentMaker.Rep()},
 			}))
@@ -67,7 +68,7 @@ var _ = Describe("Task", func() {
 				var converger ifrit.Process
 
 				BeforeEach(func() {
-					converger = invokeAndCheck(componentMaker.Converger(
+					converger = ginkgomon.Invoke(componentMaker.Converger(
 						"-convergeRepeatInterval", "1s",
 						"-kickPendingTaskDuration", kickPendingDuration.String(),
 					))
@@ -134,7 +135,7 @@ var _ = Describe("Task", func() {
 		var converger ifrit.Process
 
 		BeforeEach(func() {
-			converger = invokeAndCheck(componentMaker.Converger(
+			converger = ginkgomon.Invoke(componentMaker.Converger(
 				"-convergeRepeatInterval", "1s",
 				"-kickPendingTaskDuration", kickPendingDuration.String(),
 			))
@@ -165,7 +166,7 @@ var _ = Describe("Task", func() {
 
 			Context("and then an exec and rep come up", func() {
 				BeforeEach(func() {
-					executor = invokeAndCheck(grouper.NewParallel(os.Kill, grouper.Members{
+					executor = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 						{"exec", componentMaker.Executor()},
 						{"rep", componentMaker.Rep()},
 					}))
@@ -186,7 +187,7 @@ var _ = Describe("Task", func() {
 		var converger ifrit.Process
 
 		BeforeEach(func() {
-			converger = invokeAndCheck(componentMaker.Converger(
+			converger = ginkgomon.Invoke(componentMaker.Converger(
 				"-convergeRepeatInterval", "1s",
 				"-expirePendingTaskDuration", "1s",
 			))

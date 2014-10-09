@@ -33,7 +33,7 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 
 		execRunner = componentMaker.Executor()
 
-		runtime = invokeAndCheck(grouper.NewParallel(os.Kill, grouper.Members{
+		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"exec", execRunner},
 			{"rep", componentMaker.Rep()},
 			{"converger", componentMaker.Converger()},

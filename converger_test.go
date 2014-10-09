@@ -12,6 +12,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
 
 	tpsapi "github.com/cloudfoundry-incubator/tps/api"
@@ -55,7 +56,7 @@ var _ = Describe("Convergence to desired state", func() {
 		fileServer, dir := componentMaker.FileServer()
 		fileServerStaticDir = dir
 
-		runtime = invokeAndCheck(grouper.NewParallel(os.Kill, grouper.Members{
+		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"cc", componentMaker.FakeCC()},
 			{"tps", componentMaker.TPS()},
 			{"nsync-listener", componentMaker.NsyncListener()},
@@ -93,14 +94,14 @@ var _ = Describe("Convergence to desired state", func() {
 
 	Describe("Executor fault tolerance", func() {
 		BeforeEach(func() {
-			auctioneer = invokeAndCheck(componentMaker.Auctioneer())
+			auctioneer = ginkgomon.Invoke(componentMaker.Auctioneer())
 		})
 
 		Context("when an executor, rep, and converger are running", func() {
 			BeforeEach(func() {
-				executor = invokeAndCheck(componentMaker.Executor())
-				rep = invokeAndCheck(componentMaker.Rep())
-				converger = invokeAndCheck(componentMaker.Converger(
+				executor = ginkgomon.Invoke(componentMaker.Executor())
+				rep = ginkgomon.Invoke(componentMaker.Rep())
+				converger = ginkgomon.Invoke(componentMaker.Converger(
 					"-convergeRepeatInterval", "1s",
 					"-kickPendingLRPStartAuctionDuration", "1s",
 				))
@@ -127,7 +128,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 					Context("once the executor comes back", func() {
 						BeforeEach(func() {
-							executor = invokeAndCheck(componentMaker.Executor())
+							executor = ginkgomon.Invoke(componentMaker.Executor())
 						})
 
 						It("eventually brings the long-running process up", func() {
@@ -155,8 +156,8 @@ var _ = Describe("Convergence to desired state", func() {
 
 						Context("and rep and converger come back", func() {
 							BeforeEach(func() {
-								rep = invokeAndCheck(componentMaker.Rep())
-								converger = invokeAndCheck(componentMaker.Converger(
+								rep = ginkgomon.Invoke(componentMaker.Rep())
+								converger = ginkgomon.Invoke(componentMaker.Converger(
 									"-convergeRepeatInterval", "1s",
 									"-kickPendingLRPStartAuctionDuration", "1s",
 								))
@@ -174,7 +175,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 		Context("when a converger is running without a rep and executor", func() {
 			BeforeEach(func() {
-				converger = invokeAndCheck(componentMaker.Converger(
+				converger = ginkgomon.Invoke(componentMaker.Converger(
 					"-convergeRepeatInterval", "1s",
 					"-kickPendingLRPStartAuctionDuration", "1s",
 				))
@@ -193,8 +194,8 @@ var _ = Describe("Convergence to desired state", func() {
 
 				Context("and then a rep and executor come up", func() {
 					BeforeEach(func() {
-						executor = invokeAndCheck(componentMaker.Executor())
-						rep = invokeAndCheck(componentMaker.Rep())
+						executor = ginkgomon.Invoke(componentMaker.Executor())
+						rep = ginkgomon.Invoke(componentMaker.Rep())
 					})
 
 					It("eventually brings the LRP up", func() {
@@ -208,7 +209,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 	Describe("Auctioneer Fault Tolerance", func() {
 		BeforeEach(func() {
-			converger = invokeAndCheck(componentMaker.Converger(
+			converger = ginkgomon.Invoke(componentMaker.Converger(
 				"-convergeRepeatInterval", "1s",
 				"-kickPendingLRPStartAuctionDuration", "1s",
 			))
@@ -216,8 +217,8 @@ var _ = Describe("Convergence to desired state", func() {
 
 		Context("when an executor and rep are running with no auctioneer", func() {
 			BeforeEach(func() {
-				executor = invokeAndCheck(componentMaker.Executor())
-				rep = invokeAndCheck(componentMaker.Rep())
+				executor = ginkgomon.Invoke(componentMaker.Executor())
+				rep = ginkgomon.Invoke(componentMaker.Rep())
 			})
 
 			Context("and an LRP is desired", func() {
@@ -233,7 +234,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 				Context("and then an auctioneer comes up", func() {
 					BeforeEach(func() {
-						auctioneer = invokeAndCheck(componentMaker.Auctioneer())
+						auctioneer = ginkgomon.Invoke(componentMaker.Auctioneer())
 					})
 
 					It("eventually brings it up", func() {
@@ -246,7 +247,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 		Context("when an auctioneer is running with no executor or rep", func() {
 			BeforeEach(func() {
-				auctioneer = invokeAndCheck(componentMaker.Auctioneer())
+				auctioneer = ginkgomon.Invoke(componentMaker.Auctioneer())
 			})
 
 			Context("and an LRP is desired", func() {
@@ -262,8 +263,8 @@ var _ = Describe("Convergence to desired state", func() {
 
 				Context("and the executor and rep come up", func() {
 					BeforeEach(func() {
-						executor = invokeAndCheck(componentMaker.Executor())
-						rep = invokeAndCheck(componentMaker.Rep())
+						executor = ginkgomon.Invoke(componentMaker.Executor())
+						rep = ginkgomon.Invoke(componentMaker.Rep())
 					})
 
 					It("eventually brings it up", func() {

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
 
 	"github.com/cloudfoundry-incubator/inigo/helpers"
@@ -35,7 +36,7 @@ var _ = Describe("Executor", func() {
 
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
 
-		executor = invokeAndCheck(grouper.NewParallel(os.Kill, grouper.Members{
+		executor = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"file-server", fileServer},
 			{"exec", componentMaker.Executor("-memoryMB", "1024")},
 			{"rep", componentMaker.Rep()},
