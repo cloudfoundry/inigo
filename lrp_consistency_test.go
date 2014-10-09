@@ -2,6 +2,7 @@ package inigo_test
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
@@ -37,7 +38,7 @@ var _ = Describe("LRP Consistency", func() {
 		fileServer, dir := componentMaker.FileServer()
 		fileServerStaticDir = dir
 
-		runtime = ifrit.Invoke(grouper.NewParallel(nil, grouper.Members{
+		runtime = invokeAndCheck(grouper.NewParallel(os.Kill, grouper.Members{
 			{"cc", componentMaker.FakeCC()},
 			{"tps", componentMaker.TPS()},
 			{"nsync-listener", componentMaker.NsyncListener()},

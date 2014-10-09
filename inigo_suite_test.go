@@ -53,15 +53,27 @@ var (
 	gardenClient  garden_api.Client
 )
 
+func invokeAndCheck(runner ifrit.Runner) ifrit.Process {
+	process := ifrit.Background(runner)
+
+	select {
+	case err := <-process.Wait():
+		Fail(fmt.Sprintf("process failed to start: %s", err))
+	case <-process.Ready():
+	}
+
+	return process
+}
+
 var _ = BeforeEach(func() {
 	gardenLinux := componentMaker.GardenLinux()
 
-	plumbing = ifrit.Invoke(grouper.NewParallel(nil, grouper.Members{
+	plumbing = invokeAndCheck(grouper.NewParallel(os.Kill, grouper.Members{
 		{"etcd", componentMaker.Etcd()},
 		{"nats", componentMaker.NATS()},
 	}))
 
-	gardenProcess = ifrit.Envoke(gardenLinux)
+	gardenProcess = invokeAndCheck(gardenLinux)
 
 	gardenClient = gardenLinux.NewClient()
 
@@ -87,12 +99,24 @@ var _ = AfterEach(func() {
 	containers, err := gardenClient.Containers(nil)
 	Ω(err).ShouldNot(HaveOccurred())
 
+	// even if containers fail to destroy, stop garden, but still report the
+	// errors
+	destroyContainerErrors := []error{}
 	for _, container := range containers {
 		err := gardenClient.Destroy(container.Handle())
-		Ω(err).ShouldNot(HaveOccurred())
+		if err != nil {
+			destroyContainerErrors = append(destroyContainerErrors, err)
+		}
 	}
 
 	helpers.StopProcess(gardenProcess)
+
+	Ω(destroyContainerErrors).Should(
+		BeEmpty(),
+		"%d of %d containers failed to be destroyed!",
+		len(destroyContainerErrors),
+		len(containers),
+	)
 })
 
 var _ = AfterEach(func() {

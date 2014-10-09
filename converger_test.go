@@ -2,6 +2,7 @@ package inigo_test
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"syscall"
 
@@ -54,7 +55,7 @@ var _ = Describe("Convergence to desired state", func() {
 		fileServer, dir := componentMaker.FileServer()
 		fileServerStaticDir = dir
 
-		runtime = ifrit.Invoke(grouper.NewParallel(nil, grouper.Members{
+		runtime = invokeAndCheck(grouper.NewParallel(os.Kill, grouper.Members{
 			{"cc", componentMaker.FakeCC()},
 			{"tps", componentMaker.TPS()},
 			{"nsync-listener", componentMaker.NsyncListener()},
@@ -92,14 +93,14 @@ var _ = Describe("Convergence to desired state", func() {
 
 	Describe("Executor fault tolerance", func() {
 		BeforeEach(func() {
-			auctioneer = ifrit.Envoke(componentMaker.Auctioneer())
+			auctioneer = invokeAndCheck(componentMaker.Auctioneer())
 		})
 
 		Context("when an executor, rep, and converger are running", func() {
 			BeforeEach(func() {
-				executor = ifrit.Envoke(componentMaker.Executor())
-				rep = ifrit.Envoke(componentMaker.Rep())
-				converger = ifrit.Envoke(componentMaker.Converger(
+				executor = invokeAndCheck(componentMaker.Executor())
+				rep = invokeAndCheck(componentMaker.Rep())
+				converger = invokeAndCheck(componentMaker.Converger(
 					"-convergeRepeatInterval", "1s",
 					"-kickPendingLRPStartAuctionDuration", "1s",
 				))
@@ -126,7 +127,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 					Context("once the executor comes back", func() {
 						BeforeEach(func() {
-							executor = ifrit.Envoke(componentMaker.Executor())
+							executor = invokeAndCheck(componentMaker.Executor())
 						})
 
 						It("eventually brings the long-running process up", func() {
@@ -154,8 +155,8 @@ var _ = Describe("Convergence to desired state", func() {
 
 						Context("and rep and converger come back", func() {
 							BeforeEach(func() {
-								rep = ifrit.Envoke(componentMaker.Rep())
-								converger = ifrit.Envoke(componentMaker.Converger(
+								rep = invokeAndCheck(componentMaker.Rep())
+								converger = invokeAndCheck(componentMaker.Converger(
 									"-convergeRepeatInterval", "1s",
 									"-kickPendingLRPStartAuctionDuration", "1s",
 								))
@@ -173,7 +174,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 		Context("when a converger is running without a rep and executor", func() {
 			BeforeEach(func() {
-				converger = ifrit.Envoke(componentMaker.Converger(
+				converger = invokeAndCheck(componentMaker.Converger(
 					"-convergeRepeatInterval", "1s",
 					"-kickPendingLRPStartAuctionDuration", "1s",
 				))
@@ -192,8 +193,8 @@ var _ = Describe("Convergence to desired state", func() {
 
 				Context("and then a rep and executor come up", func() {
 					BeforeEach(func() {
-						executor = ifrit.Envoke(componentMaker.Executor())
-						rep = ifrit.Envoke(componentMaker.Rep())
+						executor = invokeAndCheck(componentMaker.Executor())
+						rep = invokeAndCheck(componentMaker.Rep())
 					})
 
 					It("eventually brings the LRP up", func() {
@@ -207,7 +208,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 	Describe("Auctioneer Fault Tolerance", func() {
 		BeforeEach(func() {
-			converger = ifrit.Envoke(componentMaker.Converger(
+			converger = invokeAndCheck(componentMaker.Converger(
 				"-convergeRepeatInterval", "1s",
 				"-kickPendingLRPStartAuctionDuration", "1s",
 			))
@@ -215,8 +216,8 @@ var _ = Describe("Convergence to desired state", func() {
 
 		Context("when an executor and rep are running with no auctioneer", func() {
 			BeforeEach(func() {
-				executor = ifrit.Envoke(componentMaker.Executor())
-				rep = ifrit.Envoke(componentMaker.Rep())
+				executor = invokeAndCheck(componentMaker.Executor())
+				rep = invokeAndCheck(componentMaker.Rep())
 			})
 
 			Context("and an LRP is desired", func() {
@@ -232,7 +233,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 				Context("and then an auctioneer comes up", func() {
 					BeforeEach(func() {
-						auctioneer = ifrit.Envoke(componentMaker.Auctioneer())
+						auctioneer = invokeAndCheck(componentMaker.Auctioneer())
 					})
 
 					It("eventually brings it up", func() {
@@ -245,7 +246,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 		Context("when an auctioneer is running with no executor or rep", func() {
 			BeforeEach(func() {
-				auctioneer = ifrit.Envoke(componentMaker.Auctioneer())
+				auctioneer = invokeAndCheck(componentMaker.Auctioneer())
 			})
 
 			Context("and an LRP is desired", func() {
@@ -261,8 +262,8 @@ var _ = Describe("Convergence to desired state", func() {
 
 				Context("and the executor and rep come up", func() {
 					BeforeEach(func() {
-						executor = ifrit.Envoke(componentMaker.Executor())
-						rep = ifrit.Envoke(componentMaker.Rep())
+						executor = invokeAndCheck(componentMaker.Executor())
+						rep = invokeAndCheck(componentMaker.Rep())
 					})
 
 					It("eventually brings it up", func() {

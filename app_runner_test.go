@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
@@ -34,7 +35,7 @@ var _ = Describe("AppRunner", func() {
 		fileServer, dir := componentMaker.FileServer()
 		fileServerStaticDir = dir
 
-		runtime = ifrit.Invoke(grouper.NewParallel(nil, grouper.Members{
+		runtime = invokeAndCheck(grouper.NewParallel(os.Kill, grouper.Members{
 			{"cc", componentMaker.FakeCC()},
 			{"tps", componentMaker.TPS()},
 			{"nsync-listener", componentMaker.NsyncListener()},

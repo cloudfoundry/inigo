@@ -3,6 +3,7 @@ package inigo_test
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -32,7 +33,7 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 
 		execRunner = componentMaker.Executor()
 
-		runtime = ifrit.Invoke(grouper.NewParallel(nil, grouper.Members{
+		runtime = invokeAndCheck(grouper.NewParallel(os.Kill, grouper.Members{
 			{"exec", execRunner},
 			{"rep", componentMaker.Rep()},
 			{"converger", componentMaker.Converger()},

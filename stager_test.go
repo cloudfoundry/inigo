@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/apcera/nats"
@@ -45,7 +46,7 @@ var _ = Describe("Stager", func() {
 
 		fakeCC = componentMaker.FakeCC()
 
-		runtime = ifrit.Invoke(grouper.NewParallel(nil, grouper.Members{
+		runtime = invokeAndCheck(grouper.NewParallel(os.Kill, grouper.Members{
 			{"stager", componentMaker.Stager("-minDiskMB", "64", "-minMemoryMB", "64")},
 			{"cc", fakeCC},
 			{"nsync-listener", componentMaker.NsyncListener()},
@@ -357,7 +358,7 @@ EOF
 			var otherStager ifrit.Process
 
 			BeforeEach(func() {
-				otherStager = ifrit.Envoke(componentMaker.Stager())
+				otherStager = invokeAndCheck(componentMaker.Stager())
 			})
 
 			AfterEach(func() {
@@ -460,7 +461,7 @@ EOF
 			var otherStager ifrit.Process
 
 			BeforeEach(func() {
-				otherStager = ifrit.Envoke(componentMaker.Stager())
+				otherStager = invokeAndCheck(componentMaker.Stager())
 			})
 
 			AfterEach(func() {
