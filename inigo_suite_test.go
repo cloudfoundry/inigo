@@ -26,10 +26,10 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
 	"github.com/cloudfoundry-incubator/inigo/world"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
+	"github.com/cloudfoundry/gunk/diegonats"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/cloudfoundry/storeadapter/workerpool"
-	"github.com/cloudfoundry/yagnats"
 )
 
 var DEFAULT_EVENTUALLY_TIMEOUT = 15 * time.Second
@@ -50,7 +50,7 @@ var (
 	plumbing      ifrit.Process
 	gardenProcess ifrit.Process
 	bbs           *Bbs.BBS
-	natsClient    yagnats.NATSConn
+	natsClient    diegonats.NATSClient
 	gardenClient  garden_api.Client
 )
 
@@ -67,7 +67,8 @@ var _ = BeforeEach(func() {
 	gardenClient = gardenLinux.NewClient()
 
 	var err error
-	natsClient, err = yagnats.Connect([]string{"nats://" + componentMaker.Addresses.NATS})
+	natsClient = diegonats.NewClient()
+	err = natsClient.Connect([]string{"nats://" + componentMaker.Addresses.NATS})
 	Ω(err).ShouldNot(HaveOccurred())
 
 	adapter := etcdstoreadapter.NewETCDStoreAdapter([]string{"http://" + componentMaker.Addresses.Etcd}, workerpool.NewWorkerPool(20))
