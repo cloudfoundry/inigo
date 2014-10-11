@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/apcera/nats"
 	"github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
@@ -21,6 +20,7 @@ import (
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
 
+	"github.com/cloudfoundry-incubator/runtime-schema/cc_messages"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -64,15 +64,6 @@ var _ = Describe("Stager", func() {
 
 	Context("when unable to find an appropriate compiler", func() {
 		It("returns an error", func() {
-			receivedMessages := make(chan *nats.Msg)
-
-			sid, err := natsClient.Subscribe("diego.staging.finished", func(message *nats.Msg) {
-				receivedMessages <- message
-			})
-			Ω(err).ShouldNot(HaveOccurred())
-
-			defer natsClient.Unsubscribe(sid)
-
 			natsClient.Publish(
 				"diego.staging.start",
 				[]byte(fmt.Sprintf(`{
@@ -85,9 +76,8 @@ var _ = Describe("Stager", func() {
 				}`, appId, taskId)),
 			)
 
-			var receivedMessage *nats.Msg
-			Eventually(receivedMessages).Should(Receive(&receivedMessage))
-			Ω(receivedMessage.Data).Should(ContainSubstring("no compiler defined for requested stack"))
+			Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
+			Ω(fakeCC.StagingResponses()[0].Error).Should(ContainSubstring("no compiler defined for requested stack"))
 		})
 	})
 
@@ -185,16 +175,6 @@ EOF
 
 		Context("with one stager running", func() {
 			It("runs the compiler on the executor with the correct environment variables, bits and log tag, and responds with the detected buildpack", func() {
-				//listen for NATS response
-				payloads := make(chan []byte)
-
-				sid, err := natsClient.Subscribe("diego.staging.finished", func(msg *nats.Msg) {
-					payloads <- msg.Data
-				})
-				Ω(err).ShouldNot(HaveOccurred())
-
-				defer natsClient.Unsubscribe(sid)
-
 				//stream logs
 				logOutput := gbytes.NewBuffer()
 
@@ -208,22 +188,20 @@ EOF
 				defer close(stop)
 
 				//publish the staging message
-				err = natsClient.Publish("diego.staging.start", stagingMessage)
+				err := natsClient.Publish("diego.staging.start", stagingMessage)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				//wait for staging to complete
-				var payload []byte
-				Eventually(payloads).Should(Receive(&payload))
-
-				//Assert on the staging output (detected buildpack)
-				Ω(string(payload)).Should(MatchJSON(fmt.Sprintf(`{
-					"app_id": "%s",
-					"task_id": "%s",
-					"buildpack_key":"test-buildpack-key",
-					"detected_buildpack":"My Buildpack",
-					"execution_metadata":"{\"start_command\":\"the-start-command\"}",
-					"detected_start_command":{"web":"the-start-command"}
-				}`, appId, taskId)))
+				Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
+				Ω(fakeCC.StagingResponses()[0]).Should(Equal(
+					cc_messages.StagingResponseForCC{
+						AppId:                appId,
+						TaskId:               taskId,
+						BuildpackKey:         "test-buildpack-key",
+						DetectedBuildpack:    "My Buildpack",
+						ExecutionMetadata:    "{\"start_command\":\"the-start-command\"}",
+						DetectedStartCommand: map[string]string{"web": "the-start-command"},
+					}))
 
 				//Assert the user saw reasonable output
 				Eventually(logOutput).Should(gbytes.Say("COMPILING BUILDPACK"))
@@ -315,15 +293,6 @@ EOF
 				})
 
 				It("responds with the error, and no detected buildpack present", func() {
-					payloads := make(chan []byte)
-
-					sid, err := natsClient.Subscribe("diego.staging.finished", func(msg *nats.Msg) {
-						payloads <- msg.Data
-					})
-					Ω(err).ShouldNot(HaveOccurred())
-
-					defer natsClient.Unsubscribe(sid)
-
 					logOutput := gbytes.NewBuffer()
 
 					stop := loggredile.StreamIntoGBuffer(
@@ -335,21 +304,16 @@ EOF
 					)
 					defer close(stop)
 
-					err = natsClient.Publish("diego.staging.start", stagingMessage)
+					err := natsClient.Publish("diego.staging.start", stagingMessage)
 					Ω(err).ShouldNot(HaveOccurred())
 
-					var payload []byte
-					Eventually(payloads).Should(Receive(&payload))
-					Ω(string(payload)).Should(MatchJSON(fmt.Sprintf(`{
-						"app_id":"%s",
-						"buildpack_key": "",
-						"detected_buildpack": "",
-						"execution_metadata": "",
-						"detected_start_command": null,
-						"task_id":"%s",
-						"error":"Exited with status 1"
-					}`, appId, taskId)))
-
+					Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
+					Ω(fakeCC.StagingResponses()[0]).Should(Equal(
+						cc_messages.StagingResponseForCC{
+							AppId:  appId,
+							TaskId: taskId,
+							Error:  "Exited with status 1",
+						}))
 					Eventually(logOutput).Should(gbytes.Say("no valid buildpacks detected"))
 				})
 			})
@@ -367,23 +331,14 @@ EOF
 			})
 
 			It("only one returns a staging completed response", func() {
-				received := make(chan bool)
-
-				sid, err := natsClient.Subscribe("diego.staging.finished", func(message *nats.Msg) {
-					received <- true
-				})
-				Ω(err).ShouldNot(HaveOccurred())
-
-				defer natsClient.Unsubscribe(sid)
-
-				err = natsClient.Publish(
+				err := natsClient.Publish(
 					"diego.staging.start",
 					stagingMessage,
 				)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(received).Should(Receive())
-				Consistently(received, 10).ShouldNot(Receive())
+				Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
+				Consistently(fakeCC.StagingResponses).Should(HaveLen(1))
 			})
 		})
 	})
@@ -418,16 +373,6 @@ EOF
 		})
 		Context("with one stager running", func() {
 			It("runs the metadata extracted on the executor and responds with the execution metadata", func() {
-				//listen for NATS response
-				payloads := make(chan []byte)
-
-				sid, err := natsClient.Subscribe("diego.docker.staging.finished", func(msg *nats.Msg) {
-					payloads <- msg.Data
-				})
-				Ω(err).ShouldNot(HaveOccurred())
-
-				defer natsClient.Unsubscribe(sid)
-
 				//stream logs
 				logOutput := gbytes.NewBuffer()
 
@@ -441,20 +386,17 @@ EOF
 				defer close(stop)
 
 				//publish the staging message
-				err = natsClient.Publish("diego.docker.staging.start", stagingMessage)
+				err := natsClient.Publish("diego.docker.staging.start", stagingMessage)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				//wait for staging to complete
-				var payload []byte
-				Eventually(payloads).Should(Receive(&payload))
-
-				//Assert on the staging output (detected buildpack)
-				Ω(string(payload)).Should(MatchJSON(fmt.Sprintf(`{
-						"app_id": "%s",
-						"task_id": "%s",
-						"execution_metadata": "{\"cmd\":[\"/dockerapp\"]}",
-						"detected_start_command":{"web":"/dockerapp"}
-					}`, appId, taskId)))
+				Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
+				Ω(fakeCC.StagingResponses()[0]).Should(Equal(
+					cc_messages.StagingResponseForCC{
+						AppId:                appId,
+						TaskId:               taskId,
+						ExecutionMetadata:    "{\"cmd\":[\"/dockerapp\"]}",
+						DetectedStartCommand: map[string]string{"web": "/dockerapp"},
+					}))
 			})
 		})
 
@@ -470,23 +412,14 @@ EOF
 			})
 
 			It("only one returns a staging completed response", func() {
-				received := make(chan bool)
-
-				sid, err := natsClient.Subscribe("diego.docker.staging.finished", func(message *nats.Msg) {
-					received <- true
-				})
-				Ω(err).ShouldNot(HaveOccurred())
-
-				defer natsClient.Unsubscribe(sid)
-
-				err = natsClient.Publish(
+				err := natsClient.Publish(
 					"diego.docker.staging.start",
 					stagingMessage,
 				)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(received).Should(Receive())
-				Consistently(received, 10).ShouldNot(Receive())
+				Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
+				Consistently(fakeCC.StagingResponses).Should(HaveLen(1))
 			})
 		})
 

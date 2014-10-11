@@ -434,6 +434,9 @@ func (maker ComponentMaker) Stager(argv ...string) ifrit.Runner {
 			append([]string{
 				"-etcdCluster", "http://" + maker.Addresses.Etcd,
 				"-natsAddresses", maker.Addresses.NATS,
+				"-ccAddress", "http://" + maker.Addresses.FakeCC,
+				"-ccUsername", fake_cc.CC_USERNAME,
+				"-ccPassword", fake_cc.CC_PASSWORD,
 				"-circuses", fmt.Sprintf(`{"%s": "%s"}`, maker.Stack, CircusFilename),
 			}, argv...)...,
 		),

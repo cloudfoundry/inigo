@@ -2,6 +2,7 @@ package fake_cc
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -9,10 +10,13 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"sync"
 
+	"github.com/cloudfoundry-incubator/runtime-schema/cc_messages"
 	"github.com/cloudfoundry/gunk/test_server"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/ghttp"
 	"github.com/tedsuo/ifrit/http_server"
 )
 
@@ -37,6 +41,8 @@ type FakeCC struct {
 
 	UploadedDroplets             map[string][]byte
 	UploadedBuildArtifactsCaches map[string][]byte
+	stagingResponses             []cc_messages.StagingResponseForCC
+	lock                         *sync.RWMutex
 }
 
 func New(address string) *FakeCC {
@@ -45,6 +51,8 @@ func New(address string) *FakeCC {
 
 		UploadedDroplets:             map[string][]byte{},
 		UploadedBuildArtifactsCaches: map[string][]byte{},
+		stagingResponses:             []cc_messages.StagingResponseForCC{},
+		lock:                         new(sync.RWMutex),
 	}
 }
 
@@ -69,8 +77,17 @@ func (f *FakeCC) Password() string {
 }
 
 func (f *FakeCC) Reset() {
+	f.lock.Lock()
+	defer f.lock.Unlock()
 	f.UploadedDroplets = map[string][]byte{}
 	f.UploadedBuildArtifactsCaches = map[string][]byte{}
+	f.stagingResponses = []cc_messages.StagingResponseForCC{}
+}
+
+func (f *FakeCC) StagingResponses() []cc_messages.StagingResponseForCC {
+	f.lock.RLock()
+	defer f.lock.RUnlock()
+	return f.stagingResponses
 }
 
 func (f *FakeCC) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -80,6 +97,7 @@ func (f *FakeCC) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"/staging/droplets/.*/upload":          f.handleDropletUploadRequest,
 		"/staging/buildpack_cache/.*/upload":   f.handleBuildArtifactsCacheUploadRequest,
 		"/staging/buildpack_cache/.*/download": f.handleBuildArtifactsCacheDownloadRequest,
+		"/internal/staging/completed":          f.newHandleStagingRequest(),
 	}
 
 	for pattern, handler := range endpoints {
@@ -159,4 +177,21 @@ func (f *FakeCC) handleBuildArtifactsCacheDownloadRequest(w http.ResponseWriter,
 
 	buffer := bytes.NewBuffer(buildArtifactsCache)
 	io.Copy(w, buffer)
+}
+
+func (f *FakeCC) newHandleStagingRequest() http.HandlerFunc {
+	return ghttp.CombineHandlers(
+		ghttp.VerifyRequest("POST", "/internal/staging/completed"),
+		ghttp.VerifyBasicAuth(CC_USERNAME, CC_PASSWORD),
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var msg cc_messages.StagingResponseForCC
+			err := json.NewDecoder(r.Body).Decode(&msg)
+			Ω(err).ShouldNot(HaveOccurred())
+			r.Body.Close()
+			f.lock.Lock()
+			defer f.lock.Unlock()
+			f.stagingResponses = append(f.stagingResponses, msg)
+		}),
+		ghttp.RespondWith(http.StatusOK, "{}"),
+	)
 }
