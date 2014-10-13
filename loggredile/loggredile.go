@@ -3,7 +3,6 @@ package loggredile
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"code.google.com/p/gogoprotobuf/proto"
 	"github.com/cloudfoundry/loggregatorlib/logmessage"
@@ -58,27 +57,11 @@ func StreamIntoGBuffer(addr string, path string, sourceName string, outBuf, errB
 func streamMessages(addr string, path string, outMessages, errMessages chan<- *logmessage.LogMessage) chan<- bool {
 	stop := make(chan bool, 1)
 
-	var ws *websocket.Conn
-	i := 0
-	for {
-		var err error
-		ws, _, err = websocket.DefaultDialer.Dial(
-			fmt.Sprintf("ws://%s%s", addr, path),
-			http.Header{},
-		)
-		if err != nil {
-			i++
-			if i > 10 {
-				fmt.Printf("Unable to connect to Server in 100ms, giving up.\n")
-				return nil
-			}
-
-			time.Sleep(10 * time.Millisecond)
-			continue
-		} else {
-			break
-		}
-	}
+	ws, _, err := websocket.DefaultDialer.Dial(
+		fmt.Sprintf("ws://%s%s", addr, path),
+		http.Header{},
+	)
+	Ω(err).ShouldNot(HaveOccurred())
 
 	go func() {
 		for {
