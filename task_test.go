@@ -61,7 +61,7 @@ var _ = Describe("Task", func() {
 			})
 
 			It("eventually runs the Task", func() {
-				Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(thingWeRan))
+				Eventually(inigo_server.ReportingGuids).Should(ContainElement(thingWeRan))
 			})
 
 			Context("when a converger is running", func() {
@@ -80,7 +80,7 @@ var _ = Describe("Task", func() {
 
 				Context("after the task starts", func() {
 					BeforeEach(func() {
-						Eventually(inigo_server.ReportingGuids, LONG_TIMEOUT).Should(ContainElement(thingWeRan))
+						Eventually(inigo_server.ReportingGuids).Should(ContainElement(thingWeRan))
 					})
 
 					Context("when the executor disappears", func() {

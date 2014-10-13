@@ -32,11 +32,8 @@ import (
 	"github.com/cloudfoundry/storeadapter/workerpool"
 )
 
-var DEFAULT_EVENTUALLY_TIMEOUT = 15 * time.Second
+var DEFAULT_EVENTUALLY_TIMEOUT = 1 * time.Minute
 var DEFAULT_CONSISTENTLY_DURATION = 5 * time.Second
-
-var SHORT_TIMEOUT = 5 * time.Second
-var LONG_TIMEOUT = 15 * time.Second
 
 // use this for tests exercising docker; pulling can take a while
 const DOCKER_PULL_ESTIMATE = 5 * time.Minute
@@ -54,7 +51,67 @@ var (
 	gardenClient  garden_api.Client
 )
 
+var _ = SynchronizedBeforeSuite(func() []byte {
+	payload, err := json.Marshal(world.BuiltArtifacts{
+		Executables:  CompileTestedExecutables(),
+		Circuses:     CompileAndZipUpCircuses(),
+		DockerCircus: CompileAndZipUpDockerCircus(),
+	})
+	Ω(err).ShouldNot(HaveOccurred())
+
+	return payload
+}, func(encodedBuiltArtifacts []byte) {
+	var err error
+
+	err = json.Unmarshal(encodedBuiltArtifacts, &builtArtifacts)
+	Ω(err).ShouldNot(HaveOccurred())
+
+	addresses := world.ComponentAddresses{
+		GardenLinux:    fmt.Sprintf("127.0.0.1:%d", 10000+config.GinkgoConfig.ParallelNode),
+		NATS:           fmt.Sprintf("127.0.0.1:%d", 11000+config.GinkgoConfig.ParallelNode),
+		Etcd:           fmt.Sprintf("127.0.0.1:%d", 12000+config.GinkgoConfig.ParallelNode),
+		EtcdPeer:       fmt.Sprintf("127.0.0.1:%d", 12500+config.GinkgoConfig.ParallelNode),
+		Executor:       fmt.Sprintf("127.0.0.1:%d", 13000+config.GinkgoConfig.ParallelNode),
+		Rep:            fmt.Sprintf("127.0.0.1:%d", 14000+config.GinkgoConfig.ParallelNode),
+		LoggregatorIn:  fmt.Sprintf("127.0.0.1:%d", 15000+config.GinkgoConfig.ParallelNode),
+		LoggregatorOut: fmt.Sprintf("127.0.0.1:%d", 16000+config.GinkgoConfig.ParallelNode),
+		FileServer:     fmt.Sprintf("127.0.0.1:%d", 17000+config.GinkgoConfig.ParallelNode),
+		Router:         fmt.Sprintf("127.0.0.1:%d", 18000+config.GinkgoConfig.ParallelNode),
+		TPS:            fmt.Sprintf("127.0.0.1:%d", 19000+config.GinkgoConfig.ParallelNode),
+		FakeCC:         fmt.Sprintf("127.0.0.1:%d", 20000+config.GinkgoConfig.ParallelNode),
+	}
+
+	gardenBinPath := os.Getenv("GARDEN_BINPATH")
+	gardenRootFSPath := os.Getenv("GARDEN_ROOTFS")
+	gardenGraphPath := os.Getenv("GARDEN_GRAPH_PATH")
+	externalAddress := os.Getenv("EXTERNAL_ADDRESS")
+
+	if gardenGraphPath == "" {
+		gardenGraphPath = os.TempDir()
+	}
+
+	Ω(gardenBinPath).ShouldNot(BeEmpty(), "must provide $GARDEN_BINPATH")
+	Ω(gardenRootFSPath).ShouldNot(BeEmpty(), "must provide $GARDEN_ROOTFS")
+	Ω(externalAddress).ShouldNot(BeEmpty(), "must provide $EXTERNAL_ADDRESS")
+
+	componentMaker = world.ComponentMaker{
+		Artifacts: builtArtifacts,
+		Addresses: addresses,
+
+		Stack: StackName,
+
+		ExternalAddress: externalAddress,
+
+		GardenBinPath:    gardenBinPath,
+		GardenRootFSPath: gardenRootFSPath,
+		GardenGraphPath:  gardenGraphPath,
+	}
+})
+
 var _ = BeforeEach(func() {
+	currentTestDescription := CurrentGinkgoTestDescription()
+	fmt.Fprintf(GinkgoWriter, "\n%s\n%s\n\n", strings.Repeat("~", 50), currentTestDescription.FullTestText)
+
 	gardenLinux := componentMaker.GardenLinux()
 
 	plumbing = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
@@ -83,9 +140,9 @@ var _ = BeforeEach(func() {
 
 var _ = AfterEach(func() {
 	inigo_server.Stop(gardenClient)
-})
 
-var _ = AfterEach(func() {
+	helpers.StopProcess(plumbing)
+
 	containers, err := gardenClient.Containers(nil)
 	Ω(err).ShouldNot(HaveOccurred())
 
@@ -109,86 +166,10 @@ var _ = AfterEach(func() {
 	)
 })
 
-var _ = AfterEach(func() {
-	helpers.StopProcess(plumbing)
-})
-
 func TestInigo(t *testing.T) {
 	registerDefaultTimeouts()
 
 	RegisterFailHandler(Fail)
-
-	SynchronizedBeforeSuite(func() []byte {
-		payload, err := json.Marshal(world.BuiltArtifacts{
-			Executables:  CompileTestedExecutables(),
-			Circuses:     CompileAndZipUpCircuses(),
-			DockerCircus: CompileAndZipUpDockerCircus(),
-		})
-		Ω(err).ShouldNot(HaveOccurred())
-
-		return payload
-	}, func(encodedBuiltArtifacts []byte) {
-		var err error
-
-		if os.Getenv("SHORT_TIMEOUT") != "" {
-			SHORT_TIMEOUT, err = time.ParseDuration(os.Getenv("SHORT_TIMEOUT"))
-			Ω(err).ShouldNot(HaveOccurred())
-		}
-
-		if os.Getenv("LONG_TIMEOUT") != "" {
-			LONG_TIMEOUT, err = time.ParseDuration(os.Getenv("LONG_TIMEOUT"))
-			Ω(err).ShouldNot(HaveOccurred())
-		}
-
-		err = json.Unmarshal(encodedBuiltArtifacts, &builtArtifacts)
-		Ω(err).ShouldNot(HaveOccurred())
-
-		addresses := world.ComponentAddresses{
-			GardenLinux:    fmt.Sprintf("127.0.0.1:%d", 10000+config.GinkgoConfig.ParallelNode),
-			NATS:           fmt.Sprintf("127.0.0.1:%d", 11000+config.GinkgoConfig.ParallelNode),
-			Etcd:           fmt.Sprintf("127.0.0.1:%d", 12000+config.GinkgoConfig.ParallelNode),
-			EtcdPeer:       fmt.Sprintf("127.0.0.1:%d", 12500+config.GinkgoConfig.ParallelNode),
-			Executor:       fmt.Sprintf("127.0.0.1:%d", 13000+config.GinkgoConfig.ParallelNode),
-			Rep:            fmt.Sprintf("127.0.0.1:%d", 14000+config.GinkgoConfig.ParallelNode),
-			LoggregatorIn:  fmt.Sprintf("127.0.0.1:%d", 15000+config.GinkgoConfig.ParallelNode),
-			LoggregatorOut: fmt.Sprintf("127.0.0.1:%d", 16000+config.GinkgoConfig.ParallelNode),
-			FileServer:     fmt.Sprintf("127.0.0.1:%d", 17000+config.GinkgoConfig.ParallelNode),
-			Router:         fmt.Sprintf("127.0.0.1:%d", 18000+config.GinkgoConfig.ParallelNode),
-			TPS:            fmt.Sprintf("127.0.0.1:%d", 19000+config.GinkgoConfig.ParallelNode),
-			FakeCC:         fmt.Sprintf("127.0.0.1:%d", 20000+config.GinkgoConfig.ParallelNode),
-		}
-
-		gardenBinPath := os.Getenv("GARDEN_BINPATH")
-		gardenRootFSPath := os.Getenv("GARDEN_ROOTFS")
-		gardenGraphPath := os.Getenv("GARDEN_GRAPH_PATH")
-		externalAddress := os.Getenv("EXTERNAL_ADDRESS")
-
-		if gardenGraphPath == "" {
-			gardenGraphPath = os.TempDir()
-		}
-
-		Ω(gardenBinPath).ShouldNot(BeEmpty(), "must provide $GARDEN_BINPATH")
-		Ω(gardenRootFSPath).ShouldNot(BeEmpty(), "must provide $GARDEN_ROOTFS")
-		Ω(externalAddress).ShouldNot(BeEmpty(), "must provide $EXTERNAL_ADDRESS")
-
-		componentMaker = world.ComponentMaker{
-			Artifacts: builtArtifacts,
-			Addresses: addresses,
-
-			Stack: StackName,
-
-			ExternalAddress: externalAddress,
-
-			GardenBinPath:    gardenBinPath,
-			GardenRootFSPath: gardenRootFSPath,
-			GardenGraphPath:  gardenGraphPath,
-		}
-	})
-
-	BeforeEach(func() {
-		currentTestDescription := CurrentGinkgoTestDescription()
-		fmt.Fprintf(GinkgoWriter, "\n%s\n%s\n\n", strings.Repeat("~", 50), currentTestDescription.FullTestText)
-	})
 
 	RunSpecsWithDefaultAndCustomReporters(t, "Inigo Integration Suite", []Reporter{
 		ginkgoreporter.New(GinkgoWriter),
