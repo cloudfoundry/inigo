@@ -125,7 +125,7 @@ var _ = BeforeEach(func() {
 
 	var err error
 	natsClient = diegonats.NewClient()
-	err = natsClient.Connect([]string{"nats://" + componentMaker.Addresses.NATS})
+	_, err = natsClient.Connect([]string{"nats://" + componentMaker.Addresses.NATS})
 	Ω(err).ShouldNot(HaveOccurred())
 
 	adapter := etcdstoreadapter.NewETCDStoreAdapter([]string{"http://" + componentMaker.Addresses.Etcd}, workerpool.NewWorkerPool(20))
