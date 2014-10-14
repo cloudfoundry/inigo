@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -275,12 +276,13 @@ var _ = Describe("Executor", func() {
 		BeforeEach(func() {
 			guid = factories.GenerateGuid()
 
-			err := ioutil.WriteFile(
-				filepath.Join(fileServerStaticDir, "curling.sh"),
-				[]byte(fmt.Sprintf("curl %s", strings.Join(inigo_server.CurlArgs(guid), " "))),
-				0644,
-			)
-			Ω(err).ShouldNot(HaveOccurred())
+			test_helper.CreateTarGZArchive(filepath.Join(fileServerStaticDir, "curling.tar.gz"), []test_helper.ArchiveFile{
+				{
+					Name: "curling",
+					Body: fmt.Sprintf("#!/bin/sh\n\ncurl %s", strings.Join(inigo_server.CurlArgs(guid), " ")),
+					Mode: 0755,
+				},
+			})
 		})
 
 		It("downloads the file", func() {
@@ -293,15 +295,13 @@ var _ = Describe("Executor", func() {
 				Actions: []models.ExecutorAction{
 					{
 						models.DownloadAction{
-							From:    fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "curling.sh"),
-							To:      "curling.sh",
-							Extract: false,
+							From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "curling.tar.gz"),
+							To:   ".",
 						},
 					},
 					{
 						models.RunAction{
-							Path: "bash",
-							Args: []string{"curling.sh"},
+							Path: "./curling",
 						},
 					},
 				},
