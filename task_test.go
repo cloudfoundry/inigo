@@ -96,7 +96,7 @@ var _ = Describe("Task", func() {
 							Ω(err).ShouldNot(HaveOccurred())
 
 							completedTask := tasks[0]
-							Ω(completedTask.Guid).Should(Equal(task.Guid))
+							Ω(completedTask.TaskGuid).Should(Equal(task.TaskGuid))
 							Ω(completedTask.Failed).To(BeTrue())
 						})
 					})

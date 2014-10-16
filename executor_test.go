@@ -140,7 +140,7 @@ var _ = Describe("Executor", func() {
 			}
 			task := models.Task{
 				Domain:   "inigo",
-				Guid:     factories.GenerateGuid(),
+				TaskGuid: factories.GenerateGuid(),
 				Stack:    componentMaker.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
@@ -170,7 +170,7 @@ var _ = Describe("Executor", func() {
 				otherGuid = factories.GenerateGuid()
 				task := models.Task{
 					Domain:   "inigo",
-					Guid:     factories.GenerateGuid(),
+					TaskGuid: factories.GenerateGuid(),
 					Stack:    componentMaker.Stack,
 					MemoryMB: 10,
 					DiskMB:   1024,
@@ -210,7 +210,7 @@ var _ = Describe("Executor", func() {
 
 				task := models.Task{
 					Domain:   "inigo",
-					Guid:     factories.GenerateGuid(),
+					TaskGuid: factories.GenerateGuid(),
 					Stack:    componentMaker.Stack,
 					MemoryMB: 10,
 					DiskMB:   1024,
@@ -241,7 +241,7 @@ var _ = Describe("Executor", func() {
 			It("should fail the Task", func() {
 				task := models.Task{
 					Domain:   "inigo",
-					Guid:     factories.GenerateGuid(),
+					TaskGuid: factories.GenerateGuid(),
 					Stack:    componentMaker.Stack,
 					MemoryMB: 1024,
 					DiskMB:   1024,
@@ -288,7 +288,7 @@ var _ = Describe("Executor", func() {
 		It("downloads the file", func() {
 			task := models.Task{
 				Domain:   "inigo",
-				Guid:     factories.GenerateGuid(),
+				TaskGuid: factories.GenerateGuid(),
 				Stack:    componentMaker.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
@@ -347,7 +347,7 @@ var _ = Describe("Executor", func() {
 		It("uploads the specified files", func() {
 			task := models.Task{
 				Domain:   "inigo",
-				Guid:     factories.GenerateGuid(),
+				TaskGuid: factories.GenerateGuid(),
 				Stack:    componentMaker.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
@@ -386,7 +386,7 @@ var _ = Describe("Executor", func() {
 		It("should fetch the contents of the requested file and provide the content in the completed Task", func() {
 			task := models.Task{
 				Domain:   "inigo",
-				Guid:     factories.GenerateGuid(),
+				TaskGuid: factories.GenerateGuid(),
 				Stack:    componentMaker.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
