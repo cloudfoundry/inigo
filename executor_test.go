@@ -385,17 +385,17 @@ var _ = Describe("Executor", func() {
 	Describe("Fetching results", func() {
 		It("should fetch the contents of the requested file and provide the content in the completed Task", func() {
 			task := models.Task{
-				Domain:   "inigo",
-				TaskGuid: factories.GenerateGuid(),
-				Stack:    componentMaker.Stack,
-				MemoryMB: 1024,
-				DiskMB:   1024,
+				Domain:     "inigo",
+				TaskGuid:   factories.GenerateGuid(),
+				Stack:      componentMaker.Stack,
+				MemoryMB:   1024,
+				DiskMB:     1024,
+				ResultFile: "thingy",
 				Actions: []models.ExecutorAction{
 					{Action: models.RunAction{
 						Path: "bash",
 						Args: []string{"-c", "echo tasty thingy > thingy"},
 					}},
-					{Action: models.FetchResultAction{File: "thingy"}},
 				},
 			}
 
