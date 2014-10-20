@@ -42,6 +42,8 @@ type FakeCC struct {
 	UploadedDroplets             map[string][]byte
 	UploadedBuildArtifactsCaches map[string][]byte
 	stagingResponses             []cc_messages.StagingResponseForCC
+	stagingResponseStatusCode    int
+	stagingResponseBody          string
 	lock                         *sync.RWMutex
 }
 
@@ -52,6 +54,8 @@ func New(address string) *FakeCC {
 		UploadedDroplets:             map[string][]byte{},
 		UploadedBuildArtifactsCaches: map[string][]byte{},
 		stagingResponses:             []cc_messages.StagingResponseForCC{},
+		stagingResponseStatusCode:    http.StatusOK,
+		stagingResponseBody:          "{}",
 		lock:                         new(sync.RWMutex),
 	}
 }
@@ -82,6 +86,16 @@ func (f *FakeCC) Reset() {
 	f.UploadedDroplets = map[string][]byte{}
 	f.UploadedBuildArtifactsCaches = map[string][]byte{}
 	f.stagingResponses = []cc_messages.StagingResponseForCC{}
+	f.stagingResponseStatusCode = http.StatusOK
+	f.stagingResponseBody = "{}"
+}
+
+func (f *FakeCC) SetStagingResponseStatusCode(statusCode int) {
+	f.stagingResponseStatusCode = statusCode
+}
+
+func (f *FakeCC) SetStagingResponseBody(body string) {
+	f.stagingResponseBody = body
 }
 
 func (f *FakeCC) StagingResponses() []cc_messages.StagingResponseForCC {
@@ -192,6 +206,6 @@ func (f *FakeCC) newHandleStagingRequest() http.HandlerFunc {
 			defer f.lock.Unlock()
 			f.stagingResponses = append(f.stagingResponses, msg)
 		}),
-		ghttp.RespondWith(http.StatusOK, "{}"),
+		ghttp.RespondWithPtr(&f.stagingResponseStatusCode, &f.stagingResponseBody),
 	)
 }

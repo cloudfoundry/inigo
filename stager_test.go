@@ -341,7 +341,35 @@ EOF
 				Consistently(fakeCC.StagingResponses).Should(HaveLen(1))
 			})
 		})
+
+		Context("when posting a staging response fails repeatedly", func() {
+			var converger ifrit.Process
+
+			BeforeEach(func() {
+				converger = ginkgomon.Invoke(componentMaker.Converger(
+					"-convergeRepeatInterval", "1s",
+					"-kickPendingTaskDuration", "4s",
+					"-expireCompletedTaskDuration", "6s",
+				))
+			})
+
+			AfterEach(func() {
+				converger.Signal(os.Kill)
+			})
+
+			It("should delete the staging task from the bbs", func() {
+				fakeCC.SetStagingResponseStatusCode(http.StatusInternalServerError)
+				fakeCC.SetStagingResponseBody(`{"error": "bah!"}`)
+
+				err := natsClient.Publish("diego.staging.start", stagingMessage)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Eventually(fakeCC.StagingResponses).Should(HaveLen(2))
+				Consistently(fakeCC.StagingResponses).Should(HaveLen(2))
+			})
+		})
 	})
+
 	Describe("Staging Docker", func() {
 		var stagingMessage []byte
 		var dockerImage = "cloudfoundry/inigodockertest"
@@ -371,6 +399,7 @@ EOF
 				),
 			)
 		})
+
 		Context("with one stager running", func() {
 			It("runs the metadata extracted on the executor and responds with the execution metadata", func() {
 				//stream logs
@@ -423,6 +452,32 @@ EOF
 			})
 		})
 
+		Context("when posting a staging response fails repeatedly", func() {
+			var converger ifrit.Process
+
+			BeforeEach(func() {
+				converger = ginkgomon.Invoke(componentMaker.Converger(
+					"-convergeRepeatInterval", "1s",
+					"-kickPendingTaskDuration", "4s",
+					"-expireCompletedTaskDuration", "6s",
+				))
+			})
+
+			AfterEach(func() {
+				converger.Signal(os.Kill)
+			})
+
+			It("should delete the staging task from the bbs", func() {
+				fakeCC.SetStagingResponseStatusCode(http.StatusInternalServerError)
+				fakeCC.SetStagingResponseBody(`{"error": "bah!"}`)
+
+				err := natsClient.Publish("diego.docker.staging.start", stagingMessage)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Eventually(fakeCC.StagingResponses).Should(HaveLen(2))
+				Consistently(fakeCC.StagingResponses).Should(HaveLen(2))
+			})
+		})
 	})
 })
 
