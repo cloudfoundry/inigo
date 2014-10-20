@@ -211,16 +211,16 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	builtExecutables["loggregator"], err = gexec.BuildIn(os.Getenv("LOGGREGATOR_GOPATH"), "loggregator")
 	Ω(err).ShouldNot(HaveOccurred())
 
-	builtExecutables["auctioneer"], err = gexec.BuildIn(os.Getenv("AUCTIONEER_GOPATH"), "github.com/cloudfoundry-incubator/auctioneer", "-race")
+	builtExecutables["auctioneer"], err = gexec.BuildIn(os.Getenv("AUCTIONEER_GOPATH"), "github.com/cloudfoundry-incubator/auctioneer/cmd/auctioneer", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	builtExecutables["exec"], err = gexec.BuildIn(os.Getenv("EXECUTOR_GOPATH"), "github.com/cloudfoundry-incubator/executor/cmd/executor", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
-	builtExecutables["converger"], err = gexec.BuildIn(os.Getenv("CONVERGER_GOPATH"), "github.com/cloudfoundry-incubator/converger", "-race")
+	builtExecutables["converger"], err = gexec.BuildIn(os.Getenv("CONVERGER_GOPATH"), "github.com/cloudfoundry-incubator/converger/cmd/converger", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
-	builtExecutables["rep"], err = gexec.BuildIn(os.Getenv("REP_GOPATH"), "github.com/cloudfoundry-incubator/rep", "-race")
+	builtExecutables["rep"], err = gexec.BuildIn(os.Getenv("REP_GOPATH"), "github.com/cloudfoundry-incubator/rep/cmd/rep", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	builtExecutables["stager"], err = gexec.BuildIn(os.Getenv("STAGER_GOPATH"), "github.com/cloudfoundry-incubator/stager/cmd/stager", "-race")
@@ -235,13 +235,13 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	builtExecutables["file-server"], err = gexec.BuildIn(os.Getenv("FILE_SERVER_GOPATH"), "github.com/cloudfoundry-incubator/file-server/cmd/file-server", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
-	builtExecutables["route-emitter"], err = gexec.BuildIn(os.Getenv("ROUTE_EMITTER_GOPATH"), "github.com/cloudfoundry-incubator/route-emitter", "-race")
+	builtExecutables["route-emitter"], err = gexec.BuildIn(os.Getenv("ROUTE_EMITTER_GOPATH"), "github.com/cloudfoundry-incubator/route-emitter/cmd/route-emitter", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	builtExecutables["tps"], err = gexec.BuildIn(os.Getenv("TPS_GOPATH"), "github.com/cloudfoundry-incubator/tps/cmd/tps", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	builtExecutables["router"], err = gexec.BuildIn(os.Getenv("ROUTER_GOPATH"), "github.com/cloudfoundry/gorouter", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	builtExecutables["tps"], err = gexec.BuildIn(os.Getenv("TPS_GOPATH"), "github.com/cloudfoundry-incubator/tps", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	return builtExecutables
