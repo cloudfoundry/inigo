@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
-	gardenrunner "github.com/cloudfoundry-incubator/garden-linux/old/integration/runner"
+	gardenrunner "github.com/cloudfoundry-incubator/garden-linux/integration/runner"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	gorouterconfig "github.com/cloudfoundry/gorouter/config"
 	"github.com/onsi/ginkgo"
