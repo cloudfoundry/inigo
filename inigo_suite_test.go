@@ -28,8 +28,8 @@ import (
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry/gunk/diegonats"
 	"github.com/cloudfoundry/gunk/timeprovider"
+	"github.com/cloudfoundry/gunk/workpool"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
-	"github.com/cloudfoundry/storeadapter/workerpool"
 )
 
 var DEFAULT_EVENTUALLY_TIMEOUT = 1 * time.Minute
@@ -128,7 +128,7 @@ var _ = BeforeEach(func() {
 	_, err = natsClient.Connect([]string{"nats://" + componentMaker.Addresses.NATS})
 	Ω(err).ShouldNot(HaveOccurred())
 
-	adapter := etcdstoreadapter.NewETCDStoreAdapter([]string{"http://" + componentMaker.Addresses.Etcd}, workerpool.NewWorkerPool(20))
+	adapter := etcdstoreadapter.NewETCDStoreAdapter([]string{"http://" + componentMaker.Addresses.Etcd}, workpool.NewWorkPool(20))
 
 	err = adapter.Connect()
 	Ω(err).ShouldNot(HaveOccurred())
