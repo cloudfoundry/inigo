@@ -16,6 +16,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
 	"github.com/cloudfoundry-incubator/inigo/world"
+	"github.com/cloudfoundry-incubator/stager/outbox"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -358,14 +359,16 @@ EOF
 			})
 
 			It("should delete the staging task from the bbs", func() {
-				fakeCC.SetStagingResponseStatusCode(http.StatusInternalServerError)
+				fakeCC.SetStagingResponseStatusCode(http.StatusServiceUnavailable)
 				fakeCC.SetStagingResponseBody(`{"error": "bah!"}`)
 
 				err := natsClient.Publish("diego.staging.start", stagingMessage)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(fakeCC.StagingResponses).Should(HaveLen(2))
-				Consistently(fakeCC.StagingResponses).Should(HaveLen(2))
+				expectedStagingResponseCount := 2 * outbox.StagingResponseRetryLimit
+
+				Eventually(fakeCC.StagingResponses).Should(HaveLen(expectedStagingResponseCount))
+				Consistently(fakeCC.StagingResponses).Should(HaveLen(expectedStagingResponseCount))
 			})
 		})
 	})
@@ -449,33 +452,6 @@ EOF
 
 				Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
 				Consistently(fakeCC.StagingResponses).Should(HaveLen(1))
-			})
-		})
-
-		Context("when posting a staging response fails repeatedly", func() {
-			var converger ifrit.Process
-
-			BeforeEach(func() {
-				converger = ginkgomon.Invoke(componentMaker.Converger(
-					"-convergeRepeatInterval", "1s",
-					"-kickPendingTaskDuration", "4s",
-					"-expireCompletedTaskDuration", "6s",
-				))
-			})
-
-			AfterEach(func() {
-				converger.Signal(os.Kill)
-			})
-
-			It("should delete the staging task from the bbs", func() {
-				fakeCC.SetStagingResponseStatusCode(http.StatusInternalServerError)
-				fakeCC.SetStagingResponseBody(`{"error": "bah!"}`)
-
-				err := natsClient.Publish("diego.docker.staging.start", stagingMessage)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Eventually(fakeCC.StagingResponses).Should(HaveLen(2))
-				Consistently(fakeCC.StagingResponses).Should(HaveLen(2))
 			})
 		})
 	})
