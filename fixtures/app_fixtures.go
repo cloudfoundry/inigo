@@ -30,6 +30,10 @@ trap('INT') {
 server.start
 END_MAGIC_SERVER
           `,
+		}, {
+			Name: "staging_info.yml",
+			Body: `detected_buildpack: Ruby
+start_command: ./run`,
 		},
 	}
 }

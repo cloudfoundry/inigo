@@ -75,10 +75,11 @@ var _ = Describe("AppRunner", func() {
 			)
 		})
 
-		It("runs the app on the executor, registers routes, and shows that they are running via the tps", func() {
-			runningMessage = []byte(
-				fmt.Sprintf(
-					`
+		Context("when the running message contains a start_command", func() {
+			It("runs the app on the executor, registers routes, and shows that they are running via the tps", func() {
+				runningMessage = []byte(
+					fmt.Sprintf(
+						`
 						{
 			        "process_guid": "process-guid",
 			        "droplet_uri": "%s",
@@ -90,43 +91,89 @@ var _ = Describe("AppRunner", func() {
 			        "log_guid": "%s"
 			      }
 			    `,
-					fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "droplet.zip"),
-					componentMaker.Stack,
-					appId,
-				),
-			)
+						fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "droplet.zip"),
+						componentMaker.Stack,
+						appId,
+					),
+				)
 
-			//stream logs
-			logOutput := gbytes.NewBuffer()
+				//stream logs
+				logOutput := gbytes.NewBuffer()
 
-			stop := loggredile.StreamIntoGBuffer(
-				componentMaker.Addresses.LoggregatorOut,
-				fmt.Sprintf("/tail/?app=%s", appId),
-				"App",
-				logOutput,
-				logOutput,
-			)
-			defer close(stop)
+				stop := loggredile.StreamIntoGBuffer(
+					componentMaker.Addresses.LoggregatorOut,
+					fmt.Sprintf("/tail/?app=%s", appId),
+					"App",
+					logOutput,
+					logOutput,
+				)
+				defer close(stop)
 
-			// publish the app run message
-			err := natsClient.Publish("diego.desire.app", runningMessage)
-			Ω(err).ShouldNot(HaveOccurred())
+				// publish the app run message
+				err := natsClient.Publish("diego.desire.app", runningMessage)
+				Ω(err).ShouldNot(HaveOccurred())
 
-			// Assert the user saw reasonable output
-			Eventually(logOutput.Contents).Should(ContainSubstring("Hello World from index '0'"))
-			Eventually(logOutput.Contents).Should(ContainSubstring("Hello World from index '1'"))
-			Eventually(logOutput.Contents).Should(ContainSubstring("Hello World from index '2'"))
+				// Assert the user saw reasonable output
+				Eventually(logOutput.Contents).Should(ContainSubstring("Hello World from index '0'"))
+				Eventually(logOutput.Contents).Should(ContainSubstring("Hello World from index '1'"))
+				Eventually(logOutput.Contents).Should(ContainSubstring("Hello World from index '2'"))
 
-			// check lrp instance statuses
-			Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, "process-guid")).Should(HaveLen(3))
+				// check lrp instance statuses
+				Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, "process-guid")).Should(HaveLen(3))
 
-			//both routes should be routable
-			Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-1")).Should(Equal(http.StatusOK))
-			Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-2")).Should(Equal(http.StatusOK))
+				//both routes should be routable
+				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-1")).Should(Equal(http.StatusOK))
+				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-2")).Should(Equal(http.StatusOK))
 
-			//a given route should route to all three running instances
-			poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-1")
-			Eventually(poller).Should(Equal([]string{"0", "1", "2"}))
+				//a given route should route to all three running instances
+				poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-1")
+				Eventually(poller).Should(Equal([]string{"0", "1", "2"}))
+			})
+		})
+
+		Context("when the start message does not include a start_command", func() {
+			It("runs the app, registers a route, and shows running via tps", func() {
+				runningMessage = []byte(
+					fmt.Sprintf(
+						`
+						{
+			        "process_guid": "process-guid",
+			        "droplet_uri": "%s",
+				      "stack": "%s",
+			        "num_instances": 1,
+			        "environment":[{"name":"VCAP_APPLICATION", "value":"{}"}],
+			        "routes": ["route-1"],
+			        "log_guid": "%s"
+			      }
+			    `,
+						fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "droplet.zip"),
+						componentMaker.Stack,
+						appId,
+					),
+				)
+
+				//stream logs
+				logOutput := gbytes.NewBuffer()
+
+				stop := loggredile.StreamIntoGBuffer(
+					componentMaker.Addresses.LoggregatorOut,
+					fmt.Sprintf("/tail/?app=%s", appId),
+					"App",
+					logOutput,
+					logOutput,
+				)
+				defer close(stop)
+
+				// publish the app run message
+				err := natsClient.Publish("diego.desire.app", runningMessage)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				// Assert the user saw reasonable output
+				Eventually(logOutput.Contents).Should(ContainSubstring("Hello World from index '0'"))
+
+				Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, "process-guid")).Should(HaveLen(1))
+				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-1")).Should(Equal(http.StatusOK))
+			})
 		})
 
 		It("runs docker apps", func() {
