@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
 	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/cloudfoundry-incubator/stager/outbox"
+	"github.com/cloudfoundry/gunk/urljoiner"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -39,6 +41,9 @@ var _ = Describe("Stager", func() {
 
 	var fakeCC *fake_cc.FakeCC
 
+	var buildArtifactsUploadUri string
+	var dropletUploadUri string
+
 	BeforeEach(func() {
 		appId = factories.GenerateGuid()
 		taskId = factories.GenerateGuid()
@@ -57,6 +62,14 @@ var _ = Describe("Stager", func() {
 			{"file-server", fileServer},
 			{"loggregator", componentMaker.Loggregator()},
 		}))
+
+		u, err := url.Parse(fakeCC.Address())
+		Ω(err).ShouldNot(HaveOccurred())
+		u.User = url.UserPassword(fakeCC.Username(), fakeCC.Password())
+		u.Path = urljoiner.Join("staging", "droplets", appId, "upload?async=true")
+		dropletUploadUri = u.String()
+		u.Path = urljoiner.Join("staging", "buildpack_cache", appId, "upload")
+		buildArtifactsUploadUri = u.String()
 	})
 
 	AfterEach(func() {
@@ -72,9 +85,11 @@ var _ = Describe("Stager", func() {
 					"task_id": "%s",
 					"app_bits_download_uri": "some-download-uri",
 					"build_artifacts_cache_download_uri": "artifacts-download-uri",
-					"build_artifacts_cache_upload_uri": "artifacts-upload-uri",
+					"build_artifacts_cache_upload_uri": "%s",
+					"droplet_upload_uri": "%s",
 					"stack": "no-circus"
-				}`, appId, taskId)),
+				}`, appId, taskId,
+					buildArtifactsUploadUri, dropletUploadUri)),
 			)
 
 			Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
@@ -162,12 +177,16 @@ EOF
 						"file_descriptors": 1024,
 						"stack": "lucid64",
 						"app_bits_download_uri": "%s",
+						"build_artifacts_cache_upload_uri": "%s",
+						"droplet_upload_uri": "%s",
 						"buildpacks" : [{ "name": "test-buildpack", "key": "test-buildpack-key", "url": "%s" }],
 						"environment": [{ "name": "SOME_STAGING_ENV", "value": "%s"}]
 					}`,
 					appId,
 					taskId,
 					fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "app.zip"),
+					buildArtifactsUploadUri,
+					dropletUploadUri,
 					fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, buildpackToUse),
 					outputGuid,
 				),
@@ -458,13 +477,17 @@ EOF
 })
 
 func downloadBuildArtifactsCache(appId string) []byte {
-	fileServerUrl := fmt.Sprintf("http://%s/v1/build_artifacts/%s", componentMaker.Addresses.FileServer, appId)
-	resp, err := http.Get(fileServerUrl)
+	buildArtifactUrl := fmt.Sprintf("http://%s:%s@%s/staging/buildpack_cache/%s/download",
+		fake_cc.CC_USERNAME, fake_cc.CC_PASSWORD, componentMaker.Addresses.FakeCC, appId)
+
+	resp, err := http.Get(buildArtifactUrl)
 	Ω(err).ShouldNot(HaveOccurred())
+	defer resp.Body.Close()
 
 	Ω(resp.StatusCode).Should(Equal(http.StatusOK))
 
 	bytes, err := ioutil.ReadAll(resp.Body)
+
 	Ω(err).ShouldNot(HaveOccurred())
 
 	return bytes
