@@ -79,6 +79,8 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		Router:         fmt.Sprintf("127.0.0.1:%d", 18000+config.GinkgoConfig.ParallelNode),
 		TPS:            fmt.Sprintf("127.0.0.1:%d", 19000+config.GinkgoConfig.ParallelNode),
 		FakeCC:         fmt.Sprintf("127.0.0.1:%d", 20000+config.GinkgoConfig.ParallelNode),
+		Receptor:       fmt.Sprintf("127.0.0.1:%d", 21000+config.GinkgoConfig.ParallelNode),
+		Stager:         fmt.Sprintf("127.0.0.1:%d", 22000+config.GinkgoConfig.ParallelNode),
 	}
 
 	gardenBinPath := os.Getenv("GARDEN_BINPATH")
@@ -224,6 +226,9 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	Ω(err).ShouldNot(HaveOccurred())
 
 	builtExecutables["stager"], err = gexec.BuildIn(os.Getenv("STAGER_GOPATH"), "github.com/cloudfoundry-incubator/stager/cmd/stager", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	builtExecutables["receptor"], err = gexec.BuildIn(os.Getenv("RECEPTOR_GOPATH"), "github.com/cloudfoundry-incubator/receptor/cmd/receptor", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	builtExecutables["nsync-listener"], err = gexec.BuildIn(os.Getenv("NSYNC_GOPATH"), "github.com/cloudfoundry-incubator/nsync/cmd/nsync-listener", "-race")

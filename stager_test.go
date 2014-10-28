@@ -17,7 +17,6 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
 	"github.com/cloudfoundry-incubator/inigo/world"
-	"github.com/cloudfoundry-incubator/stager/outbox"
 	"github.com/cloudfoundry/gunk/urljoiner"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -59,6 +58,7 @@ var _ = Describe("Stager", func() {
 			{"nsync-listener", componentMaker.NsyncListener()},
 			{"exec", componentMaker.Executor()},
 			{"rep", componentMaker.Rep()},
+			{"receptor", componentMaker.Receptor()},
 			{"file-server", fileServer},
 			{"loggregator", componentMaker.Loggregator()},
 		}))
@@ -384,10 +384,11 @@ EOF
 				err := natsClient.Publish("diego.staging.start", stagingMessage)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				expectedStagingResponseCount := 2 * outbox.StagingResponseRetryLimit
+				NUM_STAGERS := 2
+				NUM_RETRIES := 3
 
-				Eventually(fakeCC.StagingResponses).Should(HaveLen(expectedStagingResponseCount))
-				Consistently(fakeCC.StagingResponses).Should(HaveLen(expectedStagingResponseCount))
+				Eventually(fakeCC.StagingResponses).Should(HaveLen(NUM_STAGERS * NUM_RETRIES))
+				Consistently(fakeCC.StagingResponses).Should(HaveLen(NUM_STAGERS * NUM_RETRIES))
 			})
 		})
 	})
@@ -455,7 +456,7 @@ EOF
 			var otherStager ifrit.Process
 
 			BeforeEach(func() {
-				otherStager = ginkgomon.Invoke(componentMaker.Stager())
+				otherStager = ginkgomon.Invoke(componentMaker.StagerN(1))
 			})
 
 			AfterEach(func() {

@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
@@ -46,6 +47,8 @@ type ComponentAddresses struct {
 	Router         string
 	TPS            string
 	GardenLinux    string
+	Receptor       string
+	Stager         string
 }
 
 type ComponentMaker struct {
@@ -424,6 +427,14 @@ func (maker ComponentMaker) FakeCC() *fake_cc.FakeCC {
 }
 
 func (maker ComponentMaker) Stager(argv ...string) ifrit.Runner {
+	return maker.StagerN(0, argv...)
+}
+
+func (maker ComponentMaker) StagerN(i int, argv ...string) ifrit.Runner {
+	address := maker.Addresses.Stager
+	port, err := strconv.Atoi(strings.Split(address, ":")[1])
+	Ω(err).ShouldNot(HaveOccurred())
+
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "stager",
 		AnsiColorCode:     "94m",
@@ -438,6 +449,24 @@ func (maker ComponentMaker) Stager(argv ...string) ifrit.Runner {
 				"-ccUsername", fake_cc.CC_USERNAME,
 				"-ccPassword", fake_cc.CC_PASSWORD,
 				"-circuses", fmt.Sprintf(`{"%s": "%s"}`, maker.Stack, CircusFilename),
+				"-diegoAPIURL", maker.Addresses.Receptor,
+				"-stagerURL", fmt.Sprintf("http://127.0.0.1:%d", port+i),
+			}, argv...)...,
+		),
+	})
+}
+
+func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
+	return ginkgomon.New(ginkgomon.Config{
+		Name:              "receptor",
+		AnsiColorCode:     "37m",
+		StartCheck:        "started",
+		StartCheckTimeout: 5 * time.Second,
+		Command: exec.Command(
+			maker.Artifacts.Executables["receptor"],
+			append([]string{
+				"-address", maker.Addresses.Receptor,
+				"-etcdCluster", "http://" + maker.Addresses.Etcd,
 			}, argv...)...,
 		),
 	})
