@@ -450,7 +450,7 @@ func (maker ComponentMaker) StagerN(i int, argv ...string) ifrit.Runner {
 				"-ccPassword", fake_cc.CC_PASSWORD,
 				"-circuses", fmt.Sprintf(`{"%s": "%s"}`, maker.Stack, CircusFilename),
 				"-diegoAPIURL", maker.Addresses.Receptor,
-				"-stagerURL", fmt.Sprintf("http://127.0.0.1:%d", port+i),
+				"-stagerURL", fmt.Sprintf("http://127.0.0.1:%d", port+100+i),
 			}, argv...)...,
 		),
 	})
