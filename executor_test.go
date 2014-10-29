@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/pivotal-golang/archiver/extractor/test_helper"
@@ -66,7 +65,7 @@ var _ = Describe("Executor", func() {
 				1024,
 				1024,
 				"bash",
-				[]string{"-c", fmt.Sprintf("curl %s; sleep 5", strings.Join(inigo_server.CurlArgs(firstGuyGuid), " "))},
+				[]string{"-c", fmt.Sprintf("curl %s; sleep 5", inigo_server.CurlArg(firstGuyGuid))},
 			)
 
 			err := bbs.DesireTask(firstGuyTask)
@@ -80,7 +79,7 @@ var _ = Describe("Executor", func() {
 				1024,
 				1024,
 				"curl",
-				inigo_server.CurlArgs(secondGuyGuid),
+				[]string{inigo_server.CurlArg(secondGuyGuid)},
 			)
 
 			err = bbs.DesireTask(secondGuyTask)
@@ -101,7 +100,7 @@ var _ = Describe("Executor", func() {
 				100,
 				100,
 				"bash",
-				[]string{"-c", fmt.Sprintf("curl %s; sleep 10", strings.Join(inigo_server.CurlArgs(matchingGuid), " "))},
+				[]string{"-c", fmt.Sprintf("curl %s; sleep 10", inigo_server.CurlArg(matchingGuid))},
 			)
 
 			nonMatchingGuid := factories.GenerateGuid()
@@ -111,7 +110,7 @@ var _ = Describe("Executor", func() {
 				100,
 				100,
 				"bash",
-				[]string{"-c", fmt.Sprintf("curl %s; sleep 10", strings.Join(inigo_server.CurlArgs(nonMatchingGuid), " "))},
+				[]string{"-c", fmt.Sprintf("curl %s; sleep 10", inigo_server.CurlArg(nonMatchingGuid))},
 			)
 
 			err := bbs.DesireTask(matchingTask)
@@ -177,7 +176,7 @@ var _ = Describe("Executor", func() {
 					Actions: []models.ExecutorAction{
 						{Action: models.RunAction{
 							Path: "curl",
-							Args: inigo_server.CurlArgs(guid),
+							Args: []string{inigo_server.CurlArg(guid)},
 						}},
 						{Action: models.RunAction{
 							Path: "ruby",
@@ -185,7 +184,7 @@ var _ = Describe("Executor", func() {
 						}},
 						{Action: models.RunAction{
 							Path: "curl",
-							Args: inigo_server.CurlArgs(otherGuid),
+							Args: []string{inigo_server.CurlArg(otherGuid)},
 						}},
 					},
 				}
@@ -248,7 +247,7 @@ var _ = Describe("Executor", func() {
 					Actions: []models.ExecutorAction{
 						{Action: models.RunAction{
 							Path: "curl",
-							Args: inigo_server.CurlArgs(guid),
+							Args: []string{inigo_server.CurlArg(guid)},
 						}},
 						{Action: models.RunAction{
 							Path:    "sleep",
@@ -279,7 +278,7 @@ var _ = Describe("Executor", func() {
 			test_helper.CreateTarGZArchive(filepath.Join(fileServerStaticDir, "curling.tar.gz"), []test_helper.ArchiveFile{
 				{
 					Name: "curling",
-					Body: fmt.Sprintf("#!/bin/sh\n\ncurl %s", strings.Join(inigo_server.CurlArgs(guid), " ")),
+					Body: fmt.Sprintf("#!/bin/sh\n\ncurl %s", inigo_server.CurlArg(guid)),
 					Mode: 0755,
 				},
 			})
@@ -367,7 +366,7 @@ var _ = Describe("Executor", func() {
 					{
 						models.RunAction{
 							Path: "curl",
-							Args: inigo_server.CurlArgs(guid),
+							Args: []string{inigo_server.CurlArg(guid)},
 						},
 					},
 				},

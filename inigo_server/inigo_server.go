@@ -41,8 +41,8 @@ func Stop(gardenClient garden_api.Client) {
 	server.Close()
 }
 
-func CurlArgs(guid string) []string {
-	return []string{fmt.Sprintf("http://%s/register?guid=%s", serverAddr, guid)}
+func CurlArg(guid string) string {
+	return fmt.Sprintf("http://%s/register?guid=%s", serverAddr, guid)
 }
 
 func ReportingGuids() []string {

@@ -3,7 +3,6 @@ package inigo_test
 import (
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/cloudfoundry-incubator/inigo/helpers"
@@ -35,7 +34,7 @@ var _ = Describe("Task", func() {
 			helpers.StopProcess(executor)
 		})
 
-		Context("and a Task is desired", func() {
+		Context("and a standard Task is desired", func() {
 			var task models.Task
 			var thingWeRan string
 
@@ -52,7 +51,7 @@ var _ = Describe("Task", func() {
 						"-c",
 						// sleep a bit so that we can make assertions around behavior as it's
 						// running
-						fmt.Sprintf("curl %s; sleep 10", strings.Join(inigo_server.CurlArgs(thingWeRan), " ")),
+						fmt.Sprintf("curl %s; sleep 10", inigo_server.CurlArg(thingWeRan)),
 					},
 				)
 
@@ -114,7 +113,7 @@ var _ = Describe("Task", func() {
 								768, // 768 + 512 is more than 1024, as we configured, so this won't fit
 								512,
 								"bash",
-								[]string{"-c", fmt.Sprintf("curl %s && sleep 2", strings.Join(inigo_server.CurlArgs(secondThingWeRan), " "))},
+								[]string{"-c", fmt.Sprintf("curl %s && sleep 2", inigo_server.CurlArg(secondThingWeRan))},
 							)
 
 							err := bbs.DesireTask(secondTask)
@@ -127,6 +126,47 @@ var _ = Describe("Task", func() {
 						})
 					})
 				})
+			})
+		})
+
+		Context("and a docker-based Task is desired", func() {
+			var announcement string
+			var task models.Task
+
+			BeforeEach(func() {
+				announcement = "running-in-docker-" + factories.GenerateGuid()
+
+				task = factories.BuildTaskWithRunAction(
+					"inigo",
+					componentMaker.Stack,
+					100,
+					100,
+					"sh",
+					[]string{
+						"-c",
+						// See github.com/cloudfoundry-incubator/diego-dockerfiles/blob/f9f1d75/inigodockertest/Dockerfile#L7
+						"echo $SOME_VAR > /tmp/result.txt; wget " + inigo_server.CurlArg(announcement),
+					},
+				)
+				task.ResultFile = "/tmp/result.txt"
+				task.RootFSPath = "docker:///cloudfoundry/inigodockertest"
+
+				err := bbs.DesireTask(task)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("eventually runs and succeeds", func() {
+				Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
+
+				tasks, err := bbs.GetAllCompletedTasks()
+				Ω(err).ShouldNot(HaveOccurred())
+
+				firstTask := tasks[0]
+				Ω(firstTask.TaskGuid).Should(Equal(task.TaskGuid))
+				Ω(firstTask.Failed).Should(BeFalse(), "Task should not have failed")
+				// See github.com/cloudfoundry-incubator/diego-dockerfiles/blob/f9f1d75/inigodockertest/Dockerfile#L7
+				Ω(firstTask.Result).Should(Equal("some_docker_value\n"))
+				Ω(inigo_server.ReportingGuids()).Should(ContainElement(announcement))
 			})
 		})
 	})
@@ -157,7 +197,7 @@ var _ = Describe("Task", func() {
 					512,
 					512,
 					"bash",
-					[]string{"-c", fmt.Sprintf("curl %s && sleep 2", strings.Join(inigo_server.CurlArgs(thingWeRan), " "))},
+					[]string{"-c", fmt.Sprintf("curl %s && sleep 2", inigo_server.CurlArg(thingWeRan))},
 				)
 
 				err := bbs.DesireTask(task)
@@ -209,7 +249,7 @@ var _ = Describe("Task", func() {
 					100,
 					100,
 					"curl",
-					inigo_server.CurlArgs(guid),
+					[]string{inigo_server.CurlArg(guid)},
 				)
 
 				err := bbs.DesireTask(task)
