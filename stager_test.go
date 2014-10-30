@@ -343,7 +343,7 @@ EOF
 			var otherStager ifrit.Process
 
 			BeforeEach(func() {
-				otherStager = ginkgomon.Invoke(componentMaker.Stager())
+				otherStager = ginkgomon.Invoke(componentMaker.StagerN(1))
 			})
 
 			AfterEach(func() {
