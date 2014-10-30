@@ -1,4 +1,4 @@
-package inigo_server
+package inigo_announcement_server
 
 import (
 	"encoding/json"
@@ -23,11 +23,11 @@ func Start(externalAddress string) {
 
 	server, serverAddr = helpers.Callback(externalAddress, func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/register":
+		case "/announce":
 			lock.Lock()
-			registered = append(registered, r.URL.Query().Get("guid"))
+			registered = append(registered, r.URL.Query().Get("announcement"))
 			lock.Unlock()
-		case "/registrations":
+		case "/announcements":
 			lock.RLock()
 			json.NewEncoder(w).Encode(registered)
 			lock.RUnlock()
@@ -41,12 +41,12 @@ func Stop(gardenClient garden_api.Client) {
 	server.Close()
 }
 
-func CurlArg(guid string) string {
-	return fmt.Sprintf("http://%s/register?guid=%s", serverAddr, guid)
+func AnnounceURL(announcement string) string {
+	return fmt.Sprintf("http://%s/announce?announcement=%s", serverAddr, announcement)
 }
 
-func ReportingGuids() []string {
-	response, err := http.Get(fmt.Sprintf("http://%s/registrations", serverAddr))
+func Announcements() []string {
+	response, err := http.Get(fmt.Sprintf("http://%s/announcements", serverAddr))
 	Ω(err).ShouldNot(HaveOccurred())
 
 	defer response.Body.Close()

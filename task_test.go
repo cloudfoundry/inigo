@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/inigo/helpers"
-	"github.com/cloudfoundry-incubator/inigo/inigo_server"
+	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 
@@ -51,7 +51,7 @@ var _ = Describe("Task", func() {
 						"-c",
 						// sleep a bit so that we can make assertions around behavior as it's
 						// running
-						fmt.Sprintf("curl %s; sleep 10", inigo_server.CurlArg(thingWeRan)),
+						fmt.Sprintf("curl %s; sleep 10", inigo_announcement_server.AnnounceURL(thingWeRan)),
 					},
 				)
 
@@ -60,7 +60,7 @@ var _ = Describe("Task", func() {
 			})
 
 			It("eventually runs the Task", func() {
-				Eventually(inigo_server.ReportingGuids).Should(ContainElement(thingWeRan))
+				Eventually(inigo_announcement_server.Announcements).Should(ContainElement(thingWeRan))
 			})
 
 			Context("when a converger is running", func() {
@@ -79,7 +79,7 @@ var _ = Describe("Task", func() {
 
 				Context("after the task starts", func() {
 					BeforeEach(func() {
-						Eventually(inigo_server.ReportingGuids).Should(ContainElement(thingWeRan))
+						Eventually(inigo_announcement_server.Announcements).Should(ContainElement(thingWeRan))
 					})
 
 					Context("when the executor disappears", func() {
@@ -113,7 +113,7 @@ var _ = Describe("Task", func() {
 								768, // 768 + 512 is more than 1024, as we configured, so this won't fit
 								512,
 								"bash",
-								[]string{"-c", fmt.Sprintf("curl %s && sleep 2", inigo_server.CurlArg(secondThingWeRan))},
+								[]string{"-c", fmt.Sprintf("curl %s && sleep 2", inigo_announcement_server.AnnounceURL(secondThingWeRan))},
 							)
 
 							err := bbs.DesireTask(secondTask)
@@ -122,7 +122,7 @@ var _ = Describe("Task", func() {
 
 						It("is executed once the first task completes, as its resources are cleared", func() {
 							Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1)) // Wait for first task to complete
-							Eventually(inigo_server.ReportingGuids, DEFAULT_EVENTUALLY_TIMEOUT+kickPendingDuration).Should(ContainElement(secondThingWeRan))
+							Eventually(inigo_announcement_server.Announcements, DEFAULT_EVENTUALLY_TIMEOUT+kickPendingDuration).Should(ContainElement(secondThingWeRan))
 						})
 					})
 				})
@@ -145,7 +145,7 @@ var _ = Describe("Task", func() {
 					[]string{
 						"-c",
 						// See github.com/cloudfoundry-incubator/diego-dockerfiles/blob/f9f1d75/inigodockertest/Dockerfile#L7
-						"echo $SOME_VAR > /tmp/result.txt; wget " + inigo_server.CurlArg(announcement),
+						"echo $SOME_VAR > /tmp/result.txt; wget " + inigo_announcement_server.AnnounceURL(announcement),
 					},
 				)
 				task.ResultFile = "/tmp/result.txt"
@@ -166,7 +166,7 @@ var _ = Describe("Task", func() {
 				Ω(firstTask.Failed).Should(BeFalse(), "Task should not have failed")
 				// See github.com/cloudfoundry-incubator/diego-dockerfiles/blob/f9f1d75/inigodockertest/Dockerfile#L7
 				Ω(firstTask.Result).Should(Equal("some_docker_value\n"))
-				Ω(inigo_server.ReportingGuids()).Should(ContainElement(announcement))
+				Ω(inigo_announcement_server.Announcements()).Should(ContainElement(announcement))
 			})
 		})
 	})
@@ -197,7 +197,7 @@ var _ = Describe("Task", func() {
 					512,
 					512,
 					"bash",
-					[]string{"-c", fmt.Sprintf("curl %s && sleep 2", inigo_server.CurlArg(thingWeRan))},
+					[]string{"-c", fmt.Sprintf("curl %s && sleep 2", inigo_announcement_server.AnnounceURL(thingWeRan))},
 				)
 
 				err := bbs.DesireTask(task)
@@ -217,7 +217,7 @@ var _ = Describe("Task", func() {
 				})
 
 				It("eventually runs the Task", func() {
-					Eventually(inigo_server.ReportingGuids, DEFAULT_EVENTUALLY_TIMEOUT+kickPendingDuration).Should(ContainElement(thingWeRan))
+					Eventually(inigo_announcement_server.Announcements, DEFAULT_EVENTUALLY_TIMEOUT+kickPendingDuration).Should(ContainElement(thingWeRan))
 				})
 			})
 		})
@@ -249,7 +249,7 @@ var _ = Describe("Task", func() {
 					100,
 					100,
 					"curl",
-					[]string{inigo_server.CurlArg(guid)},
+					[]string{inigo_announcement_server.AnnounceURL(guid)},
 				)
 
 				err := bbs.DesireTask(task)
@@ -264,7 +264,7 @@ var _ = Describe("Task", func() {
 				Ω(tasks[0].Failed).Should(BeTrue(), "Task should have failed")
 				Ω(tasks[0].FailureReason).Should(ContainSubstring("not claimed within time limit"))
 
-				Ω(inigo_server.ReportingGuids()).Should(BeEmpty())
+				Ω(inigo_announcement_server.Announcements()).Should(BeEmpty())
 			})
 		})
 	})

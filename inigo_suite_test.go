@@ -23,7 +23,7 @@ import (
 
 	garden_api "github.com/cloudfoundry-incubator/garden/api"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
-	"github.com/cloudfoundry-incubator/inigo/inigo_server"
+	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	"github.com/cloudfoundry-incubator/inigo/world"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry/gunk/diegonats"
@@ -137,11 +137,11 @@ var _ = BeforeEach(func() {
 
 	bbs = Bbs.NewBBS(adapter, timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
 
-	inigo_server.Start(componentMaker.ExternalAddress)
+	inigo_announcement_server.Start(componentMaker.ExternalAddress)
 })
 
 var _ = AfterEach(func() {
-	inigo_server.Stop(gardenClient)
+	inigo_announcement_server.Stop(gardenClient)
 
 	helpers.StopProcess(plumbing)
 

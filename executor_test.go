@@ -16,7 +16,7 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 
 	"github.com/cloudfoundry-incubator/inigo/helpers"
-	"github.com/cloudfoundry-incubator/inigo/inigo_server"
+	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
@@ -65,13 +65,13 @@ var _ = Describe("Executor", func() {
 				1024,
 				1024,
 				"bash",
-				[]string{"-c", fmt.Sprintf("curl %s; sleep 5", inigo_server.CurlArg(firstGuyGuid))},
+				[]string{"-c", fmt.Sprintf("curl %s; sleep 5", inigo_announcement_server.AnnounceURL(firstGuyGuid))},
 			)
 
 			err := bbs.DesireTask(firstGuyTask)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(inigo_server.ReportingGuids).Should(ContainElement(firstGuyGuid))
+			Eventually(inigo_announcement_server.Announcements).Should(ContainElement(firstGuyGuid))
 
 			secondGuyTask := factories.BuildTaskWithRunAction(
 				"inigo",
@@ -79,13 +79,13 @@ var _ = Describe("Executor", func() {
 				1024,
 				1024,
 				"curl",
-				[]string{inigo_server.CurlArg(secondGuyGuid)},
+				[]string{inigo_announcement_server.AnnounceURL(secondGuyGuid)},
 			)
 
 			err = bbs.DesireTask(secondGuyTask)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Consistently(inigo_server.ReportingGuids).ShouldNot(ContainElement(secondGuyGuid))
+			Consistently(inigo_announcement_server.Announcements).ShouldNot(ContainElement(secondGuyGuid))
 		})
 	})
 
@@ -100,7 +100,7 @@ var _ = Describe("Executor", func() {
 				100,
 				100,
 				"bash",
-				[]string{"-c", fmt.Sprintf("curl %s; sleep 10", inigo_server.CurlArg(matchingGuid))},
+				[]string{"-c", fmt.Sprintf("curl %s; sleep 10", inigo_announcement_server.AnnounceURL(matchingGuid))},
 			)
 
 			nonMatchingGuid := factories.GenerateGuid()
@@ -110,7 +110,7 @@ var _ = Describe("Executor", func() {
 				100,
 				100,
 				"bash",
-				[]string{"-c", fmt.Sprintf("curl %s; sleep 10", inigo_server.CurlArg(nonMatchingGuid))},
+				[]string{"-c", fmt.Sprintf("curl %s; sleep 10", inigo_announcement_server.AnnounceURL(nonMatchingGuid))},
 			)
 
 			err := bbs.DesireTask(matchingTask)
@@ -119,8 +119,8 @@ var _ = Describe("Executor", func() {
 			err = bbs.DesireTask(nonMatchingTask)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Consistently(inigo_server.ReportingGuids).ShouldNot(ContainElement(nonMatchingGuid), "Did not expect to see this app running, as it has the wrong stack.")
-			Eventually(inigo_server.ReportingGuids).Should(ContainElement(matchingGuid))
+			Consistently(inigo_announcement_server.Announcements).ShouldNot(ContainElement(nonMatchingGuid), "Did not expect to see this app running, as it has the wrong stack.")
+			Eventually(inigo_announcement_server.Announcements).Should(ContainElement(matchingGuid))
 		})
 	})
 
@@ -176,7 +176,7 @@ var _ = Describe("Executor", func() {
 					Actions: []models.ExecutorAction{
 						{Action: models.RunAction{
 							Path: "curl",
-							Args: []string{inigo_server.CurlArg(guid)},
+							Args: []string{inigo_announcement_server.AnnounceURL(guid)},
 						}},
 						{Action: models.RunAction{
 							Path: "ruby",
@@ -184,7 +184,7 @@ var _ = Describe("Executor", func() {
 						}},
 						{Action: models.RunAction{
 							Path: "curl",
-							Args: []string{inigo_server.CurlArg(otherGuid)},
+							Args: []string{inigo_announcement_server.AnnounceURL(otherGuid)},
 						}},
 					},
 				}
@@ -192,14 +192,14 @@ var _ = Describe("Executor", func() {
 				err := bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(inigo_server.ReportingGuids).Should(ContainElement(guid))
+				Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
 
 				Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
 				tasks, _ := bbs.GetAllCompletedTasks()
 				Ω(tasks[0].Failed).Should(BeTrue())
 				Ω(tasks[0].FailureReason).Should(ContainSubstring("out of memory"))
 
-				Ω(inigo_server.ReportingGuids()).ShouldNot(ContainElement(otherGuid))
+				Ω(inigo_announcement_server.Announcements()).ShouldNot(ContainElement(otherGuid))
 			})
 		})
 
@@ -247,7 +247,7 @@ var _ = Describe("Executor", func() {
 					Actions: []models.ExecutorAction{
 						{Action: models.RunAction{
 							Path: "curl",
-							Args: []string{inigo_server.CurlArg(guid)},
+							Args: []string{inigo_announcement_server.AnnounceURL(guid)},
 						}},
 						{Action: models.RunAction{
 							Path:    "sleep",
@@ -260,7 +260,7 @@ var _ = Describe("Executor", func() {
 				err := bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(inigo_server.ReportingGuids).Should(ContainElement(guid))
+				Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
 				Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
 				tasks, _ := bbs.GetAllCompletedTasks()
 				Ω(tasks[0].Failed).Should(BeTrue())
@@ -278,7 +278,7 @@ var _ = Describe("Executor", func() {
 			test_helper.CreateTarGZArchive(filepath.Join(fileServerStaticDir, "curling.tar.gz"), []test_helper.ArchiveFile{
 				{
 					Name: "curling",
-					Body: fmt.Sprintf("#!/bin/sh\n\ncurl %s", inigo_server.CurlArg(guid)),
+					Body: fmt.Sprintf("#!/bin/sh\n\ncurl %s", inigo_announcement_server.AnnounceURL(guid)),
 					Mode: 0755,
 				},
 			})
@@ -309,7 +309,7 @@ var _ = Describe("Executor", func() {
 			err := bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(inigo_server.ReportingGuids).Should(ContainElement(guid))
+			Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
 		})
 	})
 
@@ -366,7 +366,7 @@ var _ = Describe("Executor", func() {
 					{
 						models.RunAction{
 							Path: "curl",
-							Args: []string{inigo_server.CurlArg(guid)},
+							Args: []string{inigo_announcement_server.AnnounceURL(guid)},
 						},
 					},
 				},
@@ -377,7 +377,7 @@ var _ = Describe("Executor", func() {
 
 			Eventually(gotRequest).Should(BeClosed())
 
-			Eventually(inigo_server.ReportingGuids).Should(ContainElement(guid))
+			Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
 		})
 	})
 
