@@ -274,6 +274,7 @@ func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 				"-repAddrRelativeToExecutor", maker.Addresses.Rep,
 				"-circuses", fmt.Sprintf(`{"%s": "%s"}`, maker.Stack, CircusFilename),
 				"-dockerCircusPath", DockerCircusFilename,
+				"-fileServerURL", "http://" + maker.Addresses.FileServer,
 			}, argv...)...,
 		),
 	})
@@ -296,7 +297,6 @@ func (maker ComponentMaker) FileServer(argv ...string) (ifrit.Runner, string) {
 			append([]string{
 				"-address", host,
 				"-port", port,
-				"-etcdCluster", "http://" + maker.Addresses.Etcd,
 				"-ccAddress", "http://" + maker.Addresses.FakeCC,
 				"-ccJobPollingInterval", "100ms",
 				"-ccUsername", fake_cc.CC_USERNAME,
@@ -443,7 +443,6 @@ func (maker ComponentMaker) StagerN(i int, argv ...string) ifrit.Runner {
 		Command: exec.Command(
 			maker.Artifacts.Executables["stager"],
 			append([]string{
-				"-etcdCluster", "http://" + maker.Addresses.Etcd,
 				"-natsAddresses", maker.Addresses.NATS,
 				"-ccBaseURL", "http://" + maker.Addresses.FakeCC,
 				"-ccUsername", fake_cc.CC_USERNAME,
@@ -451,6 +450,7 @@ func (maker ComponentMaker) StagerN(i int, argv ...string) ifrit.Runner {
 				"-circuses", fmt.Sprintf(`{"%s": "%s"}`, maker.Stack, CircusFilename),
 				"-diegoAPIURL", maker.Addresses.Receptor,
 				"-stagerURL", fmt.Sprintf("http://127.0.0.1:%d", port+100+i),
+				"-fileServerURL", "http://" + maker.Addresses.FileServer,
 			}, argv...)...,
 		),
 	})
