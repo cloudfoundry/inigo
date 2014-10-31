@@ -430,7 +430,7 @@ func (maker ComponentMaker) Stager(argv ...string) ifrit.Runner {
 	return maker.StagerN(0, argv...)
 }
 
-func (maker ComponentMaker) StagerN(i int, argv ...string) ifrit.Runner {
+func (maker ComponentMaker) StagerN(portOffset int, argv ...string) ifrit.Runner {
 	address := maker.Addresses.Stager
 	port, err := strconv.Atoi(strings.Split(address, ":")[1])
 	Ω(err).ShouldNot(HaveOccurred())
@@ -449,7 +449,7 @@ func (maker ComponentMaker) StagerN(i int, argv ...string) ifrit.Runner {
 				"-ccPassword", fake_cc.CC_PASSWORD,
 				"-circuses", fmt.Sprintf(`{"%s": "%s"}`, maker.Stack, CircusFilename),
 				"-diegoAPIURL", maker.Addresses.Receptor,
-				"-stagerURL", fmt.Sprintf("http://127.0.0.1:%d", port+100+i),
+				"-stagerURL", fmt.Sprintf("http://127.0.0.1:%d", offsetPort(port, portOffset)),
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,
 			}, argv...)...,
 		),
@@ -470,4 +470,10 @@ func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
 			}, argv...)...,
 		),
 	})
+}
+
+// offsetPort retuns a new port offest by a given number in such a way
+// that it does not interfere with the ginkgo parallel node offest in the base port.
+func offsetPort(basePort, offset int) int {
+	return basePort + (10 * offset)
 }
