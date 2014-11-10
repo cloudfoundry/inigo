@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
@@ -30,6 +31,11 @@ import (
 	zip_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 )
 
+const (
+	buildpack_zip        = "buildpack.zip"
+	busted_buildpack_zip = "busted_buildpack.zip"
+)
+
 var _ = Describe("Stager", func() {
 	var appId string
 	var taskId string
@@ -42,6 +48,32 @@ var _ = Describe("Stager", func() {
 
 	var buildArtifactsUploadUri string
 	var dropletUploadUri string
+
+	var adminBuildpackFiles = []zip_helper.ArchiveFile{
+		{
+			Name: "bin/detect",
+			Body: `#!/bin/bash
+echo My Buildpack
+				`},
+		{
+			Name: "bin/compile",
+			Body: `#!/bin/bash
+echo $1 $2
+echo COMPILING BUILDPACK
+echo $SOME_STAGING_ENV
+touch $1/compiled
+touch $2/inserted-into-artifacts-cache
+				`},
+		{
+			Name: "bin/release",
+			Body: `#!/bin/bash
+cat <<EOF
+---
+default_process_types:
+  web: the-start-command
+EOF
+				`},
+	}
 
 	BeforeEach(func() {
 		appId = factories.GenerateGuid()
@@ -100,10 +132,18 @@ var _ = Describe("Stager", func() {
 	Describe("Staging", func() {
 		var outputGuid string
 		var stagingMessage []byte
-		var buildpackToUse string
+		var buildpacksToUse string
+
+		createBuildpacks := func(name, key, buildpackPath string) (string, string) {
+			u := urljoiner.Join("http://"+componentMaker.Addresses.FileServer+"/v1/static", buildpackPath)
+			if name == cc_messages.CUSTOM_BUILDPACK {
+				key = u
+			}
+			return fmt.Sprintf(`[{ "name": "%s", "key": "%s", "url": "%s" }]`, name, key, u), key
+		}
 
 		BeforeEach(func() {
-			buildpackToUse = "buildpack.zip"
+			buildpacksToUse, _ = createBuildpacks("test-buildpack", "test-buildpack-key", buildpack_zip)
 			outputGuid = factories.GenerateGuid()
 
 			cp(
@@ -119,34 +159,8 @@ var _ = Describe("Stager", func() {
 			zip_helper.CreateZipArchive(filepath.Join(fileServerStaticDir, "app.zip"), appFiles)
 
 			//make and upload a buildpack
-			var adminBuildpackFiles = []zip_helper.ArchiveFile{
-				{
-					Name: "bin/detect",
-					Body: `#!/bin/bash
-echo My Buildpack
-				`},
-				{
-					Name: "bin/compile",
-					Body: `#!/bin/bash
-echo $1 $2
-echo COMPILING BUILDPACK
-echo $SOME_STAGING_ENV
-touch $1/compiled
-touch $2/inserted-into-artifacts-cache
-				`},
-				{
-					Name: "bin/release",
-					Body: `#!/bin/bash
-cat <<EOF
----
-default_process_types:
-  web: the-start-command
-EOF
-				`},
-			}
-
 			zip_helper.CreateZipArchive(
-				filepath.Join(fileServerStaticDir, "buildpack.zip"),
+				filepath.Join(fileServerStaticDir, buildpack_zip),
 				adminBuildpackFiles,
 			)
 
@@ -161,7 +175,7 @@ EOF
 			}
 
 			zip_helper.CreateZipArchive(
-				filepath.Join(fileServerStaticDir, "busted_buildpack.zip"),
+				filepath.Join(fileServerStaticDir, busted_buildpack_zip),
 				bustedAdminBuildpackFiles,
 			)
 		})
@@ -179,7 +193,7 @@ EOF
 						"app_bits_download_uri": "%s",
 						"build_artifacts_cache_upload_uri": "%s",
 						"droplet_upload_uri": "%s",
-						"buildpacks" : [{ "name": "test-buildpack", "key": "test-buildpack-key", "url": "%s" }],
+						"buildpacks" : %s,
 						"environment": [{ "name": "SOME_STAGING_ENV", "value": "%s"}]
 					}`,
 					appId,
@@ -187,129 +201,171 @@ EOF
 					fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "app.zip"),
 					buildArtifactsUploadUri,
 					dropletUploadUri,
-					fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, buildpackToUse),
+					buildpacksToUse,
 					outputGuid,
-				),
-			)
+				))
 		})
 
 		Context("with one stager running", func() {
-			It("runs the compiler on the executor with the correct environment variables, bits and log tag, and responds with the detected buildpack", func() {
-				//stream logs
-				logOutput := gbytes.NewBuffer()
+			stageWith := func(buildpackName, buildpackKey, buildpackPath string) {
+				Context("when compilation succeeds with: "+buildpackKey, func() {
+					BeforeEach(func() {
+						buildpacksToUse, buildpackKey = createBuildpacks(buildpackName, buildpackKey, buildpackPath)
+					})
 
-				stop := loggredile.StreamIntoGBuffer(
-					componentMaker.Addresses.LoggregatorOut,
-					fmt.Sprintf("/tail/?app=%s", appId),
-					"STG",
-					logOutput,
-					logOutput,
-				)
-				defer close(stop)
+					It("runs the compiler on the executor with the correct environment variables, bits and log tag, and responds with the detected buildpack", func() {
+						//stream logs
+						logOutput := gbytes.NewBuffer()
 
-				//publish the staging message
-				err := natsClient.Publish("diego.staging.start", stagingMessage)
-				Ω(err).ShouldNot(HaveOccurred())
+						stop := loggredile.StreamIntoGBuffer(
+							componentMaker.Addresses.LoggregatorOut,
+							fmt.Sprintf("/tail/?app=%s", appId),
+							"STG",
+							logOutput,
+							logOutput,
+						)
+						defer close(stop)
 
-				//wait for staging to complete
-				Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
-				Ω(fakeCC.StagingResponses()[0]).Should(Equal(
-					cc_messages.StagingResponseForCC{
-						AppId:                appId,
-						TaskId:               taskId,
-						BuildpackKey:         "test-buildpack-key",
-						DetectedBuildpack:    "My Buildpack",
-						ExecutionMetadata:    "{\"start_command\":\"the-start-command\"}",
-						DetectedStartCommand: map[string]string{"web": "the-start-command"},
-					}))
+						//publish the staging message
+						err := natsClient.Publish("diego.staging.start", stagingMessage)
+						Ω(err).ShouldNot(HaveOccurred())
 
-				//Assert the user saw reasonable output
-				Eventually(logOutput).Should(gbytes.Say("COMPILING BUILDPACK"))
-				Ω(logOutput.Contents()).Should(ContainSubstring(outputGuid))
+						//wait for staging to complete
+						Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
+						Ω(fakeCC.StagingResponses()[0]).Should(Equal(
+							cc_messages.StagingResponseForCC{
+								AppId:                appId,
+								TaskId:               taskId,
+								BuildpackKey:         buildpackKey,
+								DetectedBuildpack:    "My Buildpack",
+								ExecutionMetadata:    "{\"start_command\":\"the-start-command\"}",
+								DetectedStartCommand: map[string]string{"web": "the-start-command"},
+							}))
 
-				// Assert that the build artifacts cache was downloaded
-				//TODO: how do we test they were downloaded??
+						//Assert the user saw reasonable output
+						Eventually(logOutput).Should(gbytes.Say("COMPILING BUILDPACK"))
+						Ω(logOutput.Contents()).Should(ContainSubstring(outputGuid))
 
-				// Download the build artifacts cache from the file-server
-				buildArtifactsCacheBytes := downloadBuildArtifactsCache(appId)
-				Ω(buildArtifactsCacheBytes).ShouldNot(BeEmpty())
+						// Assert that the build artifacts cache was downloaded
+						//TODO: how do we test they were downloaded??
 
-				// Assert that the downloaded build artifacts cache matches what the buildpack created
-				artifactsCache, err := gzip.NewReader(bytes.NewReader(buildArtifactsCacheBytes))
-				Ω(err).ShouldNot(HaveOccurred())
+						// Download the build artifacts cache from the file-server
+						buildArtifactsCacheBytes := downloadBuildArtifactsCache(appId)
+						Ω(buildArtifactsCacheBytes).ShouldNot(BeEmpty())
 
-				untarredBuildArtifactsData := tar.NewReader(artifactsCache)
-				buildArtifactContents := map[string][]byte{}
-				for {
-					hdr, err := untarredBuildArtifactsData.Next()
-					if err == io.EOF {
-						break
+						// Assert that the downloaded build artifacts cache matches what the buildpack created
+						artifactsCache, err := gzip.NewReader(bytes.NewReader(buildArtifactsCacheBytes))
+						Ω(err).ShouldNot(HaveOccurred())
+
+						untarredBuildArtifactsData := tar.NewReader(artifactsCache)
+						buildArtifactContents := map[string][]byte{}
+						for {
+							hdr, err := untarredBuildArtifactsData.Next()
+							if err == io.EOF {
+								break
+							}
+
+							Ω(err).ShouldNot(HaveOccurred())
+
+							content, err := ioutil.ReadAll(untarredBuildArtifactsData)
+							Ω(err).ShouldNot(HaveOccurred())
+
+							buildArtifactContents[hdr.Name] = content
+						}
+
+						//Ω(buildArtifactContents).Should(HaveKey("pulled-down-from-artifacts-cache"))
+						Ω(buildArtifactContents).Should(HaveKey("./inserted-into-artifacts-cache"))
+
+						//Fetch the compiled droplet from the fakeCC
+						dropletData, ok := fakeCC.UploadedDroplets[appId]
+						Ω(ok).Should(BeTrue())
+						Ω(dropletData).ShouldNot(BeEmpty())
+
+						//Unzip the droplet
+						ungzippedDropletData, err := gzip.NewReader(bytes.NewReader(dropletData))
+						Ω(err).ShouldNot(HaveOccurred())
+
+						//Untar the droplet
+						untarredDropletData := tar.NewReader(ungzippedDropletData)
+						dropletContents := map[string][]byte{}
+						for {
+							hdr, err := untarredDropletData.Next()
+							if err == io.EOF {
+								break
+							}
+							Ω(err).ShouldNot(HaveOccurred())
+
+							content, err := ioutil.ReadAll(untarredDropletData)
+							Ω(err).ShouldNot(HaveOccurred())
+
+							dropletContents[hdr.Name] = content
+						}
+
+						//Assert the droplet has the right files in it
+						Ω(dropletContents).Should(HaveKey("./"))
+						Ω(dropletContents).Should(HaveKey("./staging_info.yml"))
+						Ω(dropletContents).Should(HaveKey("./logs/"))
+						Ω(dropletContents).Should(HaveKey("./tmp/"))
+						Ω(dropletContents).Should(HaveKey("./app/"))
+						Ω(dropletContents).Should(HaveKey("./app/my-app"))
+						Ω(dropletContents).Should(HaveKey("./app/compiled"))
+
+						//Assert the files contain the right content
+						Ω(string(dropletContents["./app/my-app"])).Should(Equal("scooby-doo"))
+
+						//In particular, staging_info.yml should have the correct detected_buildpack and start_command
+						yamlDecoder := candiedyaml.NewDecoder(bytes.NewReader(dropletContents["./staging_info.yml"]))
+						stagingInfo := map[string]string{}
+						err = yamlDecoder.Decode(&stagingInfo)
+						Ω(err).ShouldNot(HaveOccurred())
+
+						Ω(stagingInfo["detected_buildpack"]).Should(Equal("My Buildpack"))
+						Ω(stagingInfo["start_command"]).Should(Equal("the-start-command"))
+
+						//Assert nothing else crept into the droplet
+						Ω(dropletContents).Should(HaveLen(7))
+					})
+				})
+			}
+
+			stageWith("test-buildpack", "zip-buildpack", buildpack_zip)
+			stageWith(cc_messages.CUSTOM_BUILDPACK, "custom-zip-buildpack", buildpack_zip)
+
+			Context("with a git buildpack", func() {
+				BeforeEach(func() {
+					gitPath, err := exec.LookPath("git")
+					Ω(err).ShouldNot(HaveOccurred())
+
+					buildpackDir := filepath.Join(fileServerStaticDir, "buildpack")
+					err = os.MkdirAll(buildpackDir, os.ModePerm)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					execute(buildpackDir, "rm", "-rf", ".git")
+					execute(buildpackDir, gitPath, "init")
+					execute(buildpackDir, gitPath, "config", "user.email", "you@example.com")
+					execute(buildpackDir, gitPath, "config", "user.name", "your name")
+
+					for _, bpFile := range adminBuildpackFiles {
+						filename := filepath.Join(buildpackDir, bpFile.Name)
+						err = os.MkdirAll(filepath.Dir(filename), 0777)
+						Ω(err).ShouldNot(HaveOccurred())
+
+						err = ioutil.WriteFile(filename, []byte(bpFile.Body), 0777)
+						Ω(err).ShouldNot(HaveOccurred())
 					}
 
-					Ω(err).ShouldNot(HaveOccurred())
+					execute(buildpackDir, gitPath, "add", ".")
+					execute(buildpackDir, gitPath, "add", "-A")
+					execute(buildpackDir, gitPath, "commit", "-am", "fake commit")
+					execute(buildpackDir, gitPath, "update-server-info")
+				})
 
-					content, err := ioutil.ReadAll(untarredBuildArtifactsData)
-					Ω(err).ShouldNot(HaveOccurred())
-
-					buildArtifactContents[hdr.Name] = content
-				}
-
-				//Ω(buildArtifactContents).Should(HaveKey("pulled-down-from-artifacts-cache"))
-				Ω(buildArtifactContents).Should(HaveKey("./inserted-into-artifacts-cache"))
-
-				//Fetch the compiled droplet from the fakeCC
-				dropletData, ok := fakeCC.UploadedDroplets[appId]
-				Ω(ok).Should(BeTrue())
-				Ω(dropletData).ShouldNot(BeEmpty())
-
-				//Unzip the droplet
-				ungzippedDropletData, err := gzip.NewReader(bytes.NewReader(dropletData))
-				Ω(err).ShouldNot(HaveOccurred())
-
-				//Untar the droplet
-				untarredDropletData := tar.NewReader(ungzippedDropletData)
-				dropletContents := map[string][]byte{}
-				for {
-					hdr, err := untarredDropletData.Next()
-					if err == io.EOF {
-						break
-					}
-					Ω(err).ShouldNot(HaveOccurred())
-
-					content, err := ioutil.ReadAll(untarredDropletData)
-					Ω(err).ShouldNot(HaveOccurred())
-
-					dropletContents[hdr.Name] = content
-				}
-
-				//Assert the droplet has the right files in it
-				Ω(dropletContents).Should(HaveKey("./"))
-				Ω(dropletContents).Should(HaveKey("./staging_info.yml"))
-				Ω(dropletContents).Should(HaveKey("./logs/"))
-				Ω(dropletContents).Should(HaveKey("./tmp/"))
-				Ω(dropletContents).Should(HaveKey("./app/"))
-				Ω(dropletContents).Should(HaveKey("./app/my-app"))
-				Ω(dropletContents).Should(HaveKey("./app/compiled"))
-
-				//Assert the files contain the right content
-				Ω(string(dropletContents["./app/my-app"])).Should(Equal("scooby-doo"))
-
-				//In particular, staging_info.yml should have the correct detected_buildpack and start_command
-				yamlDecoder := candiedyaml.NewDecoder(bytes.NewReader(dropletContents["./staging_info.yml"]))
-				stagingInfo := map[string]string{}
-				err = yamlDecoder.Decode(&stagingInfo)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Ω(stagingInfo["detected_buildpack"]).Should(Equal("My Buildpack"))
-				Ω(stagingInfo["start_command"]).Should(Equal("the-start-command"))
-
-				//Assert nothing else crept into the droplet
-				Ω(dropletContents).Should(HaveLen(7))
+				stageWith(cc_messages.CUSTOM_BUILDPACK, "git-buildpack", "buildpack/.git")
 			})
 
 			Context("when compilation fails", func() {
 				BeforeEach(func() {
-					buildpackToUse = "busted_buildpack.zip"
+					buildpacksToUse, _ = createBuildpacks("busted-test-buildpack", "busted-test-buildpack-key", busted_buildpack_zip)
 				})
 
 				It("responds with the error, and no detected buildpack present", func() {
@@ -492,4 +548,11 @@ func downloadBuildArtifactsCache(appId string) []byte {
 	Ω(err).ShouldNot(HaveOccurred())
 
 	return bytes
+}
+
+func execute(dir string, execCmd string, args ...string) {
+	cmd := exec.Command(execCmd, args...)
+	cmd.Dir = dir
+	err := cmd.Run()
+	Ω(err).ShouldNot(HaveOccurred())
 }

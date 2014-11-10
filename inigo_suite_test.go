@@ -27,6 +27,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/world"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry/gunk/diegonats"
+	"github.com/cloudfoundry/gunk/localip"
 	"github.com/cloudfoundry/gunk/timeprovider"
 	"github.com/cloudfoundry/gunk/workpool"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
@@ -66,6 +67,9 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	err = json.Unmarshal(encodedBuiltArtifacts, &builtArtifacts)
 	Ω(err).ShouldNot(HaveOccurred())
 
+	localIP, err := localip.LocalIP()
+	Ω(err).ShouldNot(HaveOccurred())
+
 	addresses := world.ComponentAddresses{
 		GardenLinux:    fmt.Sprintf("127.0.0.1:%d", 10000+config.GinkgoConfig.ParallelNode),
 		NATS:           fmt.Sprintf("127.0.0.1:%d", 11000+config.GinkgoConfig.ParallelNode),
@@ -75,7 +79,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		Rep:            fmt.Sprintf("127.0.0.1:%d", 14000+config.GinkgoConfig.ParallelNode),
 		LoggregatorIn:  fmt.Sprintf("127.0.0.1:%d", 15000+config.GinkgoConfig.ParallelNode),
 		LoggregatorOut: fmt.Sprintf("127.0.0.1:%d", 16000+config.GinkgoConfig.ParallelNode),
-		FileServer:     fmt.Sprintf("127.0.0.1:%d", 17000+config.GinkgoConfig.ParallelNode),
+		FileServer:     fmt.Sprintf("%s:%d", localIP, 17000+config.GinkgoConfig.ParallelNode),
 		Router:         fmt.Sprintf("127.0.0.1:%d", 18000+config.GinkgoConfig.ParallelNode),
 		TPS:            fmt.Sprintf("127.0.0.1:%d", 19000+config.GinkgoConfig.ParallelNode),
 		FakeCC:         fmt.Sprintf("127.0.0.1:%d", 20000+config.GinkgoConfig.ParallelNode),
