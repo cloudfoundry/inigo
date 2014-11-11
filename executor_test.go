@@ -19,6 +19,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
+	receptor_api "github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	. "github.com/onsi/ginkgo"
@@ -28,7 +29,7 @@ import (
 )
 
 var _ = Describe("Executor", func() {
-	var executor, fileServer, rep, auctioneer, loggregator ifrit.Process
+	var executor, fileServer, rep, auctioneer, loggregator, receptor ifrit.Process
 
 	var fileServerStaticDir string
 
@@ -42,6 +43,7 @@ var _ = Describe("Executor", func() {
 		rep = ginkgomon.Invoke(componentMaker.Rep())
 		auctioneer = ginkgomon.Invoke(componentMaker.Auctioneer())
 		loggregator = ginkgomon.Invoke(componentMaker.Loggregator())
+		receptor = ginkgomon.Invoke(componentMaker.Receptor())
 	})
 
 	AfterEach(func() {
@@ -50,6 +52,7 @@ var _ = Describe("Executor", func() {
 		helpers.StopProcess(rep)
 		helpers.StopProcess(auctioneer)
 		helpers.StopProcess(loggregator)
+		helpers.StopProcess(receptor)
 	})
 
 	Describe("Heartbeating", func() {
@@ -312,6 +315,76 @@ var _ = Describe("Executor", func() {
 				Ω(tasks[0].Failed).Should(BeTrue())
 				Ω(tasks[0].FailureReason).Should(ContainSubstring("Timed out after 500ms"))
 			})
+		})
+	})
+
+	Describe("Running a privileged command", func() {
+		var guid string
+		var diegoClient receptor_api.Client
+		var executorClient executor_api.Client
+
+		BeforeEach(func() {
+			guid = factories.GenerateGuid()
+			env := []models.EnvironmentVariable{
+				{"FOO", "OLD-BAR"},
+				{"BAZ", "WIBBLE"},
+				{"FOO", "NEW-BAR"},
+			}
+			taskRequest := receptor_api.TaskCreateRequest{
+				Domain:   "inigo",
+				TaskGuid: guid,
+				Stack:    componentMaker.Stack,
+				MemoryMB: 1024,
+				DiskMB:   1024,
+				Actions: []models.ExecutorAction{
+					{Action: models.RunAction{
+						Path:       "bash",
+						Args:       []string{"-c", "while true; do sleep 2; done"},
+						Env:        env,
+						Privileged: true,
+					}},
+				},
+			}
+
+			diegoClient = receptor_api.NewClient(componentMaker.Addresses.Receptor, "", "")
+			err := diegoClient.CreateTask(taskRequest)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			executorClient = client.New(http.DefaultClient, "http://"+componentMaker.Addresses.Executor)
+		})
+
+		It("creates a container with a privileged run action", func() {
+			Eventually(func() bool {
+				container, err := executorClient.GetContainer(guid)
+				if err != nil {
+					return false
+				}
+
+				for _, action := range container.Actions {
+					if action, ok := action.Action.(models.RunAction); ok {
+						return action.Privileged
+					}
+				}
+
+				return false
+			}).Should(BeTrue())
+		})
+
+		It("correctly marshals the privileged flag back when querying the task through the receptor", func() {
+			Eventually(func() bool {
+				taskResponse, err := diegoClient.GetTask(guid)
+				if err != nil {
+					return false
+				}
+
+				for _, action := range taskResponse.Actions {
+					if action, ok := action.Action.(models.RunAction); ok {
+						return action.Privileged
+					}
+				}
+
+				return false
+			}).Should(BeTrue())
 		})
 	})
 
