@@ -29,7 +29,7 @@ import (
 )
 
 var _ = Describe("Executor", func() {
-	var executor, fileServer, rep, auctioneer, loggregator, receptor ifrit.Process
+	var executor, fileServer, rep, auctioneer, loggregator, receptor, converger ifrit.Process
 
 	var fileServerStaticDir string
 
@@ -44,6 +44,7 @@ var _ = Describe("Executor", func() {
 		auctioneer = ginkgomon.Invoke(componentMaker.Auctioneer())
 		loggregator = ginkgomon.Invoke(componentMaker.Loggregator())
 		receptor = ginkgomon.Invoke(componentMaker.Receptor())
+		converger = ginkgomon.Invoke(componentMaker.Converger())
 	})
 
 	AfterEach(func() {
@@ -53,6 +54,7 @@ var _ = Describe("Executor", func() {
 		helpers.StopProcess(auctioneer)
 		helpers.StopProcess(loggregator)
 		helpers.StopProcess(receptor)
+		helpers.StopProcess(converger)
 	})
 
 	Describe("Heartbeating", func() {
@@ -134,6 +136,88 @@ var _ = Describe("Executor", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(completedTasks[0].TaskGuid).Should(Equal(task.TaskGuid))
 				Ω(completedTasks[0].Failed).Should(BeTrue())
+			})
+		})
+
+		Context("when a lrp is running and then something causes the container to go away", func() {
+
+			BeforeEach(func() {
+				processGuid := factories.GenerateGuid()
+
+				err := bbs.DesireLRP(models.DesiredLRP{
+					Domain:      "inigo",
+					ProcessGuid: processGuid,
+					Instances:   1,
+					Stack:       componentMaker.Stack,
+					MemoryMB:    128,
+					DiskMB:      1024,
+					Ports: []models.PortMapping{
+						{ContainerPort: 8080},
+					},
+
+					Actions: []models.ExecutorAction{
+						models.Parallel(
+							models.ExecutorAction{
+								models.RunAction{
+									Path: "bash",
+									Args: []string{
+										"-c",
+										"while true; do sleep 2; done",
+									},
+								},
+							},
+							models.ExecutorAction{
+								models.MonitorAction{
+									Action: models.ExecutorAction{
+										models.RunAction{
+											Path: "bash",
+											Args: []string{"-c", "echo all good"},
+										},
+									},
+
+									HealthyThreshold:   1,
+									UnhealthyThreshold: 1,
+
+									HealthyHook: models.HealthRequest{
+										Method: "PUT",
+										URL: fmt.Sprintf(
+											"http://%s/lrp_running/%s/PLACEHOLDER_INSTANCE_INDEX/PLACEHOLDER_INSTANCE_GUID",
+											componentMaker.Addresses.Rep,
+											processGuid,
+										),
+									},
+								},
+							},
+						),
+					},
+				})
+				Ω(err).ShouldNot(HaveOccurred())
+
+				var actualLRPs []models.ActualLRP
+				Eventually(func() []models.ActualLRP {
+					actualLRPs, _ = bbs.GetActualLRPsByProcessGuid(processGuid)
+					return actualLRPs
+				}).Should(HaveLen(1))
+
+				instanceGuid := actualLRPs[0].InstanceGuid
+
+				executorClient := client.New(http.DefaultClient, "http://"+componentMaker.Addresses.Executor)
+
+				Eventually(func() executor_api.State {
+					container, err := executorClient.GetContainer(instanceGuid)
+					if err == nil {
+						return container.State
+					}
+					return executor_api.StateInvalid
+				}).Should(Equal(executor_api.StateCreated))
+
+				// bounce executor
+				executor.Signal(syscall.SIGKILL)
+				executor = ginkgomon.Invoke(componentMaker.Executor("-memoryMB", "1024"))
+			})
+
+			It("eventually deletes the lrp", func() {
+				Eventually(bbs.GetAllActualLRPs).Should(BeEmpty())
 			})
 		})
 	})
