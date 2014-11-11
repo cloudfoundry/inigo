@@ -6,15 +6,16 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
-	"github.com/tedsuo/ifrit/grouper"
 
+	executor_api "github.com/cloudfoundry-incubator/executor"
+	"github.com/cloudfoundry-incubator/executor/http/client"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
@@ -27,25 +28,28 @@ import (
 )
 
 var _ = Describe("Executor", func() {
-	var executor ifrit.Process
+	var executor, fileServer, rep, auctioneer, loggregator ifrit.Process
 
 	var fileServerStaticDir string
 
 	BeforeEach(func() {
-		var fileServer ifrit.Runner
+		var fileServerRunner ifrit.Runner
 
-		fileServer, fileServerStaticDir = componentMaker.FileServer()
+		fileServerRunner, fileServerStaticDir = componentMaker.FileServer()
 
-		executor = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"file-server", fileServer},
-			{"exec", componentMaker.Executor("-memoryMB", "1024")},
-			{"rep", componentMaker.Rep()},
-			{"loggregator", componentMaker.Loggregator()},
-		}))
+		executor = ginkgomon.Invoke(componentMaker.Executor("-memoryMB", "1024"))
+		fileServer = ginkgomon.Invoke(fileServerRunner)
+		rep = ginkgomon.Invoke(componentMaker.Rep())
+		auctioneer = ginkgomon.Invoke(componentMaker.Auctioneer())
+		loggregator = ginkgomon.Invoke(componentMaker.Loggregator())
 	})
 
 	AfterEach(func() {
 		helpers.StopProcess(executor)
+		helpers.StopProcess(fileServer)
+		helpers.StopProcess(rep)
+		helpers.StopProcess(auctioneer)
+		helpers.StopProcess(loggregator)
 	})
 
 	Describe("Heartbeating", func() {
@@ -86,6 +90,48 @@ var _ = Describe("Executor", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Consistently(inigo_announcement_server.Announcements).ShouldNot(ContainElement(secondGuyGuid))
+		})
+	})
+
+	Describe("BBS consistency", func() {
+		Context("when a task is running and then something causes the container to go away (e.g. executor restart)", func() {
+			var task models.Task
+
+			BeforeEach(func() {
+				task = factories.BuildTaskWithRunAction(
+					"inigo",
+					componentMaker.Stack,
+					100,
+					100,
+					"bash",
+					[]string{"-c", "while true; do sleep 2; done"},
+				)
+				err := bbs.DesireTask(task)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				executorClient := client.New(http.DefaultClient, "http://"+componentMaker.Addresses.Executor)
+
+				Eventually(func() executor_api.State {
+					container, err := executorClient.GetContainer(task.TaskGuid)
+					if err == nil {
+						return container.State
+					}
+					return executor_api.StateInvalid
+				}).Should(Equal(executor_api.StateCreated))
+
+				// bounce executor
+				executor.Signal(syscall.SIGKILL)
+				executor = ginkgomon.Invoke(componentMaker.Executor("-memoryMB", "1024"))
+			})
+
+			It("eventually marks the task completed and failed", func() {
+				Eventually(bbs.GetAllRunningTasks).Should(BeEmpty())
+
+				completedTasks, err := bbs.GetAllCompletedTasks()
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(completedTasks[0].TaskGuid).Should(Equal(task.TaskGuid))
+				Ω(completedTasks[0].Failed).Should(BeTrue())
+			})
 		})
 	})
 
