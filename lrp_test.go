@@ -62,40 +62,22 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 					{ContainerPort: 8080},
 				},
 
-				Actions: []models.ExecutorAction{
-					models.Parallel(
-						models.ExecutorAction{
-							models.RunAction{
-								Path: "bash",
-								Args: []string{
-									"-c",
-									"while true; do sleep 2; done",
-								},
+				Action: models.Serial(
+					models.ExecutorAction{
+						models.RunAction{
+							Path: "bash",
+							Args: []string{
+								"-c",
+								"while true; do sleep 2; done",
 							},
 						},
-						models.ExecutorAction{
-							models.MonitorAction{
-								Action: models.ExecutorAction{
-									models.RunAction{
-										Path: "bash",
-										Args: []string{"-c", "echo all good"},
-									},
-								},
+					}),
 
-								HealthyThreshold:   1,
-								UnhealthyThreshold: 1,
-
-								HealthyHook: models.HealthRequest{
-									Method: "PUT",
-									URL: fmt.Sprintf(
-										"http://%s/lrp_running/%s/PLACEHOLDER_INSTANCE_INDEX/PLACEHOLDER_INSTANCE_GUID",
-										componentMaker.Addresses.Rep,
-										processGuid,
-									),
-								},
-							},
-						},
-					),
+				Monitor: &models.ExecutorAction{
+					models.RunAction{
+						Path: "bash",
+						Args: []string{"-c", "echo all good"},
+					},
 				},
 			})
 			Ω(err).ShouldNot(HaveOccurred())
@@ -119,41 +101,23 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 					{ContainerPort: 8080},
 				},
 
-				Actions: []models.ExecutorAction{
-					models.Parallel(
-						models.ExecutorAction{
-							models.RunAction{
-								Path: "/dockerapp",
+				Action: models.Serial(
+					models.ExecutorAction{
+						models.RunAction{
+							Path: "/dockerapp",
 
-								// app expects $VCAP_APPLICATION
-								Env: []models.EnvironmentVariable{
-									{Name: "VCAP_APPLICATION", Value: `{"instance_index":0}`},
-								},
+							// app expects $VCAP_APPLICATION
+							Env: []models.EnvironmentVariable{
+								{Name: "VCAP_APPLICATION", Value: `{"instance_index":0}`},
 							},
 						},
-						models.ExecutorAction{
-							models.MonitorAction{
-								Action: models.ExecutorAction{
-									models.RunAction{
-										Path: "echo",
-										Args: []string{"all good"},
-									},
-								},
+					}),
 
-								HealthyThreshold:   1,
-								UnhealthyThreshold: 1,
-
-								HealthyHook: models.HealthRequest{
-									Method: "PUT",
-									URL: fmt.Sprintf(
-										"http://%s/lrp_running/%s/PLACEHOLDER_INSTANCE_INDEX/PLACEHOLDER_INSTANCE_GUID",
-										componentMaker.Addresses.Rep,
-										processGuid,
-									),
-								},
-							},
-						},
-					),
+				Monitor: &models.ExecutorAction{
+					models.RunAction{
+						Path: "echo",
+						Args: []string{"all good"},
+					},
 				},
 			})
 			Ω(err).ShouldNot(HaveOccurred())

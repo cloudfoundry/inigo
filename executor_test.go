@@ -154,41 +154,20 @@ var _ = Describe("Executor", func() {
 					Ports: []models.PortMapping{
 						{ContainerPort: 8080},
 					},
-
-					Actions: []models.ExecutorAction{
-						models.Parallel(
-							models.ExecutorAction{
-								models.RunAction{
-									Path: "bash",
-									Args: []string{
-										"-c",
-										"while true; do sleep 2; done",
-									},
-								},
+					Action: models.ExecutorAction{
+						models.RunAction{
+							Path: "bash",
+							Args: []string{
+								"-c",
+								"while true; do sleep 2; done",
 							},
-							models.ExecutorAction{
-								models.MonitorAction{
-									Action: models.ExecutorAction{
-										models.RunAction{
-											Path: "bash",
-											Args: []string{"-c", "echo all good"},
-										},
-									},
-
-									HealthyThreshold:   1,
-									UnhealthyThreshold: 1,
-
-									HealthyHook: models.HealthRequest{
-										Method: "PUT",
-										URL: fmt.Sprintf(
-											"http://%s/lrp_running/%s/PLACEHOLDER_INSTANCE_INDEX/PLACEHOLDER_INSTANCE_GUID",
-											componentMaker.Addresses.Rep,
-											processGuid,
-										),
-									},
-								},
-							},
-						),
+						},
+					},
+					Monitor: &models.ExecutorAction{
+						Action: models.RunAction{
+							Path: "bash",
+							Args: []string{"-c", "echo all good"},
+						},
 					},
 				})
 				Ω(err).ShouldNot(HaveOccurred())
@@ -276,12 +255,12 @@ var _ = Describe("Executor", func() {
 				Stack:    componentMaker.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
-				Actions: []models.ExecutorAction{
-					{Action: models.RunAction{
+				Action: models.ExecutorAction{
+					Action: models.RunAction{
 						Path: "bash",
 						Args: []string{"-c", "test $FOO = NEW-BAR && test $BAZ = WIBBLE"},
 						Env:  env,
-					}},
+					},
 				},
 			}
 
@@ -306,7 +285,7 @@ var _ = Describe("Executor", func() {
 					Stack:    componentMaker.Stack,
 					MemoryMB: 10,
 					DiskMB:   1024,
-					Actions: []models.ExecutorAction{
+					Action: models.Serial([]models.ExecutorAction{
 						{Action: models.RunAction{
 							Path: "curl",
 							Args: []string{inigo_announcement_server.AnnounceURL(guid)},
@@ -319,7 +298,7 @@ var _ = Describe("Executor", func() {
 							Path: "curl",
 							Args: []string{inigo_announcement_server.AnnounceURL(otherGuid)},
 						}},
-					},
+					}...),
 				}
 
 				err := bbs.DesireTask(task)
@@ -346,7 +325,7 @@ var _ = Describe("Executor", func() {
 					Stack:    componentMaker.Stack,
 					MemoryMB: 10,
 					DiskMB:   1024,
-					Actions: []models.ExecutorAction{
+					Action: models.Serial([]models.ExecutorAction{
 						{
 							models.RunAction{
 								Path: "ruby",
@@ -356,7 +335,7 @@ var _ = Describe("Executor", func() {
 								},
 							},
 						},
-					},
+					}...),
 				}
 
 				err := bbs.DesireTask(task)
@@ -377,7 +356,7 @@ var _ = Describe("Executor", func() {
 					Stack:    componentMaker.Stack,
 					MemoryMB: 1024,
 					DiskMB:   1024,
-					Actions: []models.ExecutorAction{
+					Action: models.Serial([]models.ExecutorAction{
 						{Action: models.RunAction{
 							Path: "curl",
 							Args: []string{inigo_announcement_server.AnnounceURL(guid)},
@@ -387,7 +366,7 @@ var _ = Describe("Executor", func() {
 							Args:    []string{"0.8"},
 							Timeout: 500 * time.Millisecond,
 						}},
-					},
+					}...),
 				}
 
 				err := bbs.DesireTask(task)
@@ -420,13 +399,13 @@ var _ = Describe("Executor", func() {
 				Stack:    componentMaker.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
-				Actions: []models.ExecutorAction{
-					{Action: models.RunAction{
+				Action: models.ExecutorAction{
+					Action: models.RunAction{
 						Path:       "bash",
 						Args:       []string{"-c", "while true; do sleep 2; done"},
 						Env:        env,
 						Privileged: true,
-					}},
+					},
 				},
 			}
 
@@ -444,10 +423,8 @@ var _ = Describe("Executor", func() {
 					return false
 				}
 
-				for _, action := range container.Actions {
-					if action, ok := action.Action.(models.RunAction); ok {
-						return action.Privileged
-					}
+				if action, ok := container.Action.Action.(models.RunAction); ok {
+					return action.Privileged
 				}
 
 				return false
@@ -461,10 +438,8 @@ var _ = Describe("Executor", func() {
 					return false
 				}
 
-				for _, action := range taskResponse.Actions {
-					if action, ok := action.Action.(models.RunAction); ok {
-						return action.Privileged
-					}
+				if action, ok := taskResponse.Action.Action.(models.RunAction); ok {
+					return action.Privileged
 				}
 
 				return false
@@ -494,7 +469,7 @@ var _ = Describe("Executor", func() {
 				Stack:    componentMaker.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
-				Actions: []models.ExecutorAction{
+				Action: models.Serial([]models.ExecutorAction{
 					{
 						models.DownloadAction{
 							From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "curling.tar.gz"),
@@ -506,7 +481,7 @@ var _ = Describe("Executor", func() {
 							Path: "./curling",
 						},
 					},
-				},
+				}...),
 			}
 
 			err := bbs.DesireTask(task)
@@ -553,7 +528,7 @@ var _ = Describe("Executor", func() {
 				Stack:    componentMaker.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
-				Actions: []models.ExecutorAction{
+				Action: models.Serial([]models.ExecutorAction{
 					{
 						models.RunAction{
 							Path: "bash",
@@ -572,7 +547,7 @@ var _ = Describe("Executor", func() {
 							Args: []string{inigo_announcement_server.AnnounceURL(guid)},
 						},
 					},
-				},
+				}...),
 			}
 
 			err := bbs.DesireTask(task)
@@ -593,12 +568,12 @@ var _ = Describe("Executor", func() {
 				MemoryMB:   1024,
 				DiskMB:     1024,
 				ResultFile: "thingy",
-				Actions: []models.ExecutorAction{
+				Action: models.Serial([]models.ExecutorAction{
 					{Action: models.RunAction{
 						Path: "bash",
 						Args: []string{"-c", "echo tasty thingy > thingy"},
 					}},
-				},
+				}...),
 			}
 
 			err := bbs.DesireTask(task)

@@ -41,7 +41,6 @@ type ComponentAddresses struct {
 	LoggregatorIn  string
 	LoggregatorOut string
 	Executor       string
-	Rep            string
 	FakeCC         string
 	FileServer     string
 	Router         string
@@ -173,7 +172,6 @@ func (maker ComponentMaker) Rep(argv ...string) ifrit.Runner {
 				[]string{
 					"-stack", maker.Stack,
 					"-lrpHost", maker.ExternalAddress,
-					"-listenAddr", maker.Addresses.Rep,
 					"-etcdCluster", "http://" + maker.Addresses.Etcd,
 					"-natsAddresses", maker.Addresses.NATS,
 					"-executorID", "the-executor-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()),
@@ -181,6 +179,7 @@ func (maker ComponentMaker) Rep(argv ...string) ifrit.Runner {
 					"-heartbeatInterval", "1s",
 					"-actualLRPReapingInterval", "1s",
 					"-taskReapingInterval", "1s",
+					"-pollingInterval", "1s",
 				},
 				argv...,
 			)...,
@@ -273,7 +272,6 @@ func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 			append([]string{
 				"-etcdCluster", "http://" + maker.Addresses.Etcd,
 				"-natsAddresses", maker.Addresses.NATS,
-				"-repAddrRelativeToExecutor", maker.Addresses.Rep,
 				"-circuses", fmt.Sprintf(`{"%s": "%s"}`, maker.Stack, CircusFilename),
 				"-dockerCircusPath", DockerCircusFilename,
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,
