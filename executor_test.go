@@ -635,8 +635,8 @@ var _ = Describe("Executor", func() {
 				"bash",
 				[]string{"-c", "for i in $(seq 100); do echo $i; echo $i 1>&2; sleep 0.5; done"},
 			)
-			task.Log.Guid = logGuid
-			task.Log.SourceName = "APP"
+			task.LogGuid = logGuid
+			task.LogSource = "APP"
 
 			err := bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
