@@ -220,7 +220,7 @@ EOF
 						stop := loggredile.StreamIntoGBuffer(
 							componentMaker.Addresses.LoggregatorOut,
 							fmt.Sprintf("/tail/?app=%s", appId),
-							"STG",
+							"STAGING",
 							logOutput,
 							logOutput,
 						)
@@ -374,7 +374,7 @@ EOF
 					stop := loggredile.StreamIntoGBuffer(
 						componentMaker.Addresses.LoggregatorOut,
 						fmt.Sprintf("/tail/?app=%s", appId),
-						"STG",
+						"STAGING",
 						logOutput,
 						logOutput,
 					)
@@ -487,7 +487,7 @@ EOF
 				stop := loggredile.StreamIntoGBuffer(
 					componentMaker.Addresses.LoggregatorOut,
 					fmt.Sprintf("/tail/?app=%s", appId),
-					"STG",
+					"STAGING",
 					logOutput,
 					logOutput,
 				)
