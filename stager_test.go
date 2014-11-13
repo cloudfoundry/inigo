@@ -34,6 +34,8 @@ import (
 const (
 	buildpack_zip        = "buildpack.zip"
 	busted_buildpack_zip = "busted_buildpack.zip"
+
+	staging_source = "STG"
 )
 
 var _ = Describe("Stager", func() {
@@ -220,7 +222,7 @@ EOF
 						stop := loggredile.StreamIntoGBuffer(
 							componentMaker.Addresses.LoggregatorOut,
 							fmt.Sprintf("/tail/?app=%s", appId),
-							"STAGING",
+							staging_source,
 							logOutput,
 							logOutput,
 						)
@@ -374,7 +376,7 @@ EOF
 					stop := loggredile.StreamIntoGBuffer(
 						componentMaker.Addresses.LoggregatorOut,
 						fmt.Sprintf("/tail/?app=%s", appId),
-						"STAGING",
+						staging_source,
 						logOutput,
 						logOutput,
 					)
@@ -487,7 +489,7 @@ EOF
 				stop := loggredile.StreamIntoGBuffer(
 					componentMaker.Addresses.LoggregatorOut,
 					fmt.Sprintf("/tail/?app=%s", appId),
-					"STAGING",
+					staging_source,
 					logOutput,
 					logOutput,
 				)
