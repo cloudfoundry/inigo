@@ -59,7 +59,7 @@ var _ = Describe("Executor", func() {
 
 	Describe("Heartbeating", func() {
 		It("should heartbeat its presence (through the rep)", func() {
-			Eventually(bbs.GetAllExecutors).Should(HaveLen(1))
+			Eventually(bbs.GetAllCells).Should(HaveLen(1))
 		})
 	})
 
