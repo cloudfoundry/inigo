@@ -130,7 +130,8 @@ func (f *FakeCC) handleDropletUploadRequest(w http.ResponseWriter, r *http.Reque
 	basicAuthVerifier := test_server.VerifyBasicAuth(CC_USERNAME, CC_PASSWORD)
 	basicAuthVerifier(w, r)
 
-	file, _, err := r.FormFile("upload[droplet]")
+	key := getFileUploadKey(r)
+	file, _, err := r.FormFile(key)
 	Ω(err).ShouldNot(HaveOccurred())
 
 	uploadedBytes, err := ioutil.ReadAll(file)
@@ -150,7 +151,8 @@ func (f *FakeCC) handleBuildArtifactsCacheUploadRequest(w http.ResponseWriter, r
 	basicAuthVerifier := test_server.VerifyBasicAuth(CC_USERNAME, CC_PASSWORD)
 	basicAuthVerifier(w, r)
 
-	file, _, err := r.FormFile("upload[droplet]")
+	key := getFileUploadKey(r)
+	file, _, err := r.FormFile(key)
 	Ω(err).ShouldNot(HaveOccurred())
 
 	uploadedBytes, err := ioutil.ReadAll(file)
@@ -208,4 +210,17 @@ func (f *FakeCC) newHandleStagingRequest() http.HandlerFunc {
 		}),
 		ghttp.RespondWithPtr(&f.stagingResponseStatusCode, &f.stagingResponseBody),
 	)
+}
+
+func getFileUploadKey(r *http.Request) string {
+	err := r.ParseMultipartForm(1024)
+	Ω(err).ShouldNot(HaveOccurred())
+
+	Ω(r.MultipartForm.File).Should(HaveLen(1))
+	var key string
+	for k, _ := range r.MultipartForm.File {
+		key = k
+	}
+	Ω(key).ShouldNot(BeEmpty())
+	return key
 }
