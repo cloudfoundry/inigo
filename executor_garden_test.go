@@ -482,6 +482,10 @@ var _ = Describe("Executor/Garden", func() {
 									Eventually(containerHealthPoller(guid)).Should(Equal(executor.HealthUp))
 									Consistently(containerHealthPoller(guid)).Should(Equal(executor.HealthUp))
 								})
+
+								It("does not stop the container", func() {
+									Consistently(containerStatePoller(guid)).ShouldNot(Equal(executor.StateCompleted))
+								})
 							})
 
 							Context("when monitoring fails", func() {
@@ -494,7 +498,7 @@ var _ = Describe("Executor/Garden", func() {
 								})
 
 								It("reports the health as 'down'", func() {
-									Ω(getContainer(guid).Health).Should(Equal(executor.HealthDown))
+									Consistently(containerHealthPoller(guid)).Should(Equal(executor.HealthDown))
 								})
 
 								It("does not stop the container", func() {
@@ -532,11 +536,24 @@ var _ = Describe("Executor/Garden", func() {
 							})
 						}
 
-						Context("when the action succeeds", func() {
+						Context("when the action succeeds and exits immediately (daemonization)", func() {
 							BeforeEach(func() {
 								container.Action = models.ExecutorAction{
 									models.RunAction{
 										Path: "true",
+									},
+								}
+							})
+
+							itFailsOnlyIfMonitoringSucceedsAndThenFails()
+						})
+
+						Context("while the action does not stop running ", func() {
+							BeforeEach(func() {
+								container.Action = models.ExecutorAction{
+									models.RunAction{
+										Path: "sh",
+										Args: []string{"-c", "while true; do sleep 1; done"},
 									},
 								}
 							})
@@ -568,18 +585,6 @@ var _ = Describe("Executor/Garden", func() {
 							})
 						})
 
-						Context("while the action is running", func() {
-							BeforeEach(func() {
-								container.Action = models.ExecutorAction{
-									models.RunAction{
-										Path: "sh",
-										Args: []string{"-c", "while true; do sleep 1; done"},
-									},
-								}
-							})
-
-							itFailsOnlyIfMonitoringSucceedsAndThenFails()
-						})
 					})
 
 					Context("after running succeeds", func() {
