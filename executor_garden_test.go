@@ -78,6 +78,18 @@ var _ = Describe("Executor/Garden", func() {
 		return container
 	}
 
+	containerStatePoller := func(guid string) func() executor.State {
+		return func() executor.State {
+			return getContainer(guid).State
+		}
+	}
+
+	containerHealthPoller := func(guid string) func() executor.Health {
+		return func() executor.Health {
+			return getContainer(guid).Health
+		}
+	}
+
 	findGardenContainer := func(handle string) garden.Container {
 		var container garden.Container
 
@@ -360,13 +372,9 @@ var _ = Describe("Executor/Garden", func() {
 
 				itCompletesWithFailure := func(reason string) {
 					It("eventually completes with failure", func() {
-						var container executor.Container
+						Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
 
-						Eventually(func() executor.State {
-							container = getContainer(guid)
-							return container.State
-						}, 5*time.Second, 1*time.Second).Should(Equal(executor.StateCompleted))
-
+						container := getContainer(guid)
 						Ω(container.RunResult.Failed).Should(BeTrue())
 						Ω(container.RunResult.FailureReason).Should(Equal(reason))
 					})
@@ -406,13 +414,9 @@ var _ = Describe("Executor/Garden", func() {
 					})
 
 					It("saves the succeeded run result", func() {
-						var container executor.Container
+						Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
 
-						Eventually(func() executor.State {
-							container = getContainer(guid)
-							return container.State
-						}, 10).Should(Equal(executor.StateCompleted))
-
+						container := getContainer(guid)
 						Ω(container.RunResult.Failed).Should(BeFalse())
 						Ω(container.RunResult.FailureReason).Should(BeEmpty())
 					})
@@ -458,10 +462,7 @@ var _ = Describe("Executor/Garden", func() {
 							})
 
 							It("reports the health as 'unmonitored'", func() {
-								Eventually(func() executor.Health {
-									container := getContainer(guid)
-									return container.Health
-								}, 10).Should(Equal(executor.HealthUnmonitored))
+								Eventually(containerHealthPoller(guid)).Should(Equal(executor.HealthUnmonitored))
 							})
 						})
 					})
@@ -478,10 +479,8 @@ var _ = Describe("Executor/Garden", func() {
 								})
 
 								It("reports the health as 'up'", func() {
-									Eventually(func() executor.Health {
-										container := getContainer(guid)
-										return container.Health
-									}, 10).Should(Equal(executor.HealthUp))
+									Eventually(containerHealthPoller(guid)).Should(Equal(executor.HealthUp))
+									Consistently(containerHealthPoller(guid)).Should(Equal(executor.HealthUp))
 								})
 							})
 
@@ -499,10 +498,7 @@ var _ = Describe("Executor/Garden", func() {
 								})
 
 								It("does not stop the container", func() {
-									Consistently(func() executor.State {
-										container := getContainer(guid)
-										return container.State
-									}, 5).ShouldNot(Equal(executor.StateCompleted))
+									Consistently(containerStatePoller(guid)).ShouldNot(Equal(executor.StateCompleted))
 								})
 							})
 
@@ -526,18 +522,12 @@ var _ = Describe("Executor/Garden", func() {
 								})
 
 								It("reports the health as 'up' then 'down'", func() {
-									gethealth := func() executor.Health {
-										return getContainer(guid).Health
-									}
-									Eventually(gethealth).Should(Equal(executor.HealthUp))
-									Eventually(gethealth).Should(Equal(executor.HealthDown))
+									Eventually(containerHealthPoller(guid)).Should(Equal(executor.HealthUp))
+									Eventually(containerHealthPoller(guid)).Should(Equal(executor.HealthDown))
 								})
 
 								It("stops the container", func() {
-									Eventually(func() executor.State {
-										container := getContainer(guid)
-										return container.State
-									}, 10).Should(Equal(executor.StateCompleted))
+									Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
 								})
 							})
 						}
@@ -573,10 +563,7 @@ var _ = Describe("Executor/Garden", func() {
 								})
 
 								It("stops the container", func() {
-									Eventually(func() executor.State {
-										container := getContainer(guid)
-										return container.State
-									}, 10).Should(Equal(executor.StateCompleted))
+									Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
 								})
 							})
 						})
@@ -600,10 +587,7 @@ var _ = Describe("Executor/Garden", func() {
 							It("works", func(done Done) {
 								defer close(done)
 
-								Eventually(func() executor.State {
-									container = getContainer(guid)
-									return container.State
-								}, 10).Should(Equal(executor.StateCompleted))
+								Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
 
 								err := executorClient.DeleteContainer(guid)
 								Ω(err).ShouldNot(HaveOccurred())
@@ -621,13 +605,9 @@ var _ = Describe("Executor/Garden", func() {
 						})
 
 						It("saves the failed result and reason", func() {
-							var container executor.Container
+							Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
 
-							Eventually(func() executor.State {
-								container = getContainer(guid)
-								return container.State
-							}, 10).Should(Equal(executor.StateCompleted))
-
+							container := getContainer(guid)
 							Ω(container.RunResult.Failed).Should(BeTrue())
 							Ω(container.RunResult.FailureReason).Should(Equal("Exited with status 1"))
 						})
@@ -750,10 +730,7 @@ var _ = Describe("Executor/Garden", func() {
 				err := executorClient.RunContainer(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(func() executor.State {
-					container := getContainer(guid)
-					return container.State
-				}, 10).Should(Equal(executor.StateCreated))
+				Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCreated))
 			})
 
 			Describe("deleting it", func() {
