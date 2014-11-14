@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -110,6 +111,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		GardenBinPath:    gardenBinPath,
 		GardenRootFSPath: gardenRootFSPath,
 		GardenGraphPath:  gardenGraphPath,
+		ExecutorTmpDir:   path.Join(os.TempDir(), fmt.Sprintf("executor_%d", GinkgoParallelNode())),
 	}
 })
 

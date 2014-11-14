@@ -61,6 +61,8 @@ type ComponentMaker struct {
 	GardenBinPath    string
 	GardenRootFSPath string
 	GardenGraphPath  string
+
+	ExecutorTmpDir string
 }
 
 type LoggregatorConfig struct {
@@ -133,8 +135,7 @@ func (maker ComponentMaker) GardenLinux(argv ...string) *gardenrunner.Runner {
 }
 
 func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
-	tmpPath := path.Join(os.TempDir(), fmt.Sprintf("executor_%d", ginkgo.GinkgoParallelNode()))
-	cachePath := path.Join(tmpPath, "cache")
+	cachePath := path.Join(maker.ExecutorTmpDir, "cache")
 
 	return ginkgomon.New(ginkgomon.Config{
 		Name:          "executor",
@@ -152,7 +153,7 @@ func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
 				"-loggregatorSecret", "loggregator-secret",
 				"-containerMaxCpuShares", "1024",
 				"-cachePath", cachePath,
-				"-tempDir", tmpPath,
+				"-tempDir", maker.ExecutorTmpDir,
 			}, argv...)...,
 		),
 	})
