@@ -2,11 +2,15 @@ package inigo_test
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
+	executor_api "github.com/cloudfoundry-incubator/executor"
+	executor_client "github.com/cloudfoundry-incubator/executor/http/client"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
+	receptor_api "github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 
@@ -18,27 +22,37 @@ import (
 )
 
 var _ = Describe("Task", func() {
-	var executor ifrit.Process
+	var cell ifrit.Process
+	var diegoClient receptor_api.Client
+	var executorClient executor_api.Client
 
 	kickPendingDuration := 1 * time.Second
 
 	Context("when an exec and rep are running", func() {
 		BeforeEach(func() {
-			executor = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+			cell = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 				{"exec", componentMaker.Executor("-memoryMB", "1024")},
 				{"rep", componentMaker.Rep()},
+				{"receptor", componentMaker.Receptor()},
 			}))
+			diegoClient = receptor_api.NewClient(componentMaker.Addresses.Receptor, "", "")
+			executorClient = executor_client.New(http.DefaultClient, "http://"+componentMaker.Addresses.Executor)
 		})
 
 		AfterEach(func() {
-			helpers.StopProcess(executor)
+			helpers.StopProcess(cell)
 		})
 
 		Context("and a standard Task is desired", func() {
 			var task models.Task
 			var thingWeRan string
+			var taskSleepSeconds int
 
 			BeforeEach(func() {
+				taskSleepSeconds = 10
+			})
+
+			JustBeforeEach(func() {
 				thingWeRan = "fake-" + factories.GenerateGuid()
 
 				task = factories.BuildTaskWithRunAction(
@@ -49,9 +63,8 @@ var _ = Describe("Task", func() {
 					"bash",
 					[]string{
 						"-c",
-						// sleep a bit so that we can make assertions around behavior as it's
-						// running
-						fmt.Sprintf("curl %s; sleep 10", inigo_announcement_server.AnnounceURL(thingWeRan)),
+						// sleep a bit so that we can make assertions around behavior as it's running
+						fmt.Sprintf("curl %s; sleep %d", inigo_announcement_server.AnnounceURL(thingWeRan), taskSleepSeconds),
 					},
 				)
 
@@ -61,6 +74,33 @@ var _ = Describe("Task", func() {
 
 			It("eventually runs the Task", func() {
 				Eventually(inigo_announcement_server.Announcements).Should(ContainElement(thingWeRan))
+			})
+
+			Context("and then the task is cancelled", func() {
+				BeforeEach(func() {
+					taskSleepSeconds = 9999 // ensure task never completes on its own
+				})
+
+				JustBeforeEach(func() {
+					Eventually(inigo_announcement_server.Announcements).Should(ContainElement(thingWeRan))
+					err := diegoClient.CancelTask(task.TaskGuid)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+
+				It("marks the task as complete, failed and cancelled in BBS", func() {
+					taskAfterCancel, err := bbs.GetTaskByGuid(task.TaskGuid)
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(taskAfterCancel.State).Should(Equal(models.TaskStateCompleted))
+					Ω(taskAfterCancel.Failed).Should(BeTrue())
+					Ω(taskAfterCancel.FailureReason).Should(Equal("task was cancelled"))
+				})
+
+				It("cleans up the task's container before the task completes on its own", func() {
+					Eventually(func() error {
+						_, err := executorClient.GetContainer(task.TaskGuid)
+						return err
+					}).Should(Equal(executor_api.ErrContainerNotFound))
+				})
 			})
 
 			Context("when a converger is running", func() {
@@ -78,13 +118,13 @@ var _ = Describe("Task", func() {
 				})
 
 				Context("after the task starts", func() {
-					BeforeEach(func() {
+					JustBeforeEach(func() {
 						Eventually(inigo_announcement_server.Announcements).Should(ContainElement(thingWeRan))
 					})
 
-					Context("when the executor disappears", func() {
-						BeforeEach(func() {
-							helpers.StopProcess(executor)
+					Context("when the cell disappears", func() {
+						JustBeforeEach(func() {
+							helpers.StopProcess(cell)
 						})
 
 						It("eventually marks the task as failed", func() {
@@ -104,7 +144,7 @@ var _ = Describe("Task", func() {
 						var secondTask models.Task
 						var secondThingWeRan string
 
-						BeforeEach(func() {
+						JustBeforeEach(func() {
 							secondThingWeRan = "fake-" + factories.GenerateGuid()
 
 							secondTask = factories.BuildTaskWithRunAction(
@@ -206,14 +246,14 @@ var _ = Describe("Task", func() {
 
 			Context("and then an exec and rep come up", func() {
 				BeforeEach(func() {
-					executor = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+					cell = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 						{"exec", componentMaker.Executor()},
 						{"rep", componentMaker.Rep()},
 					}))
 				})
 
 				AfterEach(func() {
-					helpers.StopProcess(executor)
+					helpers.StopProcess(cell)
 				})
 
 				It("eventually runs the Task", func() {
