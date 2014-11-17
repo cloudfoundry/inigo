@@ -151,8 +151,8 @@ var _ = Describe("Executor", func() {
 					Stack:       componentMaker.Stack,
 					MemoryMB:    128,
 					DiskMB:      1024,
-					Ports: []models.PortMapping{
-						{ContainerPort: 8080},
+					Ports: []uint32{
+						8080,
 					},
 					Action: models.ExecutorAction{
 						models.RunAction{

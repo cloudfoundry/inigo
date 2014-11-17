@@ -58,8 +58,8 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 				Stack:       componentMaker.Stack,
 				MemoryMB:    128,
 				DiskMB:      1024,
-				Ports: []models.PortMapping{
-					{ContainerPort: 8080},
+				Ports: []uint32{
+					8080,
 				},
 
 				Action: models.Serial(
@@ -97,8 +97,8 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 				Routes:      []string{"route-to-simple"},
 				MemoryMB:    128,
 				DiskMB:      1024,
-				Ports: []models.PortMapping{
-					{ContainerPort: 8080},
+				Ports: []uint32{
+					8080,
 				},
 
 				Action: models.Serial(
