@@ -7,20 +7,20 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/rata"
 
-	tpsapi "github.com/cloudfoundry-incubator/tps/api"
+	"github.com/cloudfoundry-incubator/tps"
 )
 
-func RunningLRPInstancesPoller(tpsAddr string, guid string) func() []tpsapi.LRPInstance {
-	return func() []tpsapi.LRPInstance {
+func RunningLRPInstancesPoller(tpsAddr string, guid string) func() []tps.LRPInstance {
+	return func() []tps.LRPInstance {
 		return RunningLRPInstances(tpsAddr, guid)
 	}
 }
 
-func RunningLRPInstances(tpsAddr string, guid string) []tpsapi.LRPInstance {
-	tpsRequestGenerator := rata.NewRequestGenerator("http://"+tpsAddr, tpsapi.Routes)
+func RunningLRPInstances(tpsAddr string, guid string) []tps.LRPInstance {
+	tpsRequestGenerator := rata.NewRequestGenerator("http://"+tpsAddr, tps.Routes)
 
 	getLRPs, err := tpsRequestGenerator.CreateRequest(
-		tpsapi.LRPStatus,
+		tps.LRPStatus,
 		rata.Params{"guid": guid},
 		nil,
 	)
@@ -30,11 +30,11 @@ func RunningLRPInstances(tpsAddr string, guid string) []tpsapi.LRPInstance {
 	Ω(err).ShouldNot(HaveOccurred())
 	defer response.Body.Close()
 
-	var instances []tpsapi.LRPInstance
+	var instances []tps.LRPInstance
 	err = json.NewDecoder(response.Body).Decode(&instances)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	runningInstances := []tpsapi.LRPInstance{}
+	runningInstances := []tps.LRPInstance{}
 	for _, instance := range instances {
 		if instance.State == "running" {
 			runningInstances = append(runningInstances, instance)

@@ -15,7 +15,7 @@ import (
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
 
-	tpsapi "github.com/cloudfoundry-incubator/tps/api"
+	"github.com/cloudfoundry-incubator/tps"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
@@ -35,7 +35,7 @@ var _ = Describe("Convergence to desired state", func() {
 		appId       string
 		processGuid string
 
-		runningLRPsPoller        func() []tpsapi.LRPInstance
+		runningLRPsPoller        func() []tps.LRPInstance
 		helloWorldInstancePoller func() []string
 	)
 
