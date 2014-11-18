@@ -1,4 +1,4 @@
-package inigo_test
+package executor_test
 
 import (
 	"net/http"

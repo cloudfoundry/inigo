@@ -1,4 +1,4 @@
-package inigo_test
+package executor_test
 
 import (
 	"archive/tar"
@@ -41,6 +41,7 @@ var _ = Describe("Executor/Garden", func() {
 		runner = componentMaker.Executor(
 			"-pruneInterval", pruningInterval.String(),
 			"-healthyMonitoringInterval", "1s",
+			"-gardenSyncInterval", "1s",
 			"-unhealthyMonitoringInterval", "100ms",
 		)
 
@@ -98,7 +99,7 @@ var _ = Describe("Executor/Garden", func() {
 
 			container, err = gardenClient.Lookup(handle)
 			return err
-		}, 10).ShouldNot(HaveOccurred())
+		}).ShouldNot(HaveOccurred())
 
 		return container
 	}
@@ -174,12 +175,12 @@ var _ = Describe("Executor/Garden", func() {
 				Eventually(func() error {
 					_, err := gardenClient.Lookup(container1.Handle())
 					return err
-				}, 10).Should(HaveOccurred())
+				}).Should(HaveOccurred())
 
 				Eventually(func() error {
 					_, err := gardenClient.Lookup(container2.Handle())
 					return err
-				}, 10).Should(HaveOccurred())
+				}).Should(HaveOccurred())
 			})
 		})
 	})
@@ -497,7 +498,7 @@ var _ = Describe("Executor/Garden", func() {
 									}
 								})
 
-								It("reports the health as 'down'", func() {
+								It("reports the health as 'down' and does not stop the container", func() {
 									Consistently(containerHealthPoller(guid)).Should(Equal(executor.HealthDown))
 								})
 
@@ -751,7 +752,7 @@ var _ = Describe("Executor/Garden", func() {
 					Eventually(func() error {
 						_, err := gardenClient.Lookup(guid)
 						return err
-					}, 10).Should(HaveOccurred())
+					}).Should(HaveOccurred())
 				})
 			})
 
