@@ -58,7 +58,7 @@ var _ = Describe("Executor", func() {
 
 	Describe("Heartbeating", func() {
 		It("should heartbeat its presence (through the rep)", func() {
-			Eventually(bbs.GetAllCells).Should(HaveLen(1))
+			Eventually(bbs.Cells).Should(HaveLen(1))
 		})
 	})
 
@@ -173,7 +173,7 @@ var _ = Describe("Executor", func() {
 
 				var actualLRPs []models.ActualLRP
 				Eventually(func() []models.ActualLRP {
-					actualLRPs, _ = bbs.GetActualLRPsByProcessGuid(processGuid)
+					actualLRPs, _ = bbs.ActualLRPsByProcessGuid(processGuid)
 					return actualLRPs
 				}).Should(HaveLen(1))
 
@@ -195,7 +195,7 @@ var _ = Describe("Executor", func() {
 			})
 
 			It("eventually deletes the lrp", func() {
-				Eventually(bbs.GetAllActualLRPs).Should(BeEmpty())
+				Eventually(bbs.ActualLRPs).Should(BeEmpty())
 			})
 		})
 	})

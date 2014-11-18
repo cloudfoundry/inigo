@@ -88,7 +88,7 @@ var _ = Describe("Task", func() {
 				})
 
 				It("marks the task as complete, failed and cancelled in BBS", func() {
-					taskAfterCancel, err := bbs.GetTaskByGuid(task.TaskGuid)
+					taskAfterCancel, err := bbs.TaskByGuid(task.TaskGuid)
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(taskAfterCancel.State).Should(Equal(models.TaskStateCompleted))
 					Ω(taskAfterCancel.Failed).Should(BeTrue())
