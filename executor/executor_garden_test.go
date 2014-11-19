@@ -264,13 +264,11 @@ var _ = Describe("Executor/Garden", func() {
 						{Name: "ENV2", Value: "val2"},
 					},
 
-					Action: models.ExecutorAction{
-						models.RunAction{
-							Path: "true",
-							Env: []models.EnvironmentVariable{
-								{Name: "RUN_ENV1", Value: "run_val1"},
-								{Name: "RUN_ENV2", Value: "run_val2"},
-							},
+					Action: &models.RunAction{
+						Path: "true",
+						Env: []models.EnvironmentVariable{
+							{Name: "RUN_ENV1", Value: "run_val1"},
+							{Name: "RUN_ENV2", Value: "run_val2"},
 						},
 					},
 				}
@@ -454,11 +452,9 @@ var _ = Describe("Executor/Garden", func() {
 					Context("when created without a monitor action", func() {
 						Context("while the action is running", func() {
 							BeforeEach(func() {
-								container.Action = models.ExecutorAction{
-									models.RunAction{
-										Path: "sh",
-										Args: []string{"-c", "while true; do sleep 1; done"},
-									},
+								container.Action = &models.RunAction{
+									Path: "sh",
+									Args: []string{"-c", "while true; do sleep 1; done"},
 								}
 							})
 
@@ -472,10 +468,8 @@ var _ = Describe("Executor/Garden", func() {
 						itFailsOnlyIfMonitoringSucceedsAndThenFails := func() {
 							Context("when monitoring succeeds", func() {
 								BeforeEach(func() {
-									container.Monitor = &models.ExecutorAction{
-										models.RunAction{
-											Path: "true",
-										},
+									container.Monitor = &models.RunAction{
+										Path: "true",
 									}
 								})
 
@@ -491,10 +485,8 @@ var _ = Describe("Executor/Garden", func() {
 
 							Context("when monitoring fails", func() {
 								BeforeEach(func() {
-									container.Monitor = &models.ExecutorAction{
-										models.RunAction{
-											Path: "false",
-										},
+									container.Monitor = &models.RunAction{
+										Path: "false",
 									}
 								})
 
@@ -509,19 +501,17 @@ var _ = Describe("Executor/Garden", func() {
 
 							Context("when monitoring succeeds and then fails", func() {
 								BeforeEach(func() {
-									container.Monitor = &models.ExecutorAction{
-										models.RunAction{
-											Path: "sh",
-											Args: []string{
-												"-c",
-												`
+									container.Monitor = &models.RunAction{
+										Path: "sh",
+										Args: []string{
+											"-c",
+											`
 													if [ -f already_ran ]; then
 														exit 1
 													else
 														touch already_ran
 													fi
 												`,
-											},
 										},
 									}
 								})
@@ -539,10 +529,8 @@ var _ = Describe("Executor/Garden", func() {
 
 						Context("when the action succeeds and exits immediately (daemonization)", func() {
 							BeforeEach(func() {
-								container.Action = models.ExecutorAction{
-									models.RunAction{
-										Path: "true",
-									},
+								container.Action = &models.RunAction{
+									Path: "true",
 								}
 							})
 
@@ -551,11 +539,9 @@ var _ = Describe("Executor/Garden", func() {
 
 						Context("while the action does not stop running ", func() {
 							BeforeEach(func() {
-								container.Action = models.ExecutorAction{
-									models.RunAction{
-										Path: "sh",
-										Args: []string{"-c", "while true; do sleep 1; done"},
-									},
+								container.Action = &models.RunAction{
+									Path: "sh",
+									Args: []string{"-c", "while true; do sleep 1; done"},
 								}
 							})
 
@@ -564,19 +550,15 @@ var _ = Describe("Executor/Garden", func() {
 
 						Context("when the action fails", func() {
 							BeforeEach(func() {
-								container.Action = models.ExecutorAction{
-									models.RunAction{
-										Path: "false",
-									},
+								container.Action = &models.RunAction{
+									Path: "false",
 								}
 							})
 
 							Context("even if the monitoring succeeds", func() {
 								BeforeEach(func() {
-									container.Monitor = &models.ExecutorAction{
-										models.RunAction{
-											Path: "true",
-										},
+									container.Monitor = &models.RunAction{
+										Path: "true",
 									}
 								})
 
@@ -603,10 +585,8 @@ var _ = Describe("Executor/Garden", func() {
 
 					Context("when running fails", func() {
 						BeforeEach(func() {
-							container.Action = models.ExecutorAction{
-								models.RunAction{
-									Path: "false",
-								},
+							container.Action = &models.RunAction{
+								Path: "false",
 							}
 						})
 
@@ -725,11 +705,9 @@ var _ = Describe("Executor/Garden", func() {
 					MemoryMB: 64,
 					DiskMB:   64,
 
-					Action: models.ExecutorAction{
-						models.RunAction{
-							Path: "sh",
-							Args: []string{"-c", "while true; do sleep 1; done"},
-						},
+					Action: &models.RunAction{
+						Path: "sh",
+						Args: []string{"-c", "while true; do sleep 1; done"},
 					},
 				})
 
@@ -824,12 +802,10 @@ var _ = Describe("Executor/Garden", func() {
 
 				BeforeEach(func() {
 					guid = allocNewContainer(executor.Container{
-						Action: models.ExecutorAction{
-							models.RunAction{
-								Path: "sh",
-								Args: []string{
-									"-c", `while true; do	sleep 1; done`,
-								},
+						Action: &models.RunAction{
+							Path: "sh",
+							Args: []string{
+								"-c", `while true; do	sleep 1; done`,
 							},
 						},
 					})

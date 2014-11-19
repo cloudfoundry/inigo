@@ -62,22 +62,17 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 					8080,
 				},
 
-				Action: models.Serial(
-					models.ExecutorAction{
-						models.RunAction{
-							Path: "bash",
-							Args: []string{
-								"-c",
-								"while true; do sleep 2; done",
-							},
-						},
-					}),
-
-				Monitor: &models.ExecutorAction{
-					models.RunAction{
-						Path: "bash",
-						Args: []string{"-c", "echo all good"},
+				Action: &models.RunAction{
+					Path: "bash",
+					Args: []string{
+						"-c",
+						"while true; do sleep 2; done",
 					},
+				},
+
+				Monitor: &models.RunAction{
+					Path: "bash",
+					Args: []string{"-c", "echo all good"},
 				},
 			})
 			Ω(err).ShouldNot(HaveOccurred())
@@ -101,23 +96,18 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 					8080,
 				},
 
-				Action: models.Serial(
-					models.ExecutorAction{
-						models.RunAction{
-							Path: "/dockerapp",
+				Action: &models.RunAction{
+					Path: "/dockerapp",
 
-							// app expects $VCAP_APPLICATION
-							Env: []models.EnvironmentVariable{
-								{Name: "VCAP_APPLICATION", Value: `{"instance_index":0}`},
-							},
-						},
-					}),
-
-				Monitor: &models.ExecutorAction{
-					models.RunAction{
-						Path: "echo",
-						Args: []string{"all good"},
+					// app expects $VCAP_APPLICATION
+					Env: []models.EnvironmentVariable{
+						{Name: "VCAP_APPLICATION", Value: `{"instance_index":0}`},
 					},
+				},
+
+				Monitor: &models.RunAction{
+					Path: "echo",
+					Args: []string{"all good"},
 				},
 			})
 			Ω(err).ShouldNot(HaveOccurred())
