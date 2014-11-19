@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/tedsuo/ifrit"
@@ -344,6 +345,42 @@ var _ = Describe("Executor", func() {
 				tasks, _ := bbs.GetAllCompletedTasks()
 				Ω(tasks[0].Failed).Should(BeTrue())
 				Ω(tasks[0].FailureReason).Should(ContainSubstring("127"))
+			})
+		})
+
+		Context("when the command times out", func() {
+			It("should fail the Task", func() {
+				task := models.Task{
+					Domain:   "inigo",
+					TaskGuid: factories.GenerateGuid(),
+					Stack:    componentMaker.Stack,
+					MemoryMB: 1024,
+					DiskMB:   1024,
+					Action: models.Serial([]models.ExecutorAction{
+						{Action: models.RunAction{
+							Path: "curl",
+							Args: []string{inigo_announcement_server.AnnounceURL(guid)},
+						}},
+						models.Timeout(
+							models.ExecutorAction{
+								models.RunAction{
+									Path: "sleep",
+									Args: []string{"0.8"},
+								},
+							},
+							500*time.Millisecond,
+						),
+					}...),
+				}
+
+				err := bbs.DesireTask(task)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
+				Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
+				tasks, _ := bbs.GetAllCompletedTasks()
+				Ω(tasks[0].Failed).Should(BeTrue())
+				Ω(tasks[0].FailureReason).Should(ContainSubstring("exceeded 500ms timeout"))
 			})
 		})
 	})
