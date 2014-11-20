@@ -2,8 +2,10 @@ package executor_test
 
 import (
 	"archive/tar"
+	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -933,6 +935,48 @@ var _ = Describe("Executor/Garden", func() {
 							})).Should(BeEmpty())
 						})
 					})
+				})
+			})
+		})
+
+		Describe("container networking", func() {
+			Context("when a container listens the local end of CF_INSTANCE_ADDR", func() {
+				var guid string
+
+				BeforeEach(func() {
+					guid = allocNewContainer(executor.Container{
+						Ports: []executor.PortMapping{
+							{ContainerPort: 8080},
+						},
+
+						Action: &models.RunAction{
+							Path: "sh",
+							Args: []string{"-c", "echo -n $CF_INSTANCE_ADDR | nc -l 8080"},
+						},
+					})
+
+					err := executorClient.RunContainer(guid)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCreated))
+				})
+
+				It("can be reached by the container's CF_INSTANCE_ADDR (and the external address via the API)", func() {
+					container := getContainer(guid)
+
+					externalAddr := fmt.Sprintf("%s:%d", container.ExternalIP, container.Ports[0].HostPort)
+
+					var conn net.Conn
+					Eventually(func() error {
+						var err error
+						conn, err = net.Dial("tcp", externalAddr)
+						return err
+					}).ShouldNot(HaveOccurred())
+
+					returnedAddr, err := ioutil.ReadAll(conn)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Ω(string(returnedAddr)).Should(Equal(externalAddr))
 				})
 			})
 		})
