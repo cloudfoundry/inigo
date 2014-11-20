@@ -94,8 +94,11 @@ var _ = Describe("LRP Consistency", func() {
 				LogGuid:      appId,
 			}
 
+			reqJSON, err := models.ToJSON(desiredAppRequest)
+			Ω(err).ShouldNot(HaveOccurred())
+
 			//start the first two instances
-			err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+			err = natsClient.Publish("diego.desire.app", reqJSON)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid), 2*DEFAULT_EVENTUALLY_TIMEOUT).Should(HaveLen(2))
@@ -111,7 +114,10 @@ var _ = Describe("LRP Consistency", func() {
 			BeforeEach(func() {
 				desiredAppRequest.NumInstances = 3
 
-				err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+				reqJSON, err := models.ToJSON(desiredAppRequest)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				err = natsClient.Publish("diego.desire.app", reqJSON)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
@@ -127,7 +133,11 @@ var _ = Describe("LRP Consistency", func() {
 			Measure("should scale down to the correct number of instances", func(b Benchmarker) {
 				b.Time("scale down", func() {
 					desiredAppRequest.NumInstances = 1
-					err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+
+					reqJSON, err := models.ToJSON(desiredAppRequest)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					err = natsClient.Publish("diego.desire.app", reqJSON)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(1))
@@ -138,7 +148,11 @@ var _ = Describe("LRP Consistency", func() {
 
 				b.Time("scale up", func() {
 					desiredAppRequest.NumInstances = 3
-					err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+
+					reqJSON, err := models.ToJSON(desiredAppRequest)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					err = natsClient.Publish("diego.desire.app", reqJSON)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(3))
@@ -153,7 +167,11 @@ var _ = Describe("LRP Consistency", func() {
 			Measure("should stop all instances of the app", func(b Benchmarker) {
 				b.Time("stop", func() {
 					desiredAppRequest.NumInstances = 0
-					err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+
+					reqJSON, err := models.ToJSON(desiredAppRequest)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					err = natsClient.Publish("diego.desire.app", reqJSON)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(BeEmpty())
@@ -164,7 +182,11 @@ var _ = Describe("LRP Consistency", func() {
 
 				b.Time("start", func() {
 					desiredAppRequest.NumInstances = 2
-					err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+
+					reqJSON, err := models.ToJSON(desiredAppRequest)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					err = natsClient.Publish("diego.desire.app", reqJSON)
 					Ω(err).ShouldNot(HaveOccurred())
 					Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(2))
 

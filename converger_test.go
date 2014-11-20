@@ -111,7 +111,10 @@ var _ = Describe("Convergence to desired state", func() {
 				BeforeEach(func() {
 					desiredAppRequest := constructDesiredAppRequest(2)
 
-					err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+					reqJSON, err := models.ToJSON(desiredAppRequest)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					err = natsClient.Publish("diego.desire.app", reqJSON)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Eventually(runningLRPsPoller).Should(HaveLen(2))
@@ -148,7 +151,10 @@ var _ = Describe("Convergence to desired state", func() {
 						BeforeEach(func() {
 							desiredAppScaleDownRequest := constructDesiredAppRequest(1)
 
-							err := natsClient.Publish("diego.desire.app", desiredAppScaleDownRequest.ToJSON())
+							reqJSON, err := models.ToJSON(desiredAppScaleDownRequest)
+							Ω(err).ShouldNot(HaveOccurred())
+
+							err = natsClient.Publish("diego.desire.app", reqJSON)
 							Ω(err).ShouldNot(HaveOccurred())
 
 							Consistently(runningLRPsPoller).Should(HaveLen(2))
@@ -185,7 +191,10 @@ var _ = Describe("Convergence to desired state", func() {
 				BeforeEach(func() {
 					desiredAppRequest := constructDesiredAppRequest(1)
 
-					err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+					reqJSON, err := models.ToJSON(desiredAppRequest)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					err = natsClient.Publish("diego.desire.app", reqJSON)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
@@ -225,7 +234,10 @@ var _ = Describe("Convergence to desired state", func() {
 				BeforeEach(func() {
 					desiredAppRequest := constructDesiredAppRequest(1)
 
-					err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+					reqJSON, err := models.ToJSON(desiredAppRequest)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					err = natsClient.Publish("diego.desire.app", reqJSON)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
@@ -254,7 +266,10 @@ var _ = Describe("Convergence to desired state", func() {
 				BeforeEach(func() {
 					desiredAppRequest := constructDesiredAppRequest(1)
 
-					err := natsClient.Publish("diego.desire.app", desiredAppRequest.ToJSON())
+					reqJSON, err := models.ToJSON(desiredAppRequest)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					err = natsClient.Publish("diego.desire.app", reqJSON)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
