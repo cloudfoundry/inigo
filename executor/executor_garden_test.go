@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -31,13 +32,14 @@ var _ = Describe("Executor/Garden", func() {
 	const ownerName = "executor"
 
 	var (
-		executorClient executor.Client
-		process        ifrit.Process
-		runner         *ginkgomon.Runner
-		gardenCapacity garden.Capacity
+		executorClient       executor.Client
+		process              ifrit.Process
+		runner               *ginkgomon.Runner
+		gardenCapacity       garden.Capacity
+		exportNetworkEnvVars bool
 	)
 
-	BeforeEach(func() {
+	JustBeforeEach(func() {
 		var err error
 
 		runner = componentMaker.Executor(
@@ -45,6 +47,7 @@ var _ = Describe("Executor/Garden", func() {
 			"-healthyMonitoringInterval", "1s",
 			"-gardenSyncInterval", "1s",
 			"-unhealthyMonitoringInterval", "100ms",
+			"-exportNetworkEnvVars="+strconv.FormatBool(exportNetworkEnvVars),
 		)
 
 		executorClient = httpClient.New(&http.Client{}, "http://"+componentMaker.Addresses.Executor)
@@ -188,26 +191,27 @@ var _ = Describe("Executor/Garden", func() {
 	})
 
 	Describe("when started", func() {
-		BeforeEach(func() {
+		JustBeforeEach(func() {
 			process = ginkgomon.Invoke(runner)
 		})
 
 		Describe("pinging the server", func() {
 			var pingErr error
 
-			JustBeforeEach(func() {
-				pingErr = executorClient.Ping()
-			})
-
 			Context("when Garden responds to ping", func() {
+				JustBeforeEach(func() {
+					pingErr = executorClient.Ping()
+				})
+
 				It("does not return an error", func() {
 					Ω(pingErr).ShouldNot(HaveOccurred())
 				})
 			})
 
 			Context("when Garden returns an error", func() {
-				BeforeEach(func() {
+				JustBeforeEach(func() {
 					ginkgomon.Interrupt(gardenProcess)
+					pingErr = executorClient.Ping()
 				})
 
 				AfterEach(func() {
@@ -333,9 +337,9 @@ var _ = Describe("Executor/Garden", func() {
 			})
 
 			Context("when the guid is already taken", func() {
-				BeforeEach(func() {
-					_, err := executorClient.AllocateContainer(container)
-					Ω(err).ShouldNot(HaveOccurred())
+				JustBeforeEach(func() {
+					Ω(allocErr).ShouldNot(HaveOccurred())
+					_, allocErr = executorClient.AllocateContainer(container)
 				})
 
 				It("returns an error", func() {
@@ -366,8 +370,13 @@ var _ = Describe("Executor/Garden", func() {
 
 			Describe("running it", func() {
 				var runErr error
+				var events <-chan executor.Event
 
 				JustBeforeEach(func() {
+					var err error
+
+					events, err = executorClient.SubscribeToEvents()
+					Ω(err).ShouldNot(HaveOccurred())
 					runErr = executorClient.RunContainer(guid)
 				})
 
@@ -423,15 +432,6 @@ var _ = Describe("Executor/Garden", func() {
 					})
 
 					Context("when listening for events", func() {
-						var events <-chan executor.Event
-
-						BeforeEach(func() {
-							var err error
-
-							events, err = executorClient.SubscribeToEvents()
-							Ω(err).ShouldNot(HaveOccurred())
-						})
-
 						It("emits a completed container event on completion", func() {
 							var event executor.Event
 							Eventually(events, 5).Should(Receive(&event))
@@ -601,15 +601,6 @@ var _ = Describe("Executor/Garden", func() {
 						})
 
 						Context("when listening for events", func() {
-							var events <-chan executor.Event
-
-							BeforeEach(func() {
-								var err error
-
-								events, err = executorClient.SubscribeToEvents()
-								Ω(err).ShouldNot(HaveOccurred())
-							})
-
 							It("emits a completed container event", func() {
 								var event executor.Event
 								Eventually(events, 5).Should(Receive(&event))
@@ -633,15 +624,6 @@ var _ = Describe("Executor/Garden", func() {
 					})
 
 					Context("when listening for events", func() {
-						var events <-chan executor.Event
-
-						BeforeEach(func() {
-							var err error
-
-							events, err = executorClient.SubscribeToEvents()
-							Ω(err).ShouldNot(HaveOccurred())
-						})
-
 						It("emits a completed container event", func() {
 							var event executor.Event
 							Eventually(events, 5).Should(Receive(&event))
@@ -668,7 +650,7 @@ var _ = Describe("Executor/Garden", func() {
 		Context("when the container has been allocated", func() {
 			var guid string
 
-			BeforeEach(func() {
+			JustBeforeEach(func() {
 				guid = allocNewContainer(executor.Container{
 					MemoryMB: 1024,
 					DiskMB:   1024,
@@ -702,7 +684,7 @@ var _ = Describe("Executor/Garden", func() {
 		Context("while it is running", func() {
 			var guid string
 
-			BeforeEach(func() {
+			JustBeforeEach(func() {
 				guid = allocNewContainer(executor.Container{
 					MemoryMB: 64,
 					DiskMB:   64,
@@ -782,16 +764,14 @@ var _ = Describe("Executor/Garden", func() {
 				streamErr error
 			)
 
-			JustBeforeEach(func() {
-				stream, streamErr = executorClient.GetFiles(guid, "some/path")
-			})
-
 			Context("when the container hasn't been initialized", func() {
-				BeforeEach(func() {
+				JustBeforeEach(func() {
 					guid = allocNewContainer(executor.Container{
 						MemoryMB: 1024,
 						DiskMB:   1024,
 					})
+
+					stream, streamErr = executorClient.GetFiles(guid, "some/path")
 				})
 
 				It("returns an error", func() {
@@ -802,7 +782,7 @@ var _ = Describe("Executor/Garden", func() {
 			Context("when the container is running", func() {
 				var container garden.Container
 
-				BeforeEach(func() {
+				JustBeforeEach(func() {
 					guid = allocNewContainer(executor.Container{
 						Action: &models.RunAction{
 							Path: "sh",
@@ -823,6 +803,8 @@ var _ = Describe("Executor/Garden", func() {
 					}, garden.ProcessIO{})
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(process.Wait()).Should(Equal(0))
+
+					stream, streamErr = executorClient.GetFiles(guid, "some/path")
 				})
 
 				It("does not error", func() {
@@ -940,10 +922,12 @@ var _ = Describe("Executor/Garden", func() {
 		})
 
 		Describe("container networking", func() {
-			Context("when a container listens the local end of CF_INSTANCE_ADDR", func() {
+			Context("when a container listens on the local end of CF_INSTANCE_ADDR", func() {
 				var guid string
+				var containerResponse []byte
+				var externalAddr string
 
-				BeforeEach(func() {
+				JustBeforeEach(func() {
 					guid = allocNewContainer(executor.Container{
 						Ports: []executor.PortMapping{
 							{ContainerPort: 8080},
@@ -951,7 +935,7 @@ var _ = Describe("Executor/Garden", func() {
 
 						Action: &models.RunAction{
 							Path: "sh",
-							Args: []string{"-c", "echo -n $CF_INSTANCE_ADDR | nc -l 8080"},
+							Args: []string{"-c", "echo -n .$CF_INSTANCE_ADDR. | nc -l 8080"},
 						},
 					})
 
@@ -959,12 +943,10 @@ var _ = Describe("Executor/Garden", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCreated))
-				})
 
-				It("can be reached by the container's CF_INSTANCE_ADDR (and the external address via the API)", func() {
 					container := getContainer(guid)
 
-					externalAddr := fmt.Sprintf("%s:%d", container.ExternalIP, container.Ports[0].HostPort)
+					externalAddr = fmt.Sprintf("%s:%d", container.ExternalIP, container.Ports[0].HostPort)
 
 					var conn net.Conn
 					Eventually(func() error {
@@ -973,17 +955,35 @@ var _ = Describe("Executor/Garden", func() {
 						return err
 					}).ShouldNot(HaveOccurred())
 
-					returnedAddr, err := ioutil.ReadAll(conn)
+					containerResponse, err = ioutil.ReadAll(conn)
 					Ω(err).ShouldNot(HaveOccurred())
+				})
 
-					Ω(string(returnedAddr)).Should(Equal(externalAddr))
+				Context("when exportNetworkEnvVars is set", func() {
+					BeforeEach(func() {
+						exportNetworkEnvVars = true
+					})
+
+					It("echoes back the correct CF_INSTANCE_ADDR", func() {
+						Ω(string(containerResponse)).Should(Equal("." + externalAddr + "."))
+					})
+				})
+
+				Context("when exportNetworkEnvVars is not set", func() {
+					BeforeEach(func() {
+						exportNetworkEnvVars = false
+					})
+
+					It("echoes back an empty CF_INSTANCE_ADDR", func() {
+						Ω(string(containerResponse)).Should(Equal(".."))
+					})
 				})
 			})
 		})
 	})
 
 	Describe("when Garden is unavailable", func() {
-		BeforeEach(func() {
+		JustBeforeEach(func() {
 			ginkgomon.Interrupt(gardenProcess)
 
 			runner.StartCheck = ""
@@ -991,7 +991,7 @@ var _ = Describe("Executor/Garden", func() {
 		})
 
 		Context("and gardenserver starts up later", func() {
-			BeforeEach(func() {
+			JustBeforeEach(func() {
 				gardenProcess = ginkgomon.Invoke(componentMaker.GardenLinux())
 			})
 
