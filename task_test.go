@@ -129,9 +129,9 @@ var _ = Describe("Task", func() {
 
 						It("eventually marks the task as failed", func() {
 							// time is primarily influenced by rep's heartbeat interval
-							Eventually(bbs.GetAllCompletedTasks, 10*time.Second).Should(HaveLen(1))
+							Eventually(bbs.CompletedTasks, 10*time.Second).Should(HaveLen(1))
 
-							tasks, err := bbs.GetAllCompletedTasks()
+							tasks, err := bbs.CompletedTasks()
 							Ω(err).ShouldNot(HaveOccurred())
 
 							completedTask := tasks[0]
@@ -161,7 +161,7 @@ var _ = Describe("Task", func() {
 						})
 
 						It("is executed once the first task completes, as its resources are cleared", func() {
-							Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1)) // Wait for first task to complete
+							Eventually(bbs.CompletedTasks).Should(HaveLen(1)) // Wait for first task to complete
 							Eventually(inigo_announcement_server.Announcements, DEFAULT_EVENTUALLY_TIMEOUT+kickPendingDuration).Should(ContainElement(secondThingWeRan))
 						})
 					})
@@ -196,9 +196,9 @@ var _ = Describe("Task", func() {
 			})
 
 			It("eventually runs and succeeds", func() {
-				Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
+				Eventually(bbs.CompletedTasks).Should(HaveLen(1))
 
-				tasks, err := bbs.GetAllCompletedTasks()
+				tasks, err := bbs.CompletedTasks()
 				Ω(err).ShouldNot(HaveOccurred())
 
 				firstTask := tasks[0]
@@ -297,9 +297,9 @@ var _ = Describe("Task", func() {
 			})
 
 			It("should be marked as failed after the expire duration", func() {
-				Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
+				Eventually(bbs.CompletedTasks).Should(HaveLen(1))
 
-				tasks, err := bbs.GetAllCompletedTasks()
+				tasks, err := bbs.CompletedTasks()
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(tasks[0].Failed).Should(BeTrue(), "Task should have failed")
 				Ω(tasks[0].FailureReason).Should(ContainSubstring("not claimed within time limit"))

@@ -130,9 +130,9 @@ var _ = Describe("Executor", func() {
 			})
 
 			It("eventually marks the task completed and failed", func() {
-				Eventually(bbs.GetAllRunningTasks).Should(BeEmpty())
+				Eventually(bbs.RunningTasks).Should(BeEmpty())
 
-				completedTasks, err := bbs.GetAllCompletedTasks()
+				completedTasks, err := bbs.CompletedTasks()
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(completedTasks[0].TaskGuid).Should(Equal(task.TaskGuid))
 				Ω(completedTasks[0].Failed).Should(BeTrue())
@@ -261,9 +261,9 @@ var _ = Describe("Executor", func() {
 			err := bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
+			Eventually(bbs.CompletedTasks).Should(HaveLen(1))
 
-			tasks, _ := bbs.GetAllCompletedTasks()
+			tasks, _ := bbs.CompletedTasks()
 			Ω(tasks[0].FailureReason).Should(BeEmpty())
 			Ω(tasks[0].Failed).Should(BeFalse())
 		})
@@ -300,8 +300,8 @@ var _ = Describe("Executor", func() {
 
 				Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
 
-				Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
-				tasks, _ := bbs.GetAllCompletedTasks()
+				Eventually(bbs.CompletedTasks).Should(HaveLen(1))
+				tasks, _ := bbs.CompletedTasks()
 				Ω(tasks[0].Failed).Should(BeTrue())
 				Ω(tasks[0].FailureReason).Should(ContainSubstring("out of memory"))
 
@@ -331,8 +331,8 @@ var _ = Describe("Executor", func() {
 				err := bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
-				tasks, _ := bbs.GetAllCompletedTasks()
+				Eventually(bbs.CompletedTasks).Should(HaveLen(1))
+				tasks, _ := bbs.CompletedTasks()
 				Ω(tasks[0].Failed).Should(BeTrue())
 				Ω(tasks[0].FailureReason).Should(ContainSubstring("127"))
 			})
@@ -365,8 +365,8 @@ var _ = Describe("Executor", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
-				Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
-				tasks, _ := bbs.GetAllCompletedTasks()
+				Eventually(bbs.CompletedTasks).Should(HaveLen(1))
+				tasks, _ := bbs.CompletedTasks()
 				Ω(tasks[0].Failed).Should(BeTrue())
 				Ω(tasks[0].FailureReason).Should(ContainSubstring("exceeded 500ms timeout"))
 			})
@@ -557,9 +557,9 @@ var _ = Describe("Executor", func() {
 			err := bbs.DesireTask(task)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(bbs.GetAllCompletedTasks).Should(HaveLen(1))
+			Eventually(bbs.CompletedTasks).Should(HaveLen(1))
 
-			tasks, _ := bbs.GetAllCompletedTasks()
+			tasks, _ := bbs.CompletedTasks()
 			Ω(tasks[0].Result).Should(Equal("tasty thingy\n"))
 		})
 	})
