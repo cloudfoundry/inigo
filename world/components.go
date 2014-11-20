@@ -254,7 +254,7 @@ func (maker ComponentMaker) TPS(argv ...string) ifrit.Runner {
 		Command: exec.Command(
 			maker.Artifacts.Executables["tps"],
 			append([]string{
-				"-etcdCluster", "http://" + maker.Addresses.Etcd,
+				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 				"-natsAddresses", maker.Addresses.NATS,
 				"-listenAddr", maker.Addresses.TPS,
 			}, argv...)...,
@@ -449,7 +449,7 @@ func (maker ComponentMaker) StagerN(portOffset int, argv ...string) ifrit.Runner
 				"-ccUsername", fake_cc.CC_USERNAME,
 				"-ccPassword", fake_cc.CC_PASSWORD,
 				"-circuses", fmt.Sprintf(`{"%s": "%s"}`, maker.Stack, CircusFilename),
-				"-diegoAPIURL", maker.Addresses.Receptor,
+				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 				"-stagerURL", fmt.Sprintf("http://127.0.0.1:%d", offsetPort(port, portOffset)),
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,
 			}, argv...)...,
