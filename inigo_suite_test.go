@@ -77,6 +77,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		Etcd:           fmt.Sprintf("127.0.0.1:%d", 12000+config.GinkgoConfig.ParallelNode),
 		EtcdPeer:       fmt.Sprintf("127.0.0.1:%d", 12500+config.GinkgoConfig.ParallelNode),
 		Executor:       fmt.Sprintf("127.0.0.1:%d", 13000+config.GinkgoConfig.ParallelNode),
+		Rep:            fmt.Sprintf("0.0.0.0:%d", 14000+config.GinkgoConfig.ParallelNode),
 		LoggregatorIn:  fmt.Sprintf("127.0.0.1:%d", 15000+config.GinkgoConfig.ParallelNode),
 		LoggregatorOut: fmt.Sprintf("127.0.0.1:%d", 16000+config.GinkgoConfig.ParallelNode),
 		FileServer:     fmt.Sprintf("%s:%d", localIP, 17000+config.GinkgoConfig.ParallelNode),

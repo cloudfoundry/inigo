@@ -41,6 +41,7 @@ type ComponentAddresses struct {
 	LoggregatorIn  string
 	LoggregatorOut string
 	Executor       string
+	Rep            string
 	FakeCC         string
 	FileServer     string
 	Router         string
@@ -174,7 +175,7 @@ func (maker ComponentMaker) Rep(argv ...string) ifrit.Runner {
 					"-stack", maker.Stack,
 					"-lrpHost", maker.ExternalAddress,
 					"-etcdCluster", "http://" + maker.Addresses.Etcd,
-					"-natsAddresses", maker.Addresses.NATS,
+					"-auctionListenAddr", maker.Addresses.Rep,
 					"-cellID", "the-cell-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()),
 					"-executorURL", "http://" + maker.Addresses.Executor,
 					"-heartbeatInterval", "1s",
@@ -215,15 +216,7 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 			maker.Artifacts.Executables["auctioneer"],
 			append([]string{
 				"-etcdCluster", "http://" + maker.Addresses.Etcd,
-				"-natsAddresses", maker.Addresses.NATS,
-
-				// inigo runs everything on the same machine, so there will be more
-				// load; this timeout is a bit sensitive to that.
-				"-natsAuctionTimeout", "5s",
-
-				// we limit this to prevent overwhelming numbers of auctioneer logs.  it
-				// should not impact the behavior of the tests.
-				"-maxRounds", "3",
+				"-heartbeatInterval", "1s",
 			}, argv...)...,
 		),
 	})
