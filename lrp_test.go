@@ -79,6 +79,39 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 
 			Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(1))
 		})
+
+		Context("and its unhealthy and its start timeout is exceeded", func() {
+			It("eventually restarts the LRP", func() {
+				err := bbs.DesireLRP(models.DesiredLRP{
+					Domain:      "inigo",
+					ProcessGuid: processGuid,
+					Instances:   1,
+					Stack:       componentMaker.Stack,
+					MemoryMB:    128,
+					DiskMB:      1024,
+					Ports: []uint32{
+						8080,
+					},
+					StartTimeout: 1,
+					Action: &models.RunAction{
+						Path: "bash",
+						Args: []string{
+							"-c",
+							"while true; do sleep 2; done",
+						},
+					},
+
+					Monitor: &models.RunAction{
+						Path: "bash",
+						Args: []string{"-c", "exit -1"},
+					},
+				})
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Eventually(helpers.GetLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(1))
+				Eventually(helpers.GetLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(0))
+			})
+		})
 	})
 
 	Context("when desiring a docker-based LRP", func() {

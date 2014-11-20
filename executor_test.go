@@ -232,7 +232,7 @@ var _ = Describe("Executor", func() {
 		})
 	})
 
-	Describe("Running a command", func() {
+	Describe("Running a task", func() {
 		var guid string
 
 		BeforeEach(func() {

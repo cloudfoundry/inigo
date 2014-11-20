@@ -17,6 +17,25 @@ func RunningLRPInstancesPoller(tpsAddr string, guid string) func() []tps.LRPInst
 }
 
 func RunningLRPInstances(tpsAddr string, guid string) []tps.LRPInstance {
+	instances := GetLRPInstances(tpsAddr, guid)
+
+	runningInstances := []tps.LRPInstance{}
+	for _, instance := range instances {
+		if instance.State == "running" {
+			runningInstances = append(runningInstances, instance)
+		}
+	}
+
+	return runningInstances
+}
+
+func GetLRPInstancesPoller(tpsAddr string, guid string) func() []tps.LRPInstance {
+	return func() []tps.LRPInstance {
+		return GetLRPInstances(tpsAddr, guid)
+	}
+}
+
+func GetLRPInstances(tpsAddr string, guid string) []tps.LRPInstance {
 	tpsRequestGenerator := rata.NewRequestGenerator("http://"+tpsAddr, tps.Routes)
 
 	getLRPs, err := tpsRequestGenerator.CreateRequest(
@@ -34,12 +53,5 @@ func RunningLRPInstances(tpsAddr string, guid string) []tps.LRPInstance {
 	err = json.NewDecoder(response.Body).Decode(&instances)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	runningInstances := []tps.LRPInstance{}
-	for _, instance := range instances {
-		if instance.State == "running" {
-			runningInstances = append(runningInstances, instance)
-		}
-	}
-
-	return runningInstances
+	return instances
 }
