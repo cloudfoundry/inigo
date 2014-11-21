@@ -40,6 +40,7 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"file-server", fileServer},
 			{"tps", componentMaker.TPS()},
+			{"receptor", componentMaker.Receptor()},
 			{"router", componentMaker.Router()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 		}))

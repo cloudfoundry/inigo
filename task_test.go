@@ -35,7 +35,7 @@ var _ = Describe("Task", func() {
 				{"rep", componentMaker.Rep()},
 				{"receptor", componentMaker.Receptor()},
 			}))
-			diegoClient = receptor_api.NewClient(componentMaker.Addresses.Receptor, "", "")
+			diegoClient = receptor_api.NewClient("http://" + componentMaker.Addresses.Receptor)
 			executorClient = executor_client.New(http.DefaultClient, "http://"+componentMaker.Addresses.Executor)
 		})
 

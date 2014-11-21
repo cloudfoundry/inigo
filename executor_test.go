@@ -399,7 +399,7 @@ var _ = Describe("Executor", func() {
 				},
 			}
 
-			diegoClient = receptor_api.NewClient(componentMaker.Addresses.Receptor, "", "")
+			diegoClient = receptor_api.NewClient("http://" + componentMaker.Addresses.Receptor)
 			err := diegoClient.CreateTask(taskRequest)
 			Ω(err).ShouldNot(HaveOccurred())
 

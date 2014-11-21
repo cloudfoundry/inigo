@@ -42,6 +42,7 @@ var _ = Describe("LRP Consistency", func() {
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"cc", componentMaker.FakeCC()},
 			{"tps", componentMaker.TPS()},
+			{"receptor", componentMaker.Receptor()},
 			{"nsync-listener", componentMaker.NsyncListener()},
 			{"exec", componentMaker.Executor()},
 			{"rep", componentMaker.Rep()},
