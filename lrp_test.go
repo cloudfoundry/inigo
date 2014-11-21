@@ -47,7 +47,7 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 	})
 
 	AfterEach(func() {
-		helpers.StopProcess(runtime)
+		helpers.StopProcesses(runtime)
 	})
 
 	Context("when desiring a buildpack-based LRP", func() {

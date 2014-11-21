@@ -48,13 +48,7 @@ var _ = Describe("Executor", func() {
 	})
 
 	AfterEach(func() {
-		helpers.StopProcess(executor)
-		helpers.StopProcess(fileServer)
-		helpers.StopProcess(rep)
-		helpers.StopProcess(auctioneer)
-		helpers.StopProcess(loggregator)
-		helpers.StopProcess(receptor)
-		helpers.StopProcess(converger)
+		helpers.StopProcesses(executor, fileServer, rep, auctioneer, loggregator, receptor, converger)
 	})
 
 	Describe("Heartbeating", func() {

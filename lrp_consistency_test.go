@@ -66,7 +66,7 @@ var _ = Describe("LRP Consistency", func() {
 	})
 
 	AfterEach(func() {
-		helpers.StopProcess(runtime)
+		helpers.StopProcesses(runtime)
 	})
 
 	Context("with an app running", func() {

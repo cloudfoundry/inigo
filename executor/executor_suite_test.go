@@ -101,7 +101,7 @@ var _ = AfterEach(func() {
 		}
 	}
 
-	helpers.StopProcess(gardenProcess)
+	helpers.StopProcesses(gardenProcess)
 
 	Ω(destroyContainerErrors).Should(
 		BeEmpty(),

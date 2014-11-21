@@ -10,24 +10,37 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
-func StopProcess(process ifrit.Process) {
-	if process == nil {
-		// sometimes components aren't initialized in individual tests, but a full
-		// suite may want AfterEach to clean up everything
-		return
-	}
+func StopProcesses(processes ...ifrit.Process) {
+	failures := InterceptGomegaFailures(func() {
+		for _, process := range processes {
+			if process == nil {
+				// sometimes components aren't initialized in individual tests, but a full
+				// suite may want AfterEach to clean up everything
+				continue
+			}
 
-	process.Signal(syscall.SIGTERM)
+			process.Signal(syscall.SIGTERM)
+		}
 
-	select {
-	case <-process.Wait():
-		return
-	case <-time.After(10 * time.Second):
-		fmt.Fprintf(GinkgoWriter, "!!!!!!!!!!!!!!!! STOP TIMEOUT !!!!!!!!!!!!!!!!")
+		for _, process := range processes {
+			if process == nil {
+				// sometimes components aren't initialized in individual tests, but a full
+				// suite may want AfterEach to clean up everything
+				continue
+			}
 
-		process.Signal(syscall.SIGQUIT)
-		Eventually(process.Wait(), 10*time.Second).Should(Receive())
+			select {
+			case <-process.Wait():
+			case <-time.After(10 * time.Second):
+				fmt.Fprintf(GinkgoWriter, "!!!!!!!!!!!!!!!! STOP TIMEOUT !!!!!!!!!!!!!!!!")
 
-		Fail("process did not shut down cleanly; SIGQUIT sent")
-	}
+				process.Signal(syscall.SIGQUIT)
+				Eventually(process.Wait(), 10*time.Second).Should(Receive())
+
+				Ω(true).Should(BeFalse(), "process did not shut down cleanly; SIGQUIT sent")
+			}
+		}
+	})
+
+	Ω(failures).Should(BeEmpty(), "at least one process failed to shut down cleanly")
 }

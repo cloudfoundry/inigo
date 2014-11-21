@@ -148,8 +148,6 @@ var _ = BeforeEach(func() {
 var _ = AfterEach(func() {
 	inigo_announcement_server.Stop(gardenClient)
 
-	helpers.StopProcess(plumbing)
-
 	containers, err := gardenClient.Containers(nil)
 	Ω(err).ShouldNot(HaveOccurred())
 
@@ -163,7 +161,7 @@ var _ = AfterEach(func() {
 		}
 	}
 
-	helpers.StopProcess(gardenProcess)
+	helpers.StopProcesses(plumbing, gardenProcess)
 
 	Ω(destroyContainerErrors).Should(
 		BeEmpty(),

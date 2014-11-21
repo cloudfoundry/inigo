@@ -86,11 +86,7 @@ var _ = Describe("Convergence to desired state", func() {
 	})
 
 	AfterEach(func() {
-		helpers.StopProcess(auctioneer)
-		helpers.StopProcess(executor)
-		helpers.StopProcess(rep)
-		helpers.StopProcess(converger)
-		helpers.StopProcess(runtime)
+		helpers.StopProcesses(auctioneer, executor, rep, converger, runtime)
 	})
 
 	Describe("Executor fault tolerance", func() {

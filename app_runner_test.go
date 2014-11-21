@@ -53,7 +53,7 @@ var _ = Describe("AppRunner", func() {
 	})
 
 	AfterEach(func() {
-		helpers.StopProcess(runtime)
+		helpers.StopProcesses(runtime)
 	})
 
 	Describe("Running", func() {

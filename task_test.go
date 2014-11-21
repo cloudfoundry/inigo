@@ -40,7 +40,7 @@ var _ = Describe("Task", func() {
 		})
 
 		AfterEach(func() {
-			helpers.StopProcess(cell)
+			helpers.StopProcesses(cell)
 		})
 
 		Context("and a standard Task is desired", func() {
@@ -114,7 +114,7 @@ var _ = Describe("Task", func() {
 				})
 
 				AfterEach(func() {
-					helpers.StopProcess(converger)
+					helpers.StopProcesses(converger)
 				})
 
 				Context("after the task starts", func() {
@@ -124,7 +124,7 @@ var _ = Describe("Task", func() {
 
 					Context("when the cell disappears", func() {
 						JustBeforeEach(func() {
-							helpers.StopProcess(cell)
+							helpers.StopProcesses(cell)
 						})
 
 						It("eventually marks the task as failed", func() {
@@ -222,7 +222,7 @@ var _ = Describe("Task", func() {
 		})
 
 		AfterEach(func() {
-			helpers.StopProcess(converger)
+			helpers.StopProcesses(converger)
 		})
 
 		Context("and a task is desired", func() {
@@ -253,7 +253,7 @@ var _ = Describe("Task", func() {
 				})
 
 				AfterEach(func() {
-					helpers.StopProcess(cell)
+					helpers.StopProcesses(cell)
 				})
 
 				It("eventually runs the Task", func() {
@@ -274,7 +274,7 @@ var _ = Describe("Task", func() {
 		})
 
 		AfterEach(func() {
-			helpers.StopProcess(converger)
+			helpers.StopProcesses(converger)
 		})
 
 		Context("and a task is desired", func() {

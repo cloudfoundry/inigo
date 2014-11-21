@@ -74,7 +74,10 @@ func streamMessages(addr string, path string, outMessages, errMessages chan<- *l
 
 			receivedMessage := &logmessage.LogMessage{}
 			err = proto.Unmarshal(data, receivedMessage)
-			Ω(err).ShouldNot(HaveOccurred())
+			if err != nil {
+				// avoid async assertions to not race with e.g. InterceptGomegaFailures
+				panic("error unmarshaling loggregator payload: " + err.Error())
+			}
 
 			if receivedMessage.GetMessageType() == logmessage.LogMessage_OUT {
 				outMessages <- receivedMessage

@@ -107,7 +107,7 @@ EOF
 	})
 
 	AfterEach(func() {
-		helpers.StopProcess(runtime)
+		helpers.StopProcesses(runtime)
 	})
 
 	Context("when unable to find an appropriate compiler", func() {
@@ -405,7 +405,7 @@ EOF
 			})
 
 			AfterEach(func() {
-				helpers.StopProcess(otherStager)
+				helpers.StopProcesses(otherStager)
 			})
 
 			It("only one returns a staging completed response", func() {
@@ -518,7 +518,7 @@ EOF
 			})
 
 			AfterEach(func() {
-				helpers.StopProcess(otherStager)
+				helpers.StopProcesses(otherStager)
 			})
 
 			It("only one returns a staging completed response", func() {
