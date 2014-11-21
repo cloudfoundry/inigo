@@ -179,8 +179,6 @@ func (maker ComponentMaker) Rep(argv ...string) ifrit.Runner {
 					"-cellID", "the-cell-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()),
 					"-executorURL", "http://" + maker.Addresses.Executor,
 					"-heartbeatInterval", "1s",
-					"-actualLRPReapingInterval", "1s",
-					"-taskReapingInterval", "1s",
 					"-pollingInterval", "1s",
 				},
 				argv...,
