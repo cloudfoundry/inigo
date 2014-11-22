@@ -158,7 +158,9 @@ var _ = AfterEach(func() {
 	for _, container := range containers {
 		err := gardenClient.Destroy(container.Handle())
 		if err != nil {
-			destroyContainerErrors = append(destroyContainerErrors, err)
+			if !strings.Contains(err.Error(), "unknown handle") {
+				destroyContainerErrors = append(destroyContainerErrors, err)
+			}
 		}
 	}
 
