@@ -26,15 +26,12 @@ import (
 var _ = Describe("AppRunner", func() {
 	var appId string
 
-	var fileServerStaticDir string
-
 	var runtime ifrit.Process
 
 	BeforeEach(func() {
 		appId = factories.GenerateGuid()
 
-		fileServer, dir := componentMaker.FileServer()
-		fileServerStaticDir = dir
+		fileServer, fileServerStaticDir := componentMaker.FileServer()
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"cc", componentMaker.FakeCC()},
@@ -50,6 +47,21 @@ var _ = Describe("AppRunner", func() {
 			{"router", componentMaker.Router()},
 			{"loggregator", componentMaker.Loggregator()},
 		}))
+
+		archive_helper.CreateZipArchive(
+			filepath.Join(fileServerStaticDir, "droplet.zip"),
+			fixtures.HelloWorldIndexApp(),
+		)
+
+		cp(
+			componentMaker.Artifacts.Circuses[componentMaker.Stack],
+			filepath.Join(fileServerStaticDir, world.CircusFilename),
+		)
+
+		cp(
+			componentMaker.Artifacts.DockerCircus,
+			filepath.Join(fileServerStaticDir, world.DockerCircusFilename),
+		)
 	})
 
 	AfterEach(func() {
@@ -57,28 +69,9 @@ var _ = Describe("AppRunner", func() {
 	})
 
 	Describe("Running", func() {
-		var runningMessage []byte
-
-		BeforeEach(func() {
-			archive_helper.CreateZipArchive(
-				filepath.Join(fileServerStaticDir, "droplet.zip"),
-				fixtures.HelloWorldIndexApp(),
-			)
-
-			cp(
-				componentMaker.Artifacts.Circuses[componentMaker.Stack],
-				filepath.Join(fileServerStaticDir, world.CircusFilename),
-			)
-
-			cp(
-				componentMaker.Artifacts.DockerCircus,
-				filepath.Join(fileServerStaticDir, world.DockerCircusFilename),
-			)
-		})
-
 		Context("when the running message contains a start_command", func() {
 			It("runs the app on the executor, registers routes, and shows that they are running via the tps", func() {
-				runningMessage = []byte(
+				runningMessage := []byte(
 					fmt.Sprintf(
 						`
 						{
@@ -134,7 +127,7 @@ var _ = Describe("AppRunner", func() {
 
 		Context("when the start message does not include a start_command", func() {
 			It("runs the app, registers a route, and shows running via tps", func() {
-				runningMessage = []byte(
+				runningMessage := []byte(
 					fmt.Sprintf(
 						`
 						{
@@ -174,11 +167,13 @@ var _ = Describe("AppRunner", func() {
 
 				Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, "process-guid")).Should(HaveLen(1))
 				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-1")).Should(Equal(http.StatusOK))
+
+				By("sending a stop index message")
 			})
 		})
 
 		It("runs docker apps", func() {
-			runningMessage = []byte(
+			runningMessage := []byte(
 				fmt.Sprintf(
 					`
            {
@@ -213,7 +208,62 @@ var _ = Describe("AppRunner", func() {
 			Eventually(poller).Should(Equal([]string{"0", "1"}))
 		})
 	})
+
+	Describe("Stop Index", func() {
+		Context("when there is an instance running", func() {
+			BeforeEach(func() {
+				runningMessage := []byte(
+					fmt.Sprintf(
+						`
+						{
+			        "process_guid": "process-guid",
+			        "droplet_uri": "%s",
+				      "stack": "%s",
+			        "start_command": "./run",
+			        "num_instances": 3,
+			        "environment":[{"name":"VCAP_APPLICATION", "value":"{}"}],
+			        "routes": ["route-1", "route-2"],
+			        "log_guid": "%s"
+			      }
+			    `,
+						fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "droplet.zip"),
+						componentMaker.Stack,
+						appId,
+					),
+				)
+
+				// publish the app run message
+				err := natsClient.Publish("diego.desire.app", runningMessage)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				// wait for intances to come up
+				Eventually(runningIndexPoller(componentMaker.Addresses.TPS, "process-guid")).Should(ConsistOf(0, 1, 2))
+			})
+
+			It("stops the app on the desired index, and then eventually starts it back up", func() {
+				stopMessage := []byte(`{"process_guid": "process-guid", "index": 1}`)
+				err := natsClient.Publish("diego.stop.index", stopMessage)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				// wait for stop to take effect
+				Eventually(runningIndexPoller(componentMaker.Addresses.TPS, "process-guid")).Should(ConsistOf(0, 2))
+
+				// wait for system to re-converge on desired state
+				Eventually(runningIndexPoller(componentMaker.Addresses.TPS, "process-guid")).Should(ConsistOf(0, 1, 2))
+			})
+		})
+	})
 })
+
+func runningIndexPoller(tpsAddr string, guid string) func() []int {
+	return func() []int {
+		indexes := []int{}
+		for _, instance := range helpers.RunningLRPInstances(tpsAddr, guid) {
+			indexes = append(indexes, int(instance.Index))
+		}
+		return indexes
+	}
+}
 
 func cp(sourceFilePath, destinationPath string) {
 	data, err := ioutil.ReadFile(sourceFilePath)
