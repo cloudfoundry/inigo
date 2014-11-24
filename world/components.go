@@ -262,6 +262,7 @@ func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 		Command: exec.Command(
 			maker.Artifacts.Executables["nsync-listener"],
 			append([]string{
+				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 				"-etcdCluster", "http://" + maker.Addresses.Etcd,
 				"-natsAddresses", maker.Addresses.NATS,
 				"-circuses", fmt.Sprintf(`{"%s": "%s"}`, maker.Stack, CircusFilename),
