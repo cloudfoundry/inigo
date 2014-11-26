@@ -392,7 +392,7 @@ EOF
 							TaskId: taskId,
 							Error:  "Exited with status 1",
 						}))
-					Eventually(logOutput).Should(gbytes.Say("no valid buildpacks detected"))
+					Eventually(logOutput).Should(gbytes.Say("None of the buildpacks detected a compatible application"))
 				})
 			})
 		})
