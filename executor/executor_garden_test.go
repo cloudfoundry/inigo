@@ -469,6 +469,7 @@ var _ = Describe("Executor/Garden", func() {
 
 							It("reports the health as 'unmonitored'", func() {
 								Eventually(containerHealthPoller(guid)).Should(Equal(executor.HealthUnmonitored))
+								Consistently(containerHealthPoller(guid)).Should(Equal(executor.HealthUnmonitored))
 							})
 						})
 					})
@@ -500,6 +501,7 @@ var _ = Describe("Executor/Garden", func() {
 								})
 
 								It("reports the health as 'down' and does not stop the container", func() {
+									Eventually(containerHealthPoller(guid)).Should(Equal(executor.HealthDown))
 									Consistently(containerHealthPoller(guid)).Should(Equal(executor.HealthDown))
 								})
 
@@ -631,18 +633,8 @@ var _ = Describe("Executor/Garden", func() {
 					})
 
 					Context("when listening for events", func() {
-						It("emits a completed container event", func() {
-							var event executor.Event
-							Eventually(containerEventPoller(events, &event), 5).Should(Equal(executor.EventTypeContainerComplete))
-
-							completeEvent := event.(executor.ContainerCompleteEvent)
-							Ω(completeEvent.Container.State).Should(Equal(executor.StateCompleted))
-							Ω(completeEvent.Container.RunResult.Failed).Should(BeTrue())
-							Ω(completeEvent.Container.RunResult.FailureReason).Should(Equal("failed to initialize container: unknown rootfs provider"))
-						})
+						itCompletesWithFailure("failed to initialize container")
 					})
-
-					itCompletesWithFailure("failed to initialize container: unknown rootfs provider")
 				})
 			})
 		})
