@@ -2,9 +2,7 @@ package executor_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
-	"strings"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -13,18 +11,18 @@ import (
 	"github.com/pivotal-golang/lager/ginkgoreporter"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
+	"github.com/tedsuo/ifrit/grouper"
 
 	garden "github.com/cloudfoundry-incubator/garden/api"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/world"
 )
 
-var builtArtifacts world.BuiltArtifacts
-var componentMaker world.ComponentMaker
-
 var (
-	gardenProcess ifrit.Process
-	gardenClient  garden.Client
+	componentMaker world.ComponentMaker
+
+	plumbing     ifrit.Process
+	gardenClient garden.Client
 )
 
 var _ = SynchronizedBeforeSuite(func() []byte {
@@ -35,19 +33,18 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	return payload
 }, func(encodedBuiltArtifacts []byte) {
-	var err error
+	var builtArtifacts world.BuiltArtifacts
 
-	err = json.Unmarshal(encodedBuiltArtifacts, &builtArtifacts)
+	err := json.Unmarshal(encodedBuiltArtifacts, &builtArtifacts)
 	Ω(err).ShouldNot(HaveOccurred())
 
 	componentMaker = helpers.MakeComponentMaker(builtArtifacts)
 })
 
 var _ = BeforeEach(func() {
-	currentTestDescription := CurrentGinkgoTestDescription()
-	fmt.Fprintf(GinkgoWriter, "\n%s\n%s\n\n", strings.Repeat("~", 50), currentTestDescription.FullTestText)
-
-	gardenProcess = ginkgomon.Invoke(componentMaker.GardenLinux())
+	plumbing = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+		{"garden-linux", componentMaker.GardenLinux()},
+	}))
 
 	gardenClient = componentMaker.GardenClient()
 })
@@ -55,7 +52,7 @@ var _ = BeforeEach(func() {
 var _ = AfterEach(func() {
 	destroyContainerErrors := helpers.CleanupGarden(gardenClient)
 
-	helpers.StopProcesses(gardenProcess)
+	helpers.StopProcesses(plumbing)
 
 	Ω(destroyContainerErrors).Should(
 		BeEmpty(),

@@ -17,7 +17,7 @@ import (
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
 
-	garden_api "github.com/cloudfoundry-incubator/garden/api"
+	garden "github.com/cloudfoundry-incubator/garden/api"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	"github.com/cloudfoundry-incubator/inigo/world"
@@ -28,14 +28,13 @@ import (
 // use this for tests exercising docker; pulling can take a while
 const DOCKER_PULL_ESTIMATE = 5 * time.Minute
 
-var builtArtifacts world.BuiltArtifacts
-var componentMaker world.ComponentMaker
-
 var (
+	componentMaker world.ComponentMaker
+
 	plumbing     ifrit.Process
 	bbs          *Bbs.BBS
 	natsClient   diegonats.NATSClient
-	gardenClient garden_api.Client
+	gardenClient garden.Client
 )
 
 var _ = SynchronizedBeforeSuite(func() []byte {
@@ -48,9 +47,9 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	return payload
 }, func(encodedBuiltArtifacts []byte) {
-	var err error
+	var builtArtifacts world.BuiltArtifacts
 
-	err = json.Unmarshal(encodedBuiltArtifacts, &builtArtifacts)
+	err := json.Unmarshal(encodedBuiltArtifacts, &builtArtifacts)
 	Ω(err).ShouldNot(HaveOccurred())
 
 	componentMaker = helpers.MakeComponentMaker(builtArtifacts)
