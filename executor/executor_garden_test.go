@@ -921,7 +921,7 @@ var _ = Describe("Executor/Garden", func() {
 		})
 
 		Describe("container networking", func() {
-			Context("when a container listens on the local end of CF_INSTANCE_ADDR", func() {
+			Context("when a container listens on the local end of INSTANCE_ADDR", func() {
 				var guid string
 				var containerResponse []byte
 				var externalAddr string
@@ -934,7 +934,7 @@ var _ = Describe("Executor/Garden", func() {
 
 						Action: &models.RunAction{
 							Path: "sh",
-							Args: []string{"-c", "echo -n .$CF_INSTANCE_ADDR. | nc -l 8080"},
+							Args: []string{"-c", "echo -n .$INSTANCE_ADDR. | nc -l 8080"},
 						},
 					})
 
@@ -963,7 +963,7 @@ var _ = Describe("Executor/Garden", func() {
 						exportNetworkEnvVars = true
 					})
 
-					It("echoes back the correct CF_INSTANCE_ADDR", func() {
+					It("echoes back the correct INSTANCE_ADDR", func() {
 						Ω(string(containerResponse)).Should(Equal("." + externalAddr + "."))
 					})
 				})
@@ -973,7 +973,7 @@ var _ = Describe("Executor/Garden", func() {
 						exportNetworkEnvVars = false
 					})
 
-					It("echoes back an empty CF_INSTANCE_ADDR", func() {
+					It("echoes back an empty INSTANCE_ADDR", func() {
 						Ω(string(containerResponse)).Should(Equal(".."))
 					})
 				})
