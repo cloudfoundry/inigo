@@ -102,9 +102,9 @@ var _ = Describe("LRP Consistency", func() {
 			err = natsClient.Publish("diego.desire.app", reqJSON)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid), 2*DEFAULT_EVENTUALLY_TIMEOUT).Should(HaveLen(2))
+			Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(2))
 			poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-to-simple")
-			Eventually(poller, 2*DEFAULT_EVENTUALLY_TIMEOUT).Should(Equal([]string{"0", "1"}))
+			Eventually(poller).Should(Equal([]string{"0", "1"}))
 		})
 
 		AfterEach(func() {

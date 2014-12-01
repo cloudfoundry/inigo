@@ -28,20 +28,21 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 	BeforeEach(func() {
 		processGuid = factories.GenerateGuid()
 
-		// need a file server to be able to preprocess. not actually used.
-		fileServer, _ := componentMaker.FileServer()
-
 		execRunner = componentMaker.Executor()
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+			// plumbing
+			{"router", componentMaker.Router()},
+
+			// cell
 			{"exec", execRunner},
 			{"rep", componentMaker.Rep()},
 			{"converger", componentMaker.Converger()},
 			{"auctioneer", componentMaker.Auctioneer()},
-			{"file-server", fileServer},
-			{"tps", componentMaker.TPS()},
 			{"receptor", componentMaker.Receptor()},
-			{"router", componentMaker.Router()},
+
+			// bridge
+			{"tps", componentMaker.TPS()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 		}))
 	})

@@ -384,6 +384,7 @@ var _ = Describe("Executor/Garden", func() {
 
 					events, err = executorClient.SubscribeToEvents()
 					Ω(err).ShouldNot(HaveOccurred())
+
 					runErr = executorClient.RunContainer(guid)
 				})
 

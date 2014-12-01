@@ -26,11 +26,10 @@ var _ = Describe("Task", func() {
 	var diegoClient receptor_api.Client
 	var executorClient executor_api.Client
 
-	kickPendingDuration := 1 * time.Second
-
 	Context("when an exec and rep are running", func() {
 		BeforeEach(func() {
 			cell = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+				// cell
 				{"exec", componentMaker.Executor("-memoryMB", "1024")},
 				{"rep", componentMaker.Rep()},
 				{"receptor", componentMaker.Receptor()},
@@ -109,7 +108,7 @@ var _ = Describe("Task", func() {
 				BeforeEach(func() {
 					converger = ginkgomon.Invoke(componentMaker.Converger(
 						"-convergeRepeatInterval", "1s",
-						"-kickPendingTaskDuration", kickPendingDuration.String(),
+						"-kickPendingTaskDuration", "1s",
 					))
 				})
 
@@ -162,7 +161,7 @@ var _ = Describe("Task", func() {
 
 						It("is executed once the first task completes, as its resources are cleared", func() {
 							Eventually(bbs.CompletedTasks).Should(HaveLen(1)) // Wait for first task to complete
-							Eventually(inigo_announcement_server.Announcements, DEFAULT_EVENTUALLY_TIMEOUT+kickPendingDuration).Should(ContainElement(secondThingWeRan))
+							Eventually(inigo_announcement_server.Announcements).Should(ContainElement(secondThingWeRan))
 						})
 					})
 				})
@@ -217,7 +216,7 @@ var _ = Describe("Task", func() {
 		BeforeEach(func() {
 			converger = ginkgomon.Invoke(componentMaker.Converger(
 				"-convergeRepeatInterval", "1s",
-				"-kickPendingTaskDuration", kickPendingDuration.String(),
+				"-kickPendingTaskDuration", "1s",
 			))
 		})
 
@@ -257,7 +256,7 @@ var _ = Describe("Task", func() {
 				})
 
 				It("eventually runs the Task", func() {
-					Eventually(inigo_announcement_server.Announcements, DEFAULT_EVENTUALLY_TIMEOUT+kickPendingDuration).Should(ContainElement(thingWeRan))
+					Eventually(inigo_announcement_server.Announcements).Should(ContainElement(thingWeRan))
 				})
 			})
 		})

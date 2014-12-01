@@ -87,14 +87,17 @@ EOF
 		fakeCC = componentMaker.FakeCC()
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"stager", componentMaker.Stager("-minDiskMB", "64", "-minMemoryMB", "64")},
-			{"cc", fakeCC},
-			{"nsync-listener", componentMaker.NsyncListener()},
+			// cell
 			{"exec", componentMaker.Executor()},
 			{"rep", componentMaker.Rep()},
 			{"receptor", componentMaker.Receptor()},
-			{"file-server", fileServer},
 			{"loggregator", componentMaker.Loggregator()},
+
+			// bridge
+			{"cc", fakeCC},
+			{"stager", componentMaker.Stager("-minDiskMB", "64", "-minMemoryMB", "64")},
+			{"nsync-listener", componentMaker.NsyncListener()},
+			{"file-server", fileServer},
 		}))
 
 		u, err := url.Parse(fakeCC.Address())
