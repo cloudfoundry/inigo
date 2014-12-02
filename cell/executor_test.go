@@ -55,7 +55,7 @@ var _ = Describe("Executor", func() {
 
 	Describe("Heartbeating", func() {
 		It("should heartbeat its presence (through the rep)", func() {
-			Eventually(bbs.Cells).Should(HaveLen(1))
+			Eventually(receptorClient.Cells).Should(HaveLen(1))
 		})
 	})
 
@@ -64,57 +64,60 @@ var _ = Describe("Executor", func() {
 			firstGuyGuid := factories.GenerateGuid()
 			secondGuyGuid := factories.GenerateGuid()
 
-			firstGuyTask := factories.BuildTaskWithRunAction(
-				"inigo",
-				componentMaker.Stack,
-				1024,
-				1024,
-				"bash",
-				[]string{"-c", fmt.Sprintf("curl %s; sleep 5", inigo_announcement_server.AnnounceURL(firstGuyGuid))},
-			)
-
-			err := bbs.DesireTask(firstGuyTask)
+			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
+				TaskGuid: firstGuyGuid,
+				Domain:   "inigo",
+				Stack:    componentMaker.Stack,
+				MemoryMB: 1024,
+				DiskMB:   1024,
+				Action: &models.RunAction{
+					Path: "curl",
+					Args: []string{inigo_announcement_server.AnnounceURL(firstGuyGuid)},
+				},
+			})
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(inigo_announcement_server.Announcements).Should(ContainElement(firstGuyGuid))
 
-			secondGuyTask := factories.BuildTaskWithRunAction(
-				"inigo",
-				componentMaker.Stack,
-				1024,
-				1024,
-				"curl",
-				[]string{inigo_announcement_server.AnnounceURL(secondGuyGuid)},
-			)
-
-			err = bbs.DesireTask(secondGuyTask)
+			err = receptorClient.CreateTask(receptor.TaskCreateRequest{
+				TaskGuid: secondGuyGuid,
+				Domain:   "inigo",
+				Stack:    componentMaker.Stack,
+				MemoryMB: 1024,
+				DiskMB:   1024,
+				Action: &models.RunAction{
+					Path: "curl",
+					Args: []string{inigo_announcement_server.AnnounceURL(secondGuyGuid)},
+				},
+			})
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Consistently(inigo_announcement_server.Announcements).ShouldNot(ContainElement(secondGuyGuid))
 		})
 	})
 
-	Describe("BBS consistency", func() {
+	Describe("consistency", func() {
 		Context("when a task is running and then something causes the container to go away (e.g. executor restart)", func() {
-			var task models.Task
+			var taskGuid string
 
 			BeforeEach(func() {
-				task = factories.BuildTaskWithRunAction(
-					"inigo",
-					componentMaker.Stack,
-					100,
-					100,
-					"bash",
-					[]string{"-c", "while true; do sleep 2; done"},
-				)
+				taskGuid = factories.GenerateGuid()
 
-				err := bbs.DesireTask(task)
+				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
+					TaskGuid: taskGuid,
+					Domain:   "inigo",
+					Stack:    componentMaker.Stack,
+					Action: &models.RunAction{
+						Path: "bash",
+						Args: []string{"-c", "while true; do sleep 1; done"},
+					},
+				})
 				Ω(err).ShouldNot(HaveOccurred())
 
 				executorClient := componentMaker.ExecutorClient()
 
 				Eventually(func() executor.State {
-					container, err := executorClient.GetContainer(task.TaskGuid)
+					container, err := executorClient.GetContainer(taskGuid)
 					if err == nil {
 						return container.State
 					}
@@ -127,35 +130,38 @@ var _ = Describe("Executor", func() {
 			})
 
 			It("eventually marks the task completed and failed", func() {
-				Eventually(bbs.RunningTasks).Should(BeEmpty())
+				var task receptor.TaskResponse
 
-				completedTasks, err := bbs.CompletedTasks()
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(completedTasks[0].TaskGuid).Should(Equal(task.TaskGuid))
-				Ω(completedTasks[0].Failed).Should(BeTrue())
+				Eventually(func() interface{} {
+					var err error
+
+					task, err = receptorClient.GetTask(taskGuid)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					return task.State
+				}).Should(Equal(receptor.TaskStateCompleted))
+
+				Ω(task.Failed).Should(BeTrue())
 			})
 		})
 
 		Context("when a lrp is running and then something causes the container to go away", func() {
-
 			BeforeEach(func() {
 				processGuid := factories.GenerateGuid()
 
-				err := bbs.DesireLRP(models.DesiredLRP{
+				err := receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
 					Domain:      "inigo",
 					ProcessGuid: processGuid,
 					Instances:   1,
 					Stack:       componentMaker.Stack,
 					MemoryMB:    128,
 					DiskMB:      1024,
-					Ports: []uint32{
-						8080,
-					},
+					Ports:       []uint32{8080},
 					Action: &models.RunAction{
 						Path: "bash",
 						Args: []string{
 							"-c",
-							"while true; do sleep 2; done",
+							"while true; do sleep 1; done",
 						},
 					},
 					Monitor: &models.RunAction{
@@ -165,9 +171,9 @@ var _ = Describe("Executor", func() {
 				})
 				Ω(err).ShouldNot(HaveOccurred())
 
-				var actualLRPs []models.ActualLRP
-				Eventually(func() []models.ActualLRP {
-					actualLRPs, _ = bbs.ActualLRPsByProcessGuid(processGuid)
+				var actualLRPs []receptor.ActualLRPResponse
+				Eventually(func() interface{} {
+					actualLRPs, _ = receptorClient.ActualLRPsByProcessGuid(processGuid)
 					return actualLRPs
 				}).Should(HaveLen(1))
 
@@ -189,7 +195,7 @@ var _ = Describe("Executor", func() {
 			})
 
 			It("eventually deletes the lrp", func() {
-				Eventually(bbs.ActualLRPs).Should(BeEmpty())
+				Eventually(receptorClient.ActualLRPs).Should(BeEmpty())
 			})
 		})
 	})
@@ -204,8 +210,8 @@ var _ = Describe("Executor", func() {
 				componentMaker.Stack,
 				100,
 				100,
-				"bash",
-				[]string{"-c", fmt.Sprintf("curl %s; sleep 10", inigo_announcement_server.AnnounceURL(matchingGuid))},
+				"curl",
+				[]string{inigo_announcement_server.AnnounceURL(matchingGuid)},
 			)
 
 			nonMatchingGuid := factories.GenerateGuid()
@@ -214,8 +220,8 @@ var _ = Describe("Executor", func() {
 				wrongStack,
 				100,
 				100,
-				"bash",
-				[]string{"-c", fmt.Sprintf("curl %s; sleep 10", inigo_announcement_server.AnnounceURL(nonMatchingGuid))},
+				"curl",
+				[]string{inigo_announcement_server.AnnounceURL(nonMatchingGuid)},
 			)
 
 			err := bbs.DesireTask(matchingTask)
@@ -392,7 +398,7 @@ var _ = Describe("Executor", func() {
 				DiskMB:   1024,
 				Action: &models.RunAction{
 					Path:       "bash",
-					Args:       []string{"-c", "while true; do sleep 2; done"},
+					Args:       []string{"-c", "while true; do sleep 1; done"},
 					Env:        env,
 					Privileged: true,
 				},
