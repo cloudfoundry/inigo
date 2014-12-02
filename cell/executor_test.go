@@ -205,29 +205,28 @@ var _ = Describe("Executor", func() {
 
 		It("should only pick up tasks if the stacks match", func() {
 			matchingGuid := factories.GenerateGuid()
-			matchingTask := factories.BuildTaskWithRunAction(
-				"inigo",
-				componentMaker.Stack,
-				100,
-				100,
-				"curl",
-				[]string{inigo_announcement_server.AnnounceURL(matchingGuid)},
-			)
-
 			nonMatchingGuid := factories.GenerateGuid()
-			nonMatchingTask := factories.BuildTaskWithRunAction(
-				"inigo",
-				wrongStack,
-				100,
-				100,
-				"curl",
-				[]string{inigo_announcement_server.AnnounceURL(nonMatchingGuid)},
-			)
 
-			err := bbs.DesireTask(matchingTask)
+			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
+				TaskGuid: matchingGuid,
+				Domain:   "inigo",
+				Stack:    componentMaker.Stack,
+				Action: &models.RunAction{
+					Path: "curl",
+					Args: []string{inigo_announcement_server.AnnounceURL(matchingGuid)},
+				},
+			})
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = bbs.DesireTask(nonMatchingTask)
+			err = receptorClient.CreateTask(receptor.TaskCreateRequest{
+				TaskGuid: nonMatchingGuid,
+				Domain:   "inigo",
+				Stack:    wrongStack,
+				Action: &models.RunAction{
+					Path: "curl",
+					Args: []string{inigo_announcement_server.AnnounceURL(nonMatchingGuid)},
+				},
+			})
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Consistently(inigo_announcement_server.Announcements).ShouldNot(ContainElement(nonMatchingGuid), "Did not expect to see this app running, as it has the wrong stack.")
@@ -242,50 +241,49 @@ var _ = Describe("Executor", func() {
 			guid = factories.GenerateGuid()
 		})
 
-		It("should run the command with the provided environment", func() {
-			env := []models.EnvironmentVariable{
-				{"FOO", "OLD-BAR"},
-				{"BAZ", "WIBBLE"},
-				{"FOO", "NEW-BAR"},
-			}
-			task := models.Task{
+		It("runs the command with the provided environment", func() {
+			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
+				TaskGuid: guid,
 				Domain:   "inigo",
-				TaskGuid: factories.GenerateGuid(),
 				Stack:    componentMaker.Stack,
-				MemoryMB: 1024,
-				DiskMB:   1024,
 				Action: &models.RunAction{
 					Path: "bash",
-					Args: []string{"-c", "test $FOO = NEW-BAR && test $BAZ = WIBBLE"},
-					Env:  env,
+					Args: []string{"-c", "[ $FOO = NEW-BAR -a $BAZ = WIBBLE ]"},
+					Env: []models.EnvironmentVariable{
+						{"FOO", "OLD-BAR"},
+						{"BAZ", "WIBBLE"},
+						{"FOO", "NEW-BAR"},
+					},
 				},
-			}
-
-			err := bbs.DesireTask(task)
+			})
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(bbs.CompletedTasks).Should(HaveLen(1))
+			var task receptor.TaskResponse
 
-			tasks, _ := bbs.CompletedTasks()
-			Ω(tasks[0].FailureReason).Should(BeEmpty())
-			Ω(tasks[0].Failed).Should(BeFalse())
+			Eventually(func() interface{} {
+				var err error
+
+				task, err = receptorClient.GetTask(guid)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				return task.State
+			}).Should(Equal(receptor.TaskStateCompleted))
+
+			Ω(task.Failed).Should(BeFalse())
 		})
 
 		Context("when the command exceeds its memory limit", func() {
-			var otherGuid string
-
 			It("should fail the Task", func() {
-				otherGuid = factories.GenerateGuid()
-				task := models.Task{
+				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 					Domain:   "inigo",
-					TaskGuid: factories.GenerateGuid(),
+					TaskGuid: guid,
 					Stack:    componentMaker.Stack,
 					MemoryMB: 10,
 					DiskMB:   1024,
 					Action: models.Serial(
 						&models.RunAction{
 							Path: "curl",
-							Args: []string{inigo_announcement_server.AnnounceURL(guid)},
+							Args: []string{inigo_announcement_server.AnnounceURL("before-memory-overdose")},
 						},
 						&models.RunAction{
 							Path: "ruby",
@@ -293,22 +291,28 @@ var _ = Describe("Executor", func() {
 						},
 						&models.RunAction{
 							Path: "curl",
-							Args: []string{inigo_announcement_server.AnnounceURL(otherGuid)},
+							Args: []string{inigo_announcement_server.AnnounceURL("after-memory-overdose")},
 						},
 					),
-				}
-
-				err := bbs.DesireTask(task)
+				})
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
+				Eventually(inigo_announcement_server.Announcements).Should(ContainElement("before-memory-overdose"))
 
-				Eventually(bbs.CompletedTasks).Should(HaveLen(1))
-				tasks, _ := bbs.CompletedTasks()
-				Ω(tasks[0].Failed).Should(BeTrue())
-				Ω(tasks[0].FailureReason).Should(ContainSubstring("out of memory"))
+				var task receptor.TaskResponse
+				Eventually(func() interface{} {
+					var err error
 
-				Ω(inigo_announcement_server.Announcements()).ShouldNot(ContainElement(otherGuid))
+					task, err = receptorClient.GetTask(guid)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					return task.State
+				}).Should(Equal(receptor.TaskStateCompleted))
+
+				Ω(task.Failed).Should(BeTrue())
+				Ω(task.FailureReason).Should(ContainSubstring("out of memory"))
+
+				Ω(inigo_announcement_server.Announcements()).ShouldNot(ContainElement("after-memory-overdose"))
 			})
 		})
 
@@ -316,69 +320,73 @@ var _ = Describe("Executor", func() {
 			It("should fail the Task", func() {
 				nofile := uint64(1)
 
-				task := models.Task{
+				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 					Domain:   "inigo",
-					TaskGuid: factories.GenerateGuid(),
+					TaskGuid: guid,
 					Stack:    componentMaker.Stack,
-					MemoryMB: 10,
-					DiskMB:   1024,
-					Action: &models.RunAction{
-						Path: "ruby",
-						Args: []string{"-e", `10.times.each { |x| File.open("#{x}","w") }`},
-						ResourceLimits: models.ResourceLimits{
-							Nofile: &nofile,
+					Action: models.Serial(
+						&models.RunAction{
+							Path: "ruby",
+							Args: []string{"-e", `10.times.each { |x| File.open("#{x}","w") }`},
+							ResourceLimits: models.ResourceLimits{
+								Nofile: &nofile,
+							},
 						},
-					},
-				}
-
-				err := bbs.DesireTask(task)
+					),
+				})
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(bbs.CompletedTasks).Should(HaveLen(1))
-				tasks, _ := bbs.CompletedTasks()
-				Ω(tasks[0].Failed).Should(BeTrue())
-				Ω(tasks[0].FailureReason).Should(ContainSubstring("127"))
+				var task receptor.TaskResponse
+				Eventually(func() interface{} {
+					var err error
+
+					task, err = receptorClient.GetTask(guid)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					return task.State
+				}).Should(Equal(receptor.TaskStateCompleted))
+
+				Ω(task.Failed).Should(BeTrue())
+				Ω(task.FailureReason).Should(ContainSubstring("status 127"))
 			})
 		})
 
 		Context("when the command times out", func() {
 			It("should fail the Task", func() {
-				task := models.Task{
+				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 					Domain:   "inigo",
-					TaskGuid: factories.GenerateGuid(),
+					TaskGuid: guid,
 					Stack:    componentMaker.Stack,
-					MemoryMB: 1024,
-					DiskMB:   1024,
 					Action: models.Serial(
-						&models.RunAction{
-							Path: "curl",
-							Args: []string{inigo_announcement_server.AnnounceURL(guid)},
-						},
 						models.Timeout(
 							&models.RunAction{
 								Path: "sleep",
-								Args: []string{"0.8"},
+								Args: []string{"1"},
 							},
 							500*time.Millisecond,
 						),
 					),
-				}
-
-				err := bbs.DesireTask(task)
+				})
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
-				Eventually(bbs.CompletedTasks).Should(HaveLen(1))
-				tasks, _ := bbs.CompletedTasks()
-				Ω(tasks[0].Failed).Should(BeTrue())
-				Ω(tasks[0].FailureReason).Should(ContainSubstring("exceeded 500ms timeout"))
+				var task receptor.TaskResponse
+				Eventually(func() interface{} {
+					var err error
+
+					task, err = receptorClient.GetTask(guid)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					return task.State
+				}).Should(Equal(receptor.TaskStateCompleted))
+
+				Ω(task.Failed).Should(BeTrue())
+				Ω(task.FailureReason).Should(ContainSubstring("exceeded 500ms timeout"))
 			})
 		})
 	})
 
 	Describe("Running a privileged command", func() {
 		var guid string
-		var diegoClient receptor.Client
 		var executorClient executor.Client
 
 		BeforeEach(func() {
@@ -394,8 +402,6 @@ var _ = Describe("Executor", func() {
 				Domain:   "inigo",
 				TaskGuid: guid,
 				Stack:    componentMaker.Stack,
-				MemoryMB: 1024,
-				DiskMB:   1024,
 				Action: &models.RunAction{
 					Path:       "bash",
 					Args:       []string{"-c", "while true; do sleep 1; done"},
@@ -404,9 +410,7 @@ var _ = Describe("Executor", func() {
 				},
 			}
 
-			diegoClient = componentMaker.ReceptorClient()
-
-			err := diegoClient.CreateTask(taskRequest)
+			err := receptorClient.CreateTask(taskRequest)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			executorClient = componentMaker.ExecutorClient()
@@ -429,7 +433,7 @@ var _ = Describe("Executor", func() {
 
 		It("correctly marshals the privileged flag back when querying the task through the receptor", func() {
 			Eventually(func() bool {
-				taskResponse, err := diegoClient.GetTask(guid)
+				taskResponse, err := receptorClient.GetTask(guid)
 				if err != nil {
 					return false
 				}
@@ -459,12 +463,10 @@ var _ = Describe("Executor", func() {
 		})
 
 		It("downloads the file", func() {
-			task := models.Task{
+			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				Domain:   "inigo",
-				TaskGuid: factories.GenerateGuid(),
+				TaskGuid: guid,
 				Stack:    componentMaker.Stack,
-				MemoryMB: 1024,
-				DiskMB:   1024,
 				Action: models.Serial(
 					&models.DownloadAction{
 						From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "curling.tar.gz"),
@@ -474,9 +476,7 @@ var _ = Describe("Executor", func() {
 						Path: "./curling",
 					},
 				),
-			}
-
-			err := bbs.DesireTask(task)
+			})
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
@@ -514,12 +514,10 @@ var _ = Describe("Executor", func() {
 		})
 
 		It("uploads the specified files", func() {
-			task := models.Task{
+			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				Domain:   "inigo",
-				TaskGuid: factories.GenerateGuid(),
+				TaskGuid: guid,
 				Stack:    componentMaker.Stack,
-				MemoryMB: 1024,
-				DiskMB:   1024,
 				Action: models.Serial(
 					&models.RunAction{
 						Path: "bash",
@@ -534,9 +532,7 @@ var _ = Describe("Executor", func() {
 						Args: []string{inigo_announcement_server.AnnounceURL(guid)},
 					},
 				),
-			}
-
-			err := bbs.DesireTask(task)
+			})
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(gotRequest).Should(BeClosed())
@@ -547,26 +543,31 @@ var _ = Describe("Executor", func() {
 
 	Describe("Fetching results", func() {
 		It("should fetch the contents of the requested file and provide the content in the completed Task", func() {
-			task := models.Task{
+			guid := factories.GenerateGuid()
+
+			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				Domain:     "inigo",
-				TaskGuid:   factories.GenerateGuid(),
+				TaskGuid:   guid,
 				Stack:      componentMaker.Stack,
-				MemoryMB:   1024,
-				DiskMB:     1024,
 				ResultFile: "thingy",
 				Action: &models.RunAction{
 					Path: "bash",
 					Args: []string{"-c", "echo tasty thingy > thingy"},
 				},
-			}
-
-			err := bbs.DesireTask(task)
+			})
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(bbs.CompletedTasks).Should(HaveLen(1))
+			var task receptor.TaskResponse
+			Eventually(func() interface{} {
+				var err error
 
-			tasks, _ := bbs.CompletedTasks()
-			Ω(tasks[0].Result).Should(Equal("tasty thingy\n"))
+				task, err = receptorClient.GetTask(guid)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				return task.State
+			}).Should(Equal(receptor.TaskStateCompleted))
+
+			Ω(task.Result).Should(Equal("tasty thingy\n"))
 		})
 	})
 
@@ -586,18 +587,23 @@ var _ = Describe("Executor", func() {
 			)
 			defer close(stop)
 
-			task := factories.BuildTaskWithRunAction(
-				"inigo",
-				componentMaker.Stack,
-				1024,
-				1024,
-				"bash",
-				[]string{"-c", "for i in $(seq 100); do echo $i; echo $i 1>&2; sleep 0.5; done"},
-			)
-			task.LogGuid = logGuid
-			task.LogSource = "APP"
+			guid := factories.GenerateGuid()
 
-			err := bbs.DesireTask(task)
+			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
+				Domain:     "inigo",
+				TaskGuid:   guid,
+				Stack:      componentMaker.Stack,
+				ResultFile: "thingy",
+				Action: &models.RunAction{
+					Path: "bash",
+					Args: []string{
+						"-c",
+						"for i in $(seq 100); do echo $i; echo $i 1>&2; sleep 0.5; done",
+					},
+				},
+				LogGuid:   logGuid,
+				LogSource: "APP",
+			})
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(outBuf).Should(gbytes.Say(`(\d+\n){3}`))
