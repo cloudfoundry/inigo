@@ -1,4 +1,4 @@
-package inigo_test
+package cell_test
 
 import (
 	"encoding/json"
@@ -21,6 +21,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	"github.com/cloudfoundry-incubator/inigo/world"
+	"github.com/cloudfoundry-incubator/receptor"
 	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry/gunk/diegonats"
 )
@@ -31,10 +32,11 @@ const DOCKER_PULL_ESTIMATE = 5 * time.Minute
 var (
 	componentMaker world.ComponentMaker
 
-	plumbing     ifrit.Process
-	bbs          *Bbs.BBS
-	natsClient   diegonats.NATSClient
-	gardenClient garden.Client
+	plumbing       ifrit.Process
+	bbs            *Bbs.BBS
+	receptorClient receptor.Client
+	natsClient     diegonats.NATSClient
+	gardenClient   garden.Client
 )
 
 var _ = SynchronizedBeforeSuite(func() []byte {
@@ -65,6 +67,7 @@ var _ = BeforeEach(func() {
 	gardenClient = componentMaker.GardenClient()
 	natsClient = componentMaker.NATSClient()
 	bbs = componentMaker.BBS()
+	receptorClient = componentMaker.ReceptorClient()
 
 	inigo_announcement_server.Start(componentMaker.ExternalAddress)
 })
@@ -83,12 +86,12 @@ var _ = AfterEach(func() {
 	)
 })
 
-func TestInigo(t *testing.T) {
+func TestCell(t *testing.T) {
 	helpers.RegisterDefaultTimeouts()
 
 	RegisterFailHandler(Fail)
 
-	RunSpecsWithDefaultAndCustomReporters(t, "Inigo Integration Suite", []Reporter{
+	RunSpecsWithDefaultAndCustomReporters(t, "Cell Integration Suite", []Reporter{
 		ginkgoreporter.New(GinkgoWriter),
 	})
 }

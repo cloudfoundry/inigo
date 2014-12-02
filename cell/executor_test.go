@@ -1,4 +1,4 @@
-package inigo_test
+package cell_test
 
 import (
 	"bytes"
@@ -14,12 +14,11 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 
-	executor_api "github.com/cloudfoundry-incubator/executor"
-	"github.com/cloudfoundry-incubator/executor/http/client"
+	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	"github.com/cloudfoundry-incubator/inigo/loggredile"
-	receptor_api "github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	. "github.com/onsi/ginkgo"
@@ -29,7 +28,10 @@ import (
 )
 
 var _ = Describe("Executor", func() {
-	var executor, fileServer, rep, auctioneer, loggregator, receptor, converger ifrit.Process
+	var (
+		executorProcess,
+		fileServerProcess, repProcess, auctioneerProcess, loggregatorProcess, receptorProcess, convergerProcess ifrit.Process
+	)
 
 	var fileServerStaticDir string
 
@@ -38,17 +40,17 @@ var _ = Describe("Executor", func() {
 
 		fileServerRunner, fileServerStaticDir = componentMaker.FileServer()
 
-		executor = ginkgomon.Invoke(componentMaker.Executor("-memoryMB", "1024"))
-		fileServer = ginkgomon.Invoke(fileServerRunner)
-		rep = ginkgomon.Invoke(componentMaker.Rep())
-		auctioneer = ginkgomon.Invoke(componentMaker.Auctioneer())
-		loggregator = ginkgomon.Invoke(componentMaker.Loggregator())
-		receptor = ginkgomon.Invoke(componentMaker.Receptor())
-		converger = ginkgomon.Invoke(componentMaker.Converger())
+		executorProcess = ginkgomon.Invoke(componentMaker.Executor("-memoryMB", "1024"))
+		fileServerProcess = ginkgomon.Invoke(fileServerRunner)
+		repProcess = ginkgomon.Invoke(componentMaker.Rep())
+		auctioneerProcess = ginkgomon.Invoke(componentMaker.Auctioneer())
+		loggregatorProcess = ginkgomon.Invoke(componentMaker.Loggregator())
+		receptorProcess = ginkgomon.Invoke(componentMaker.Receptor())
+		convergerProcess = ginkgomon.Invoke(componentMaker.Converger())
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(executor, fileServer, rep, auctioneer, loggregator, receptor, converger)
+		helpers.StopProcesses(executorProcess, fileServerProcess, repProcess, auctioneerProcess, loggregatorProcess, receptorProcess, convergerProcess)
 	})
 
 	Describe("Heartbeating", func() {
@@ -105,22 +107,23 @@ var _ = Describe("Executor", func() {
 					"bash",
 					[]string{"-c", "while true; do sleep 2; done"},
 				)
+
 				err := bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				executorClient := client.New(http.DefaultClient, "http://"+componentMaker.Addresses.Executor)
+				executorClient := componentMaker.ExecutorClient()
 
-				Eventually(func() executor_api.State {
+				Eventually(func() executor.State {
 					container, err := executorClient.GetContainer(task.TaskGuid)
 					if err == nil {
 						return container.State
 					}
-					return executor_api.StateInvalid
-				}).Should(Equal(executor_api.StateCreated))
+					return executor.StateInvalid
+				}).Should(Equal(executor.StateCreated))
 
 				// bounce executor
-				executor.Signal(syscall.SIGKILL)
-				executor = ginkgomon.Invoke(componentMaker.Executor("-memoryMB", "1024"))
+				executorProcess.Signal(syscall.SIGKILL)
+				executorProcess = ginkgomon.Invoke(componentMaker.Executor("-memoryMB", "1024"))
 			})
 
 			It("eventually marks the task completed and failed", func() {
@@ -170,19 +173,19 @@ var _ = Describe("Executor", func() {
 
 				instanceGuid := actualLRPs[0].InstanceGuid
 
-				executorClient := client.New(http.DefaultClient, "http://"+componentMaker.Addresses.Executor)
+				executorClient := componentMaker.ExecutorClient()
 
-				Eventually(func() executor_api.State {
+				Eventually(func() executor.State {
 					container, err := executorClient.GetContainer(instanceGuid)
 					if err == nil {
 						return container.State
 					}
-					return executor_api.StateInvalid
-				}).Should(Equal(executor_api.StateCreated))
+					return executor.StateInvalid
+				}).Should(Equal(executor.StateCreated))
 
 				// bounce executor
-				executor.Signal(syscall.SIGKILL)
-				executor = ginkgomon.Invoke(componentMaker.Executor("-memoryMB", "1024"))
+				executorProcess.Signal(syscall.SIGKILL)
+				executorProcess = ginkgomon.Invoke(componentMaker.Executor("-memoryMB", "1024"))
 			})
 
 			It("eventually deletes the lrp", func() {
@@ -369,17 +372,19 @@ var _ = Describe("Executor", func() {
 
 	Describe("Running a privileged command", func() {
 		var guid string
-		var diegoClient receptor_api.Client
-		var executorClient executor_api.Client
+		var diegoClient receptor.Client
+		var executorClient executor.Client
 
 		BeforeEach(func() {
 			guid = factories.GenerateGuid()
+
 			env := []models.EnvironmentVariable{
 				{"FOO", "OLD-BAR"},
 				{"BAZ", "WIBBLE"},
 				{"FOO", "NEW-BAR"},
 			}
-			taskRequest := receptor_api.TaskCreateRequest{
+
+			taskRequest := receptor.TaskCreateRequest{
 				Domain:   "inigo",
 				TaskGuid: guid,
 				Stack:    componentMaker.Stack,
@@ -393,11 +398,12 @@ var _ = Describe("Executor", func() {
 				},
 			}
 
-			diegoClient = receptor_api.NewClient("http://" + componentMaker.Addresses.Receptor)
+			diegoClient = componentMaker.ReceptorClient()
+
 			err := diegoClient.CreateTask(taskRequest)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			executorClient = client.New(http.DefaultClient, "http://"+componentMaker.Addresses.Executor)
+			executorClient = componentMaker.ExecutorClient()
 		})
 
 		It("creates a container with a privileged run action", func() {

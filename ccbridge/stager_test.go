@@ -1,4 +1,4 @@
-package inigo_test
+package ccbridge_test
 
 import (
 	"archive/tar"
@@ -45,6 +45,7 @@ var _ = Describe("Stager", func() {
 	var fileServerStaticDir string
 
 	var runtime ifrit.Process
+	var bridge ifrit.Process
 
 	var fakeCC *fake_cc.FakeCC
 
@@ -87,17 +88,17 @@ EOF
 		fakeCC = componentMaker.FakeCC()
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			// cell
 			{"exec", componentMaker.Executor()},
 			{"rep", componentMaker.Rep()},
 			{"receptor", componentMaker.Receptor()},
 			{"loggregator", componentMaker.Loggregator()},
+			{"file-server", fileServer},
+		}))
 
-			// bridge
+		bridge = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"cc", fakeCC},
 			{"stager", componentMaker.Stager("-minDiskMB", "64", "-minMemoryMB", "64")},
 			{"nsync-listener", componentMaker.NsyncListener()},
-			{"file-server", fileServer},
 		}))
 
 		u, err := url.Parse(fakeCC.Address())
@@ -110,7 +111,7 @@ EOF
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(runtime)
+		helpers.StopProcesses(runtime, bridge)
 	})
 
 	Context("when unable to find an appropriate compiler", func() {
@@ -151,7 +152,7 @@ EOF
 			buildpacksToUse, _ = createBuildpacks("test-buildpack", "test-buildpack-key", buildpack_zip)
 			outputGuid = factories.GenerateGuid()
 
-			cp(
+			helpers.Copy(
 				componentMaker.Artifacts.Circuses[componentMaker.Stack],
 				filepath.Join(fileServerStaticDir, world.CircusFilename),
 			)
@@ -459,7 +460,7 @@ EOF
 		var dockerImage = "cloudfoundry/inigodockertest"
 
 		BeforeEach(func() {
-			cp(
+			helpers.Copy(
 				componentMaker.Artifacts.DockerCircus,
 				filepath.Join(fileServerStaticDir, world.DockerCircusFilename),
 			)

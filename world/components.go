@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
@@ -13,11 +14,14 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
+	"github.com/cloudfoundry-incubator/executor"
+	executorclient "github.com/cloudfoundry-incubator/executor/http/client"
 	gardenrunner "github.com/cloudfoundry-incubator/garden-linux/integration/runner"
 	garden "github.com/cloudfoundry-incubator/garden/api"
 	gardenclient "github.com/cloudfoundry-incubator/garden/client"
 	gardenconnection "github.com/cloudfoundry-incubator/garden/client/connection"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
+	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	gorouterconfig "github.com/cloudfoundry/gorouter/config"
 	"github.com/cloudfoundry/gunk/diegonats"
@@ -494,6 +498,14 @@ func (maker ComponentMaker) NATSClient() diegonats.NATSClient {
 
 func (maker ComponentMaker) GardenClient() garden.Client {
 	return gardenclient.New(gardenconnection.New("tcp", maker.Addresses.GardenLinux))
+}
+
+func (maker ComponentMaker) ExecutorClient() executor.Client {
+	return executorclient.New(http.DefaultClient, "http://"+maker.Addresses.Executor)
+}
+
+func (maker ComponentMaker) ReceptorClient() receptor.Client {
+	return receptor.NewClient("http://" + maker.Addresses.Receptor)
 }
 
 // offsetPort retuns a new port offest by a given number in such a way

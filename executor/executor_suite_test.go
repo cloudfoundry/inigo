@@ -21,8 +21,8 @@ import (
 var (
 	componentMaker world.ComponentMaker
 
-	plumbing     ifrit.Process
-	gardenClient garden.Client
+	gardenProcess ifrit.Process
+	gardenClient  garden.Client
 )
 
 var _ = SynchronizedBeforeSuite(func() []byte {
@@ -42,7 +42,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 })
 
 var _ = BeforeEach(func() {
-	plumbing = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+	gardenProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 		{"garden-linux", componentMaker.GardenLinux()},
 	}))
 
@@ -52,7 +52,7 @@ var _ = BeforeEach(func() {
 var _ = AfterEach(func() {
 	destroyContainerErrors := helpers.CleanupGarden(gardenClient)
 
-	helpers.StopProcesses(plumbing)
+	helpers.StopProcesses(gardenProcess)
 
 	Ω(destroyContainerErrors).Should(
 		BeEmpty(),

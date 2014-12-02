@@ -1,4 +1,4 @@
-package inigo_test
+package cell_test
 
 import (
 	"fmt"

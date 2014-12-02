@@ -1,4 +1,4 @@
-package inigo_test
+package ccbridge_test
 
 import (
 	"fmt"
@@ -14,41 +14,36 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("Starting an arbitrary LRP", func() {
 	var (
 		processGuid string
 
-		execRunner *ginkgomon.Runner
-		runtime    ifrit.Process
+		runtime ifrit.Process
+		bridge  ifrit.Process
 	)
 
 	BeforeEach(func() {
 		processGuid = factories.GenerateGuid()
 
-		execRunner = componentMaker.Executor()
-
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			// plumbing
 			{"router", componentMaker.Router()},
-
-			// cell
-			{"exec", execRunner},
+			{"exec", componentMaker.Executor()},
 			{"rep", componentMaker.Rep()},
 			{"converger", componentMaker.Converger()},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"receptor", componentMaker.Receptor()},
-
-			// bridge
-			{"tps", componentMaker.TPS()},
 			{"route-emitter", componentMaker.RouteEmitter()},
+		}))
+
+		bridge = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+			{"tps", componentMaker.TPS()},
 		}))
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(runtime)
+		helpers.StopProcesses(runtime, bridge)
 	})
 
 	Context("when desiring a buildpack-based LRP", func() {
@@ -149,7 +144,6 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 
 			Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid), DOCKER_PULL_ESTIMATE).Should(HaveLen(1))
 			Eventually(HelloWorld).ShouldNot(HaveOccurred())
-			Ω(execRunner).ShouldNot(gbytes.Say("destroying-container-after-failed-init"))
 		})
 	})
 })

@@ -1,4 +1,6 @@
-package inigo_test
+// TODO this could probably be done without bridge
+
+package ccbridge_test
 
 import (
 	"fmt"
@@ -24,6 +26,7 @@ import (
 var _ = Describe("Convergence to desired state", func() {
 	var (
 		runtime ifrit.Process
+		bridge  ifrit.Process
 
 		auctioneer ifrit.Process
 		executor   ifrit.Process
@@ -57,8 +60,6 @@ var _ = Describe("Convergence to desired state", func() {
 		fileServerStaticDir = dir
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"cc", componentMaker.FakeCC()},
-			{"tps", componentMaker.TPS()},
 			{"receptor", componentMaker.Receptor()},
 			{"nsync-listener", componentMaker.NsyncListener()},
 			{"file-server", fileServer},
@@ -67,12 +68,17 @@ var _ = Describe("Convergence to desired state", func() {
 			{"loggregator", componentMaker.Loggregator()},
 		}))
 
+		bridge = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+			{"cc", componentMaker.FakeCC()},
+			{"tps", componentMaker.TPS()},
+		}))
+
 		archive_helper.CreateZipArchive(
 			filepath.Join(fileServerStaticDir, "droplet.zip"),
 			fixtures.HelloWorldIndexApp(),
 		)
 
-		cp(
+		helpers.Copy(
 			componentMaker.Artifacts.Circuses[componentMaker.Stack],
 			filepath.Join(fileServerStaticDir, world.CircusFilename),
 		)
@@ -86,7 +92,7 @@ var _ = Describe("Convergence to desired state", func() {
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(auctioneer, executor, rep, converger, runtime)
+		helpers.StopProcesses(auctioneer, executor, rep, converger, runtime, bridge)
 	})
 
 	Describe("Executor fault tolerance", func() {

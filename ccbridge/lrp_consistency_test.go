@@ -1,4 +1,6 @@
-package inigo_test
+// TODO this could probably be done without the bridge
+
+package ccbridge_test
 
 import (
 	"fmt"
@@ -22,7 +24,10 @@ import (
 )
 
 var _ = Describe("LRP Consistency", func() {
-	var runtime ifrit.Process
+	var (
+		runtime ifrit.Process
+		bridge  ifrit.Process
+	)
 
 	var fileServerStaticDir string
 
@@ -40,10 +45,7 @@ var _ = Describe("LRP Consistency", func() {
 		fileServerStaticDir = dir
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"cc", componentMaker.FakeCC()},
-			{"tps", componentMaker.TPS()},
 			{"receptor", componentMaker.Receptor()},
-			{"nsync-listener", componentMaker.NsyncListener()},
 			{"exec", componentMaker.Executor()},
 			{"rep", componentMaker.Rep()},
 			{"file-server", fileServer},
@@ -54,19 +56,25 @@ var _ = Describe("LRP Consistency", func() {
 			{"loggregator", componentMaker.Loggregator()},
 		}))
 
+		bridge = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+			{"nsync-listener", componentMaker.NsyncListener()},
+			{"cc", componentMaker.FakeCC()},
+			{"tps", componentMaker.TPS()},
+		}))
+
 		archive_helper.CreateZipArchive(
 			filepath.Join(fileServerStaticDir, "droplet.zip"),
 			fixtures.HelloWorldIndexApp(),
 		)
 
-		cp(
+		helpers.Copy(
 			componentMaker.Artifacts.Circuses[componentMaker.Stack],
 			filepath.Join(fileServerStaticDir, world.CircusFilename),
 		)
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(runtime)
+		helpers.StopProcesses(runtime, bridge)
 	})
 
 	Context("with an app running", func() {
@@ -196,6 +204,5 @@ var _ = Describe("LRP Consistency", func() {
 				})
 			}, helpers.RepeatCount())
 		})
-
 	})
 })

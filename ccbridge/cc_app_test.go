@@ -1,8 +1,7 @@
-package inigo_test
+package ccbridge_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -26,7 +25,10 @@ import (
 var _ = Describe("AppRunner", func() {
 	var appId string
 
-	var runtime ifrit.Process
+	var (
+		runtime ifrit.Process
+		bridge  ifrit.Process
+	)
 
 	BeforeEach(func() {
 		appId = factories.GenerateGuid()
@@ -34,17 +36,20 @@ var _ = Describe("AppRunner", func() {
 		fileServer, fileServerStaticDir := componentMaker.FileServer()
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"tps", componentMaker.TPS()},
 			{"receptor", componentMaker.Receptor()},
-			{"nsync-listener", componentMaker.NsyncListener()},
 			{"exec", componentMaker.Executor()},
 			{"rep", componentMaker.Rep()},
-			{"file-server", fileServer},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 			{"converger", componentMaker.Converger()},
 			{"router", componentMaker.Router()},
 			{"loggregator", componentMaker.Loggregator()},
+			{"file-server", fileServer},
+		}))
+
+		bridge = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+			{"tps", componentMaker.TPS()},
+			{"nsync-listener", componentMaker.NsyncListener()},
 		}))
 
 		archive_helper.CreateZipArchive(
@@ -52,19 +57,19 @@ var _ = Describe("AppRunner", func() {
 			fixtures.HelloWorldIndexApp(),
 		)
 
-		cp(
+		helpers.Copy(
 			componentMaker.Artifacts.Circuses[componentMaker.Stack],
 			filepath.Join(fileServerStaticDir, world.CircusFilename),
 		)
 
-		cp(
+		helpers.Copy(
 			componentMaker.Artifacts.DockerCircus,
 			filepath.Join(fileServerStaticDir, world.DockerCircusFilename),
 		)
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(runtime)
+		helpers.StopProcesses(runtime, bridge)
 	})
 
 	Describe("Running", func() {
@@ -262,11 +267,4 @@ func runningIndexPoller(tpsAddr string, guid string) func() []int {
 		}
 		return indexes
 	}
-}
-
-func cp(sourceFilePath, destinationPath string) {
-	data, err := ioutil.ReadFile(sourceFilePath)
-	Ω(err).ShouldNot(HaveOccurred())
-
-	ioutil.WriteFile(destinationPath, data, 0644)
 }
