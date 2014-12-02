@@ -572,7 +572,7 @@ var _ = Describe("Executor", func() {
 	})
 
 	Describe("A Task with logging configured", func() {
-		It("has its stdout and stderr emitted to Loggregator", func() {
+		It("has its stdout, stderr, and exit status emitted to Loggregator", func() {
 			logGuid := factories.GenerateGuid()
 
 			outBuf := gbytes.NewBuffer()
@@ -598,7 +598,7 @@ var _ = Describe("Executor", func() {
 					Path: "bash",
 					Args: []string{
 						"-c",
-						"for i in $(seq 100); do echo $i; echo $i 1>&2; sleep 0.5; done",
+						"for i in $(seq 100); do echo $i; echo $i 1>&2; sleep 0.5; done; exit 34",
 					},
 				},
 				LogGuid:   logGuid,
@@ -608,6 +608,8 @@ var _ = Describe("Executor", func() {
 
 			Eventually(outBuf).Should(gbytes.Say(`(\d+\n){3}`))
 			Eventually(errBuf).Should(gbytes.Say(`(\d+\n){3}`))
+
+			Eventually(outBuf).Should(gbytes.Say("Exit status 34"))
 
 			outReader := bytes.NewBuffer(outBuf.Contents())
 			errReader := bytes.NewBuffer(errBuf.Contents())
