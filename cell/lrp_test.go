@@ -1,4 +1,4 @@
-package ccbridge_test
+package cell_test
 
 import (
 	"fmt"
@@ -22,7 +22,6 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 		processGuid string
 
 		runtime ifrit.Process
-		bridge  ifrit.Process
 	)
 
 	BeforeEach(func() {
@@ -37,17 +36,13 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 			{"receptor", componentMaker.Receptor()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 		}))
-
-		bridge = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"tps", componentMaker.TPS()},
-		}))
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(runtime, bridge)
+		helpers.StopProcesses(runtime)
 	})
 
-	Context("when desiring a buildpack-based LRP", func() {
+	Context("when desiring a LRP", func() {
 		It("eventually runs on an executor", func() {
 			err := receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
 				Domain:      "inigo",
@@ -75,11 +70,16 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 			})
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(1))
+			Eventually(func() []receptor.ActualLRPResponse {
+				lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				return lrps
+			}).Should(HaveLen(1))
 		})
 
 		Context("and its unhealthy and its start timeout is exceeded", func() {
-			It("eventually restarts the LRP", func() {
+			It("eventually stops the LRP", func() {
 				err := receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
 					Domain:      "inigo",
 					ProcessGuid: processGuid,
@@ -106,13 +106,24 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 				})
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(helpers.GetLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(1))
-				Eventually(helpers.GetLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(0))
+				Eventually(func() []receptor.ActualLRPResponse {
+					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					return lrps
+				}).Should(HaveLen(1))
+
+				Eventually(func() []receptor.ActualLRPResponse {
+					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					return lrps
+				}).Should(HaveLen(0))
 			})
 		})
 	})
 
-	Context("when desiring a docker-based LRP", func() {
+	Context("when desiring a LRP with a Docker rootfs", func() {
 		It("eventually runs on an executor", func() {
 			err := receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
 				Domain:      "inigo",
@@ -143,7 +154,13 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 			})
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid), DOCKER_PULL_ESTIMATE).Should(HaveLen(1))
+			Eventually(func() []receptor.ActualLRPResponse {
+				lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				return lrps
+			}).Should(HaveLen(1))
+
 			Eventually(HelloWorld).ShouldNot(HaveOccurred())
 		})
 	})
