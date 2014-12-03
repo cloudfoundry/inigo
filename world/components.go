@@ -22,15 +22,10 @@ import (
 	gardenconnection "github.com/cloudfoundry-incubator/garden/client/connection"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	gorouterconfig "github.com/cloudfoundry/gorouter/config"
 	"github.com/cloudfoundry/gunk/diegonats"
-	"github.com/cloudfoundry/gunk/timeprovider"
-	"github.com/cloudfoundry/gunk/workpool"
-	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
@@ -476,15 +471,6 @@ func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
 			}, argv...)...,
 		),
 	})
-}
-
-func (maker ComponentMaker) BBS() *bbs.BBS {
-	adapter := etcdstoreadapter.NewETCDStoreAdapter([]string{"http://" + maker.Addresses.Etcd}, workpool.NewWorkPool(20))
-
-	err := adapter.Connect()
-	Ω(err).ShouldNot(HaveOccurred())
-
-	return bbs.NewBBS(adapter, timeprovider.NewTimeProvider(), lagertest.NewTestLogger("test"))
 }
 
 func (maker ComponentMaker) NATSClient() diegonats.NATSClient {

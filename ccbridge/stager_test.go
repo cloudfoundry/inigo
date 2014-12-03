@@ -439,7 +439,7 @@ EOF
 				converger.Signal(os.Kill)
 			})
 
-			It("should delete the staging task from the bbs", func() {
+			It("eventually gives up", func() {
 				fakeCC.SetStagingResponseStatusCode(http.StatusServiceUnavailable)
 				fakeCC.SetStagingResponseBody(`{"error": "bah!"}`)
 

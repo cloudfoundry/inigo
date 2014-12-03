@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/cloudfoundry-incubator/inigo/helpers"
+	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	"github.com/tedsuo/ifrit"
@@ -48,7 +49,7 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 
 	Context("when desiring a buildpack-based LRP", func() {
 		It("eventually runs on an executor", func() {
-			err := bbs.DesireLRP(models.DesiredLRP{
+			err := receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
 				Domain:      "inigo",
 				ProcessGuid: processGuid,
 				Instances:   1,
@@ -79,7 +80,7 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 
 		Context("and its unhealthy and its start timeout is exceeded", func() {
 			It("eventually restarts the LRP", func() {
-				err := bbs.DesireLRP(models.DesiredLRP{
+				err := receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
 					Domain:      "inigo",
 					ProcessGuid: processGuid,
 					Instances:   1,
@@ -113,7 +114,7 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 
 	Context("when desiring a docker-based LRP", func() {
 		It("eventually runs on an executor", func() {
-			err := bbs.DesireLRP(models.DesiredLRP{
+			err := receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
 				Domain:      "inigo",
 				ProcessGuid: processGuid,
 				Instances:   1,
