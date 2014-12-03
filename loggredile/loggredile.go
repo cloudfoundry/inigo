@@ -11,7 +11,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 )
 
-func StreamIntoGBuffer(addr string, path string, sourceName string, outBuf, errBuf *gbytes.Buffer) chan<- bool {
+func StreamIntoGBuffer(addr string, path string, outBuf, errBuf *gbytes.Buffer) chan<- bool {
 	outMessages := make(chan *events.LogMessage)
 	errMessages := make(chan *events.LogMessage)
 
@@ -31,19 +31,11 @@ func StreamIntoGBuffer(addr string, path string, sourceName string, outBuf, errB
 					break
 				}
 
-				if message.GetSourceName() != sourceName {
-					continue
-				}
-
 				outBuf.Write([]byte(string(message.GetMessage()) + "\n"))
 			case message, errOpen = <-errMessages:
 				if !errOpen {
 					errMessages = nil
 					break
-				}
-
-				if message.GetSourceName() != sourceName {
-					continue
 				}
 
 				errBuf.Write([]byte(string(message.GetMessage()) + "\n"))

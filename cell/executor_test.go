@@ -580,8 +580,7 @@ var _ = Describe("Executor", func() {
 
 			stop := loggredile.StreamIntoGBuffer(
 				componentMaker.Addresses.LoggregatorOut,
-				"/tail/?app="+logGuid,
-				"APP",
+				"/apps/"+logGuid+"/stream",
 				outBuf,
 				errBuf,
 			)

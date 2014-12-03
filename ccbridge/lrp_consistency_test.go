@@ -9,7 +9,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
-	"github.com/cloudfoundry-incubator/inigo/loggredile"
 	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
@@ -19,7 +18,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 )
 
@@ -78,20 +76,7 @@ var _ = Describe("LRP Consistency", func() {
 	})
 
 	Context("with an app running", func() {
-		var logOutput *gbytes.Buffer
-		var stop chan<- bool
-
 		BeforeEach(func() {
-			logOutput = gbytes.NewBuffer()
-
-			stop = loggredile.StreamIntoGBuffer(
-				componentMaker.Addresses.LoggregatorOut,
-				fmt.Sprintf("/tail/?app=%s", appId),
-				"App",
-				logOutput,
-				logOutput,
-			)
-
 			desiredAppRequest = models.DesireAppRequestFromCC{
 				ProcessGuid:  processGuid,
 				DropletUri:   fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "droplet.zip"),
@@ -113,10 +98,6 @@ var _ = Describe("LRP Consistency", func() {
 			Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)).Should(HaveLen(2))
 			poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-to-simple")
 			Eventually(poller).Should(Equal([]string{"0", "1"}))
-		})
-
-		AfterEach(func() {
-			close(stop)
 		})
 
 		Describe("Scaling an app up", func() {

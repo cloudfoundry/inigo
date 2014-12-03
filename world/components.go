@@ -75,16 +75,17 @@ type ComponentMaker struct {
 }
 
 type LoggregatorConfig struct {
-	LegacyIncomingMessagesPort int
-	OutgoingPort               int
-	WSMessageBufferSize        int
-	MaxRetainedLogMessages     int
-	SharedSecret               string
+	DropsondeIncomingMessagesPort int
+	OutgoingPort                  int
+	WSMessageBufferSize           int
+	MaxRetainedLogMessages        int
+	SharedSecret                  string
 
-	NatsHost string
-	NatsPort int
+	NatsHosts []string
+	NatsPort  int
 
-	InactivityDurationInMilliseconds int
+	CollectorRegistrarIntervalMilliseconds int
+	SkipCertVerify                         bool
 }
 
 func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
@@ -389,14 +390,15 @@ func (maker ComponentMaker) Loggregator() ifrit.Runner {
 	Ω(err).ShouldNot(HaveOccurred())
 
 	loggregatorConfig := LoggregatorConfig{
-		LegacyIncomingMessagesPort: inPortInt,
-		OutgoingPort:               outPortInt,
-		MaxRetainedLogMessages:     1000,
-		WSMessageBufferSize:        100,
-		SharedSecret:               "loggregator-secret",
-		NatsHost:                   natsHost,
-		NatsPort:                   natsPortInt,
-		InactivityDurationInMilliseconds: int((1 * time.Hour).Seconds()) * 1000,
+		DropsondeIncomingMessagesPort: inPortInt,
+		OutgoingPort:                  outPortInt,
+		MaxRetainedLogMessages:        1000,
+		WSMessageBufferSize:           100,
+		SharedSecret:                  "loggregator-secret",
+		NatsHosts:                     []string{natsHost},
+		NatsPort:                      natsPortInt,
+		CollectorRegistrarIntervalMilliseconds: 100,
+		SkipCertVerify:                         true,
 	}
 
 	configFile, err := ioutil.TempFile(os.TempDir(), "loggregator-config")

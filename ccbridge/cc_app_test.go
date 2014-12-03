@@ -100,8 +100,7 @@ var _ = Describe("AppRunner", func() {
 
 				stop := loggredile.StreamIntoGBuffer(
 					componentMaker.Addresses.LoggregatorOut,
-					fmt.Sprintf("/tail/?app=%s", appId),
-					"APP",
+					fmt.Sprintf("/apps/%s/stream", appId),
 					logOutput,
 					logOutput,
 				)
@@ -155,8 +154,7 @@ var _ = Describe("AppRunner", func() {
 
 				stop := loggredile.StreamIntoGBuffer(
 					componentMaker.Addresses.LoggregatorOut,
-					fmt.Sprintf("/tail/?app=%s", appId),
-					"APP",
+					fmt.Sprintf("/apps/%s/stream", appId),
 					logOutput,
 					logOutput,
 				)
