@@ -1,7 +1,6 @@
 package cell_test
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -17,20 +16,18 @@ import (
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
-	"github.com/cloudfoundry-incubator/inigo/loggredile"
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/ghttp"
 )
 
 var _ = Describe("Executor", func() {
 	var (
 		executorProcess,
-		fileServerProcess, repProcess, auctioneerProcess, loggregatorProcess, receptorProcess, convergerProcess ifrit.Process
+		fileServerProcess, repProcess, auctioneerProcess, receptorProcess, convergerProcess ifrit.Process
 	)
 
 	var fileServerStaticDir string
@@ -44,13 +41,12 @@ var _ = Describe("Executor", func() {
 		fileServerProcess = ginkgomon.Invoke(fileServerRunner)
 		repProcess = ginkgomon.Invoke(componentMaker.Rep())
 		auctioneerProcess = ginkgomon.Invoke(componentMaker.Auctioneer())
-		loggregatorProcess = ginkgomon.Invoke(componentMaker.Loggregator())
 		receptorProcess = ginkgomon.Invoke(componentMaker.Receptor())
 		convergerProcess = ginkgomon.Invoke(componentMaker.Converger())
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(executorProcess, fileServerProcess, repProcess, auctioneerProcess, loggregatorProcess, receptorProcess, convergerProcess)
+		helpers.StopProcesses(executorProcess, fileServerProcess, repProcess, auctioneerProcess, receptorProcess, convergerProcess)
 	})
 
 	Describe("Heartbeating", func() {
@@ -568,83 +564,6 @@ var _ = Describe("Executor", func() {
 			}).Should(Equal(receptor.TaskStateCompleted))
 
 			Ω(task.Result).Should(Equal("tasty thingy\n"))
-		})
-	})
-
-	Describe("A Task with logging configured", func() {
-		It("has its stdout, stderr, and exit status emitted to Loggregator", func() {
-			logGuid := factories.GenerateGuid()
-
-			outBuf := gbytes.NewBuffer()
-			errBuf := gbytes.NewBuffer()
-
-			stop := loggredile.StreamIntoGBuffer(
-				componentMaker.Addresses.LoggregatorOut,
-				"/tail/?app="+logGuid,
-				"APP",
-				outBuf,
-				errBuf,
-			)
-			defer close(stop)
-
-			guid := factories.GenerateGuid()
-
-			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-				Domain:     "inigo",
-				TaskGuid:   guid,
-				Stack:      componentMaker.Stack,
-				ResultFile: "thingy",
-				Action: &models.RunAction{
-					Path: "bash",
-					Args: []string{
-						"-c",
-						"for i in $(seq 100); do echo $i; echo $i 1>&2; sleep 0.5; done; exit 34",
-					},
-				},
-				LogGuid:   logGuid,
-				LogSource: "APP",
-			})
-			Ω(err).ShouldNot(HaveOccurred())
-
-			Eventually(outBuf).Should(gbytes.Say(`(\d+\n){3}`))
-			Eventually(errBuf).Should(gbytes.Say(`(\d+\n){3}`))
-
-			Eventually(outBuf).Should(gbytes.Say("Exit status 34"))
-
-			outReader := bytes.NewBuffer(outBuf.Contents())
-			errReader := bytes.NewBuffer(errBuf.Contents())
-
-			seenNum := -1
-
-			for {
-				var num int
-				_, err := fmt.Fscanf(outReader, "%d\n", &num)
-				if err != nil {
-					break
-				}
-
-				Ω(num).Should(BeNumerically(">", seenNum))
-
-				seenNum = num
-			}
-
-			Ω(seenNum).Should(BeNumerically(">=", 3))
-
-			seenNum = -1
-
-			for {
-				var num int
-				_, err := fmt.Fscanf(errReader, "%d\n", &num)
-				if err != nil {
-					break
-				}
-
-				Ω(num).Should(BeNumerically(">", seenNum))
-
-				seenNum = num
-			}
-
-			Ω(seenNum).Should(BeNumerically(">=", 3))
 		})
 	})
 })

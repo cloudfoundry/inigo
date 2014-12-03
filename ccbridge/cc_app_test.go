@@ -8,7 +8,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
-	"github.com/cloudfoundry-incubator/inigo/loggredile"
 	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 
@@ -18,7 +17,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 )
 
@@ -43,7 +41,6 @@ var _ = Describe("AppRunner", func() {
 			{"route-emitter", componentMaker.RouteEmitter()},
 			{"converger", componentMaker.Converger()},
 			{"router", componentMaker.Router()},
-			{"loggregator", componentMaker.Loggregator()},
 			{"file-server", fileServer},
 		}))
 
@@ -95,26 +92,9 @@ var _ = Describe("AppRunner", func() {
 					),
 				)
 
-				//stream logs
-				logOutput := gbytes.NewBuffer()
-
-				stop := loggredile.StreamIntoGBuffer(
-					componentMaker.Addresses.LoggregatorOut,
-					fmt.Sprintf("/tail/?app=%s", appId),
-					"APP",
-					logOutput,
-					logOutput,
-				)
-				defer close(stop)
-
 				// publish the app run message
 				err := natsClient.Publish("diego.desire.app", runningMessage)
 				Ω(err).ShouldNot(HaveOccurred())
-
-				// Assert the user saw reasonable output
-				Eventually(logOutput.Contents).Should(ContainSubstring("Hello World from index '0'"))
-				Eventually(logOutput.Contents).Should(ContainSubstring("Hello World from index '1'"))
-				Eventually(logOutput.Contents).Should(ContainSubstring("Hello World from index '2'"))
 
 				// check lrp instance statuses
 				Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, "process-guid")).Should(HaveLen(3))
@@ -150,29 +130,16 @@ var _ = Describe("AppRunner", func() {
 					),
 				)
 
-				//stream logs
-				logOutput := gbytes.NewBuffer()
-
-				stop := loggredile.StreamIntoGBuffer(
-					componentMaker.Addresses.LoggregatorOut,
-					fmt.Sprintf("/tail/?app=%s", appId),
-					"APP",
-					logOutput,
-					logOutput,
-				)
-				defer close(stop)
-
 				// publish the app run message
 				err := natsClient.Publish("diego.desire.app", runningMessage)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				// Assert the user saw reasonable output
-				Eventually(logOutput.Contents).Should(ContainSubstring("Hello World from index '0'"))
-
 				Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, "process-guid")).Should(HaveLen(1))
 				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-1")).Should(Equal(http.StatusOK))
 
-				By("sending a stop index message")
+				//a given route should route to the running instance
+				poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-1")
+				Eventually(poller).Should(Equal([]string{"0"}))
 			})
 		})
 

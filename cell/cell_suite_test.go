@@ -101,9 +101,6 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	builtExecutables["garden-linux"], err = gexec.BuildIn(os.Getenv("GARDEN_LINUX_GOPATH"), "github.com/cloudfoundry-incubator/garden-linux", "-race", "-a", "-tags", "daemon")
 	Ω(err).ShouldNot(HaveOccurred())
 
-	builtExecutables["loggregator"], err = gexec.BuildIn(os.Getenv("LOGGREGATOR_GOPATH"), "loggregator")
-	Ω(err).ShouldNot(HaveOccurred())
-
 	builtExecutables["auctioneer"], err = gexec.BuildIn(os.Getenv("AUCTIONEER_GOPATH"), "github.com/cloudfoundry-incubator/auctioneer/cmd/auctioneer", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 

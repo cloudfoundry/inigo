@@ -1,7 +1,6 @@
 package world
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -43,20 +42,18 @@ type BuiltArtifacts struct {
 }
 
 type ComponentAddresses struct {
-	NATS           string
-	Etcd           string
-	EtcdPeer       string
-	LoggregatorIn  string
-	LoggregatorOut string
-	Executor       string
-	Rep            string
-	FakeCC         string
-	FileServer     string
-	Router         string
-	TPS            string
-	GardenLinux    string
-	Receptor       string
-	Stager         string
+	NATS        string
+	Etcd        string
+	EtcdPeer    string
+	Executor    string
+	Rep         string
+	FakeCC      string
+	FileServer  string
+	Router      string
+	TPS         string
+	GardenLinux string
+	Receptor    string
+	Stager      string
 }
 
 type ComponentMaker struct {
@@ -72,19 +69,6 @@ type ComponentMaker struct {
 	GardenGraphPath  string
 
 	ExecutorTmpDir string
-}
-
-type LoggregatorConfig struct {
-	LegacyIncomingMessagesPort int
-	OutgoingPort               int
-	WSMessageBufferSize        int
-	MaxRetainedLogMessages     int
-	SharedSecret               string
-
-	NatsHost string
-	NatsPort int
-
-	InactivityDurationInMilliseconds int
 }
 
 func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
@@ -158,7 +142,6 @@ func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
 				"-listenAddr", maker.Addresses.Executor,
 				"-gardenNetwork", "tcp",
 				"-gardenAddr", maker.Addresses.GardenLinux,
-				"-loggregatorServer", maker.Addresses.LoggregatorIn,
 				"-loggregatorSecret", "loggregator-secret",
 				"-containerMaxCpuShares", "1024",
 				"-cachePath", cachePath,
@@ -361,60 +344,6 @@ func (maker ComponentMaker) Router() ifrit.Runner {
 		Command: exec.Command(
 			maker.Artifacts.Executables["router"],
 			"-c", configFile.Name(),
-		),
-		Cleanup: func() {
-			err := os.Remove(configFile.Name())
-			Ω(err).ShouldNot(HaveOccurred())
-		},
-	})
-}
-
-func (maker ComponentMaker) Loggregator() ifrit.Runner {
-	_, inPort, err := net.SplitHostPort(maker.Addresses.LoggregatorIn)
-	Ω(err).ShouldNot(HaveOccurred())
-
-	_, outPort, err := net.SplitHostPort(maker.Addresses.LoggregatorOut)
-	Ω(err).ShouldNot(HaveOccurred())
-
-	inPortInt, err := strconv.Atoi(inPort)
-	Ω(err).ShouldNot(HaveOccurred())
-
-	outPortInt, err := strconv.Atoi(outPort)
-	Ω(err).ShouldNot(HaveOccurred())
-
-	natsHost, natsPort, err := net.SplitHostPort(maker.Addresses.NATS)
-	Ω(err).ShouldNot(HaveOccurred())
-
-	natsPortInt, err := strconv.Atoi(natsPort)
-	Ω(err).ShouldNot(HaveOccurred())
-
-	loggregatorConfig := LoggregatorConfig{
-		LegacyIncomingMessagesPort: inPortInt,
-		OutgoingPort:               outPortInt,
-		MaxRetainedLogMessages:     1000,
-		WSMessageBufferSize:        100,
-		SharedSecret:               "loggregator-secret",
-		NatsHost:                   natsHost,
-		NatsPort:                   natsPortInt,
-		InactivityDurationInMilliseconds: int((1 * time.Hour).Seconds()) * 1000,
-	}
-
-	configFile, err := ioutil.TempFile(os.TempDir(), "loggregator-config")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	defer configFile.Close()
-
-	err = json.NewEncoder(configFile).Encode(loggregatorConfig)
-	Ω(err).ShouldNot(HaveOccurred())
-
-	return ginkgomon.New(ginkgomon.Config{
-		Name:              "loggregator",
-		AnsiColorCode:     "33m",
-		StartCheck:        "Listening on port",
-		StartCheckTimeout: 5 * time.Second,
-		Command: exec.Command(
-			maker.Artifacts.Executables["loggregator"],
-			"-config", configFile.Name(),
 		),
 		Cleanup: func() {
 			err := os.Remove(configFile.Name())

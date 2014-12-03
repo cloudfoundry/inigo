@@ -16,7 +16,6 @@ import (
 	"github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
-	"github.com/cloudfoundry-incubator/inigo/loggredile"
 	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/cloudfoundry/gunk/urljoiner"
 	"github.com/tedsuo/ifrit"
@@ -27,7 +26,6 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 	zip_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 )
 
@@ -91,7 +89,6 @@ EOF
 			{"exec", componentMaker.Executor()},
 			{"rep", componentMaker.Rep()},
 			{"receptor", componentMaker.Receptor()},
-			{"loggregator", componentMaker.Loggregator()},
 			{"file-server", fileServer},
 		}))
 
@@ -219,19 +216,7 @@ EOF
 						buildpacksToUse, buildpackKey = createBuildpacks(buildpackName, buildpackKey, buildpackPath)
 					})
 
-					It("runs the compiler on the executor with the correct environment variables, bits and log tag, and responds with the detected buildpack", func() {
-						//stream logs
-						logOutput := gbytes.NewBuffer()
-
-						stop := loggredile.StreamIntoGBuffer(
-							componentMaker.Addresses.LoggregatorOut,
-							fmt.Sprintf("/tail/?app=%s", appId),
-							staging_source,
-							logOutput,
-							logOutput,
-						)
-						defer close(stop)
-
+					It("runs the compiler on the executor with the correct environment variables and bits, and responds with the detected buildpack", func() {
 						//publish the staging message
 						err := natsClient.Publish("diego.staging.start", stagingMessage)
 						Ω(err).ShouldNot(HaveOccurred())
@@ -247,10 +232,6 @@ EOF
 								ExecutionMetadata:    "{\"start_command\":\"the-start-command\"}",
 								DetectedStartCommand: map[string]string{"web": "the-start-command"},
 							}))
-
-						//Assert the user saw reasonable output
-						Eventually(logOutput).Should(gbytes.Say("COMPILING BUILDPACK"))
-						Ω(logOutput.Contents()).Should(ContainSubstring(outputGuid))
 
 						// Assert that the build artifacts cache was downloaded
 						//TODO: how do we test they were downloaded??
@@ -375,17 +356,6 @@ EOF
 				})
 
 				It("responds with the error, and no detected buildpack present", func() {
-					logOutput := gbytes.NewBuffer()
-
-					stop := loggredile.StreamIntoGBuffer(
-						componentMaker.Addresses.LoggregatorOut,
-						fmt.Sprintf("/tail/?app=%s", appId),
-						staging_source,
-						logOutput,
-						logOutput,
-					)
-					defer close(stop)
-
 					err := natsClient.Publish("diego.staging.start", stagingMessage)
 					Ω(err).ShouldNot(HaveOccurred())
 
@@ -396,7 +366,6 @@ EOF
 							TaskId: taskId,
 							Error:  "Exited with status 1",
 						}))
-					Eventually(logOutput).Should(gbytes.Say("None of the buildpacks detected a compatible application"))
 				})
 			})
 		})
@@ -487,18 +456,6 @@ EOF
 
 		Context("with one stager running", func() {
 			It("runs the metadata extracted on the executor and responds with the execution metadata", func() {
-				//stream logs
-				logOutput := gbytes.NewBuffer()
-
-				stop := loggredile.StreamIntoGBuffer(
-					componentMaker.Addresses.LoggregatorOut,
-					fmt.Sprintf("/tail/?app=%s", appId),
-					staging_source,
-					logOutput,
-					logOutput,
-				)
-				defer close(stop)
-
 				//publish the staging message
 				err := natsClient.Publish("diego.docker.staging.start", stagingMessage)
 				Ω(err).ShouldNot(HaveOccurred())

@@ -72,7 +72,6 @@ var _ = Describe("Convergence to desired state", func() {
 			{"file-server", fileServer},
 			{"route-emitter", componentMaker.RouteEmitter()},
 			{"router", componentMaker.Router()},
-			{"loggregator", componentMaker.Loggregator()},
 		}))
 
 		archive_helper.CreateZipArchive(

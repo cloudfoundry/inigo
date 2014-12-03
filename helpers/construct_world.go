@@ -19,20 +19,18 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts) world.ComponentMake
 	Ω(err).ShouldNot(HaveOccurred())
 
 	addresses := world.ComponentAddresses{
-		GardenLinux:    fmt.Sprintf("127.0.0.1:%d", 10000+config.GinkgoConfig.ParallelNode),
-		NATS:           fmt.Sprintf("127.0.0.1:%d", 11000+config.GinkgoConfig.ParallelNode),
-		Etcd:           fmt.Sprintf("127.0.0.1:%d", 12000+config.GinkgoConfig.ParallelNode),
-		EtcdPeer:       fmt.Sprintf("127.0.0.1:%d", 12500+config.GinkgoConfig.ParallelNode),
-		Executor:       fmt.Sprintf("127.0.0.1:%d", 13000+config.GinkgoConfig.ParallelNode),
-		Rep:            fmt.Sprintf("0.0.0.0:%d", 14000+config.GinkgoConfig.ParallelNode),
-		LoggregatorIn:  fmt.Sprintf("127.0.0.1:%d", 15000+config.GinkgoConfig.ParallelNode),
-		LoggregatorOut: fmt.Sprintf("127.0.0.1:%d", 16000+config.GinkgoConfig.ParallelNode),
-		FileServer:     fmt.Sprintf("%s:%d", localIP, 17000+config.GinkgoConfig.ParallelNode),
-		Router:         fmt.Sprintf("127.0.0.1:%d", 18000+config.GinkgoConfig.ParallelNode),
-		TPS:            fmt.Sprintf("127.0.0.1:%d", 19000+config.GinkgoConfig.ParallelNode),
-		FakeCC:         fmt.Sprintf("127.0.0.1:%d", 20000+config.GinkgoConfig.ParallelNode),
-		Receptor:       fmt.Sprintf("127.0.0.1:%d", 21000+config.GinkgoConfig.ParallelNode),
-		Stager:         fmt.Sprintf("127.0.0.1:%d", 22000+config.GinkgoConfig.ParallelNode),
+		GardenLinux: fmt.Sprintf("127.0.0.1:%d", 10000+config.GinkgoConfig.ParallelNode),
+		NATS:        fmt.Sprintf("127.0.0.1:%d", 11000+config.GinkgoConfig.ParallelNode),
+		Etcd:        fmt.Sprintf("127.0.0.1:%d", 12000+config.GinkgoConfig.ParallelNode),
+		EtcdPeer:    fmt.Sprintf("127.0.0.1:%d", 12500+config.GinkgoConfig.ParallelNode),
+		Executor:    fmt.Sprintf("127.0.0.1:%d", 13000+config.GinkgoConfig.ParallelNode),
+		Rep:         fmt.Sprintf("0.0.0.0:%d", 14000+config.GinkgoConfig.ParallelNode),
+		FileServer:  fmt.Sprintf("%s:%d", localIP, 17000+config.GinkgoConfig.ParallelNode),
+		Router:      fmt.Sprintf("127.0.0.1:%d", 18000+config.GinkgoConfig.ParallelNode),
+		TPS:         fmt.Sprintf("127.0.0.1:%d", 19000+config.GinkgoConfig.ParallelNode),
+		FakeCC:      fmt.Sprintf("127.0.0.1:%d", 20000+config.GinkgoConfig.ParallelNode),
+		Receptor:    fmt.Sprintf("127.0.0.1:%d", 21000+config.GinkgoConfig.ParallelNode),
+		Stager:      fmt.Sprintf("127.0.0.1:%d", 22000+config.GinkgoConfig.ParallelNode),
 	}
 
 	gardenBinPath := os.Getenv("GARDEN_BINPATH")
