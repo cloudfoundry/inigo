@@ -37,3 +37,32 @@ start_command: ./run`,
 		},
 	}
 }
+
+func HelloWorldIndexLRP() []archive_helper.ArchiveFile {
+	return []archive_helper.ArchiveFile{
+		{
+			Name: "server.rb",
+			Body: `require 'webrick'
+require 'json'
+
+STDOUT.sync = true
+
+server = WEBrick::HTTPServer.new :BindAddress => "0.0.0.0", :Port => ENV['PORT']
+
+index = ENV["INSTANCE_INDEX"]
+puts "Hello World from index '#{index}'"
+
+server.mount_proc '/' do |req, res|
+  res.body = index.to_s
+  res.status = 200
+end
+
+trap('INT') {
+  server.shutdown
+}
+
+server.start
+`,
+		},
+	}
+}

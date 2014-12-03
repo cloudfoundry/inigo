@@ -1,6 +1,4 @@
-// TODO this could probably be done without bridge
-
-package ccbridge_test
+package cell_test
 
 import (
 	"fmt"
@@ -11,13 +9,13 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/world"
+	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
 
-	"github.com/cloudfoundry-incubator/tps"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
@@ -26,7 +24,6 @@ import (
 var _ = Describe("Convergence to desired state", func() {
 	var (
 		runtime ifrit.Process
-		bridge  ifrit.Process
 
 		auctioneer ifrit.Process
 		executor   ifrit.Process
@@ -38,20 +35,31 @@ var _ = Describe("Convergence to desired state", func() {
 		appId       string
 		processGuid string
 
-		runningLRPsPoller        func() []tps.LRPInstance
+		runningLRPsPoller        func() []receptor.ActualLRPResponse
 		helloWorldInstancePoller func() []string
 	)
 
-	constructDesiredAppRequest := func(numInstances int) models.DesireAppRequestFromCC {
-		return models.DesireAppRequestFromCC{
-			ProcessGuid:  processGuid,
-			DropletUri:   fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "droplet.zip"),
-			Stack:        componentMaker.Stack,
-			Environment:  []models.EnvironmentVariable{{Name: "VCAP_APPLICATION", Value: "{}"}},
-			NumInstances: numInstances,
-			Routes:       []string{"route-to-simple"},
-			StartCommand: "./run",
-			LogGuid:      appId,
+	constructDesiredLRPRequest := func(numInstances int) receptor.DesiredLRPCreateRequest {
+		return receptor.DesiredLRPCreateRequest{
+			Domain:      "inigo",
+			Stack:       componentMaker.Stack,
+			ProcessGuid: processGuid,
+			Instances:   numInstances,
+			LogGuid:     appId,
+
+			Routes: []string{"route-to-simple"},
+			Ports:  []uint32{8080},
+
+			Setup: &models.DownloadAction{
+				From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+				To:   ".",
+			},
+
+			Action: &models.RunAction{
+				Path: "ruby",
+				Args: []string{"server.rb"},
+				Env:  []models.EnvironmentVariable{{"PORT", "8080"}},
+			},
 		}
 	}
 
@@ -61,21 +69,15 @@ var _ = Describe("Convergence to desired state", func() {
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"receptor", componentMaker.Receptor()},
-			{"nsync-listener", componentMaker.NsyncListener()},
 			{"file-server", fileServer},
 			{"route-emitter", componentMaker.RouteEmitter()},
 			{"router", componentMaker.Router()},
 			{"loggregator", componentMaker.Loggregator()},
 		}))
 
-		bridge = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"cc", componentMaker.FakeCC()},
-			{"tps", componentMaker.TPS()},
-		}))
-
 		archive_helper.CreateZipArchive(
-			filepath.Join(fileServerStaticDir, "droplet.zip"),
-			fixtures.HelloWorldIndexApp(),
+			filepath.Join(fileServerStaticDir, "lrp.zip"),
+			fixtures.HelloWorldIndexLRP(),
 		)
 
 		helpers.Copy(
@@ -87,12 +89,18 @@ var _ = Describe("Convergence to desired state", func() {
 
 		processGuid = factories.GenerateGuid()
 
-		runningLRPsPoller = helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, processGuid)
+		runningLRPsPoller = func() []receptor.ActualLRPResponse {
+			lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			return lrps
+		}
+
 		helloWorldInstancePoller = helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-to-simple")
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(auctioneer, executor, rep, converger, runtime, bridge)
+		helpers.StopProcesses(auctioneer, executor, rep, converger, runtime)
 	})
 
 	Describe("Executor fault tolerance", func() {
@@ -112,12 +120,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 			Context("and an LRP starts running", func() {
 				BeforeEach(func() {
-					desiredAppRequest := constructDesiredAppRequest(2)
-
-					reqJSON, err := models.ToJSON(desiredAppRequest)
-					Ω(err).ShouldNot(HaveOccurred())
-
-					err = natsClient.Publish("diego.desire.app", reqJSON)
+					err := receptorClient.CreateDesiredLRP(constructDesiredLRPRequest(2))
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Eventually(runningLRPsPoller).Should(HaveLen(2))
@@ -152,12 +155,11 @@ var _ = Describe("Convergence to desired state", func() {
 
 					Context("and the LRP is scaled down (but the event is not handled)", func() {
 						BeforeEach(func() {
-							desiredAppScaleDownRequest := constructDesiredAppRequest(1)
+							onePlease := 1
 
-							reqJSON, err := models.ToJSON(desiredAppScaleDownRequest)
-							Ω(err).ShouldNot(HaveOccurred())
-
-							err = natsClient.Publish("diego.desire.app", reqJSON)
+							err := receptorClient.UpdateDesiredLRP(processGuid, receptor.DesiredLRPUpdateRequest{
+								Instances: &onePlease,
+							})
 							Ω(err).ShouldNot(HaveOccurred())
 
 							Consistently(runningLRPsPoller).Should(HaveLen(2))
@@ -192,12 +194,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
-					desiredAppRequest := constructDesiredAppRequest(1)
-
-					reqJSON, err := models.ToJSON(desiredAppRequest)
-					Ω(err).ShouldNot(HaveOccurred())
-
-					err = natsClient.Publish("diego.desire.app", reqJSON)
+					err := receptorClient.CreateDesiredLRP(constructDesiredLRPRequest(1))
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
@@ -235,12 +232,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
-					desiredAppRequest := constructDesiredAppRequest(1)
-
-					reqJSON, err := models.ToJSON(desiredAppRequest)
-					Ω(err).ShouldNot(HaveOccurred())
-
-					err = natsClient.Publish("diego.desire.app", reqJSON)
+					err := receptorClient.CreateDesiredLRP(constructDesiredLRPRequest(1))
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
@@ -267,12 +259,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
-					desiredAppRequest := constructDesiredAppRequest(1)
-
-					reqJSON, err := models.ToJSON(desiredAppRequest)
-					Ω(err).ShouldNot(HaveOccurred())
-
-					err = natsClient.Publish("diego.desire.app", reqJSON)
+					err := receptorClient.CreateDesiredLRP(constructDesiredLRPRequest(1))
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())

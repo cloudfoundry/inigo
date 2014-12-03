@@ -1,8 +1,6 @@
 package cell_test
 
 import (
-	"fmt"
-	"net/http"
 	"os"
 
 	"github.com/cloudfoundry-incubator/inigo/helpers"
@@ -124,6 +122,12 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 	})
 
 	Context("when desiring a LRP with a Docker rootfs", func() {
+		var helloWorldInstancePoller func() []string
+
+		BeforeEach(func() {
+			helloWorldInstancePoller = helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-to-simple")
+		})
+
 		It("eventually runs on an executor", func() {
 			err := receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
 				Domain:      "inigo",
@@ -132,24 +136,12 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 				Stack:       componentMaker.Stack,
 				RootFSPath:  "docker:///cloudfoundry/inigodockertest",
 				Routes:      []string{"route-to-simple"},
-				MemoryMB:    128,
-				DiskMB:      1024,
 				Ports: []uint32{
 					8080,
 				},
 
 				Action: &models.RunAction{
 					Path: "/dockerapp",
-
-					// app expects $VCAP_APPLICATION
-					Env: []models.EnvironmentVariable{
-						{Name: "VCAP_APPLICATION", Value: `{"instance_index":0}`},
-					},
-				},
-
-				Monitor: &models.RunAction{
-					Path: "echo",
-					Args: []string{"all good"},
 				},
 			})
 			Ω(err).ShouldNot(HaveOccurred())
@@ -161,21 +153,7 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 				return lrps
 			}).Should(HaveLen(1))
 
-			Eventually(HelloWorld).ShouldNot(HaveOccurred())
+			Eventually(helloWorldInstancePoller).Should(Equal([]string{"0"}))
 		})
 	})
 })
-
-func HelloWorld() error {
-	body, statusCode, err := helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses.Router, "route-to-simple")
-	if err != nil {
-		return err
-	}
-	if statusCode != http.StatusOK {
-		return fmt.Errorf("Status code %d should be 200", statusCode)
-	}
-	if string(body) != "0" {
-		return fmt.Errorf("Body Contains '%s' instead of '0'", string(body))
-	}
-	return nil
-}
