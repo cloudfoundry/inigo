@@ -20,7 +20,7 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 )
 
-var _ = FDescribe("Task", func() {
+var _ = Describe("Task", func() {
 	var (
 		cellProcess      ifrit.Process
 		receptorProcess  ifrit.Process
