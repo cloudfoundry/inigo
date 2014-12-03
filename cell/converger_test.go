@@ -8,7 +8,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
-	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
@@ -29,8 +28,6 @@ var _ = Describe("Convergence to desired state", func() {
 		executor   ifrit.Process
 		rep        ifrit.Process
 		converger  ifrit.Process
-
-		fileServerStaticDir string
 
 		appId       string
 		processGuid string
@@ -64,8 +61,7 @@ var _ = Describe("Convergence to desired state", func() {
 	}
 
 	BeforeEach(func() {
-		fileServer, dir := componentMaker.FileServer()
-		fileServerStaticDir = dir
+		fileServer, fileServerStaticDir := componentMaker.FileServer()
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"receptor", componentMaker.Receptor()},
@@ -77,11 +73,6 @@ var _ = Describe("Convergence to desired state", func() {
 		archive_helper.CreateZipArchive(
 			filepath.Join(fileServerStaticDir, "lrp.zip"),
 			fixtures.HelloWorldIndexLRP(),
-		)
-
-		helpers.Copy(
-			componentMaker.Artifacts.Circuses[componentMaker.Stack],
-			filepath.Join(fileServerStaticDir, world.CircusFilename),
 		)
 
 		appId = factories.GenerateGuid()
@@ -117,7 +108,7 @@ var _ = Describe("Convergence to desired state", func() {
 				))
 			})
 
-			Context("and an LRP starts running", func() {
+			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
 					err := receptorClient.CreateDesiredLRP(constructDesiredLRPRequest(2))
 					Ω(err).ShouldNot(HaveOccurred())
