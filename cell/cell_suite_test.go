@@ -22,7 +22,6 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/cloudfoundry-incubator/receptor"
-	Bbs "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry/gunk/diegonats"
 )
 
@@ -33,7 +32,6 @@ var (
 	componentMaker world.ComponentMaker
 
 	plumbing       ifrit.Process
-	bbs            *Bbs.BBS
 	receptorClient receptor.Client
 	natsClient     diegonats.NATSClient
 	gardenClient   garden.Client
@@ -66,7 +64,6 @@ var _ = BeforeEach(func() {
 
 	gardenClient = componentMaker.GardenClient()
 	natsClient = componentMaker.NATSClient()
-	bbs = componentMaker.BBS()
 	receptorClient = componentMaker.ReceptorClient()
 
 	inigo_announcement_server.Start(componentMaker.ExternalAddress)

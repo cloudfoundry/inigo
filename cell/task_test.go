@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"time"
 
 	executor_api "github.com/cloudfoundry-incubator/executor"
 	executor_client "github.com/cloudfoundry-incubator/executor/http/client"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
-	receptor_api "github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 
@@ -21,58 +20,65 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 )
 
-var _ = Describe("Task", func() {
-	var cell ifrit.Process
-	var diegoClient receptor_api.Client
-	var executorClient executor_api.Client
+var _ = FDescribe("Task", func() {
+	var (
+		cellProcess      ifrit.Process
+		receptorProcess  ifrit.Process
+		convergerProcess ifrit.Process
+	)
+
+	BeforeEach(func() {
+		cellProcess = nil
+		receptorProcess = ifrit.Invoke(componentMaker.Receptor())
+		convergerProcess = nil
+	})
+
+	AfterEach(func() {
+		helpers.StopProcesses(cellProcess, receptorProcess, convergerProcess)
+	})
 
 	Context("when an exec and rep are running", func() {
+		var executorClient executor_api.Client
+
 		BeforeEach(func() {
-			cell = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-				// cell
+			cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 				{"exec", componentMaker.Executor("-memoryMB", "1024")},
 				{"rep", componentMaker.Rep()},
-				{"receptor", componentMaker.Receptor()},
 			}))
-			diegoClient = receptor_api.NewClient("http://" + componentMaker.Addresses.Receptor)
+
 			executorClient = executor_client.New(http.DefaultClient, "http://"+componentMaker.Addresses.Executor)
 		})
 
-		AfterEach(func() {
-			helpers.StopProcesses(cell)
-		})
-
 		Context("and a standard Task is desired", func() {
-			var task models.Task
-			var thingWeRan string
+			var taskGuid string
 			var taskSleepSeconds int
 
 			BeforeEach(func() {
+				taskGuid = factories.GenerateGuid()
+
 				taskSleepSeconds = 10
 			})
 
 			JustBeforeEach(func() {
-				thingWeRan = "fake-" + factories.GenerateGuid()
-
-				task = factories.BuildTaskWithRunAction(
-					"inigo",
-					componentMaker.Stack,
-					512,
-					512,
-					"bash",
-					[]string{
-						"-c",
-						// sleep a bit so that we can make assertions around behavior as it's running
-						fmt.Sprintf("curl %s; sleep %d", inigo_announcement_server.AnnounceURL(thingWeRan), taskSleepSeconds),
+				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
+					Domain:   "inigo",
+					TaskGuid: taskGuid,
+					MemoryMB: 512,
+					Stack:    componentMaker.Stack,
+					Action: &models.RunAction{
+						Path: "bash",
+						Args: []string{
+							"-c",
+							// sleep a bit so that we can make assertions around behavior as it's running
+							fmt.Sprintf("curl %s; sleep %d", inigo_announcement_server.AnnounceURL(taskGuid), taskSleepSeconds),
+						},
 					},
-				)
-
-				err := bbs.DesireTask(task)
+				})
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
 			It("eventually runs the Task", func() {
-				Eventually(inigo_announcement_server.Announcements).Should(ContainElement(thingWeRan))
+				Eventually(inigo_announcement_server.Announcements).Should(ContainElement(taskGuid))
 			})
 
 			Context("and then the task is cancelled", func() {
@@ -81,87 +87,96 @@ var _ = Describe("Task", func() {
 				})
 
 				JustBeforeEach(func() {
-					Eventually(inigo_announcement_server.Announcements).Should(ContainElement(thingWeRan))
-					err := diegoClient.CancelTask(task.TaskGuid)
+					Eventually(inigo_announcement_server.Announcements).Should(ContainElement(taskGuid))
+
+					err := receptorClient.CancelTask(taskGuid)
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 
-				It("marks the task as complete, failed and cancelled in BBS", func() {
-					taskAfterCancel, err := bbs.TaskByGuid(task.TaskGuid)
+				It("marks the task as complete, failed and cancelled", func() {
+					taskAfterCancel, err := receptorClient.GetTask(taskGuid)
 					Ω(err).ShouldNot(HaveOccurred())
-					Ω(taskAfterCancel.State).Should(Equal(models.TaskStateCompleted))
+
+					Ω(taskAfterCancel.State).Should(Equal(receptor.TaskStateCompleted))
 					Ω(taskAfterCancel.Failed).Should(BeTrue())
 					Ω(taskAfterCancel.FailureReason).Should(Equal("task was cancelled"))
 				})
 
 				It("cleans up the task's container before the task completes on its own", func() {
 					Eventually(func() error {
-						_, err := executorClient.GetContainer(task.TaskGuid)
+						_, err := executorClient.GetContainer(taskGuid)
 						return err
 					}).Should(Equal(executor_api.ErrContainerNotFound))
 				})
 			})
 
 			Context("when a converger is running", func() {
-				var converger ifrit.Process
-
 				BeforeEach(func() {
-					converger = ginkgomon.Invoke(componentMaker.Converger(
+					convergerProcess = ginkgomon.Invoke(componentMaker.Converger(
 						"-convergeRepeatInterval", "1s",
 						"-kickPendingTaskDuration", "1s",
 					))
 				})
 
-				AfterEach(func() {
-					helpers.StopProcesses(converger)
-				})
-
 				Context("after the task starts", func() {
 					JustBeforeEach(func() {
-						Eventually(inigo_announcement_server.Announcements).Should(ContainElement(thingWeRan))
+						Eventually(inigo_announcement_server.Announcements).Should(ContainElement(taskGuid))
 					})
 
-					Context("when the cell disappears", func() {
+					Context("when the cellProcess disappears", func() {
 						JustBeforeEach(func() {
-							helpers.StopProcesses(cell)
+							helpers.StopProcesses(cellProcess)
 						})
 
 						It("eventually marks the task as failed", func() {
 							// time is primarily influenced by rep's heartbeat interval
-							Eventually(bbs.CompletedTasks, 10*time.Second).Should(HaveLen(1))
+							var completedTask receptor.TaskResponse
+							Eventually(func() interface{} {
+								var err error
 
-							tasks, err := bbs.CompletedTasks()
-							Ω(err).ShouldNot(HaveOccurred())
+								completedTask, err = receptorClient.GetTask(taskGuid)
+								Ω(err).ShouldNot(HaveOccurred())
 
-							completedTask := tasks[0]
-							Ω(completedTask.TaskGuid).Should(Equal(task.TaskGuid))
+								return completedTask.State
+							}).Should(Equal(receptor.TaskStateCompleted))
+
 							Ω(completedTask.Failed).To(BeTrue())
 						})
 					})
 
 					Context("and another task is desired, but cannot fit", func() {
-						var secondTask models.Task
-						var secondThingWeRan string
+						var secondTaskGuid string
 
 						JustBeforeEach(func() {
-							secondThingWeRan = "fake-" + factories.GenerateGuid()
+							secondTaskGuid = factories.GenerateGuid()
 
-							secondTask = factories.BuildTaskWithRunAction(
-								"inigo",
-								componentMaker.Stack,
-								768, // 768 + 512 is more than 1024, as we configured, so this won't fit
-								512,
-								"bash",
-								[]string{"-c", fmt.Sprintf("curl %s && sleep 2", inigo_announcement_server.AnnounceURL(secondThingWeRan))},
-							)
-
-							err := bbs.DesireTask(secondTask)
+							err := receptorClient.CreateTask(receptor.TaskCreateRequest{
+								Domain:   "inigo",
+								TaskGuid: secondTaskGuid,
+								Stack:    componentMaker.Stack,
+								MemoryMB: 768,
+								Action: &models.RunAction{
+									Path: "bash",
+									Args: []string{
+										"-c",
+										// sleep a bit so that we can make assertions around behavior as it's running
+										fmt.Sprintf("curl %s && sleep 2", inigo_announcement_server.AnnounceURL(secondTaskGuid)),
+									},
+								},
+							})
 							Ω(err).ShouldNot(HaveOccurred())
 						})
 
 						It("is executed once the first task completes, as its resources are cleared", func() {
-							Eventually(bbs.CompletedTasks).Should(HaveLen(1)) // Wait for first task to complete
-							Eventually(inigo_announcement_server.Announcements).Should(ContainElement(secondThingWeRan))
+							// Wait for first task to complete
+							Eventually(func() interface{} {
+								task, err := receptorClient.GetTask(taskGuid)
+								Ω(err).ShouldNot(HaveOccurred())
+
+								return task.State
+							}).Should(Equal(receptor.TaskStateCompleted))
+
+							Eventually(inigo_announcement_server.Announcements).Should(ContainElement(secondTaskGuid))
 						})
 					})
 				})
@@ -169,139 +184,131 @@ var _ = Describe("Task", func() {
 		})
 
 		Context("and a docker-based Task is desired", func() {
-			var announcement string
-			var task models.Task
+			var taskGuid string
 
 			BeforeEach(func() {
-				announcement = "running-in-docker-" + factories.GenerateGuid()
+				taskGuid = factories.GenerateGuid()
 
-				task = factories.BuildTaskWithRunAction(
-					"inigo",
-					componentMaker.Stack,
-					100,
-					100,
-					"sh",
-					[]string{
-						"-c",
-						// See github.com/cloudfoundry-incubator/diego-dockerfiles/blob/f9f1d75/inigodockertest/Dockerfile#L7
-						"echo $SOME_VAR > /tmp/result.txt; wget " + inigo_announcement_server.AnnounceURL(announcement),
+				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
+					Domain:     "inigo",
+					TaskGuid:   taskGuid,
+					Stack:      componentMaker.Stack,
+					MemoryMB:   768,
+					ResultFile: "/tmp/result.txt",
+					RootFSPath: "docker:///cloudfoundry/inigodockertest",
+					Action: &models.RunAction{
+						Path: "sh",
+						Args: []string{
+							"-c",
+							// See github.com/cloudfoundry-incubator/diego-dockerfiles/blob/f9f1d75/inigodockertest/Dockerfile#L7
+							"echo $SOME_VAR > /tmp/result.txt",
+						},
 					},
-				)
-				task.ResultFile = "/tmp/result.txt"
-				task.RootFSPath = "docker:///cloudfoundry/inigodockertest"
-
-				err := bbs.DesireTask(task)
+				})
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
 			It("eventually runs and succeeds", func() {
-				Eventually(bbs.CompletedTasks).Should(HaveLen(1))
+				var completedTask receptor.TaskResponse
+				Eventually(func() interface{} {
+					var err error
 
-				tasks, err := bbs.CompletedTasks()
-				Ω(err).ShouldNot(HaveOccurred())
+					completedTask, err = receptorClient.GetTask(taskGuid)
+					Ω(err).ShouldNot(HaveOccurred())
 
-				firstTask := tasks[0]
-				Ω(firstTask.TaskGuid).Should(Equal(task.TaskGuid))
-				Ω(firstTask.Failed).Should(BeFalse(), "Task should not have failed")
-				// See github.com/cloudfoundry-incubator/diego-dockerfiles/blob/f9f1d75/inigodockertest/Dockerfile#L7
-				Ω(firstTask.Result).Should(Equal("some_docker_value\n"))
-				Ω(inigo_announcement_server.Announcements()).Should(ContainElement(announcement))
+					return completedTask.State
+				}).Should(Equal(receptor.TaskStateCompleted))
+
+				Ω(completedTask.Failed).Should(BeFalse())
+				Ω(completedTask.Result).Should(Equal("some_docker_value\n"))
 			})
 		})
 	})
 
 	Context("when only a converger is running", func() {
-		var converger ifrit.Process
-
 		BeforeEach(func() {
-			converger = ginkgomon.Invoke(componentMaker.Converger(
+			convergerProcess = ginkgomon.Invoke(componentMaker.Converger(
 				"-convergeRepeatInterval", "1s",
 				"-kickPendingTaskDuration", "1s",
 			))
 		})
 
-		AfterEach(func() {
-			helpers.StopProcesses(converger)
-		})
-
 		Context("and a task is desired", func() {
-			var thingWeRan string
+			var taskGuid string
 
 			BeforeEach(func() {
-				thingWeRan = "fake-" + factories.GenerateGuid()
+				taskGuid = factories.GenerateGuid()
 
-				task := factories.BuildTaskWithRunAction(
-					"inigo",
-					componentMaker.Stack,
-					512,
-					512,
-					"bash",
-					[]string{"-c", fmt.Sprintf("curl %s && sleep 2", inigo_announcement_server.AnnounceURL(thingWeRan))},
-				)
-
-				err := bbs.DesireTask(task)
+				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
+					Domain:   "inigo",
+					TaskGuid: taskGuid,
+					Stack:    componentMaker.Stack,
+					Action: &models.RunAction{
+						Path: "curl",
+						Args: []string{inigo_announcement_server.AnnounceURL(taskGuid)},
+					},
+				})
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
 			Context("and then an exec and rep come up", func() {
 				BeforeEach(func() {
-					cell = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+					cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 						{"exec", componentMaker.Executor()},
 						{"rep", componentMaker.Rep()},
 					}))
 				})
 
 				AfterEach(func() {
-					helpers.StopProcesses(cell)
+					helpers.StopProcesses(cellProcess)
 				})
 
 				It("eventually runs the Task", func() {
-					Eventually(inigo_announcement_server.Announcements).Should(ContainElement(thingWeRan))
+					Eventually(inigo_announcement_server.Announcements).Should(ContainElement(taskGuid))
 				})
 			})
 		})
 	})
 
 	Context("when a very impatient converger is running", func() {
-		var converger ifrit.Process
-
 		BeforeEach(func() {
-			converger = ginkgomon.Invoke(componentMaker.Converger(
+			convergerProcess = ginkgomon.Invoke(componentMaker.Converger(
 				"-convergeRepeatInterval", "1s",
 				"-expirePendingTaskDuration", "1s",
 			))
 		})
 
-		AfterEach(func() {
-			helpers.StopProcesses(converger)
-		})
-
 		Context("and a task is desired", func() {
-			var guid string
+			var taskGuid string
 
 			BeforeEach(func() {
-				guid = "fake-" + factories.GenerateGuid()
+				taskGuid = factories.GenerateGuid()
 
-				task := factories.BuildTaskWithRunAction(
-					"inigo",
-					componentMaker.Stack,
-					100,
-					100,
-					"curl",
-					[]string{inigo_announcement_server.AnnounceURL(guid)},
-				)
-
-				err := bbs.DesireTask(task)
+				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
+					Domain:   "inigo",
+					TaskGuid: taskGuid,
+					Stack:    componentMaker.Stack,
+					Action: &models.RunAction{
+						Path: "curl",
+						Args: []string{inigo_announcement_server.AnnounceURL(taskGuid)},
+					},
+				})
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
 			It("should be marked as failed after the expire duration", func() {
-				Eventually(bbs.CompletedTasks).Should(HaveLen(1))
+				var completedTask receptor.TaskResponse
+				Eventually(func() interface{} {
+					var err error
 
-				tasks, err := bbs.CompletedTasks()
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(tasks[0].Failed).Should(BeTrue(), "Task should have failed")
-				Ω(tasks[0].FailureReason).Should(ContainSubstring("not claimed within time limit"))
+					completedTask, err = receptorClient.GetTask(taskGuid)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					return completedTask.State
+				}).Should(Equal(receptor.TaskStateCompleted))
+
+				Ω(completedTask.Failed).Should(BeTrue())
+				Ω(completedTask.FailureReason).Should(ContainSubstring("not claimed within time limit"))
 
 				Ω(inigo_announcement_server.Announcements()).Should(BeEmpty())
 			})
