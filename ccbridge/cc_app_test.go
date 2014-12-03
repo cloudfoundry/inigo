@@ -74,7 +74,7 @@ var _ = Describe("AppRunner", func() {
 
 	Describe("Running", func() {
 		Context("when the running message contains a start_command", func() {
-			It("runs the app on the executor, registers routes, and shows that they are running via the tps", func() {
+			FIt("runs the app on the executor, registers routes, and shows that they are running via the tps", func() {
 				runningMessage := []byte(
 					fmt.Sprintf(
 						`
@@ -169,8 +169,6 @@ var _ = Describe("AppRunner", func() {
 
 				Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, "process-guid")).Should(HaveLen(1))
 				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-1")).Should(Equal(http.StatusOK))
-
-				By("sending a stop index message")
 			})
 		})
 

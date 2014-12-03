@@ -417,6 +417,7 @@ func (maker ComponentMaker) Loggregator() ifrit.Runner {
 		Command: exec.Command(
 			maker.Artifacts.Executables["loggregator"],
 			"-config", configFile.Name(),
+			"-debug",
 		),
 		Cleanup: func() {
 			err := os.Remove(configFile.Name())

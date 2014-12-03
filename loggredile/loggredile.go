@@ -27,17 +27,26 @@ func StreamIntoGBuffer(addr string, path string, outBuf, errBuf *gbytes.Buffer) 
 			select {
 			case message, outOpen = <-outMessages:
 				if !outOpen {
+					fmt.Println("**************")
+					fmt.Println("OUT MESSAGES CLOSED")
 					outMessages = nil
 					break
 				}
 
+				fmt.Println("**************")
+				fmt.Println("OUT MESSAGE RCVD: " + string(message.GetMessage()))
 				outBuf.Write([]byte(string(message.GetMessage()) + "\n"))
 			case message, errOpen = <-errMessages:
 				if !errOpen {
+					fmt.Println("**************")
+					fmt.Println("ERR MESSAGES CLOSED")
+
 					errMessages = nil
 					break
 				}
 
+				fmt.Println("**************")
+				fmt.Println("ERR MESSAGE RCVD: " + string(message.GetMessage()))
 				errBuf.Write([]byte(string(message.GetMessage()) + "\n"))
 			}
 		}
@@ -59,6 +68,10 @@ func streamMessages(addr string, path string, outMessages, errMessages chan<- *e
 		for {
 			_, data, err := ws.ReadMessage()
 			if err != nil {
+				fmt.Println("**************")
+				fmt.Println("WS CONN CLOSED")
+				fmt.Println(err.Error())
+
 				close(outMessages)
 				close(errMessages)
 				return
