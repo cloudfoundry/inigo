@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	garden_api "github.com/cloudfoundry-incubator/garden/api"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	. "github.com/onsi/gomega"
 )
@@ -37,7 +36,7 @@ func Start(externalAddress string) {
 	})
 }
 
-func Stop(gardenClient garden_api.Client) {
+func Stop() {
 	server.Close()
 }
 

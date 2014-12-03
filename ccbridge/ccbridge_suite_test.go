@@ -70,7 +70,7 @@ var _ = BeforeEach(func() {
 })
 
 var _ = AfterEach(func() {
-	inigo_announcement_server.Stop(gardenClient)
+	inigo_announcement_server.Stop()
 
 	destroyContainerErrors := helpers.CleanupGarden(gardenClient)
 
