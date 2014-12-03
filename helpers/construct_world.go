@@ -6,10 +6,10 @@ import (
 	"path"
 
 	"github.com/cloudfoundry-incubator/inigo/world"
-	"github.com/cloudfoundry/gunk/localip"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-golang/localip"
 )
 
 const StackName = "lucid64"
