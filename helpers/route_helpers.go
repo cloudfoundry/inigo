@@ -66,7 +66,7 @@ func HelloWorldInstancePoller(routerAddr, host string) func() []string {
 			}
 			if status == http.StatusNotFound {
 				//Ignore 404s as they are coming from the router, but make sure...
-				Ω(body).Should(ContainSubstring("Requested route ('route-to-simple') does not exist"), "Got a 404, but it wasn't from the router!")
+				Ω(body).Should(MatchRegexp(`Requested route \('.*'\) does not exist`), "Got a 404, but it wasn't from the router!")
 				continue
 			}
 			if status == http.StatusBadGateway {
