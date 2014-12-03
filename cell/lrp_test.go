@@ -1,12 +1,16 @@
 package cell_test
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 
+	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
+	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -15,7 +19,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Starting an arbitrary LRP", func() {
+var _ = Describe("LRP", func() {
 	var (
 		processGuid string
 
@@ -23,10 +27,13 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 	)
 
 	BeforeEach(func() {
+		fileServer, fileServerStaticDir := componentMaker.FileServer()
+
 		processGuid = factories.GenerateGuid()
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},
+			{"file-server", fileServer},
 			{"exec", componentMaker.Executor()},
 			{"rep", componentMaker.Rep()},
 			{"converger", componentMaker.Converger()},
@@ -34,76 +41,73 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 			{"receptor", componentMaker.Receptor()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 		}))
+
+		archive_helper.CreateZipArchive(
+			filepath.Join(fileServerStaticDir, "lrp.zip"),
+			fixtures.HelloWorldIndexLRP(),
+		)
 	})
 
 	AfterEach(func() {
 		helpers.StopProcesses(runtime)
 	})
 
-	Context("when desiring a LRP", func() {
-		It("eventually runs on an executor", func() {
-			err := receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
+	Describe("desiring", func() {
+		var lrp receptor.DesiredLRPCreateRequest
+
+		BeforeEach(func() {
+			lrp = receptor.DesiredLRPCreateRequest{
 				Domain:      "inigo",
 				ProcessGuid: processGuid,
 				Instances:   1,
 				Stack:       componentMaker.Stack,
-				MemoryMB:    128,
-				DiskMB:      1024,
-				Ports: []uint32{
-					8080,
+
+				Routes: []string{"lrp-route"},
+				Ports:  []uint32{8080},
+
+				Setup: &models.DownloadAction{
+					From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+					To:   ".",
 				},
 
 				Action: &models.RunAction{
-					Path: "bash",
-					Args: []string{
-						"-c",
-						"while true; do sleep 2; done",
-					},
+					Path: "ruby",
+					Args: []string{"server.rb"},
+					Env:  []models.EnvironmentVariable{{"PORT", "8080"}},
 				},
 
 				Monitor: &models.RunAction{
-					Path: "bash",
-					Args: []string{"-c", "echo all good"},
+					Path: "true",
 				},
-			})
-			Ω(err).ShouldNot(HaveOccurred())
+			}
+		})
 
+		JustBeforeEach(func() {
+			err := receptorClient.CreateDesiredLRP(lrp)
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		It("eventually runs", func() {
 			Eventually(func() []receptor.ActualLRPResponse {
 				lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				return lrps
 			}).Should(HaveLen(1))
+
+			Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "lrp-route")).Should(ConsistOf([]string{"0"}))
 		})
 
-		Context("and its unhealthy and its start timeout is exceeded", func() {
+		Context("when it's unhealthy for longer than its start timeout", func() {
+			BeforeEach(func() {
+				lrp.StartTimeout = 5
+
+				lrp.Monitor = &models.RunAction{
+					Path: "false",
+				}
+			})
+
 			It("eventually stops the LRP", func() {
-				err := receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
-					Domain:      "inigo",
-					ProcessGuid: processGuid,
-					Instances:   1,
-					Stack:       componentMaker.Stack,
-					MemoryMB:    128,
-					DiskMB:      1024,
-					Ports: []uint32{
-						8080,
-					},
-					StartTimeout: 1,
-					Action: &models.RunAction{
-						Path: "bash",
-						Args: []string{
-							"-c",
-							"while true; do sleep 2; done",
-						},
-					},
-
-					Monitor: &models.RunAction{
-						Path: "bash",
-						Args: []string{"-c", "exit -1"},
-					},
-				})
-				Ω(err).ShouldNot(HaveOccurred())
-
 				Eventually(func() []receptor.ActualLRPResponse {
 					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
 					Ω(err).ShouldNot(HaveOccurred())
@@ -119,41 +123,108 @@ var _ = Describe("Starting an arbitrary LRP", func() {
 				}).Should(HaveLen(0))
 			})
 		})
-	})
 
-	Context("when desiring a LRP with a Docker rootfs", func() {
-		var helloWorldInstancePoller func() []string
+		Context("with a Docker rootfs", func() {
+			BeforeEach(func() {
+				lrp.RootFSPath = "docker:///cloudfoundry/inigodockertest"
 
-		BeforeEach(func() {
-			helloWorldInstancePoller = helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-to-simple")
+				lrp.Action = &models.RunAction{
+					Path: "/dockerapp",
+				}
+			})
+
+			It("eventually runs", func() {
+				Eventually(func() []receptor.ActualLRPResponse {
+					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					return lrps
+				}).Should(HaveLen(1))
+
+				Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "lrp-route")).Should(ConsistOf([]string{"0"}))
+			})
 		})
 
-		It("eventually runs on an executor", func() {
-			err := receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
-				Domain:      "inigo",
-				ProcessGuid: processGuid,
-				Instances:   1,
-				Stack:       componentMaker.Stack,
-				RootFSPath:  "docker:///cloudfoundry/inigodockertest",
-				Routes:      []string{"route-to-simple"},
-				Ports: []uint32{
-					8080,
-				},
-
-				Action: &models.RunAction{
-					Path: "/dockerapp",
-				},
+		Describe("when started with 2 instances", func() {
+			BeforeEach(func() {
+				lrp.Instances = 2
 			})
-			Ω(err).ShouldNot(HaveOccurred())
 
-			Eventually(func() []receptor.ActualLRPResponse {
-				lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-				Ω(err).ShouldNot(HaveOccurred())
+			JustBeforeEach(func() {
+				Eventually(func() []receptor.ActualLRPResponse {
+					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+					Ω(err).ShouldNot(HaveOccurred())
 
-				return lrps
-			}).Should(HaveLen(1))
+					return lrps
+				}).Should(HaveLen(2))
+			})
 
-			Eventually(helloWorldInstancePoller).Should(Equal([]string{"0"}))
+			Describe("changing the instances", func() {
+				var newInstances int
+
+				BeforeEach(func() {
+					newInstances = 0 // base value; overridden below
+				})
+
+				JustBeforeEach(func() {
+					err := receptorClient.UpdateDesiredLRP(processGuid, receptor.DesiredLRPUpdateRequest{
+						Instances: &newInstances,
+					})
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+
+				Context("scaling it up", func() {
+					BeforeEach(func() {
+						newInstances = 3
+					})
+
+					It("scales up to the correct number of instances", func() {
+						Eventually(func() []receptor.ActualLRPResponse {
+							lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+							Ω(err).ShouldNot(HaveOccurred())
+
+							return lrps
+						}).Should(HaveLen(3))
+
+						Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "lrp-route")).Should(ConsistOf([]string{"0", "1", "2"}))
+					})
+				})
+
+				Context("scaling it down", func() {
+					BeforeEach(func() {
+						newInstances = 1
+					})
+
+					It("scales down to the correct number of instances", func() {
+						Eventually(func() []receptor.ActualLRPResponse {
+							lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+							Ω(err).ShouldNot(HaveOccurred())
+
+							return lrps
+						}).Should(HaveLen(1))
+
+						Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "lrp-route")).Should(ConsistOf([]string{"0"}))
+					})
+				})
+			})
+
+			Describe("deleting it", func() {
+				JustBeforeEach(func() {
+					err := receptorClient.DeleteDesiredLRP(processGuid)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+
+				It("stops all instances", func() {
+					Eventually(func() []receptor.ActualLRPResponse {
+						lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+						Ω(err).ShouldNot(HaveOccurred())
+
+						return lrps
+					}).Should(BeEmpty())
+
+					Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "lrp-route")).Should(BeEmpty())
+				})
+			})
 		})
 	})
 })
