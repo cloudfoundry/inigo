@@ -90,12 +90,6 @@ var _ = Describe("Executor/Garden", func() {
 		}
 	}
 
-	containerHealthPoller := func(guid string) func() executor.Health {
-		return func() executor.Health {
-			return getContainer(guid).Health
-		}
-	}
-
 	containerEventPoller := func(events <-chan executor.Event, event *executor.Event) func() executor.EventType {
 		return func() executor.EventType {
 			Eventually(events).Should(Receive(event))
@@ -388,16 +382,6 @@ var _ = Describe("Executor/Garden", func() {
 					runErr = executorClient.RunContainer(guid)
 				})
 
-				itCompletesWithFailure := func(reason string) {
-					It("eventually completes with failure", func() {
-						Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
-
-						container := getContainer(guid)
-						Ω(container.RunResult.Failed).Should(BeTrue())
-						Ω(container.RunResult.FailureReason).Should(Equal(reason))
-					})
-				}
-
 				Context("when the container can be created", func() {
 					var gardenContainer garden.Container
 
@@ -460,18 +444,16 @@ var _ = Describe("Executor/Garden", func() {
 					})
 
 					Context("when created without a monitor action", func() {
-						Context("while the action is running", func() {
-							BeforeEach(func() {
-								container.Action = &models.RunAction{
-									Path: "sh",
-									Args: []string{"-c", "while true; do sleep 1; done"},
-								}
-							})
+						BeforeEach(func() {
+							container.Action = &models.RunAction{
+								Path: "sh",
+								Args: []string{"-c", "while true; do sleep 1; done"},
+							}
+						})
 
-							It("reports the health as 'unmonitored'", func() {
-								Eventually(containerHealthPoller(guid)).Should(Equal(executor.HealthUnmonitored))
-								Consistently(containerHealthPoller(guid)).Should(Equal(executor.HealthUnmonitored))
-							})
+						It("reports the state as 'running'", func() {
+							Eventually(containerStatePoller(guid)).Should(Equal(executor.StateRunning))
+							Consistently(containerStatePoller(guid)).Should(Equal(executor.StateRunning))
 						})
 					})
 
@@ -484,9 +466,14 @@ var _ = Describe("Executor/Garden", func() {
 									}
 								})
 
-								It("reports the health as 'up'", func() {
-									Eventually(containerHealthPoller(guid)).Should(Equal(executor.HealthUp))
-									Consistently(containerHealthPoller(guid)).Should(Equal(executor.HealthUp))
+								It("emits a running container event", func() {
+									var event executor.Event
+									Eventually(containerEventPoller(events, &event), 5).Should(Equal(executor.EventTypeContainerRunning))
+								})
+
+								It("reports the state as 'running'", func() {
+									Eventually(containerStatePoller(guid)).Should(Equal(executor.StateRunning))
+									Consistently(containerStatePoller(guid)).Should(Equal(executor.StateRunning))
 								})
 
 								It("does not stop the container", func() {
@@ -494,20 +481,16 @@ var _ = Describe("Executor/Garden", func() {
 								})
 							})
 
-							Context("when monitoring fails", func() {
+							Context("when monitoring persistently fails", func() {
 								BeforeEach(func() {
 									container.Monitor = &models.RunAction{
 										Path: "false",
 									}
 								})
 
-								It("reports the health as 'down' and does not stop the container", func() {
-									Eventually(containerHealthPoller(guid)).Should(Equal(executor.HealthDown))
-									Consistently(containerHealthPoller(guid)).Should(Equal(executor.HealthDown))
-								})
-
-								It("does not stop the container", func() {
-									Consistently(containerStatePoller(guid)).ShouldNot(Equal(executor.StateCompleted))
+								It("reports the state as 'created'", func() {
+									Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCreated))
+									Consistently(containerStatePoller(guid)).Should(Equal(executor.StateCreated))
 								})
 							})
 
@@ -528,12 +511,8 @@ var _ = Describe("Executor/Garden", func() {
 									}
 								})
 
-								It("reports the health as 'up' then 'down'", func() {
-									Eventually(containerHealthPoller(guid)).Should(Equal(executor.HealthUp))
-									Eventually(containerHealthPoller(guid)).Should(Equal(executor.HealthDown))
-								})
-
-								It("stops the container", func() {
+								It("reports the container as 'running' and then as 'completed'", func() {
+									Eventually(containerStatePoller(guid)).Should(Equal(executor.StateRunning))
 									Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
 								})
 							})
@@ -634,7 +613,13 @@ var _ = Describe("Executor/Garden", func() {
 					})
 
 					Context("when listening for events", func() {
-						itCompletesWithFailure("failed to initialize container")
+						It("eventually completes with failure", func() {
+							Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
+
+							container := getContainer(guid)
+							Ω(container.RunResult.Failed).Should(BeTrue())
+							Ω(container.RunResult.FailureReason).Should(Equal("failed to initialize container"))
+						})
 					})
 				})
 			})
@@ -698,7 +683,7 @@ var _ = Describe("Executor/Garden", func() {
 				err := executorClient.RunContainer(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCreated))
+				Eventually(containerStatePoller(guid)).Should(Equal(executor.StateRunning))
 			})
 
 			Describe("deleting it", func() {
@@ -719,12 +704,12 @@ var _ = Describe("Executor/Garden", func() {
 			})
 
 			Describe("listing containers", func() {
-				It("shows up in the container list in created state", func() {
+				It("shows up in the container list in running state", func() {
 					containers, err := executorClient.ListContainers(nil)
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(containers).Should(HaveLen(1))
 					Ω(containers[0].Guid).Should(Equal(guid))
-					Ω(containers[0].State).Should(Equal(executor.StateCreated))
+					Ω(containers[0].State).Should(Equal(executor.StateRunning))
 				})
 			})
 
@@ -942,7 +927,7 @@ var _ = Describe("Executor/Garden", func() {
 					err := executorClient.RunContainer(guid)
 					Ω(err).ShouldNot(HaveOccurred())
 
-					Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCreated))
+					Eventually(containerStatePoller(guid)).Should(Equal(executor.StateRunning))
 
 					container := getContainer(guid)
 
