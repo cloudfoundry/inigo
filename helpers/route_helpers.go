@@ -9,8 +9,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func ResponseCodeFromHostPoller(routerAddr string, host string) func() int {
-	return func() int {
+func ResponseCodeFromHostPoller(routerAddr string, host string) func() (int, error) {
+	return func() (int, error) {
 		request := &http.Request{
 			URL: &url.URL{
 				Scheme: "http",
@@ -23,11 +23,11 @@ func ResponseCodeFromHostPoller(routerAddr string, host string) func() int {
 
 		response, err := http.DefaultClient.Do(request)
 		if err != nil {
-			return 0
+			return 0, err
 		}
 		defer response.Body.Close()
 
-		return response.StatusCode
+		return response.StatusCode, nil
 	}
 }
 

@@ -323,8 +323,9 @@ func (maker ComponentMaker) Router() ifrit.Runner {
 			},
 		},
 		Logging: gorouterconfig.LoggingConfig{
-			File:  "/dev/stdout",
-			Level: "info",
+			File:          "/dev/stdout",
+			Level:         "info",
+			MetronAddress: "127.0.0.1:65534", // nonsense to make dropsonde happy
 		},
 	}
 
