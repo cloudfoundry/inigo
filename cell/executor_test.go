@@ -118,7 +118,7 @@ var _ = Describe("Executor", func() {
 						return container.State
 					}
 					return executor.StateInvalid
-				}).Should(Equal(executor.StateCreated))
+				}).Should(Equal(executor.StateRunning))
 
 				// bounce executor
 				executorProcess.Signal(syscall.SIGKILL)
