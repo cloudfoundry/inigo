@@ -89,6 +89,7 @@ EOF
 			{"exec", componentMaker.Executor()},
 			{"rep", componentMaker.Rep()},
 			{"receptor", componentMaker.Receptor()},
+			{"auctioneer", componentMaker.Auctioneer()},
 			{"file-server", fileServer},
 		}))
 

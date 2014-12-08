@@ -37,12 +37,13 @@ var _ = Describe("Task", func() {
 		helpers.StopProcesses(cellProcess, receptorProcess, convergerProcess)
 	})
 
-	Context("when an exec and rep are running", func() {
+	Context("when an exec, rep, and auctioneer are running", func() {
 		var executorClient executor_api.Client
 
 		BeforeEach(func() {
 			cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 				{"exec", componentMaker.Executor("-memoryMB", "1024")},
+				{"auctioneer", componentMaker.Auctioneer()},
 				{"rep", componentMaker.Rep()},
 			}))
 
@@ -251,10 +252,11 @@ var _ = Describe("Task", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
-			Context("and then an exec and rep come up", func() {
+			Context("and then an exec, rep, and auctioneer come up", func() {
 				BeforeEach(func() {
 					cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 						{"exec", componentMaker.Executor()},
+						{"auctioneer", componentMaker.Auctioneer()},
 						{"rep", componentMaker.Rep()},
 					}))
 				})
@@ -308,7 +310,7 @@ var _ = Describe("Task", func() {
 				}).Should(Equal(receptor.TaskStateCompleted))
 
 				Ω(completedTask.Failed).Should(BeTrue())
-				Ω(completedTask.FailureReason).Should(ContainSubstring("not claimed within time limit"))
+				Ω(completedTask.FailureReason).Should(ContainSubstring("not started within time limit"))
 
 				Ω(inigo_announcement_server.Announcements()).Should(BeEmpty())
 			})
