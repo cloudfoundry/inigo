@@ -42,18 +42,19 @@ type BuiltArtifacts struct {
 }
 
 type ComponentAddresses struct {
-	NATS        string
-	Etcd        string
-	EtcdPeer    string
-	Executor    string
-	Rep         string
-	FakeCC      string
-	FileServer  string
-	Router      string
-	TPS         string
-	GardenLinux string
-	Receptor    string
-	Stager      string
+	NATS                string
+	Etcd                string
+	EtcdPeer            string
+	Executor            string
+	Rep                 string
+	FakeCC              string
+	FileServer          string
+	Router              string
+	TPS                 string
+	GardenLinux         string
+	Receptor            string
+	ReceptorTaskHandler string
+	Stager              string
 }
 
 type ComponentMaker struct {
@@ -397,6 +398,7 @@ func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
 			maker.Artifacts.Executables["receptor"],
 			append([]string{
 				"-address", maker.Addresses.Receptor,
+				"-taskHandlerAddress", maker.Addresses.ReceptorTaskHandler,
 				"-etcdCluster", "http://" + maker.Addresses.Etcd,
 			}, argv...)...,
 		),
