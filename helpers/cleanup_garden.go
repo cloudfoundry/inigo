@@ -25,9 +25,15 @@ func CleanupGarden(gardenClient garden.Client) []error {
 
 		err := gardenClient.Destroy(container.Handle())
 		if err != nil {
-			if !strings.Contains(err.Error(), "unknown handle") {
-				destroyContainerErrors = append(destroyContainerErrors, err)
+			if strings.Contains(err.Error(), "unknown handle") {
+				continue
 			}
+
+			if strings.Contains(err.Error(), "container already being destroyed") {
+				continue
+			}
+
+			destroyContainerErrors = append(destroyContainerErrors, err)
 		}
 	}
 
