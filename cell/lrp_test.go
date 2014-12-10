@@ -173,7 +173,7 @@ var _ = Describe("LRP", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 
-				Context("scaling it up", func() {
+				Context("scaling it up to 3", func() {
 					BeforeEach(func() {
 						newInstances = 3
 					})
@@ -190,12 +190,46 @@ var _ = Describe("LRP", func() {
 					})
 				})
 
-				Context("scaling it down", func() {
+				Context("scaling it down to 1", func() {
 					BeforeEach(func() {
 						newInstances = 1
 					})
 
 					It("scales down to the correct number of instances", func() {
+						Eventually(func() []receptor.ActualLRPResponse {
+							lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+							Ω(err).ShouldNot(HaveOccurred())
+
+							return lrps
+						}).Should(HaveLen(1))
+
+						Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "lrp-route")).Should(ConsistOf([]string{"0"}))
+					})
+				})
+
+				Context("scaling it down to 0", func() {
+					BeforeEach(func() {
+						newInstances = 0
+					})
+
+					It("scales down to the correct number of instances", func() {
+						Eventually(func() []receptor.ActualLRPResponse {
+							lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+							Ω(err).ShouldNot(HaveOccurred())
+
+							return lrps
+						}).Should(BeEmpty())
+
+						Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "lrp-route")).Should(BeEmpty())
+					})
+
+					It("can be scaled back up", func() {
+						newInstances := 1
+						err := receptorClient.UpdateDesiredLRP(processGuid, receptor.DesiredLRPUpdateRequest{
+							Instances: &newInstances,
+						})
+						Ω(err).ShouldNot(HaveOccurred())
+
 						Eventually(func() []receptor.ActualLRPResponse {
 							lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
 							Ω(err).ShouldNot(HaveOccurred())
