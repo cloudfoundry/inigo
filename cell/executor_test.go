@@ -268,6 +268,33 @@ var _ = Describe("Executor", func() {
 			Ω(task.Failed).Should(BeFalse())
 		})
 
+		It("runs the command with the provided working directory", func() {
+			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
+				TaskGuid: guid,
+				Domain:   "inigo",
+				Stack:    componentMaker.Stack,
+				Action: &models.RunAction{
+					Path: "bash",
+					Args: []string{"-c", `[ $PWD = /usr ]`},
+					Dir:  "/usr",
+				},
+			})
+			Ω(err).ShouldNot(HaveOccurred())
+
+			var task receptor.TaskResponse
+
+			Eventually(func() interface{} {
+				var err error
+
+				task, err = receptorClient.GetTask(guid)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				return task.State
+			}).Should(Equal(receptor.TaskStateCompleted))
+
+			Ω(task.Failed).Should(BeFalse())
+		})
+
 		Context("when the command exceeds its memory limit", func() {
 			It("should fail the Task", func() {
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
