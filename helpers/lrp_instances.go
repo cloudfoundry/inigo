@@ -7,21 +7,22 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/rata"
 
+	"github.com/cloudfoundry-incubator/runtime-schema/cc_messages"
 	"github.com/cloudfoundry-incubator/tps"
 )
 
-func RunningLRPInstancesPoller(tpsAddr string, guid string) func() []tps.LRPInstance {
-	return func() []tps.LRPInstance {
+func RunningLRPInstancesPoller(tpsAddr string, guid string) func() []cc_messages.LRPInstance {
+	return func() []cc_messages.LRPInstance {
 		return RunningLRPInstances(tpsAddr, guid)
 	}
 }
 
-func RunningLRPInstances(tpsAddr string, guid string) []tps.LRPInstance {
+func RunningLRPInstances(tpsAddr string, guid string) []cc_messages.LRPInstance {
 	instances := GetLRPInstances(tpsAddr, guid)
 
-	runningInstances := []tps.LRPInstance{}
+	runningInstances := []cc_messages.LRPInstance{}
 	for _, instance := range instances {
-		if instance.State == "running" {
+		if instance.State == cc_messages.LRPInstanceStateRunning {
 			runningInstances = append(runningInstances, instance)
 		}
 	}
@@ -29,13 +30,13 @@ func RunningLRPInstances(tpsAddr string, guid string) []tps.LRPInstance {
 	return runningInstances
 }
 
-func GetLRPInstancesPoller(tpsAddr string, guid string) func() []tps.LRPInstance {
-	return func() []tps.LRPInstance {
+func GetLRPInstancesPoller(tpsAddr string, guid string) func() []cc_messages.LRPInstance {
+	return func() []cc_messages.LRPInstance {
 		return GetLRPInstances(tpsAddr, guid)
 	}
 }
 
-func GetLRPInstances(tpsAddr string, guid string) []tps.LRPInstance {
+func GetLRPInstances(tpsAddr string, guid string) []cc_messages.LRPInstance {
 	tpsRequestGenerator := rata.NewRequestGenerator("http://"+tpsAddr, tps.Routes)
 
 	getLRPs, err := tpsRequestGenerator.CreateRequest(
@@ -49,7 +50,7 @@ func GetLRPInstances(tpsAddr string, guid string) []tps.LRPInstance {
 	Ω(err).ShouldNot(HaveOccurred())
 	defer response.Body.Close()
 
-	var instances []tps.LRPInstance
+	var instances []cc_messages.LRPInstance
 	err = json.NewDecoder(response.Body).Decode(&instances)
 	Ω(err).ShouldNot(HaveOccurred())
 
