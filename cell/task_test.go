@@ -232,6 +232,7 @@ var _ = Describe("Task", func() {
 			Context("and then an auctioneer come up", func() {
 				BeforeEach(func() {
 					auctioneerProcess = ginkgomon.Invoke(componentMaker.Auctioneer())
+				})
 
 				AfterEach(func() {
 					helpers.StopProcesses(cellProcess)
