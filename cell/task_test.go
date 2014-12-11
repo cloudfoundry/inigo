@@ -144,42 +144,6 @@ var _ = Describe("Task", func() {
 							Ω(completedTask.Failed).To(BeTrue())
 						})
 					})
-
-					Context("and another task is desired, but cannot fit", func() {
-						var secondTaskGuid string
-
-						JustBeforeEach(func() {
-							secondTaskGuid = factories.GenerateGuid()
-
-							err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-								Domain:   "inigo",
-								TaskGuid: secondTaskGuid,
-								Stack:    componentMaker.Stack,
-								MemoryMB: 768,
-								Action: &models.RunAction{
-									Path: "bash",
-									Args: []string{
-										"-c",
-										// sleep a bit so that we can make assertions around behavior as it's running
-										fmt.Sprintf("curl %s && sleep 2", inigo_announcement_server.AnnounceURL(secondTaskGuid)),
-									},
-								},
-							})
-							Ω(err).ShouldNot(HaveOccurred())
-						})
-
-						It("is executed once the first task completes, as its resources are cleared", func() {
-							// Wait for first task to complete
-							Eventually(func() interface{} {
-								task, err := receptorClient.GetTask(taskGuid)
-								Ω(err).ShouldNot(HaveOccurred())
-
-								return task.State
-							}).Should(Equal(receptor.TaskStateCompleted))
-
-							Eventually(inigo_announcement_server.Announcements).Should(ContainElement(secondTaskGuid))
-						})
-					})
 				})
 			})
 		})
