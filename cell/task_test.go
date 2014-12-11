@@ -216,12 +216,12 @@ var _ = Describe("Task", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
-			Context("and then an exec, rep, and auctioneer come up", func() {
+			Context("and then an exec, rep, and auctioneer come up in order", func() {
 				BeforeEach(func() {
-					cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+					cellProcess = ginkgomon.Invoke(grouper.NewOrdered(os.Kill, grouper.Members{
 						{"exec", componentMaker.Executor()},
-						{"auctioneer", componentMaker.Auctioneer()},
 						{"rep", componentMaker.Rep()},
+						{"auctioneer", componentMaker.Auctioneer()},
 					}))
 				})
 
