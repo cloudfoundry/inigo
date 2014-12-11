@@ -22,19 +22,26 @@ import (
 
 var _ = Describe("Task", func() {
 	var (
-		cellProcess      ifrit.Process
-		receptorProcess  ifrit.Process
-		convergerProcess ifrit.Process
+		auctioneerProcess ifrit.Process
+		cellProcess       ifrit.Process
+		convergerProcess  ifrit.Process
+		receptorProcess   ifrit.Process
 	)
 
 	BeforeEach(func() {
+		auctioneerProcess = nil
 		cellProcess = nil
-		receptorProcess = ifrit.Invoke(componentMaker.Receptor())
 		convergerProcess = nil
+		receptorProcess = ifrit.Invoke(componentMaker.Receptor())
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(cellProcess, receptorProcess, convergerProcess)
+		helpers.StopProcesses(
+			auctioneerProcess,
+			cellProcess,
+			convergerProcess,
+			receptorProcess,
+		)
 	})
 
 	Context("when an exec, rep, and auctioneer are running", func() {
@@ -43,9 +50,10 @@ var _ = Describe("Task", func() {
 		BeforeEach(func() {
 			cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 				{"exec", componentMaker.Executor("-memoryMB", "1024")},
-				{"auctioneer", componentMaker.Auctioneer()},
 				{"rep", componentMaker.Rep()},
 			}))
+
+			auctioneerProcess = ginkgomon.Invoke(componentMaker.Auctioneer())
 
 			executorClient = executor_client.New(http.DefaultClient, "http://"+componentMaker.Addresses.Executor)
 		})
@@ -190,12 +198,17 @@ var _ = Describe("Task", func() {
 		})
 	})
 
-	Context("when only a converger is running", func() {
+	Context("when an auctioneer is not running", func() {
 		BeforeEach(func() {
 			convergerProcess = ginkgomon.Invoke(componentMaker.Converger(
 				"-convergeRepeatInterval", "1s",
 				"-kickPendingTaskDuration", "1s",
 			))
+
+			cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+				{"exec", componentMaker.Executor()},
+				{"rep", componentMaker.Rep()},
+			}))
 		})
 
 		Context("and a task is desired", func() {
@@ -216,14 +229,9 @@ var _ = Describe("Task", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
-			Context("and then an exec, rep, and auctioneer come up in order", func() {
+			Context("and then an auctioneer come up", func() {
 				BeforeEach(func() {
-					cellProcess = ginkgomon.Invoke(grouper.NewOrdered(os.Kill, grouper.Members{
-						{"exec", componentMaker.Executor()},
-						{"rep", componentMaker.Rep()},
-						{"auctioneer", componentMaker.Auctioneer()},
-					}))
-				})
+					auctioneerProcess = ginkgomon.Invoke(componentMaker.Auctioneer())
 
 				AfterEach(func() {
 					helpers.StopProcesses(cellProcess)
