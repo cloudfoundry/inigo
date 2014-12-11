@@ -167,7 +167,7 @@ func (maker ComponentMaker) Rep(argv ...string) ifrit.Runner {
 					"-stack", maker.Stack,
 					"-lrpHost", maker.ExternalAddress,
 					"-etcdCluster", "http://" + maker.Addresses.Etcd,
-					"-auctionListenAddr", maker.Addresses.Rep,
+					"-listenAddr", maker.Addresses.Rep,
 					"-cellID", "the-cell-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()),
 					"-executorURL", "http://" + maker.Addresses.Executor,
 					"-heartbeatInterval", "1s",
