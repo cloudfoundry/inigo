@@ -55,6 +55,7 @@ type ComponentAddresses struct {
 	Receptor            string
 	ReceptorTaskHandler string
 	Stager              string
+	Auctioneer          string
 }
 
 type ComponentMaker struct {
@@ -207,6 +208,7 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 			append([]string{
 				"-etcdCluster", "http://" + maker.Addresses.Etcd,
 				"-heartbeatInterval", "1s",
+				"-listenAddr", maker.Addresses.Auctioneer,
 			}, argv...)...,
 		),
 	})

@@ -111,7 +111,6 @@ var _ = Describe("Convergence to desired state", func() {
 				rep = ginkgomon.Invoke(componentMaker.Rep())
 				converger = ginkgomon.Invoke(componentMaker.Converger(
 					"-convergeRepeatInterval", "1s",
-					"-kickPendingLRPStartAuctionDuration", "1s",
 				))
 			})
 
@@ -167,7 +166,6 @@ var _ = Describe("Convergence to desired state", func() {
 								rep = ginkgomon.Invoke(componentMaker.Rep())
 								converger = ginkgomon.Invoke(componentMaker.Converger(
 									"-convergeRepeatInterval", "1s",
-									"-kickPendingLRPStartAuctionDuration", "1s",
 								))
 							})
 
@@ -185,7 +183,6 @@ var _ = Describe("Convergence to desired state", func() {
 			BeforeEach(func() {
 				converger = ginkgomon.Invoke(componentMaker.Converger(
 					"-convergeRepeatInterval", "1s",
-					"-kickPendingLRPStartAuctionDuration", "1s",
 				))
 			})
 
@@ -217,7 +214,6 @@ var _ = Describe("Convergence to desired state", func() {
 		BeforeEach(func() {
 			converger = ginkgomon.Invoke(componentMaker.Converger(
 				"-convergeRepeatInterval", "1s",
-				"-kickPendingLRPStartAuctionDuration", "1s",
 			))
 		})
 
