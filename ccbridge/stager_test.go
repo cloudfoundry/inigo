@@ -42,8 +42,11 @@ var _ = Describe("Stager", func() {
 
 	var fileServerStaticDir string
 
-	var runtime ifrit.Process
-	var bridge ifrit.Process
+	var (
+		cell   ifrit.Process
+		brain  ifrit.Process
+		bridge ifrit.Process
+	)
 
 	var fakeCC *fake_cc.FakeCC
 
@@ -85,9 +88,12 @@ EOF
 
 		fakeCC = componentMaker.FakeCC()
 
-		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+		cell = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"exec", componentMaker.Executor()},
 			{"rep", componentMaker.Rep()},
+		}))
+
+		brain = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"receptor", componentMaker.Receptor()},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"file-server", fileServer},
@@ -109,7 +115,7 @@ EOF
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(runtime, bridge)
+		helpers.StopProcesses(cell, brain, bridge)
 	})
 
 	Context("when unable to find an appropriate compiler", func() {
@@ -129,7 +135,7 @@ EOF
 			)
 
 			Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
-			Ω(fakeCC.StagingResponses()[0].Error).Should(ContainSubstring("no compiler defined for requested stack"))
+			Ω(fakeCC.StagingResponses()[0].Error).Should(Equal("staging failed"))
 		})
 	})
 
@@ -365,7 +371,7 @@ EOF
 						cc_messages.StagingResponseForCC{
 							AppId:  appId,
 							TaskId: taskId,
-							Error:  "Exited with status 1",
+							Error:  "staging failed",
 						}))
 				})
 			})
@@ -391,6 +397,28 @@ EOF
 
 				Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
 				Consistently(fakeCC.StagingResponses).Should(HaveLen(1))
+			})
+		})
+
+		Context("with no cell running", func() {
+			BeforeEach(func() {
+				helpers.StopProcesses(cell)
+			})
+
+			It("returns a staging completed response with 'insufficient resources' error", func() {
+				err := natsClient.Publish(
+					"diego.staging.start",
+					stagingMessage,
+				)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
+				Ω(fakeCC.StagingResponses()[0]).Should(Equal(
+					cc_messages.StagingResponseForCC{
+						AppId:  appId,
+						TaskId: taskId,
+						Error:  "insufficient resources",
+					}))
 			})
 		})
 
