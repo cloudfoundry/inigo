@@ -686,20 +686,50 @@ var _ = Describe("Executor/Garden", func() {
 				Eventually(containerStatePoller(guid)).Should(Equal(executor.StateRunning))
 			})
 
-			Describe("deleting it", func() {
+			Describe("StopContainer", func() {
 				It("does not return an error", func() {
-					err := executorClient.DeleteContainer(guid)
+					err := executorClient.StopContainer(guid)
 					Ω(err).ShouldNot(HaveOccurred())
 				})
 
-				It("deletes the container", func() {
-					err := executorClient.DeleteContainer(guid)
+				It("stops the container but does not delete it", func() {
+					err := executorClient.StopContainer(guid)
 					Ω(err).ShouldNot(HaveOccurred())
 
-					Eventually(func() error {
-						_, err := gardenClient.Lookup(guid)
-						return err
-					}).Should(HaveOccurred())
+					Eventually(func() executor.State {
+						container, err := executorClient.GetContainer(guid)
+						Ω(err).ShouldNot(HaveOccurred())
+						return container.State
+					}).Should(Equal(executor.StateCompleted))
+
+					_, err = gardenClient.Lookup(guid)
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+			})
+
+			Describe("DeleteContainer", func() {
+				Context("when the container has been stopped", func() {
+					JustBeforeEach(func() {
+						err := executorClient.StopContainer(guid)
+						Ω(err).ShouldNot(HaveOccurred())
+					})
+
+					It("deletes the container without error", func() {
+						err := executorClient.DeleteContainer(guid)
+						Ω(err).ShouldNot(HaveOccurred())
+
+						Eventually(func() error {
+							_, err := gardenClient.Lookup(guid)
+							return err
+						}).Should(HaveOccurred())
+					})
+				})
+
+				Context("when the container has not been stopped", func() {
+					It("returns an error", func() {
+						err := executorClient.DeleteContainer(guid)
+						Ω(err).Should(Equal(executor.ErrContainerNotCompleted))
+					})
 				})
 			})
 
