@@ -169,7 +169,7 @@ var _ = Describe("Executor", func() {
 
 				var actualLRPs []receptor.ActualLRPResponse
 				Eventually(func() interface{} {
-					actualLRPs, _ = receptorClient.ActualLRPsByProcessGuid(processGuid)
+					actualLRPs = helpers.ActiveActualLRPs(receptorClient, processGuid)
 					return actualLRPs
 				}).Should(HaveLen(1))
 
@@ -182,6 +182,7 @@ var _ = Describe("Executor", func() {
 					if err == nil {
 						return container.State
 					}
+
 					return executor.StateInvalid
 				}).Should(Equal(executor.StateRunning))
 

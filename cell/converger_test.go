@@ -80,17 +80,7 @@ var _ = Describe("Convergence to desired state", func() {
 		processGuid = factories.GenerateGuid()
 
 		runningLRPsPoller = func() []receptor.ActualLRPResponse {
-			lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			startedLRPs := make([]receptor.ActualLRPResponse, 0, len(lrps))
-			for _, l := range lrps {
-				if l.State != receptor.ActualLRPStateUnclaimed {
-					startedLRPs = append(startedLRPs, l)
-				}
-			}
-
-			return startedLRPs
+			return helpers.ActiveActualLRPs(receptorClient, processGuid)
 		}
 
 		helloWorldInstancePoller = helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-to-simple")
