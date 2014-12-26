@@ -144,7 +144,6 @@ func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
 				"-listenAddr", maker.Addresses.Executor,
 				"-gardenNetwork", "tcp",
 				"-gardenAddr", maker.Addresses.GardenLinux,
-				"-loggregatorSecret", "loggregator-secret",
 				"-containerMaxCpuShares", "1024",
 				"-cachePath", cachePath,
 				"-tempDir", maker.ExecutorTmpDir,
