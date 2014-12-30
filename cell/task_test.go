@@ -25,14 +25,12 @@ var _ = Describe("Task", func() {
 		auctioneerProcess ifrit.Process
 		cellProcess       ifrit.Process
 		convergerProcess  ifrit.Process
-		receptorProcess   ifrit.Process
 	)
 
 	BeforeEach(func() {
 		auctioneerProcess = nil
 		cellProcess = nil
 		convergerProcess = nil
-		receptorProcess = ifrit.Invoke(componentMaker.Receptor())
 	})
 
 	AfterEach(func() {
@@ -40,7 +38,6 @@ var _ = Describe("Task", func() {
 			auctioneerProcess,
 			cellProcess,
 			convergerProcess,
-			receptorProcess,
 		)
 	})
 
@@ -70,7 +67,7 @@ var _ = Describe("Task", func() {
 
 			JustBeforeEach(func() {
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-					Domain:   "inigo",
+					Domain:   INIGO_DOMAIN,
 					TaskGuid: taskGuid,
 					MemoryMB: 512,
 					Stack:    componentMaker.Stack,
@@ -163,7 +160,7 @@ var _ = Describe("Task", func() {
 				taskGuid = factories.GenerateGuid()
 
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-					Domain:     "inigo",
+					Domain:     INIGO_DOMAIN,
 					TaskGuid:   taskGuid,
 					Stack:      componentMaker.Stack,
 					MemoryMB:   768,
@@ -218,7 +215,7 @@ var _ = Describe("Task", func() {
 				taskGuid = factories.GenerateGuid()
 
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-					Domain:   "inigo",
+					Domain:   INIGO_DOMAIN,
 					TaskGuid: taskGuid,
 					Stack:    componentMaker.Stack,
 					Action: &models.RunAction{
@@ -260,7 +257,7 @@ var _ = Describe("Task", func() {
 				taskGuid = factories.GenerateGuid()
 
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-					Domain:   "inigo",
+					Domain:   INIGO_DOMAIN,
 					TaskGuid: taskGuid,
 					Stack:    componentMaker.Stack,
 					Action: &models.RunAction{

@@ -27,6 +27,7 @@ import (
 
 // use this for tests exercising docker; pulling can take a while
 const DOCKER_PULL_ESTIMATE = 5 * time.Minute
+const INIGO_DOMAIN = "inigo"
 
 var (
 	componentMaker world.ComponentMaker
@@ -59,12 +60,16 @@ var _ = BeforeEach(func() {
 	plumbing = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 		{"etcd", componentMaker.Etcd()},
 		{"nats", componentMaker.NATS()},
+		{"receptor", componentMaker.Receptor()},
 		{"garden-linux", componentMaker.GardenLinux()},
 	}))
 
 	gardenClient = componentMaker.GardenClient()
 	natsClient = componentMaker.NATSClient()
 	receptorClient = componentMaker.ReceptorClient()
+
+	err := receptorClient.UpsertDomain(INIGO_DOMAIN, 0)
+	Ω(err).ShouldNot(HaveOccurred())
 
 	inigo_announcement_server.Start(componentMaker.ExternalAddress)
 })

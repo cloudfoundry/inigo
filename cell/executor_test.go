@@ -26,8 +26,7 @@ import (
 
 var _ = Describe("Executor", func() {
 	var (
-		executorProcess,
-		fileServerProcess, repProcess, auctioneerProcess, receptorProcess, convergerProcess ifrit.Process
+		executorProcess, fileServerProcess, repProcess, auctioneerProcess, convergerProcess ifrit.Process
 	)
 
 	var fileServerStaticDir string
@@ -41,12 +40,11 @@ var _ = Describe("Executor", func() {
 		fileServerProcess = ginkgomon.Invoke(fileServerRunner)
 		repProcess = ginkgomon.Invoke(componentMaker.Rep())
 		auctioneerProcess = ginkgomon.Invoke(componentMaker.Auctioneer())
-		receptorProcess = ginkgomon.Invoke(componentMaker.Receptor())
 		convergerProcess = ginkgomon.Invoke(componentMaker.Converger())
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(executorProcess, fileServerProcess, repProcess, auctioneerProcess, receptorProcess, convergerProcess)
+		helpers.StopProcesses(executorProcess, fileServerProcess, repProcess, auctioneerProcess, convergerProcess)
 	})
 
 	Describe("Heartbeating", func() {
@@ -62,7 +60,7 @@ var _ = Describe("Executor", func() {
 
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				TaskGuid: firstGuyGuid,
-				Domain:   "inigo",
+				Domain:   INIGO_DOMAIN,
 				Stack:    componentMaker.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
@@ -77,7 +75,7 @@ var _ = Describe("Executor", func() {
 
 			err = receptorClient.CreateTask(receptor.TaskCreateRequest{
 				TaskGuid: secondGuyGuid,
-				Domain:   "inigo",
+				Domain:   INIGO_DOMAIN,
 				Stack:    componentMaker.Stack,
 				MemoryMB: 1024,
 				DiskMB:   1024,
@@ -101,7 +99,7 @@ var _ = Describe("Executor", func() {
 
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 					TaskGuid: taskGuid,
-					Domain:   "inigo",
+					Domain:   INIGO_DOMAIN,
 					Stack:    componentMaker.Stack,
 					Action: &models.RunAction{
 						Path: "bash",
@@ -146,7 +144,7 @@ var _ = Describe("Executor", func() {
 				processGuid := factories.GenerateGuid()
 
 				err := receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
-					Domain:      "inigo",
+					Domain:      INIGO_DOMAIN,
 					ProcessGuid: processGuid,
 					Instances:   1,
 					Stack:       componentMaker.Stack,
@@ -206,7 +204,7 @@ var _ = Describe("Executor", func() {
 
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				TaskGuid: matchingGuid,
-				Domain:   "inigo",
+				Domain:   INIGO_DOMAIN,
 				Stack:    componentMaker.Stack,
 				Action: &models.RunAction{
 					Path: "curl",
@@ -217,7 +215,7 @@ var _ = Describe("Executor", func() {
 
 			err = receptorClient.CreateTask(receptor.TaskCreateRequest{
 				TaskGuid: nonMatchingGuid,
-				Domain:   "inigo",
+				Domain:   INIGO_DOMAIN,
 				Stack:    wrongStack,
 				Action: &models.RunAction{
 					Path: "curl",
@@ -241,7 +239,7 @@ var _ = Describe("Executor", func() {
 		It("runs the command with the provided environment", func() {
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				TaskGuid: guid,
-				Domain:   "inigo",
+				Domain:   INIGO_DOMAIN,
 				Stack:    componentMaker.Stack,
 				Action: &models.RunAction{
 					Path: "bash",
@@ -272,7 +270,7 @@ var _ = Describe("Executor", func() {
 		It("runs the command with the provided working directory", func() {
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				TaskGuid: guid,
-				Domain:   "inigo",
+				Domain:   INIGO_DOMAIN,
 				Stack:    componentMaker.Stack,
 				Action: &models.RunAction{
 					Path: "bash",
@@ -299,7 +297,7 @@ var _ = Describe("Executor", func() {
 		Context("when the command exceeds its memory limit", func() {
 			It("should fail the Task", func() {
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-					Domain:   "inigo",
+					Domain:   INIGO_DOMAIN,
 					TaskGuid: guid,
 					Stack:    componentMaker.Stack,
 					MemoryMB: 10,
@@ -345,7 +343,7 @@ var _ = Describe("Executor", func() {
 				nofile := uint64(1)
 
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-					Domain:   "inigo",
+					Domain:   INIGO_DOMAIN,
 					TaskGuid: guid,
 					Stack:    componentMaker.Stack,
 					Action: models.Serial(
@@ -378,7 +376,7 @@ var _ = Describe("Executor", func() {
 		Context("when the command times out", func() {
 			It("should fail the Task", func() {
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-					Domain:   "inigo",
+					Domain:   INIGO_DOMAIN,
 					TaskGuid: guid,
 					Stack:    componentMaker.Stack,
 					Action: models.Serial(
@@ -423,7 +421,7 @@ var _ = Describe("Executor", func() {
 			}
 
 			taskRequest := receptor.TaskCreateRequest{
-				Domain:   "inigo",
+				Domain:   INIGO_DOMAIN,
 				TaskGuid: guid,
 				Stack:    componentMaker.Stack,
 				Action: &models.RunAction{
@@ -488,7 +486,7 @@ var _ = Describe("Executor", func() {
 
 		It("downloads the file", func() {
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-				Domain:   "inigo",
+				Domain:   INIGO_DOMAIN,
 				TaskGuid: guid,
 				Stack:    componentMaker.Stack,
 				Action: models.Serial(
@@ -539,7 +537,7 @@ var _ = Describe("Executor", func() {
 
 		It("uploads the specified files", func() {
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-				Domain:   "inigo",
+				Domain:   INIGO_DOMAIN,
 				TaskGuid: guid,
 				Stack:    componentMaker.Stack,
 				Action: models.Serial(
@@ -570,7 +568,7 @@ var _ = Describe("Executor", func() {
 			guid := factories.GenerateGuid()
 
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-				Domain:     "inigo",
+				Domain:     INIGO_DOMAIN,
 				TaskGuid:   guid,
 				Stack:      componentMaker.Stack,
 				ResultFile: "thingy",

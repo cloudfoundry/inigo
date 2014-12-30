@@ -38,7 +38,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 	constructDesiredLRPRequest := func(numInstances int) receptor.DesiredLRPCreateRequest {
 		return receptor.DesiredLRPCreateRequest{
-			Domain:      "inigo",
+			Domain:      INIGO_DOMAIN,
 			Stack:       componentMaker.Stack,
 			ProcessGuid: processGuid,
 			Instances:   numInstances,
@@ -64,7 +64,6 @@ var _ = Describe("Convergence to desired state", func() {
 		fileServer, fileServerStaticDir := componentMaker.FileServer()
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"receptor", componentMaker.Receptor()},
 			{"file-server", fileServer},
 			{"route-emitter", componentMaker.RouteEmitter()},
 			{"router", componentMaker.Router()},

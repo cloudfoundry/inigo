@@ -38,7 +38,6 @@ var _ = Describe("LRP", func() {
 			{"rep", componentMaker.Rep()},
 			{"converger", componentMaker.Converger()},
 			{"auctioneer", componentMaker.Auctioneer()},
-			{"receptor", componentMaker.Receptor()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 		}))
 
@@ -57,7 +56,7 @@ var _ = Describe("LRP", func() {
 
 		BeforeEach(func() {
 			lrp = receptor.DesiredLRPCreateRequest{
-				Domain:      "inigo",
+				Domain:      INIGO_DOMAIN,
 				ProcessGuid: processGuid,
 				Instances:   1,
 				Stack:       componentMaker.Stack,
