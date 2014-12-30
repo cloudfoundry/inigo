@@ -152,47 +152,6 @@ var _ = Describe("Task", func() {
 				})
 			})
 		})
-
-		Context("and a docker-based Task is desired", func() {
-			var taskGuid string
-
-			BeforeEach(func() {
-				taskGuid = factories.GenerateGuid()
-
-				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-					Domain:     INIGO_DOMAIN,
-					TaskGuid:   taskGuid,
-					Stack:      componentMaker.Stack,
-					MemoryMB:   768,
-					ResultFile: "/tmp/result.txt",
-					RootFSPath: "docker:///cloudfoundry/inigodockertest",
-					Action: &models.RunAction{
-						Path: "sh",
-						Args: []string{
-							"-c",
-							// See github.com/cloudfoundry-incubator/diego-dockerfiles/blob/f9f1d75/inigodockertest/Dockerfile#L7
-							"echo $SOME_VAR > /tmp/result.txt",
-						},
-					},
-				})
-				Ω(err).ShouldNot(HaveOccurred())
-			})
-
-			It("eventually runs and succeeds", func() {
-				var completedTask receptor.TaskResponse
-				Eventually(func() interface{} {
-					var err error
-
-					completedTask, err = receptorClient.GetTask(taskGuid)
-					Ω(err).ShouldNot(HaveOccurred())
-
-					return completedTask.State
-				}).Should(Equal(receptor.TaskStateCompleted))
-
-				Ω(completedTask.Failed).Should(BeFalse())
-				Ω(completedTask.Result).Should(Equal("some_docker_value\n"))
-			})
-		})
 	})
 
 	Context("when an auctioneer is not running", func() {

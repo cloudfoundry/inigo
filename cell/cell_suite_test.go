@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -25,8 +24,6 @@ import (
 	"github.com/cloudfoundry/gunk/diegonats"
 )
 
-// use this for tests exercising docker; pulling can take a while
-const DOCKER_PULL_ESTIMATE = 5 * time.Minute
 const INIGO_DOMAIN = "inigo"
 
 var (

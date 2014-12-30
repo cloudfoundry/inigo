@@ -123,27 +123,6 @@ var _ = Describe("LRP", func() {
 			})
 		})
 
-		Context("with a Docker rootfs", func() {
-			BeforeEach(func() {
-				lrp.RootFSPath = "docker:///cloudfoundry/inigodockertest"
-
-				lrp.Action = &models.RunAction{
-					Path: "/dockerapp",
-				}
-			})
-
-			It("eventually runs", func() {
-				Eventually(func() []receptor.ActualLRPResponse {
-					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-					Ω(err).ShouldNot(HaveOccurred())
-
-					return lrps
-				}).Should(HaveLen(1))
-
-				Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "lrp-route")).Should(ConsistOf([]string{"0"}))
-			})
-		})
-
 		Describe("when started with 2 instances", func() {
 			BeforeEach(func() {
 				lrp.Instances = 2

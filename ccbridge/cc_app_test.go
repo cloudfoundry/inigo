@@ -58,11 +58,6 @@ var _ = Describe("AppRunner", func() {
 			componentMaker.Artifacts.Circuses[componentMaker.Stack],
 			filepath.Join(fileServerStaticDir, world.CircusFilename),
 		)
-
-		helpers.Copy(
-			componentMaker.Artifacts.DockerCircus,
-			filepath.Join(fileServerStaticDir, world.DockerCircusFilename),
-		)
 	})
 
 	AfterEach(func() {
@@ -141,42 +136,6 @@ var _ = Describe("AppRunner", func() {
 				poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-1")
 				Eventually(poller).Should(Equal([]string{"0"}))
 			})
-		})
-
-		It("runs docker apps", func() {
-			runningMessage := []byte(
-				fmt.Sprintf(
-					`
-           {
-             "process_guid": "process-guid",
-             "stack": "%s",
-             "docker_image": "cloudfoundry/inigodockertest",
-             "start_command": "/dockerapp",
-             "num_instances": 2,
-             "environment":[{"name":"VCAP_APPLICATION", "value":"{}"}],
-             "routes": ["route-1", "route-2"],
-             "log_guid": "%s"
-           }
-         `,
-					componentMaker.Stack,
-					appId,
-				),
-			)
-
-			// publish the app run message
-			err := natsClient.Publish("diego.docker.desire.app", runningMessage)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			// check lrp instance statuses
-			Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, "process-guid"), DOCKER_PULL_ESTIMATE).Should(HaveLen(2))
-
-			//both routes should be routable
-			Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-1")).Should(Equal(http.StatusOK))
-			Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-2")).Should(Equal(http.StatusOK))
-
-			//a given route should route to all running instances
-			poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-1")
-			Eventually(poller).Should(Equal([]string{"0", "1"}))
 		})
 	})
 
