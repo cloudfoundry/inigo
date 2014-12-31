@@ -269,9 +269,6 @@ func (maker ComponentMaker) FileServer(argv ...string) (ifrit.Runner, string) {
 	servedFilesDir, err := ioutil.TempDir("", "file-server-files")
 	Ω(err).ShouldNot(HaveOccurred())
 
-	host, port, err := net.SplitHostPort(maker.Addresses.FileServer)
-	Ω(err).ShouldNot(HaveOccurred())
-
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "file-server",
 		AnsiColorCode:     "90m",
@@ -280,8 +277,7 @@ func (maker ComponentMaker) FileServer(argv ...string) (ifrit.Runner, string) {
 		Command: exec.Command(
 			maker.Artifacts.Executables["file-server"],
 			append([]string{
-				"-address", host,
-				"-port", port,
+				"-address", maker.Addresses.FileServer,
 				"-ccAddress", "http://" + maker.Addresses.FakeCC,
 				"-ccJobPollingInterval", "100ms",
 				"-ccUsername", fake_cc.CC_USERNAME,
