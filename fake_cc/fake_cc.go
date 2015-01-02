@@ -13,7 +13,6 @@ import (
 	"sync"
 
 	"github.com/cloudfoundry-incubator/runtime-schema/cc_messages"
-	"github.com/cloudfoundry/gunk/test_server"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
@@ -127,7 +126,7 @@ func (f *FakeCC) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (f *FakeCC) handleDropletUploadRequest(w http.ResponseWriter, r *http.Request) {
-	basicAuthVerifier := test_server.VerifyBasicAuth(CC_USERNAME, CC_PASSWORD)
+	basicAuthVerifier := ghttp.VerifyBasicAuth(CC_USERNAME, CC_PASSWORD)
 	basicAuthVerifier(w, r)
 
 	key := getFileUploadKey(r)
@@ -148,7 +147,7 @@ func (f *FakeCC) handleDropletUploadRequest(w http.ResponseWriter, r *http.Reque
 }
 
 func (f *FakeCC) handleBuildArtifactsCacheUploadRequest(w http.ResponseWriter, r *http.Request) {
-	basicAuthVerifier := test_server.VerifyBasicAuth(CC_USERNAME, CC_PASSWORD)
+	basicAuthVerifier := ghttp.VerifyBasicAuth(CC_USERNAME, CC_PASSWORD)
 	basicAuthVerifier(w, r)
 
 	key := getFileUploadKey(r)
@@ -168,7 +167,7 @@ func (f *FakeCC) handleBuildArtifactsCacheUploadRequest(w http.ResponseWriter, r
 }
 
 func (f *FakeCC) handleBuildArtifactsCacheDownloadRequest(w http.ResponseWriter, r *http.Request) {
-	basicAuthVerifier := test_server.VerifyBasicAuth(CC_USERNAME, CC_PASSWORD)
+	basicAuthVerifier := ghttp.VerifyBasicAuth(CC_USERNAME, CC_PASSWORD)
 	basicAuthVerifier(w, r)
 
 	re := regexp.MustCompile("/staging/buildpack_cache/(.*)/download")
