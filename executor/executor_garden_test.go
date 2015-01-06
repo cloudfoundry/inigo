@@ -708,28 +708,14 @@ var _ = Describe("Executor/Garden", func() {
 			})
 
 			Describe("DeleteContainer", func() {
-				Context("when the container has been stopped", func() {
-					JustBeforeEach(func() {
-						err := executorClient.StopContainer(guid)
-						Ω(err).ShouldNot(HaveOccurred())
-					})
+				It("deletes the container", func() {
+					err := executorClient.DeleteContainer(guid)
+					Ω(err).ShouldNot(HaveOccurred())
 
-					It("deletes the container without error", func() {
-						err := executorClient.DeleteContainer(guid)
-						Ω(err).ShouldNot(HaveOccurred())
-
-						Eventually(func() error {
-							_, err := gardenClient.Lookup(guid)
-							return err
-						}).Should(HaveOccurred())
-					})
-				})
-
-				Context("when the container has not been stopped", func() {
-					It("returns an error", func() {
-						err := executorClient.DeleteContainer(guid)
-						Ω(err).Should(Equal(executor.ErrContainerNotCompleted))
-					})
+					Eventually(func() error {
+						_, err := gardenClient.Lookup(guid)
+						return err
+					}).Should(HaveOccurred())
 				})
 			})
 
