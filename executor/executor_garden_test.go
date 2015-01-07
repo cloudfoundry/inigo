@@ -429,8 +429,8 @@ var _ = Describe("Executor/Garden", func() {
 							Eventually(containerEventPoller(events, &event), 5).Should(Equal(executor.EventTypeContainerComplete))
 
 							completeEvent := event.(executor.ContainerCompleteEvent)
-							Ω(completeEvent.Container.State).Should(Equal(executor.StateCompleted))
-							Ω(completeEvent.Container.RunResult.Failed).Should(BeFalse())
+							Ω(completeEvent.Container().State).Should(Equal(executor.StateCompleted))
+							Ω(completeEvent.Container().RunResult.Failed).Should(BeFalse())
 						})
 
 						Describe("shutting down", func() {
@@ -595,9 +595,9 @@ var _ = Describe("Executor/Garden", func() {
 								Eventually(containerEventPoller(events, &event), 5).Should(Equal(executor.EventTypeContainerComplete))
 
 								completeEvent := event.(executor.ContainerCompleteEvent)
-								Ω(completeEvent.Container.State).Should(Equal(executor.StateCompleted))
-								Ω(completeEvent.Container.RunResult.Failed).Should(BeTrue())
-								Ω(completeEvent.Container.RunResult.FailureReason).Should(Equal("Exited with status 1"))
+								Ω(completeEvent.Container().State).Should(Equal(executor.StateCompleted))
+								Ω(completeEvent.Container().RunResult.Failed).Should(BeTrue())
+								Ω(completeEvent.Container().RunResult.FailureReason).Should(Equal("Exited with status 1"))
 							})
 						})
 					})
