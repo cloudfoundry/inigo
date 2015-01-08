@@ -65,8 +65,8 @@ var _ = Describe("Executor", func() {
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Action: &models.RunAction{
-					Path: "curl",
-					Args: []string{inigo_announcement_server.AnnounceURL(firstGuyGuid)},
+					Path: "/bin/bash",
+					Args: []string{"-c", "curl " + inigo_announcement_server.AnnounceURL(firstGuyGuid) + " && tail -f /dev/null"},
 				},
 			})
 			Ω(err).ShouldNot(HaveOccurred())
