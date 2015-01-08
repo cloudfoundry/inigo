@@ -45,7 +45,6 @@ var _ = Describe("Executor/Garden", func() {
 		runner = componentMaker.Executor(
 			"-pruneInterval", pruningInterval.String(),
 			"-healthyMonitoringInterval", "1s",
-			"-gardenSyncInterval", "1s",
 			"-unhealthyMonitoringInterval", "100ms",
 			"-exportNetworkEnvVars="+strconv.FormatBool(exportNetworkEnvVars),
 		)
