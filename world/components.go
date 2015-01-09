@@ -16,7 +16,7 @@ import (
 	"github.com/cloudfoundry-incubator/executor"
 	executorclient "github.com/cloudfoundry-incubator/executor/http/client"
 	gardenrunner "github.com/cloudfoundry-incubator/garden-linux/integration/runner"
-	garden "github.com/cloudfoundry-incubator/garden/api"
+	"github.com/cloudfoundry-incubator/garden"
 	gardenclient "github.com/cloudfoundry-incubator/garden/client"
 	gardenconnection "github.com/cloudfoundry-incubator/garden/client/connection"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
