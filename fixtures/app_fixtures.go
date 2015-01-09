@@ -5,35 +5,24 @@ import archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 func HelloWorldIndexApp() []archive_helper.ArchiveFile {
 	return []archive_helper.ArchiveFile{
 		{
-			Name: "app/run",
+			Name: "app/server.sh",
 			Body: `#!/bin/bash
-          ruby <<END_MAGIC_SERVER
-require 'webrick'
-require 'json'
 
-STDOUT.sync = true
+set -e
 
-server = WEBrick::HTTPServer.new :BindAddress => "0.0.0.0", :Port => ENV['PORT']
+index=$(echo $VCAP_APPLICATION | jq .instance_index)
 
-index = JSON.parse(ENV["VCAP_APPLICATION"])["instance_index"]
-puts "Hello World from index '#{index}'"
+echo "Hello World from index '${index}'"
 
-server.mount_proc '/' do |req, res|
-  res.body = index.to_s
-  res.status = 200
-end
-
-trap('INT') {
-  server.shutdown
-}
-
-server.start
-END_MAGIC_SERVER
-          `,
+while true; do {
+  # note that the following must be one single write
+  echo -n -e "HTTP/1.1 200 OK\r\nContent-Length: ${#index}\r\n\r\n${index}"
+} | nc -l 0.0.0.0 $PORT; done
+`,
 		}, {
 			Name: "staging_info.yml",
-			Body: `detected_buildpack: Ruby
-start_command: ./run`,
+			Body: `detected_buildpack: Doesn't Matter
+start_command: bash ./server.sh`,
 		},
 	}
 }
@@ -41,27 +30,19 @@ start_command: ./run`,
 func HelloWorldIndexLRP() []archive_helper.ArchiveFile {
 	return []archive_helper.ArchiveFile{
 		{
-			Name: "server.rb",
-			Body: `require 'webrick'
-require 'json'
+			Name: "server.sh",
+			Body: `#!/bin/bash
 
-STDOUT.sync = true
+set -e
 
-server = WEBrick::HTTPServer.new :BindAddress => "0.0.0.0", :Port => ENV['PORT']
+index=${INSTANCE_INDEX}
 
-index = ENV["INSTANCE_INDEX"]
-puts "Hello World from index '#{index}'"
+echo "Hello World from index '${index}'"
 
-server.mount_proc '/' do |req, res|
-  res.body = index.to_s
-  res.status = 200
-end
-
-trap('INT') {
-  server.shutdown
-}
-
-server.start
+while true; do {
+  # note that the following must be one single write
+  echo -n -e "HTTP/1.1 200 OK\r\nContent-Length: ${#index}\r\n\r\n${index}"
+} | nc -l 0.0.0.0 $PORT; done
 `,
 		},
 	}

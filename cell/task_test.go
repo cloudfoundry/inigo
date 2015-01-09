@@ -72,7 +72,7 @@ var _ = Describe("Task", func() {
 					MemoryMB: 512,
 					Stack:    componentMaker.Stack,
 					Action: &models.RunAction{
-						Path: "bash",
+						Path: "sh",
 						Args: []string{
 							"-c",
 							// sleep a bit so that we can make assertions around behavior as it's running

@@ -56,12 +56,12 @@ var _ = Describe("Stager", func() {
 	var adminBuildpackFiles = []zip_helper.ArchiveFile{
 		{
 			Name: "bin/detect",
-			Body: `#!/bin/bash
+			Body: `#!/bin/sh
 echo My Buildpack
 				`},
 		{
 			Name: "bin/compile",
-			Body: `#!/bin/bash
+			Body: `#!/bin/sh
 echo $1 $2
 echo COMPILING BUILDPACK
 echo $SOME_STAGING_ENV
@@ -70,7 +70,7 @@ touch $2/inserted-into-artifacts-cache
 				`},
 		{
 			Name: "bin/release",
-			Body: `#!/bin/bash
+			Body: `#!/bin/sh
 cat <<EOF
 ---
 default_process_types:
@@ -177,11 +177,11 @@ EOF
 			var bustedAdminBuildpackFiles = []zip_helper.ArchiveFile{
 				{
 					Name: "bin/detect",
-					Body: `#!/bin/bash]
+					Body: `#!/bin/sh
 				exit 1
 				`},
-				{Name: "bin/compile", Body: `#!/bin/bash`},
-				{Name: "bin/release", Body: `#!/bin/bash`},
+				{Name: "bin/compile", Body: `#!/bin/sh`},
+				{Name: "bin/release", Body: `#!/bin/sh`},
 			}
 
 			zip_helper.CreateZipArchive(

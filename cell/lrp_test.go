@@ -70,8 +70,8 @@ var _ = Describe("LRP", func() {
 				},
 
 				Action: &models.RunAction{
-					Path: "ruby",
-					Args: []string{"server.rb"},
+					Path: "bash",
+					Args: []string{"server.sh"},
 					Env:  []models.EnvironmentVariable{{"PORT", "8080"}},
 				},
 

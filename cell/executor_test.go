@@ -102,7 +102,7 @@ var _ = Describe("Executor", func() {
 					Domain:   INIGO_DOMAIN,
 					Stack:    componentMaker.Stack,
 					Action: &models.RunAction{
-						Path: "bash",
+						Path: "sh",
 						Args: []string{"-c", "while true; do sleep 1; done"},
 					},
 				})
@@ -152,14 +152,14 @@ var _ = Describe("Executor", func() {
 					DiskMB:      1024,
 					Ports:       []uint32{8080},
 					Action: &models.RunAction{
-						Path: "bash",
+						Path: "sh",
 						Args: []string{
 							"-c",
 							"while true; do sleep 1; done",
 						},
 					},
 					Monitor: &models.RunAction{
-						Path: "bash",
+						Path: "sh",
 						Args: []string{"-c", "echo all good"},
 					},
 				})
@@ -242,8 +242,8 @@ var _ = Describe("Executor", func() {
 				Domain:   INIGO_DOMAIN,
 				Stack:    componentMaker.Stack,
 				Action: &models.RunAction{
-					Path: "bash",
-					Args: []string{"-c", "[ $FOO = NEW-BAR -a $BAZ = WIBBLE ]"},
+					Path: "sh",
+					Args: []string{"-c", `[ "$FOO" = NEW-BAR -a "$BAZ" = WIBBLE ]`},
 					Env: []models.EnvironmentVariable{
 						{"FOO", "OLD-BAR"},
 						{"BAZ", "WIBBLE"},
@@ -273,9 +273,9 @@ var _ = Describe("Executor", func() {
 				Domain:   INIGO_DOMAIN,
 				Stack:    componentMaker.Stack,
 				Action: &models.RunAction{
-					Path: "bash",
-					Args: []string{"-c", `[ $PWD = /usr ]`},
-					Dir:  "/usr",
+					Path: "sh",
+					Args: []string{"-c", `[ $PWD = /tmp ]`},
+					Dir:  "/tmp",
 				},
 			})
 			Ω(err).ShouldNot(HaveOccurred())
@@ -308,8 +308,8 @@ var _ = Describe("Executor", func() {
 							Args: []string{inigo_announcement_server.AnnounceURL("before-memory-overdose")},
 						},
 						&models.RunAction{
-							Path: "ruby",
-							Args: []string{"-e", "arr='m'*1024*1024*100"},
+							Path: "sh",
+							Args: []string{"-c", "yes $(yes)"},
 						},
 						&models.RunAction{
 							Path: "curl",
@@ -340,7 +340,7 @@ var _ = Describe("Executor", func() {
 
 		Context("when the command exceeds its file descriptor limit", func() {
 			It("should fail the Task", func() {
-				nofile := uint64(1)
+				nofile := uint64(10)
 
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 					Domain:   INIGO_DOMAIN,
@@ -348,8 +348,25 @@ var _ = Describe("Executor", func() {
 					Stack:    componentMaker.Stack,
 					Action: models.Serial(
 						&models.RunAction{
-							Path: "ruby",
-							Args: []string{"-e", `10.times.each { |x| File.open("#{x}","w") }`},
+							Path: "sh",
+							Args: []string{"-c", `
+set -e
+
+# must start after fd 2
+exec 3<>file1
+exec 4<>file2
+exec 5<>file3
+exec 6<>file4
+exec 7<>file5
+exec 8<>file6
+exec 9<>file7
+exec 10<>file8
+exec 11<>file9
+exec 12<>file10
+exec 13<>file11
+
+echo should have died by now
+`},
 							ResourceLimits: models.ResourceLimits{
 								Nofile: &nofile,
 							},
@@ -369,7 +386,9 @@ var _ = Describe("Executor", func() {
 				}).Should(Equal(receptor.TaskStateCompleted))
 
 				Ω(task.Failed).Should(BeTrue())
-				Ω(task.FailureReason).Should(ContainSubstring("status 127"))
+
+				// when sh can't open another file the exec exits 2
+				Ω(task.FailureReason).Should(ContainSubstring("status 2"))
 			})
 		})
 
@@ -425,7 +444,7 @@ var _ = Describe("Executor", func() {
 				TaskGuid: guid,
 				Stack:    componentMaker.Stack,
 				Action: &models.RunAction{
-					Path:       "bash",
+					Path:       "sh",
 					Args:       []string{"-c", "while true; do sleep 1; done"},
 					Env:        env,
 					Privileged: true,
@@ -475,9 +494,9 @@ var _ = Describe("Executor", func() {
 		BeforeEach(func() {
 			guid = factories.GenerateGuid()
 
-			test_helper.CreateTarGZArchive(filepath.Join(fileServerStaticDir, "curling.tar.gz"), []test_helper.ArchiveFile{
+			test_helper.CreateTarGZArchive(filepath.Join(fileServerStaticDir, "announce.tar.gz"), []test_helper.ArchiveFile{
 				{
-					Name: "curling",
+					Name: "announce",
 					Body: fmt.Sprintf("#!/bin/sh\n\ncurl %s", inigo_announcement_server.AnnounceURL(guid)),
 					Mode: 0755,
 				},
@@ -491,11 +510,11 @@ var _ = Describe("Executor", func() {
 				Stack:    componentMaker.Stack,
 				Action: models.Serial(
 					&models.DownloadAction{
-						From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "curling.tar.gz"),
+						From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "announce.tar.gz"),
 						To:   ".",
 					},
 					&models.RunAction{
-						Path: "./curling",
+						Path: "./announce",
 					},
 				),
 			})
@@ -542,7 +561,7 @@ var _ = Describe("Executor", func() {
 				Stack:    componentMaker.Stack,
 				Action: models.Serial(
 					&models.RunAction{
-						Path: "bash",
+						Path: "sh",
 						Args: []string{"-c", "echo tasty thingy > thingy"},
 					},
 					&models.UploadAction{
@@ -573,7 +592,7 @@ var _ = Describe("Executor", func() {
 				Stack:      componentMaker.Stack,
 				ResultFile: "thingy",
 				Action: &models.RunAction{
-					Path: "bash",
+					Path: "sh",
 					Args: []string{"-c", "echo tasty thingy > thingy"},
 				},
 			})
