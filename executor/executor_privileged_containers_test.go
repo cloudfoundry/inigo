@@ -37,7 +37,7 @@ var _ = Describe("Privileged Containers", func() {
 
 			executorClient := client.New(&http.Client{}, "http://"+componentMaker.Addresses.Executor)
 
-			_, err = executorClient.AllocateContainer(container)
+			_, err = executorClient.AllocateContainers([]executor.Container{container})
 			Ω(err).ShouldNot(HaveOccurred())
 
 			err = executorClient.RunContainer(containerGuid)

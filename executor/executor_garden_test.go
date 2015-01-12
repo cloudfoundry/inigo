@@ -70,7 +70,7 @@ var _ = Describe("Executor/Garden", func() {
 	allocNewContainer := func(request executor.Container) string {
 		request.Guid = generateGuid()
 
-		_, err := executorClient.AllocateContainer(request)
+		_, err := executorClient.AllocateContainers([]executor.Container{request})
 		Ω(err).ShouldNot(HaveOccurred())
 
 		return request.Guid
@@ -253,7 +253,7 @@ var _ = Describe("Executor/Garden", func() {
 
 				guid string
 
-				allocatedContainer executor.Container
+				allocationErrorMap map[string]string
 				allocErr           error
 			)
 
@@ -281,28 +281,30 @@ var _ = Describe("Executor/Garden", func() {
 			})
 
 			JustBeforeEach(func() {
-				allocatedContainer, allocErr = executorClient.AllocateContainer(container)
+				allocationErrorMap, allocErr = executorClient.AllocateContainers([]executor.Container{container})
 			})
 
 			It("does not return an error", func() {
 				Ω(allocErr).ShouldNot(HaveOccurred())
 			})
 
-			It("returns a container", func() {
-				Ω(allocatedContainer.Guid).Should(Equal(guid))
-				Ω(allocatedContainer.MemoryMB).Should(Equal(0))
-				Ω(allocatedContainer.DiskMB).Should(Equal(0))
-				Ω(allocatedContainer.Tags).Should(Equal(executor.Tags{"some-tag": "some-value"}))
-				Ω(allocatedContainer.State).Should(Equal(executor.StateReserved))
-				Ω(allocatedContainer.AllocatedAt).Should(BeNumerically("~", time.Now().UnixNano(), time.Second))
+			It("returns an empty error map", func() {
+				Ω(allocationErrorMap).Should(BeEmpty())
 			})
 
 			It("shows up in the container list", func() {
 				containers, err := executorClient.ListContainers(nil)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(containers).Should(HaveLen(1))
-				Ω(containers[0].Guid).Should(Equal(allocatedContainer.Guid))
+
 				Ω(containers[0].State).Should(Equal(executor.StateReserved))
+				Ω(containers[0].Guid).Should(Equal(guid))
+				Ω(containers[0].MemoryMB).Should(Equal(0))
+				Ω(containers[0].DiskMB).Should(Equal(0))
+				Ω(containers[0].Tags).Should(Equal(executor.Tags{"some-tag": "some-value"}))
+				Ω(containers[0].State).Should(Equal(executor.StateReserved))
+				Ω(containers[0].AllocatedAt).Should(BeNumerically("~", time.Now().UnixNano(), time.Second))
+
 			})
 
 			Context("when allocated with memory and disk limits", func() {
@@ -312,8 +314,11 @@ var _ = Describe("Executor/Garden", func() {
 				})
 
 				It("returns the limits on the container", func() {
-					Ω(allocatedContainer.MemoryMB).Should(Equal(256))
-					Ω(allocatedContainer.DiskMB).Should(Equal(256))
+					containers, err := executorClient.ListContainers(nil)
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(containers).Should(HaveLen(1))
+					Ω(containers[0].MemoryMB).Should(Equal(256))
+					Ω(containers[0].DiskMB).Should(Equal(256))
 				})
 
 				It("reduces the capacity by the amount reserved", func() {
@@ -331,19 +336,21 @@ var _ = Describe("Executor/Garden", func() {
 				})
 
 				It("returns an error", func() {
-					Ω(allocErr).Should(HaveOccurred())
-					Ω(allocErr).Should(Equal(executor.ErrLimitsInvalid))
+					Ω(allocErr).ShouldNot(HaveOccurred())
+					Ω(allocationErrorMap[container.Guid]).Should(Equal(executor.ErrLimitsInvalid.Error()))
 				})
 			})
 
 			Context("when the guid is already taken", func() {
+
 				JustBeforeEach(func() {
 					Ω(allocErr).ShouldNot(HaveOccurred())
-					_, allocErr = executorClient.AllocateContainer(container)
+					allocationErrorMap, allocErr = executorClient.AllocateContainers([]executor.Container{container})
 				})
 
 				It("returns an error", func() {
-					Ω(allocErr).Should(Equal(executor.ErrContainerGuidNotAvailable))
+					Ω(allocErr).ShouldNot(HaveOccurred())
+					Ω(allocationErrorMap[container.Guid]).Should(Equal(executor.ErrContainerGuidNotAvailable.Error()))
 				})
 			})
 
@@ -353,7 +360,8 @@ var _ = Describe("Executor/Garden", func() {
 				})
 
 				It("returns an error", func() {
-					Ω(allocErr).Should(Equal(executor.ErrGuidNotSpecified))
+					Ω(allocErr).ShouldNot(HaveOccurred())
+					Ω(allocationErrorMap[container.Guid]).Should(Equal(executor.ErrGuidNotSpecified.Error()))
 				})
 			})
 
@@ -364,7 +372,8 @@ var _ = Describe("Executor/Garden", func() {
 				})
 
 				It("returns an error", func() {
-					Ω(allocErr).Should(Equal(executor.ErrInsufficientResourcesAvailable))
+					Ω(allocErr).ShouldNot(HaveOccurred())
+					Ω(allocationErrorMap[container.Guid]).Should(Equal(executor.ErrInsufficientResourcesAvailable.Error()))
 				})
 			})
 
@@ -825,11 +834,13 @@ var _ = Describe("Executor/Garden", func() {
 
 		Describe("pruning the registry", func() {
 			It("continously prunes the registry", func() {
-				_, err := executorClient.AllocateContainer(executor.Container{
-					Guid: "some-handle",
+				_, err := executorClient.AllocateContainers([]executor.Container{
+					{
+						Guid: "some-handle",
 
-					MemoryMB: 1024,
-					DiskMB:   1024,
+						MemoryMB: 1024,
+						DiskMB:   1024,
+					},
 				})
 				Ω(err).ShouldNot(HaveOccurred())
 
