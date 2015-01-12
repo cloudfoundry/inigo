@@ -14,10 +14,17 @@ index=$(echo $VCAP_APPLICATION | jq .instance_index)
 
 echo "Hello World from index '${index}'"
 
-while true; do {
-  # note that the following must be one single write
-  echo -n -e "HTTP/1.1 200 OK\r\nContent-Length: ${#index}\r\n\r\n${index}"
-} | nc -l 0.0.0.0 $PORT; done
+mkfifo request
+
+while true; do
+	{
+		read < request
+
+		echo -n -e "HTTP/1.1 200 OK\r\n"
+		echo -n -e "Content-Length: ${#index}\r\n\r\n"
+		echo -n -e "${index}"
+	} | nc -l 0.0.0.0 $PORT > request;
+done
 `,
 		}, {
 			Name: "staging_info.yml",
@@ -39,10 +46,17 @@ index=${INSTANCE_INDEX}
 
 echo "Hello World from index '${index}'"
 
-while true; do {
-  # note that the following must be one single write
-  echo -n -e "HTTP/1.1 200 OK\r\nContent-Length: ${#index}\r\n\r\n${index}"
-} | nc -l 0.0.0.0 $PORT; done
+mkfifo request
+
+while true; do
+	{
+		read < request
+
+		echo -n -e "HTTP/1.1 200 OK\r\n"
+		echo -n -e "Content-Length: ${#index}\r\n\r\n"
+		echo -n -e "${index}"
+	} | nc -l 0.0.0.0 $PORT > request;
+done
 `,
 		},
 	}

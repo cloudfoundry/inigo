@@ -106,15 +106,21 @@ var _ = Describe("Privileges", func() {
 					Args: []string{
 						"-c",
 						`
-						while true; do {
+						mkfifo request
+
+						while true; do
+						{
+							read < request
+
 							status="200 OK"
 							if ! echo h > /proc/sysrq-trigger; then
 								status="500 Internal Server Error"
 							fi
 							
-						  # note that the following must be one single write
-						  echo -n -e "HTTP/1.1 ${status}\r\nContent-Length: 0\r\n\r\n"
-						} | nc -l 0.0.0.0 8080; done
+						  echo -n -e "HTTP/1.1 ${status}\r\n"
+						  echo -n -e "Content-Length: 0\r\n\r\n"
+						} | nc -l 0.0.0.0 8080 > request;
+						done
 						`,
 					},
 				},
