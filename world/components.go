@@ -15,8 +15,8 @@ import (
 	"github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/cloudfoundry-incubator/executor"
 	executorclient "github.com/cloudfoundry-incubator/executor/http/client"
-	gardenrunner "github.com/cloudfoundry-incubator/garden-linux/integration/runner"
 	"github.com/cloudfoundry-incubator/garden"
+	gardenrunner "github.com/cloudfoundry-incubator/garden-linux/integration/runner"
 	gardenclient "github.com/cloudfoundry-incubator/garden/client"
 	gardenconnection "github.com/cloudfoundry-incubator/garden/client/connection"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
@@ -223,6 +223,7 @@ func (maker ComponentMaker) RouteEmitter(argv ...string) ifrit.Runner {
 			append([]string{
 				"-etcdCluster", "http://" + maker.Addresses.Etcd,
 				"-natsAddresses", maker.Addresses.NATS,
+				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 			}, argv...)...,
 		),
 	})
