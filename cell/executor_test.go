@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
-	"syscall"
 	"time"
 
 	"github.com/pivotal-golang/archiver/extractor/test_helper"
@@ -119,7 +118,7 @@ var _ = Describe("Executor", func() {
 				}).Should(Equal(executor.StateRunning))
 
 				// bounce executor
-				executorProcess.Signal(syscall.SIGKILL)
+				ginkgomon.Kill(executorProcess)
 				executorProcess = ginkgomon.Invoke(componentMaker.Executor("-memoryMB", "1024"))
 			})
 
@@ -140,8 +139,15 @@ var _ = Describe("Executor", func() {
 		})
 
 		Context("when a lrp is running and then something causes the container to go away", func() {
+			var (
+				instanceGuid string
+				processGuid  string
+				index        int
+			)
+
 			BeforeEach(func() {
-				processGuid := factories.GenerateGuid()
+				processGuid = factories.GenerateGuid()
+				index = 0
 
 				err := receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
 					Domain:      INIGO_DOMAIN,
@@ -171,7 +177,7 @@ var _ = Describe("Executor", func() {
 					return actualLRPs
 				}).Should(HaveLen(1))
 
-				instanceGuid := actualLRPs[0].InstanceGuid
+				instanceGuid = actualLRPs[0].InstanceGuid
 
 				executorClient := componentMaker.ExecutorClient()
 
@@ -185,12 +191,20 @@ var _ = Describe("Executor", func() {
 				}).Should(Equal(executor.StateRunning))
 
 				// bounce executor
-				executorProcess.Signal(syscall.SIGKILL)
+				ginkgomon.Kill(executorProcess)
 				executorProcess = ginkgomon.Invoke(componentMaker.Executor("-memoryMB", "1024"))
 			})
 
-			It("eventually deletes the lrp", func() {
-				Eventually(receptorClient.ActualLRPs).Should(BeEmpty())
+			It("eventually deletes the original lrp", func() {
+				lrpMatchesOriginalInstanceGuid := func() (bool, error) {
+					actualLRP, err := receptorClient.ActualLRPByProcessGuidAndIndex(processGuid, index)
+					if err != nil {
+						return false, err
+					}
+					return actualLRP.InstanceGuid == instanceGuid, nil
+				}
+
+				Eventually(lrpMatchesOriginalInstanceGuid).Should(BeFalse())
 			})
 		})
 	})
