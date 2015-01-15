@@ -58,7 +58,7 @@ var _ = BeforeEach(func() {
 		{"etcd", componentMaker.Etcd()},
 		{"nats", componentMaker.NATS()},
 		{"receptor", componentMaker.Receptor()},
-		{"garden-linux", componentMaker.GardenLinux()},
+		{"garden-linux", componentMaker.GardenLinux("-denyNetworks", "0.0.0.0/0")},
 	}))
 
 	gardenClient = componentMaker.GardenClient()

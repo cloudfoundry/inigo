@@ -152,6 +152,78 @@ var _ = Describe("Task", func() {
 				})
 			})
 		})
+
+		Context("Security Groups", func() {
+			var (
+				taskGuid          string
+				taskSleepSeconds  int
+				announcement      string
+				taskCreateRequest receptor.TaskCreateRequest
+			)
+
+			BeforeEach(func() {
+				taskGuid = factories.GenerateGuid()
+				announcement = fmt.Sprintf("%s-0", taskGuid)
+				taskSleepSeconds = 10
+				taskCreateRequest = receptor.TaskCreateRequest{
+					Domain:   INIGO_DOMAIN,
+					TaskGuid: taskGuid,
+					MemoryMB: 512,
+					Stack:    componentMaker.Stack,
+					Action: &models.RunAction{
+						Path: "sh",
+						Args: []string{
+							"-c",
+							`
+curl -s --connect-timeout 1 http://www.example.com -o /dev/null
+echo $? >> /tmp/result
+exit 0
+					`,
+						},
+					},
+					ResultFile: "/tmp/result",
+				}
+			})
+
+			JustBeforeEach(func() {
+				err := receptorClient.CreateTask(taskCreateRequest)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			Context("default networking", func() {
+				It("rejects outbound tcp traffic", func() {
+					// Failed to connect to host
+					pollTaskStatus(taskGuid, "28\n")
+				})
+			})
+
+			Context("with appropriate security group setting", func() {
+				BeforeEach(func() {
+					taskCreateRequest.SecurityGroupRules = []models.SecurityGroupRule{
+						{
+							Protocol:    models.TCPProtocol,
+							Destination: "0.0.0.0/0",
+							PortRange: models.PortRange{
+								Start: 80,
+								End:   80,
+							},
+						},
+						{
+							Protocol:    models.UDPProtocol,
+							Destination: "0.0.0.0/0",
+							PortRange: models.PortRange{
+								Start: 53,
+								End:   53,
+							},
+						},
+					}
+				})
+
+				It("allows outbound tcp traffic", func() {
+					pollTaskStatus(taskGuid, "0\n")
+				})
+			})
+		})
 	})
 
 	Context("when an auctioneer is not running", func() {
@@ -246,3 +318,17 @@ var _ = Describe("Task", func() {
 		})
 	})
 })
+
+func pollTaskStatus(taskGuid string, result string) {
+	var completedTask receptor.TaskResponse
+	Eventually(func() interface{} {
+		var err error
+
+		completedTask, err = receptorClient.GetTask(taskGuid)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		return completedTask.State
+	}).Should(Equal(receptor.TaskStateCompleted))
+
+	Ω(completedTask.Result).Should(Equal(result))
+}
