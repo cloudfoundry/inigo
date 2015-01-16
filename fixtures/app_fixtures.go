@@ -61,3 +61,25 @@ done
 		},
 	}
 }
+
+func CurlLRP() []archive_helper.ArchiveFile {
+	return []archive_helper.ArchiveFile{
+		{
+			Name: "server.sh",
+			Body: `#!/bin/bash
+
+mkfifo request
+
+while true; do
+	{
+		read < request
+
+		echo -n -e "HTTP/1.1 200 OK\r\n"
+		echo -n -e "\r\n"
+		curl -s --connect-timeout 5 http://www.example.com -o /dev/null ; echo -n $?
+	} | nc -l 0.0.0.0 $PORT > request;
+done
+`,
+		},
+	}
+}

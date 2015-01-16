@@ -2,8 +2,10 @@ package cell_test
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
@@ -21,16 +23,18 @@ import (
 
 var _ = Describe("LRP", func() {
 	var (
-		processGuid string
+		processGuid         string
+		archiveFiles        []archive_helper.ArchiveFile
+		fileServerStaticDir string
 
 		runtime ifrit.Process
 	)
 
 	BeforeEach(func() {
-		fileServer, fileServerStaticDir := componentMaker.FileServer()
-
 		processGuid = factories.GenerateGuid()
 
+		var fileServer ifrit.Runner
+		fileServer, fileServerStaticDir = componentMaker.FileServer()
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
@@ -41,9 +45,13 @@ var _ = Describe("LRP", func() {
 			{"route-emitter", componentMaker.RouteEmitter()},
 		}))
 
+		archiveFiles = fixtures.HelloWorldIndexLRP()
+	})
+
+	JustBeforeEach(func() {
 		archive_helper.CreateZipArchive(
 			filepath.Join(fileServerStaticDir, "lrp.zip"),
-			fixtures.HelloWorldIndexLRP(),
+			archiveFiles,
 		)
 	})
 
@@ -233,6 +241,65 @@ var _ = Describe("LRP", func() {
 					}).Should(BeEmpty())
 
 					Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "lrp-route")).Should(BeEmpty())
+				})
+			})
+		})
+
+		Context("Egress Rules", func() {
+			BeforeEach(func() {
+				archiveFiles = fixtures.CurlLRP()
+			})
+
+			Context("default networking", func() {
+				It("rejects outbound tcp traffic", func() {
+					Eventually(func() string {
+						bytes, statusCode, err := helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses.Router, "lrp-route")
+						if err != nil {
+							return err.Error()
+						}
+						if statusCode != http.StatusOK {
+							return strconv.Itoa(statusCode)
+						}
+
+						return string(bytes)
+					}).Should(Equal("28"))
+				})
+			})
+
+			Context("with appropriate security group setting", func() {
+				BeforeEach(func() {
+					lrp.EgressRules = []models.SecurityGroupRule{
+						{
+							Protocol:    models.TCPProtocol,
+							Destination: "0.0.0.0/0",
+							PortRange: &models.PortRange{
+								Start: 80,
+								End:   80,
+							},
+						},
+						{
+							Protocol:    models.UDPProtocol,
+							Destination: "0.0.0.0/0",
+							PortRange: &models.PortRange{
+								Start: 53,
+								End:   53,
+							},
+						},
+					}
+				})
+
+				It("allows outbound tcp traffic", func() {
+					Eventually(func() string {
+						bytes, statusCode, err := helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses.Router, "lrp-route")
+						if err != nil {
+							return err.Error()
+						}
+						if statusCode != http.StatusOK {
+							return strconv.Itoa(statusCode)
+						}
+
+						return string(bytes)
+					}).Should(Equal("0"))
 				})
 			})
 		})

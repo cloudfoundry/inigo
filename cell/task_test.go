@@ -153,7 +153,7 @@ var _ = Describe("Task", func() {
 			})
 		})
 
-		Context("Security Groups", func() {
+		Context("Egress Rules", func() {
 			var (
 				taskGuid          string
 				taskSleepSeconds  int
@@ -175,7 +175,7 @@ var _ = Describe("Task", func() {
 						Args: []string{
 							"-c",
 							`
-curl -s --connect-timeout 1 http://www.example.com -o /dev/null
+curl -s --connect-timeout 5 http://www.example.com -o /dev/null
 echo $? >> /tmp/result
 exit 0
 					`,
@@ -199,7 +199,7 @@ exit 0
 
 			Context("with appropriate security group setting", func() {
 				BeforeEach(func() {
-					taskCreateRequest.SecurityGroupRules = []models.SecurityGroupRule{
+					taskCreateRequest.EgressRules = []models.SecurityGroupRule{
 						{
 							Protocol:    models.TCPProtocol,
 							Destination: "0.0.0.0/0",
