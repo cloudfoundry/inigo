@@ -106,7 +106,7 @@ var _ = Describe("LRP", func() {
 				}
 			})
 
-			It("eventually stops the LRP", func() {
+			It("eventually marks the LRP as crashed", func() {
 				Eventually(func() []receptor.ActualLRPResponse {
 					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
 					Ω(err).ShouldNot(HaveOccurred())
@@ -114,12 +114,10 @@ var _ = Describe("LRP", func() {
 					return lrps
 				}).Should(HaveLen(1))
 
-				Eventually(func() []receptor.ActualLRPResponse {
-					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-					Ω(err).ShouldNot(HaveOccurred())
-
-					return lrps
-				}).Should(HaveLen(0))
+				var actualLRP receptor.ActualLRPResponse
+				Eventually(
+					helpers.LRPStatePoller(receptorClient, processGuid, &actualLRP),
+				).Should(Equal(receptor.ActualLRPStateCrashed))
 			})
 		})
 
