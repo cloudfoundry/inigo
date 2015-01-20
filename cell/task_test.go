@@ -203,10 +203,7 @@ exit 0
 						{
 							Protocol:    models.TCPProtocol,
 							Destination: "0.0.0.0/0",
-							PortRange: &models.PortRange{
-								Start: 80,
-								End:   80,
-							},
+							Ports:       []uint16{80, 443},
 						},
 						{
 							Protocol:    models.UDPProtocol,
