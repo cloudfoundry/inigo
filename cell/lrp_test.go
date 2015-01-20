@@ -270,16 +270,13 @@ var _ = Describe("LRP", func() {
 				BeforeEach(func() {
 					lrp.EgressRules = []models.SecurityGroupRule{
 						{
-							Protocol:    models.TCPProtocol,
-							Destination: "0.0.0.0/0",
-							PortRange: &models.PortRange{
-								Start: 80,
-								End:   80,
-							},
+							Protocol:     models.TCPProtocol,
+							Destinations: []string{"9.0.0.0-89.255.255.255", "90.0.0.0-94.0.0.0"},
+							Ports:        []uint16{80},
 						},
 						{
-							Protocol:    models.UDPProtocol,
-							Destination: "0.0.0.0/0",
+							Protocol:     models.UDPProtocol,
+							Destinations: []string{"0.0.0.0/0"},
 							PortRange: &models.PortRange{
 								Start: 53,
 								End:   53,

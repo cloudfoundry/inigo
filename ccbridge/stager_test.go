@@ -90,7 +90,7 @@ EOF
 
 		cell = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"exec", componentMaker.Executor()},
-			{"rep", componentMaker.Rep()},
+			{"rep", componentMaker.Rep("-heartbeatInterval", "10s")},
 		}))
 
 		brain = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
@@ -444,11 +444,11 @@ EOF
 				err := natsClient.Publish("diego.staging.start", stagingMessage)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				NUM_STAGERS := 2
+				NUM_ATTEMPTS := 2
 				NUM_RETRIES := 3
 
-				Eventually(fakeCC.StagingResponses).Should(HaveLen(NUM_STAGERS * NUM_RETRIES))
-				Consistently(fakeCC.StagingResponses).Should(HaveLen(NUM_STAGERS * NUM_RETRIES))
+				Eventually(fakeCC.StagingResponses).Should(HaveLen(NUM_ATTEMPTS * NUM_RETRIES))
+				Consistently(fakeCC.StagingResponses).Should(HaveLen(NUM_ATTEMPTS * NUM_RETRIES))
 			})
 		})
 	})
