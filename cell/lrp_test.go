@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
@@ -298,6 +299,71 @@ var _ = Describe("LRP", func() {
 						return string(bytes)
 					}).Should(Equal("0"))
 				})
+			})
+		})
+	})
+})
+
+var _ = Describe("LRP", func() {
+	var (
+		processGuid string
+		runtime     ifrit.Process
+	)
+
+	BeforeEach(func() {
+		fileServer, _ := componentMaker.FileServer()
+
+		processGuid = factories.GenerateGuid()
+
+		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+			{"router", componentMaker.Router()},
+			{"file-server", fileServer},
+			{"exec", componentMaker.Executor()},
+			{"rep", componentMaker.Rep()},
+			{"converger", componentMaker.Converger(
+				"-convergeRepeatInterval", "1s",
+			)},
+			{"auctioneer", componentMaker.Auctioneer()},
+			{"route-emitter", componentMaker.RouteEmitter()},
+		}))
+
+	})
+
+	AfterEach(func() {
+		helpers.StopProcesses(runtime)
+	})
+
+	Describe("crashing apps", func() {
+		Context("when an app flaps", func() {
+			BeforeEach(func() {
+				lrp := receptor.DesiredLRPCreateRequest{
+					Domain:      INIGO_DOMAIN,
+					ProcessGuid: processGuid,
+					Instances:   1,
+					Stack:       componentMaker.Stack,
+					Ports:       []uint32{},
+
+					Action: &models.RunAction{
+						Path: "false",
+					},
+				}
+
+				err := receptorClient.CreateDesiredLRP(lrp)
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			It("imediately restarts the app 3 times", func() {
+				crashCount := func() int {
+					actual, err := receptorClient.ActualLRPByProcessGuidAndIndex(processGuid, 0)
+					Ω(err).ShouldNot(HaveOccurred())
+					return actual.CrashInfo.CrashCount
+				}
+				// the receptor immediately starts it 3 times
+				Eventually(crashCount).Should(Equal(3))
+				// then exponential backoff kicks in
+				Consistently(crashCount, 15*time.Second).Should(Equal(3))
+				// eventually we cross the first backoff threshold (30 seconds)
+				Eventually(crashCount, 30*time.Second).Should(Equal(4))
 			})
 		})
 	})
