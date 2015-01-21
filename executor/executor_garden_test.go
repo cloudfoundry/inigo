@@ -6,7 +6,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -14,7 +13,6 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/executor"
-	httpClient "github.com/cloudfoundry-incubator/executor/http/client"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	uuid "github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
@@ -49,7 +47,8 @@ var _ = Describe("Executor/Garden", func() {
 			"-exportNetworkEnvVars="+strconv.FormatBool(exportNetworkEnvVars),
 		)
 
-		executorClient = httpClient.New(&http.Client{}, "http://"+componentMaker.Addresses.Executor)
+		executorClient = componentMaker.ExecutorClient()
+
 		gardenCapacity, err = gardenClient.Capacity()
 		Ω(err).ShouldNot(HaveOccurred())
 	})

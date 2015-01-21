@@ -416,7 +416,7 @@ func (maker ComponentMaker) GardenClient() garden.Client {
 }
 
 func (maker ComponentMaker) ExecutorClient() executor.Client {
-	return executorclient.New(http.DefaultClient, "http://"+maker.Addresses.Executor)
+	return executorclient.New(http.DefaultClient, http.DefaultClient, "http://"+maker.Addresses.Executor)
 }
 
 func (maker ComponentMaker) ReceptorClient() receptor.Client {

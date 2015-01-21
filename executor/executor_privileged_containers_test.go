@@ -1,10 +1,7 @@
 package executor_test
 
 import (
-	"net/http"
-
 	"github.com/cloudfoundry-incubator/executor"
-	"github.com/cloudfoundry-incubator/executor/http/client"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/nu7hatch/gouuid"
 	"github.com/tedsuo/ifrit"
@@ -35,7 +32,7 @@ var _ = Describe("Privileged Containers", func() {
 				},
 			}
 
-			executorClient := client.New(&http.Client{}, "http://"+componentMaker.Addresses.Executor)
+			executorClient := componentMaker.ExecutorClient()
 
 			_, err = executorClient.AllocateContainers([]executor.Container{container})
 			Ω(err).ShouldNot(HaveOccurred())

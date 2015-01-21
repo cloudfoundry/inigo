@@ -2,11 +2,9 @@ package cell_test
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 
 	executor_api "github.com/cloudfoundry-incubator/executor"
-	executor_client "github.com/cloudfoundry-incubator/executor/http/client"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	"github.com/cloudfoundry-incubator/receptor"
@@ -52,7 +50,7 @@ var _ = Describe("Task", func() {
 
 			auctioneerProcess = ginkgomon.Invoke(componentMaker.Auctioneer())
 
-			executorClient = executor_client.New(http.DefaultClient, "http://"+componentMaker.Addresses.Executor)
+			executorClient = componentMaker.ExecutorClient()
 		})
 
 		Context("and a standard Task is desired", func() {
