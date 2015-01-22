@@ -101,7 +101,7 @@ EOF
 
 		bridge = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"cc", fakeCC},
-			{"stager", componentMaker.Stager("-minDiskMB", "64", "-minMemoryMB", "64")},
+			{"stager", componentMaker.Stager()},
 			{"nsync-listener", componentMaker.NsyncListener()},
 		}))
 
