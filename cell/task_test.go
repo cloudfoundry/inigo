@@ -8,6 +8,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/runtime-schema/diego_errors"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 
@@ -56,19 +57,39 @@ var _ = Describe("Task", func() {
 		Context("and a standard Task is desired", func() {
 			var taskGuid string
 			var taskSleepSeconds int
+			var stack string
+			var memory int
 
 			BeforeEach(func() {
-				taskGuid = factories.GenerateGuid()
-
 				taskSleepSeconds = 10
+				taskGuid = factories.GenerateGuid()
+				stack = componentMaker.Stack
+				memory = 512
 			})
+
+			theFailureReason := func() string {
+				taskAfterCancel, err := receptorClient.GetTask(taskGuid)
+				if err != nil {
+					return ""
+				}
+
+				if taskAfterCancel.State != receptor.TaskStateCompleted {
+					return ""
+				}
+
+				if taskAfterCancel.Failed != true {
+					return ""
+				}
+
+				return taskAfterCancel.FailureReason
+			}
 
 			JustBeforeEach(func() {
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 					Domain:   INIGO_DOMAIN,
 					TaskGuid: taskGuid,
-					MemoryMB: 512,
-					Stack:    componentMaker.Stack,
+					MemoryMB: memory,
+					Stack:    stack,
 					Action: &models.RunAction{
 						Path: "sh",
 						Args: []string{
@@ -81,8 +102,30 @@ var _ = Describe("Task", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
-			It("eventually runs the Task", func() {
-				Eventually(inigo_announcement_server.Announcements).Should(ContainElement(taskGuid))
+			Context("when there is a matching stack", func() {
+				It("eventually runs the Task", func() {
+					Eventually(inigo_announcement_server.Announcements).Should(ContainElement(taskGuid))
+				})
+			})
+
+			Context("when there is no matching stack", func() {
+				BeforeEach(func() {
+					stack = "bogus-stack"
+				})
+
+				It("marks the task as complete, failed and cancelled", func() {
+					Eventually(theFailureReason).Should(Equal(diego_errors.CELL_MISMATCH_MESSAGE))
+				})
+			})
+
+			Context("when there is not enough resources", func() {
+				BeforeEach(func() {
+					memory = 2048
+				})
+
+				It("marks the task as complete, failed and cancelled", func() {
+					Eventually(theFailureReason).Should(Equal(diego_errors.INSUFFICIENT_RESOURCES_MESSAGE))
+				})
 			})
 
 			Context("and then the task is cancelled", func() {

@@ -11,6 +11,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/runtime-schema/diego_errors"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
@@ -301,10 +302,30 @@ var _ = Describe("LRP", func() {
 				})
 			})
 		})
+
+		Context("Unsupported stack is requested", func() {
+			BeforeEach(func() {
+				lrp.Stack = "unsupported_stack"
+			})
+
+			It("fails and sets a placement error", func() {
+				lrpFunc := func() string {
+					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+					Ω(err).ShouldNot(HaveOccurred())
+					if len(lrps) == 0 {
+						return ""
+					}
+
+					return lrps[0].PlacementError
+				}
+
+				Eventually(lrpFunc).Should(Equal(diego_errors.CELL_MISMATCH_MESSAGE))
+			})
+		})
 	})
 })
 
-var _ = Describe("LRP", func() {
+var _ = Describe("Crashing LRPs", func() {
 	var (
 		processGuid string
 		runtime     ifrit.Process
