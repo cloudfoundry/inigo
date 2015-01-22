@@ -89,7 +89,7 @@ EOF
 		fakeCC = componentMaker.FakeCC()
 
 		cell = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"exec", componentMaker.Executor()},
+			{"exec", componentMaker.Executor("-memoryMB=1024")},
 			{"rep", componentMaker.Rep("-heartbeatInterval", "10s")},
 		}))
 
@@ -141,6 +141,7 @@ EOF
 
 	Describe("Staging", func() {
 		var outputGuid string
+		var memory int
 		var stagingMessage []byte
 		var buildpacksToUse string
 
@@ -155,6 +156,7 @@ EOF
 		BeforeEach(func() {
 			buildpacksToUse, _ = createBuildpacks("test-buildpack", "test-buildpack-key", buildpack_zip)
 			outputGuid = factories.GenerateGuid()
+			memory = 128
 
 			helpers.Copy(
 				componentMaker.Artifacts.Circuses[componentMaker.Stack],
@@ -196,7 +198,7 @@ EOF
 					`{
 						"app_id": "%s",
 						"task_id": "%s",
-						"memory_mb": 128,
+						"memory_mb": %d,
 						"disk_mb": 128,
 						"file_descriptors": 1024,
 						"stack": "lucid64",
@@ -208,6 +210,7 @@ EOF
 					}`,
 					appId,
 					taskId,
+					memory,
 					fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "app.zip"),
 					buildArtifactsUploadUri,
 					dropletUploadUri,
@@ -375,6 +378,28 @@ EOF
 						}))
 				})
 			})
+
+			Context("when too much memory is requested", func() {
+				BeforeEach(func() {
+					memory = 2048
+				})
+
+				It("returns a staging completed response with 'insufficient resources' error", func() {
+					err := natsClient.Publish(
+						"diego.staging.start",
+						stagingMessage,
+					)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
+					Ω(fakeCC.StagingResponses()[0]).Should(Equal(
+						cc_messages.StagingResponseForCC{
+							AppId:  appId,
+							TaskId: taskId,
+							Error:  "insufficient resources",
+						}))
+				})
+			})
 		})
 
 		Context("with two stagers running", func() {
@@ -405,7 +430,7 @@ EOF
 				helpers.StopProcesses(cell)
 			})
 
-			It("returns a staging completed response with 'insufficient resources' error", func() {
+			It("returns a staging completed response with 'found no compatible cell' error", func() {
 				err := natsClient.Publish(
 					"diego.staging.start",
 					stagingMessage,
@@ -417,7 +442,7 @@ EOF
 					cc_messages.StagingResponseForCC{
 						AppId:  appId,
 						TaskId: taskId,
-						Error:  "insufficient resources",
+						Error:  "found no compatible cell",
 					}))
 			})
 		})
