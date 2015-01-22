@@ -356,7 +356,7 @@ var _ = Describe("LRP", func() {
 				crashCount := func() int {
 					actual, err := receptorClient.ActualLRPByProcessGuidAndIndex(processGuid, 0)
 					Ω(err).ShouldNot(HaveOccurred())
-					return actual.CrashInfo.CrashCount
+					return actual.CrashCount
 				}
 				// the receptor immediately starts it 3 times
 				Eventually(crashCount).Should(Equal(3))
