@@ -71,16 +71,19 @@ var _ = Describe("AppRunner", func() {
 					fmt.Sprintf(
 						`
 						{
-			        "process_guid": "process-guid",
-			        "droplet_uri": "%s",
-				      "stack": "%s",
-			        "start_command": "bash server.sh",
-			        "num_instances": 3,
-			        "environment":[{"name":"VCAP_APPLICATION", "value":"{}"}],
-			        "routes": ["route-1", "route-2"],
-			        "log_guid": "%s"
-			      }
-			    `,
+							"process_guid": "process-guid",
+							"droplet_uri": "%s",
+							"stack": "%s",
+							"start_command": "bash server.sh",
+							"num_instances": 3,
+							"memory_mb": 256,
+							"disk_mb": 1024,
+							"file_descriptors": 16384,
+							"environment":[{"name":"VCAP_APPLICATION", "value":"{}"}],
+							"routes": ["route-1", "route-2"],
+							"log_guid": "%s"
+						}
+						`,
 						fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "droplet.zip"),
 						componentMaker.Stack,
 						appId,
@@ -110,15 +113,18 @@ var _ = Describe("AppRunner", func() {
 					fmt.Sprintf(
 						`
 						{
-			        "process_guid": "process-guid",
-			        "droplet_uri": "%s",
-				      "stack": "%s",
-			        "num_instances": 1,
-			        "environment":[{"name":"VCAP_APPLICATION", "value":"{}"}],
-			        "routes": ["route-1"],
-			        "log_guid": "%s"
-			      }
-			    `,
+							"process_guid": "process-guid",
+							"droplet_uri": "%s",
+							"stack": "%s",
+							"num_instances": 1,
+							"memory_mb": 256,
+							"disk_mb": 1024,
+							"file_descriptors": 16384,
+							"environment":[{"name":"VCAP_APPLICATION", "value":"{}"}],
+							"routes": ["route-1"],
+							"log_guid": "%s"
+						}
+						`,
 						fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "droplet.zip"),
 						componentMaker.Stack,
 						appId,
@@ -146,16 +152,19 @@ var _ = Describe("AppRunner", func() {
 					fmt.Sprintf(
 						`
 						{
-			        "process_guid": "process-guid",
-			        "droplet_uri": "%s",
-				      "stack": "%s",
-			        "start_command": "bash server.sh",
-			        "num_instances": 3,
-			        "environment":[{"name":"VCAP_APPLICATION", "value":"{}"}],
-			        "routes": ["route-1", "route-2"],
-			        "log_guid": "%s"
-			      }
-			    `,
+							"process_guid": "process-guid",
+							"droplet_uri": "%s",
+							"stack": "%s",
+							"start_command": "bash server.sh",
+							"num_instances": 3,
+							"environment":[{"name":"VCAP_APPLICATION", "value":"{}"}],
+							"memory_mb": 256,
+							"disk_mb": 1024,
+							"file_descriptors": 16384,
+							"routes": ["route-1", "route-2"],
+							"log_guid": "%s"
+						}
+						`,
 						fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "droplet.zip"),
 						componentMaker.Stack,
 						appId,
