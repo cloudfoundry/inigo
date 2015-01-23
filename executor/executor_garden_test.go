@@ -535,7 +535,7 @@ var _ = Describe("Executor/Garden", func() {
 							itFailsOnlyIfMonitoringSucceedsAndThenFails()
 						})
 
-						Context("while the action does not stop running ", func() {
+						Context("while the action does not stop running", func() {
 							BeforeEach(func() {
 								container.Action = &models.RunAction{
 									Path: "sh",
@@ -565,7 +565,6 @@ var _ = Describe("Executor/Garden", func() {
 								})
 							})
 						})
-
 					})
 
 					Context("after running succeeds", func() {
@@ -703,11 +702,14 @@ var _ = Describe("Executor/Garden", func() {
 					err := executorClient.StopContainer(guid)
 					Ω(err).ShouldNot(HaveOccurred())
 
+					var container executor.Container
 					Eventually(func() executor.State {
-						container, err := executorClient.GetContainer(guid)
+						container, err = executorClient.GetContainer(guid)
 						Ω(err).ShouldNot(HaveOccurred())
 						return container.State
 					}).Should(Equal(executor.StateCompleted))
+
+					Ω(container.RunResult.Stopped).Should(BeTrue())
 
 					_, err = gardenClient.Lookup(guid)
 					Ω(err).ShouldNot(HaveOccurred())
