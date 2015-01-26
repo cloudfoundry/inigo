@@ -135,7 +135,10 @@ EOF
 			)
 
 			Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
-			Ω(fakeCC.StagingResponses()[0].Error).Should(Equal("staging failed"))
+			Ω(fakeCC.StagingResponses()[0].Error).Should(Equal(&cc_messages.StagingError{
+				Id:      cc_messages.STAGING_ERROR,
+				Message: "staging failed",
+			}))
 		})
 	})
 
@@ -145,7 +148,7 @@ EOF
 		var stagingMessage []byte
 		var buildpacksToUse string
 
-		createBuildpacks := func(name, key, buildpackPath string) (string, string) {
+		createBuildpack := func(name, key, buildpackPath string) (string, string) {
 			u := urljoiner.Join("http://"+componentMaker.Addresses.FileServer+"/v1/static", buildpackPath)
 			if name == cc_messages.CUSTOM_BUILDPACK {
 				key = u
@@ -154,7 +157,7 @@ EOF
 		}
 
 		BeforeEach(func() {
-			buildpacksToUse, _ = createBuildpacks("test-buildpack", "test-buildpack-key", buildpack_zip)
+			buildpacksToUse, _ = createBuildpack("test-buildpack", "test-buildpack-key", buildpack_zip)
 			outputGuid = factories.GenerateGuid()
 			memory = 128
 
@@ -223,7 +226,7 @@ EOF
 			stageWith := func(buildpackName, buildpackKey, buildpackPath string) {
 				Context("when compilation succeeds with: "+buildpackKey, func() {
 					BeforeEach(func() {
-						buildpacksToUse, buildpackKey = createBuildpacks(buildpackName, buildpackKey, buildpackPath)
+						buildpacksToUse, buildpackKey = createBuildpack(buildpackName, buildpackKey, buildpackPath)
 					})
 
 					It("runs the compiler on the executor with the correct environment variables and bits, and responds with the detected buildpack", func() {
@@ -360,12 +363,12 @@ EOF
 				stageWith(cc_messages.CUSTOM_BUILDPACK, "git-buildpack", "buildpack/.git")
 			})
 
-			Context("when compilation fails", func() {
+			Context("when no detected buildpack present", func() {
 				BeforeEach(func() {
-					buildpacksToUse, _ = createBuildpacks("busted-test-buildpack", "busted-test-buildpack-key", busted_buildpack_zip)
+					buildpacksToUse, _ = createBuildpack("busted-test-buildpack", "busted-test-buildpack-key", busted_buildpack_zip)
 				})
 
-				It("responds with the error, and no detected buildpack present", func() {
+				It("responds with the error", func() {
 					err := natsClient.Publish("diego.staging.start", stagingMessage)
 					Ω(err).ShouldNot(HaveOccurred())
 
@@ -374,7 +377,10 @@ EOF
 						cc_messages.StagingResponseForCC{
 							AppId:  appId,
 							TaskId: taskId,
-							Error:  "staging failed",
+							Error: &cc_messages.StagingError{
+								Id:      cc_messages.STAGING_ERROR,
+								Message: "staging failed",
+							},
 						}))
 				})
 			})
@@ -396,7 +402,10 @@ EOF
 						cc_messages.StagingResponseForCC{
 							AppId:  appId,
 							TaskId: taskId,
-							Error:  "insufficient resources",
+							Error: &cc_messages.StagingError{
+								Id:      cc_messages.INSUFFICIENT_RESOURCES,
+								Message: "insufficient resources",
+							},
 						}))
 				})
 			})
@@ -442,7 +451,10 @@ EOF
 					cc_messages.StagingResponseForCC{
 						AppId:  appId,
 						TaskId: taskId,
-						Error:  "found no compatible cell",
+						Error: &cc_messages.StagingError{
+							Id:      cc_messages.NO_COMPATIBLE_CELL,
+							Message: "found no compatible cell",
+						},
 					}))
 			})
 		})
