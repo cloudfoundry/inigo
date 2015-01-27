@@ -171,6 +171,7 @@ func (maker ComponentMaker) Rep(argv ...string) ifrit.Runner {
 					"-executorURL", "http://" + maker.Addresses.Executor,
 					"-heartbeatInterval", "1s",
 					"-pollingInterval", "1s",
+					"-evacuationTimeout", "1s",
 				},
 				argv...,
 			)...,
