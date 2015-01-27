@@ -88,9 +88,11 @@ var _ = Describe("Executor/Garden", func() {
 		}
 	}
 
-	containerEventPoller := func(events <-chan executor.Event, event *executor.Event) func() executor.EventType {
+	containerEventPoller := func(eventSource executor.EventSource, event *executor.Event) func() executor.EventType {
 		return func() executor.EventType {
-			Eventually(events).Should(Receive(event))
+			var err error
+			*event, err = eventSource.Next()
+			Ω(err).ShouldNot(HaveOccurred())
 			return (*event).EventType()
 		}
 	}
@@ -378,15 +380,19 @@ var _ = Describe("Executor/Garden", func() {
 
 			Describe("running it", func() {
 				var runErr error
-				var events <-chan executor.Event
+				var eventSource executor.EventSource
 
 				JustBeforeEach(func() {
 					var err error
 
-					events, err = executorClient.SubscribeToEvents()
+					eventSource, err = executorClient.SubscribeToEvents()
 					Ω(err).ShouldNot(HaveOccurred())
 
 					runErr = executorClient.RunContainer(guid)
+				})
+
+				AfterEach(func() {
+					eventSource.Close()
 				})
 
 				Context("when the container can be created", func() {
@@ -433,7 +439,7 @@ var _ = Describe("Executor/Garden", func() {
 					Context("when listening for events", func() {
 						It("emits a completed container event on completion", func() {
 							var event executor.Event
-							Eventually(containerEventPoller(events, &event), 5).Should(Equal(executor.EventTypeContainerComplete))
+							Eventually(containerEventPoller(eventSource, &event), 5).Should(Equal(executor.EventTypeContainerComplete))
 
 							completeEvent := event.(executor.ContainerCompleteEvent)
 							Ω(completeEvent.Container().State).Should(Equal(executor.StateCompleted))
@@ -444,7 +450,11 @@ var _ = Describe("Executor/Garden", func() {
 							It("exits and ends the event stream", func() {
 								process.Signal(os.Interrupt)
 
-								Eventually(events, 5).Should(BeClosed())
+								Eventually(func() error {
+									_, err := eventSource.Next()
+									return err
+								}).Should(Equal(io.EOF))
+
 								Eventually(process.Wait(), 5).Should(Receive(BeNil()))
 							})
 						})
@@ -475,7 +485,7 @@ var _ = Describe("Executor/Garden", func() {
 
 								It("emits a running container event", func() {
 									var event executor.Event
-									Eventually(containerEventPoller(events, &event), 5).Should(Equal(executor.EventTypeContainerRunning))
+									Eventually(containerEventPoller(eventSource, &event), 5).Should(Equal(executor.EventTypeContainerRunning))
 								})
 
 								It("reports the state as 'running'", func() {
@@ -598,7 +608,7 @@ var _ = Describe("Executor/Garden", func() {
 						Context("when listening for events", func() {
 							It("emits a completed container event", func() {
 								var event executor.Event
-								Eventually(containerEventPoller(events, &event), 5).Should(Equal(executor.EventTypeContainerComplete))
+								Eventually(containerEventPoller(eventSource, &event), 5).Should(Equal(executor.EventTypeContainerComplete))
 
 								completeEvent := event.(executor.ContainerCompleteEvent)
 								Ω(completeEvent.Container().State).Should(Equal(executor.StateCompleted))
