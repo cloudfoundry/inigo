@@ -55,8 +55,8 @@ var _ = Describe("AppRunner", func() {
 		)
 
 		helpers.Copy(
-			componentMaker.Artifacts.Circuses[componentMaker.Stack],
-			filepath.Join(fileServerStaticDir, world.CircusFilename),
+			componentMaker.Artifacts.Lifecycles[componentMaker.Stack],
+			filepath.Join(fileServerStaticDir, world.LifecycleFilename),
 		)
 	})
 

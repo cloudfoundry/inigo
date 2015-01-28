@@ -35,9 +35,8 @@ var (
 
 var _ = SynchronizedBeforeSuite(func() []byte {
 	payload, err := json.Marshal(world.BuiltArtifacts{
-		Executables:  CompileTestedExecutables(),
-		Circuses:     CompileAndZipUpCircuses(),
-		DockerCircus: CompileAndZipUpDockerCircus(),
+		Executables: CompileTestedExecutables(),
+		Lifecycles:  CompileAndZipUpLifecycles(),
 	})
 	Ω(err).ShouldNot(HaveOccurred())
 
@@ -136,70 +135,38 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	return builtExecutables
 }
 
-func CompileAndZipUpCircuses() world.BuiltCircuses {
-	builtCircuses := world.BuiltCircuses{}
+func CompileAndZipUpLifecycles() world.BuiltLifecycles {
+	builtLifecycles := world.BuiltLifecycles{}
 
-	tailorPath, err := gexec.BuildIn(os.Getenv("LINUX_CIRCUS_GOPATH"), "github.com/cloudfoundry-incubator/linux-circus/tailor", "-race")
+	builderPath, err := gexec.BuildIn(os.Getenv("BUILDPACK_APP_LIFECYCLE_GOPATH"), "github.com/cloudfoundry-incubator/buildpack_app_lifecycle/builder", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
-	spyPath, err := gexec.BuildIn(os.Getenv("LINUX_CIRCUS_GOPATH"), "github.com/cloudfoundry-incubator/linux-circus/spy", "-race")
+	healthcheckPath, err := gexec.BuildIn(os.Getenv("BUILDPACK_APP_LIFECYCLE_GOPATH"), "github.com/cloudfoundry-incubator/buildpack_app_lifecycle/healthcheck", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
-	soldierPath, err := gexec.BuildIn(os.Getenv("LINUX_CIRCUS_GOPATH"), "github.com/cloudfoundry-incubator/linux-circus/soldier", "-race")
+	launcherPath, err := gexec.BuildIn(os.Getenv("BUILDPACK_APP_LIFECYCLE_GOPATH"), "github.com/cloudfoundry-incubator/buildpack_app_lifecycle/launcher", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
-	circusDir, err := ioutil.TempDir("", "circus-dir")
+	lifecycleDir, err := ioutil.TempDir("", "lifecycle-dir")
 	Ω(err).ShouldNot(HaveOccurred())
 
-	err = os.Rename(tailorPath, filepath.Join(circusDir, "tailor"))
+	err = os.Rename(builderPath, filepath.Join(lifecycleDir, "builder"))
 	Ω(err).ShouldNot(HaveOccurred())
 
-	err = os.Rename(spyPath, filepath.Join(circusDir, "spy"))
+	err = os.Rename(healthcheckPath, filepath.Join(lifecycleDir, "healthcheck"))
 	Ω(err).ShouldNot(HaveOccurred())
 
-	err = os.Rename(soldierPath, filepath.Join(circusDir, "soldier"))
+	err = os.Rename(launcherPath, filepath.Join(lifecycleDir, "launcher"))
 	Ω(err).ShouldNot(HaveOccurred())
 
-	cmd := exec.Command("zip", "-v", "circus.zip", "tailor", "soldier", "spy")
+	cmd := exec.Command("zip", "-v", "lifecycle.zip", "builder", "launcher", "healthcheck")
 	cmd.Stderr = GinkgoWriter
 	cmd.Stdout = GinkgoWriter
-	cmd.Dir = circusDir
+	cmd.Dir = lifecycleDir
 	err = cmd.Run()
 	Ω(err).ShouldNot(HaveOccurred())
 
-	builtCircuses[helpers.StackName] = filepath.Join(circusDir, "circus.zip")
+	builtLifecycles[helpers.StackName] = filepath.Join(lifecycleDir, "lifecycle.zip")
 
-	return builtCircuses
-}
-
-func CompileAndZipUpDockerCircus() string {
-	tailorPath, err := gexec.BuildIn(os.Getenv("DOCKER_CIRCUS_GOPATH"), "github.com/cloudfoundry-incubator/docker-circus/tailor", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	spyPath, err := gexec.BuildIn(os.Getenv("DOCKER_CIRCUS_GOPATH"), "github.com/cloudfoundry-incubator/docker-circus/spy", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	soldierPath, err := gexec.BuildIn(os.Getenv("DOCKER_CIRCUS_GOPATH"), "github.com/cloudfoundry-incubator/docker-circus/soldier", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	circusDir, err := ioutil.TempDir("", "circus-dir")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	err = os.Rename(tailorPath, filepath.Join(circusDir, "tailor"))
-	Ω(err).ShouldNot(HaveOccurred())
-
-	err = os.Rename(spyPath, filepath.Join(circusDir, "spy"))
-	Ω(err).ShouldNot(HaveOccurred())
-
-	err = os.Rename(soldierPath, filepath.Join(circusDir, "soldier"))
-	Ω(err).ShouldNot(HaveOccurred())
-
-	cmd := exec.Command("zip", "-v", "docker-circus.zip", "tailor", "soldier", "spy")
-	cmd.Stderr = GinkgoWriter
-	cmd.Stdout = GinkgoWriter
-	cmd.Dir = circusDir
-	err = cmd.Run()
-	Ω(err).ShouldNot(HaveOccurred())
-
-	return filepath.Join(circusDir, "docker-circus.zip")
+	return builtLifecycles
 }

@@ -30,15 +30,13 @@ import (
 )
 
 type BuiltExecutables map[string]string
-type BuiltCircuses map[string]string
+type BuiltLifecycles map[string]string
 
-const CircusFilename = "some-circus.zip"
-const DockerCircusFilename = "docker-circus.zip"
+const LifecycleFilename = "some-lifecycle.zip"
 
 type BuiltArtifacts struct {
-	Executables  BuiltExecutables
-	Circuses     BuiltCircuses
-	DockerCircus string
+	Executables BuiltExecutables
+	Lifecycles  BuiltLifecycles
 }
 
 type ComponentAddresses struct {
@@ -259,8 +257,8 @@ func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 				"-etcdCluster", "http://" + maker.Addresses.Etcd,
 				"-natsAddresses", maker.Addresses.NATS,
-				"-circuses", fmt.Sprintf(`{"%s": "%s"}`, maker.Stack, CircusFilename),
-				"-dockerCircusPath", DockerCircusFilename,
+				"-lifecycles", fmt.Sprintf(`{"%s": "%s"}`, maker.Stack, LifecycleFilename),
+				"-dockerLifecyclePath", "unused",
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,
 			}, argv...)...,
 		),
@@ -377,7 +375,7 @@ func (maker ComponentMaker) StagerN(portOffset int, argv ...string) ifrit.Runner
 				"-ccBaseURL", "http://" + maker.Addresses.FakeCC,
 				"-ccUsername", fake_cc.CC_USERNAME,
 				"-ccPassword", fake_cc.CC_PASSWORD,
-				"-circuses", fmt.Sprintf(`{"%s": "%s"}`, maker.Stack, CircusFilename),
+				"-lifecycles", fmt.Sprintf(`{"%s": "%s"}`, maker.Stack, LifecycleFilename),
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 				"-stagerURL", fmt.Sprintf("http://127.0.0.1:%d", offsetPort(port, portOffset)),
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,

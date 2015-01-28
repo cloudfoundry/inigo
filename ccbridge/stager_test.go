@@ -129,7 +129,7 @@ EOF
 					"build_artifacts_cache_download_uri": "artifacts-download-uri",
 					"build_artifacts_cache_upload_uri": "%s",
 					"droplet_upload_uri": "%s",
-					"stack": "no-circus"
+					"stack": "no-lifecycle"
 				}`, appId, taskId,
 					buildArtifactsUploadUri, dropletUploadUri)),
 			)
@@ -162,8 +162,8 @@ EOF
 			memory = 128
 
 			helpers.Copy(
-				componentMaker.Artifacts.Circuses[componentMaker.Stack],
-				filepath.Join(fileServerStaticDir, world.CircusFilename),
+				componentMaker.Artifacts.Lifecycles[componentMaker.Stack],
+				filepath.Join(fileServerStaticDir, world.LifecycleFilename),
 			)
 
 			//make and upload an app
