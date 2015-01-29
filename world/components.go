@@ -97,15 +97,19 @@ func (maker ComponentMaker) Etcd(argv ...string) ifrit.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "etcd",
 		AnsiColorCode:     "31m",
-		StartCheck:        "leader changed",
+		StartCheck:        "etcdserver: published",
 		StartCheckTimeout: 5 * time.Second,
 		Command: exec.Command(
 			"etcd",
 			append([]string{
-				"-data-dir", dataDir,
-				"-addr", maker.Addresses.Etcd,
-				"-peer-addr", maker.Addresses.EtcdPeer,
-				"-name", nodeName,
+				"--name", nodeName,
+				"--data-dir", dataDir,
+				"--listen-client-urls", "http://" + maker.Addresses.Etcd,
+				"--listen-peer-urls", "http://" + maker.Addresses.EtcdPeer,
+				"--initial-cluster", nodeName + "=" + "http://" + maker.Addresses.EtcdPeer,
+				"--initial-advertise-peer-urls", "http://" + maker.Addresses.EtcdPeer,
+				"--initial-cluster-state", "new",
+				"--advertise-client-urls", "http://" + maker.Addresses.Etcd,
 			}, argv...)...,
 		),
 		Cleanup: func() {
