@@ -32,7 +32,7 @@ import (
 type BuiltExecutables map[string]string
 type BuiltLifecycles map[string]string
 
-const LifecycleFilename = "some-lifecycle.zip"
+const LifecycleFilename = "some-lifecycle.tar.gz"
 
 type BuiltArtifacts struct {
 	Executables BuiltExecutables

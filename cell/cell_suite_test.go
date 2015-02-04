@@ -38,7 +38,7 @@ var (
 var _ = SynchronizedBeforeSuite(func() []byte {
 	payload, err := json.Marshal(world.BuiltArtifacts{
 		Executables: CompileTestedExecutables(),
-		Lifecycles:  CompileAndZipUpLifecycles(),
+		Lifecycles:  BuildLifecycles(),
 	})
 	Ω(err).ShouldNot(HaveOccurred())
 
@@ -141,7 +141,7 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	return builtExecutables
 }
 
-func CompileAndZipUpLifecycles() world.BuiltLifecycles {
+func BuildLifecycles() world.BuiltLifecycles {
 	builtLifecycles := world.BuiltLifecycles{}
 
 	builderPath, err := gexec.BuildIn(os.Getenv("BUILDPACK_APP_LIFECYCLE_GOPATH"), "github.com/cloudfoundry-incubator/buildpack_app_lifecycle/builder", "-race")
@@ -165,14 +165,14 @@ func CompileAndZipUpLifecycles() world.BuiltLifecycles {
 	err = os.Rename(launcherPath, filepath.Join(lifecycleDir, "launcher"))
 	Ω(err).ShouldNot(HaveOccurred())
 
-	cmd := exec.Command("zip", "-v", "lifecycle.zip", "builder", "launcher", "healthcheck")
+	cmd := exec.Command("tar", "-czf", "lifecycle.tar.gz", "builder", "launcher", "healthcheck")
 	cmd.Stderr = GinkgoWriter
 	cmd.Stdout = GinkgoWriter
 	cmd.Dir = lifecycleDir
 	err = cmd.Run()
 	Ω(err).ShouldNot(HaveOccurred())
 
-	builtLifecycles[helpers.StackName] = filepath.Join(lifecycleDir, "lifecycle.zip")
+	builtLifecycles[helpers.StackName] = filepath.Join(lifecycleDir, "lifecycle.tar.gz")
 
 	return builtLifecycles
 }
