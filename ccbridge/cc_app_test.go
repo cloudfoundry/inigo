@@ -75,7 +75,7 @@ var _ = Describe("AppRunner", func() {
 							"droplet_uri": "%s",
 							"stack": "%s",
 							"start_command": "bash server.sh",
-							"num_instances": 3,
+							"num_instances": 2,
 							"memory_mb": 256,
 							"disk_mb": 1024,
 							"file_descriptors": 16384,
@@ -95,7 +95,7 @@ var _ = Describe("AppRunner", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 
 				// check lrp instance statuses
-				Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, "process-guid")).Should(HaveLen(3))
+				Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, "process-guid")).Should(HaveLen(2))
 
 				//both routes should be routable
 				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-1")).Should(Equal(http.StatusOK))
@@ -103,7 +103,7 @@ var _ = Describe("AppRunner", func() {
 
 				//a given route should route to all three running instances
 				poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-1")
-				Eventually(poller).Should(Equal([]string{"0", "1", "2"}))
+				Eventually(poller).Should(Equal([]string{"0", "1"}))
 			})
 		})
 
@@ -156,7 +156,7 @@ var _ = Describe("AppRunner", func() {
 							"droplet_uri": "%s",
 							"stack": "%s",
 							"start_command": "bash server.sh",
-							"num_instances": 3,
+							"num_instances": 2,
 							"environment":[{"name":"VCAP_APPLICATION", "value":"{}"}],
 							"memory_mb": 256,
 							"disk_mb": 1024,
@@ -176,19 +176,19 @@ var _ = Describe("AppRunner", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 
 				// wait for intances to come up
-				Eventually(runningIndexPoller(componentMaker.Addresses.TPS, "process-guid")).Should(ConsistOf(0, 1, 2))
+				Eventually(runningIndexPoller(componentMaker.Addresses.TPS, "process-guid")).Should(ConsistOf(0, 1))
 			})
 
 			It("stops the app on the desired index, and then eventually starts it back up", func() {
-				stopMessage := []byte(`{"process_guid": "process-guid", "index": 1}`)
+				stopMessage := []byte(`{"process_guid": "process-guid", "index": 0}`)
 				err := natsClient.Publish("diego.stop.index", stopMessage)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				// wait for stop to take effect
-				Eventually(runningIndexPoller(componentMaker.Addresses.TPS, "process-guid")).Should(ConsistOf(0, 2))
+				Eventually(runningIndexPoller(componentMaker.Addresses.TPS, "process-guid")).Should(ConsistOf(1))
 
 				// wait for system to re-converge on desired state
-				Eventually(runningIndexPoller(componentMaker.Addresses.TPS, "process-guid")).Should(ConsistOf(0, 1, 2))
+				Eventually(runningIndexPoller(componentMaker.Addresses.TPS, "process-guid")).Should(ConsistOf(0, 1))
 			})
 		})
 	})
