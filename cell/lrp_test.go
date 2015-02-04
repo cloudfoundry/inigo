@@ -65,14 +65,20 @@ var _ = Describe("LRP", func() {
 		var lrp receptor.DesiredLRPCreateRequest
 
 		BeforeEach(func() {
+			routingInfo := &receptor.RoutingInfo{
+				CFRoutes: []receptor.CFRoute{
+					{Hostnames: []string{"lrp-route"}, Port: 8080},
+				},
+			}
+
 			lrp = receptor.DesiredLRPCreateRequest{
 				Domain:      INIGO_DOMAIN,
 				ProcessGuid: processGuid,
 				Instances:   1,
 				Stack:       componentMaker.Stack,
 
-				Routes: []string{"lrp-route"},
-				Ports:  []uint32{8080},
+				Routes: routingInfo,
+				Ports:  []uint16{8080},
 
 				Setup: &models.DownloadAction{
 					From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
@@ -362,7 +368,7 @@ var _ = Describe("Crashing LRPs", func() {
 					ProcessGuid: processGuid,
 					Instances:   1,
 					Stack:       componentMaker.Stack,
-					Ports:       []uint32{},
+					Ports:       []uint16{},
 
 					Action: &models.RunAction{
 						Path: "false",

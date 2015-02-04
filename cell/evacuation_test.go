@@ -57,7 +57,7 @@ var _ = Describe("Evacuation", func() {
 				ProcessGuid: processGuid,
 				Instances:   1,
 				Stack:       componentMaker.Stack,
-				Ports:       []uint32{},
+				Ports:       []uint16{},
 
 				Action: &models.RunAction{
 					Path: "true",

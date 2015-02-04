@@ -90,14 +90,20 @@ var _ = Describe("Privileges", func() {
 		var lrpRequest *receptor.DesiredLRPCreateRequest
 
 		BeforeEach(func() {
+			routingInfo := &receptor.RoutingInfo{
+				CFRoutes: []receptor.CFRoute{
+					{Hostnames: []string{"lrp-route"}, Port: 8080},
+				},
+			}
+
 			lrpRequest = &receptor.DesiredLRPCreateRequest{
 				Domain:      INIGO_DOMAIN,
 				ProcessGuid: factories.GenerateGuid(),
 				Instances:   1,
 				Stack:       componentMaker.Stack,
 
-				Routes: []string{"lrp-route"},
-				Ports:  []uint32{8080},
+				Routes: routingInfo,
+				Ports:  []uint16{8080},
 
 				Action: &models.RunAction{
 					Path: "bash",

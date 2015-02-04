@@ -37,6 +37,12 @@ var _ = Describe("Convergence to desired state", func() {
 	)
 
 	constructDesiredLRPRequest := func(numInstances int) receptor.DesiredLRPCreateRequest {
+		routingInfo := &receptor.RoutingInfo{
+			CFRoutes: []receptor.CFRoute{
+				{Hostnames: []string{"route-to-simple"}, Port: 8080},
+			},
+		}
+
 		return receptor.DesiredLRPCreateRequest{
 			Domain:      INIGO_DOMAIN,
 			Stack:       componentMaker.Stack,
@@ -44,8 +50,8 @@ var _ = Describe("Convergence to desired state", func() {
 			Instances:   numInstances,
 			LogGuid:     appId,
 
-			Routes: []string{"route-to-simple"},
-			Ports:  []uint32{8080},
+			Routes: routingInfo,
+			Ports:  []uint16{8080},
 
 			Setup: &models.DownloadAction{
 				From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),

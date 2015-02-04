@@ -156,7 +156,7 @@ var _ = Describe("Executor", func() {
 					Stack:       componentMaker.Stack,
 					MemoryMB:    128,
 					DiskMB:      1024,
-					Ports:       []uint32{8080},
+					Ports:       []uint16{8080},
 					Action: &models.RunAction{
 						Path: "sh",
 						Args: []string{
