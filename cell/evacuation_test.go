@@ -1,7 +1,8 @@
 package cell_test
 
 import (
-	"syscall"
+	"fmt"
+	"net/http"
 
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/receptor"
@@ -46,11 +47,15 @@ var _ = Describe("Evacuation", func() {
 
 	Context("when desiring new work", func() {
 		BeforeEach(func() {
-			rep.Signal(syscall.SIGUSR1)
+
+			resp, err := http.Post(fmt.Sprintf("http://%s/evacuate", componentMaker.Addresses.Rep), "text/html", nil)
+			Ω(err).ShouldNot(HaveOccurred())
+			resp.Body.Close()
+			Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
 			gRunner, ok := repRunner.(*ginkgomon.Runner)
 			Ω(ok).Should(BeTrue())
-			Eventually(gRunner.Buffer).Should(gbytes.Say("run-signaled.*user defined signal 1"))
+			Eventually(gRunner.Buffer).Should(gbytes.Say("evacuating-with-timeout.started"))
 
 			lrp := receptor.DesiredLRPCreateRequest{
 				Domain:      INIGO_DOMAIN,
@@ -68,7 +73,7 @@ var _ = Describe("Evacuation", func() {
 				},
 			}
 
-			err := receptorClient.CreateDesiredLRP(lrp)
+			err = receptorClient.CreateDesiredLRP(lrp)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
