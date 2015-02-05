@@ -9,7 +9,6 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/runtime-schema/cc_messages"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	"github.com/tedsuo/ifrit"
@@ -38,7 +37,9 @@ var _ = Describe("Convergence to desired state", func() {
 	)
 
 	constructDesiredLRPRequest := func(numInstances int) receptor.DesiredLRPCreateRequest {
-		routingInfo := cc_messages.NewRoutingInfo([]string{"route-to-simple"}, 8080)
+		routingInfo := receptor.CFRoutes{
+			{Hostnames: []string{"route-to-simple"}, Port: 8080},
+		}.RoutingInfo()
 
 		return receptor.DesiredLRPCreateRequest{
 			Domain:      INIGO_DOMAIN,

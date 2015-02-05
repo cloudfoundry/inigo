@@ -6,7 +6,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/runtime-schema/cc_messages"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	. "github.com/onsi/ginkgo"
@@ -91,7 +90,9 @@ var _ = Describe("Privileges", func() {
 		var lrpRequest *receptor.DesiredLRPCreateRequest
 
 		BeforeEach(func() {
-			routingInfo := cc_messages.NewRoutingInfo([]string{"lrp-route"}, 8080)
+			routingInfo := receptor.CFRoutes{
+				{Hostnames: []string{"lrp-route"}, Port: 8080},
+			}.RoutingInfo()
 
 			lrpRequest = &receptor.DesiredLRPCreateRequest{
 				Domain:      INIGO_DOMAIN,
