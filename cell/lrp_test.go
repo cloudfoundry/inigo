@@ -11,6 +11,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 	"github.com/cloudfoundry-incubator/runtime-schema/diego_errors"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
@@ -65,7 +66,7 @@ var _ = Describe("LRP", func() {
 		var lrp receptor.DesiredLRPCreateRequest
 
 		BeforeEach(func() {
-			routingInfo := receptor.CFRoutes{
+			routingInfo := cfroutes.CFRoutes{
 				{Hostnames: []string{"lrp-route"}, Port: 8080},
 			}.RoutingInfo()
 
