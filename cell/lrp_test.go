@@ -16,6 +16,8 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
+	"github.com/pivotal-golang/lager"
+	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -66,17 +68,13 @@ var _ = Describe("LRP", func() {
 		var lrp receptor.DesiredLRPCreateRequest
 
 		BeforeEach(func() {
-			routingInfo := cfroutes.CFRoutes{
-				{Hostnames: []string{"lrp-route"}, Port: 8080},
-			}.RoutingInfo()
-
 			lrp = receptor.DesiredLRPCreateRequest{
 				Domain:      INIGO_DOMAIN,
 				ProcessGuid: processGuid,
 				Instances:   1,
 				Stack:       componentMaker.Stack,
 
-				Routes: routingInfo,
+				Routes: cfroutes.CFRoutes{{Port: 8080, Hostnames: []string{"lrp-route"}}}.RoutingInfo(),
 				Ports:  []uint16{8080},
 
 				Setup: &models.DownloadAction{
@@ -133,6 +131,59 @@ var _ = Describe("LRP", func() {
 				Eventually(
 					helpers.LRPStatePoller(receptorClient, processGuid, &actualLRP),
 				).Should(Equal(receptor.ActualLRPStateCrashed))
+			})
+		})
+
+		Describe("updating routes", func() {
+			BeforeEach(func() {
+				lrp.Ports = []uint16{8080, 9080}
+				lrp.Routes = cfroutes.CFRoutes{{Port: 8080, Hostnames: []string{"lrp-route-8080"}}}.RoutingInfo()
+
+				lrp.Action = &models.RunAction{
+					Path: "bash",
+					Args: []string{"server.sh"},
+					Env:  []models.EnvironmentVariable{{"PORT", "8080 9080"}},
+				}
+			})
+
+			It("can not access routes associated with port 9080", func() {
+				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route-8080")).Should(Equal(http.StatusOK))
+				Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route-8080")).Should(Equal(http.StatusOK))
+				Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route-9080")).Should(Equal(http.StatusNotFound))
+			})
+
+			Context("when adding a route", func() {
+				logger := lagertest.NewTestLogger("test")
+
+				JustBeforeEach(func() {
+					logger.Info("just-before-each", lager.Data{
+						"processGuid": processGuid,
+						"updateRequest": receptor.DesiredLRPUpdateRequest{
+							Routes: cfroutes.CFRoutes{
+								{Port: 8080, Hostnames: []string{"lrp-route-8080"}},
+								{Port: 9080, Hostnames: []string{"lrp-route-9080"}},
+							}.RoutingInfo(),
+						},
+					})
+					err := receptorClient.UpdateDesiredLRP(processGuid, receptor.DesiredLRPUpdateRequest{
+						Routes: cfroutes.CFRoutes{
+							{Port: 8080, Hostnames: []string{"lrp-route-8080"}},
+							{Port: 9080, Hostnames: []string{"lrp-route-9080"}},
+						}.RoutingInfo(),
+					})
+					logger.Info("after-update-desired", lager.Data{
+						"error": err,
+					})
+					Ω(err).ShouldNot(HaveOccurred())
+				})
+
+				It("can not access routes associated with port 9090", func() {
+					Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route-8080")).Should(Equal(http.StatusOK))
+					Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route-8080")).Should(Equal(http.StatusOK))
+
+					Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route-9080")).Should(Equal(http.StatusOK))
+					Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route-9080")).Should(Equal(http.StatusOK))
+				})
 			})
 		})
 

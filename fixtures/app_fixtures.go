@@ -46,17 +46,25 @@ index=${INSTANCE_INDEX}
 
 echo "Hello World from index '${index}'"
 
-mkfifo request
+server() {
+	mkfifo request$1
 
-while true; do
-	{
-		read < request
+	while true; do
+		{
+			read < request$1
 
-		echo -n -e "HTTP/1.1 200 OK\r\n"
-		echo -n -e "Content-Length: ${#index}\r\n\r\n"
-		echo -n -e "${index}"
-	} | nc -l 0.0.0.0 $PORT > request;
+			echo -n -e "HTTP/1.1 200 OK\r\n"
+			echo -n -e "Content-Length: ${#index}\r\n\r\n"
+			echo -n -e "${index}"
+		} | nc -l 0.0.0.0 $1 > request$1;
+	done
+}
+
+for port in $PORT; do
+  server $port &
 done
+
+wait
 `,
 		},
 	}
