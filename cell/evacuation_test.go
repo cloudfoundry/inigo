@@ -55,7 +55,7 @@ var _ = Describe("Evacuation", func() {
 
 			gRunner, ok := repRunner.(*ginkgomon.Runner)
 			Ω(ok).Should(BeTrue())
-			Eventually(gRunner.Buffer).Should(gbytes.Say("evacuating-with-timeout.started"))
+			Eventually(gRunner.Buffer).Should(gbytes.Say("evacuating.started"))
 
 			lrp := receptor.DesiredLRPCreateRequest{
 				Domain:      INIGO_DOMAIN,
