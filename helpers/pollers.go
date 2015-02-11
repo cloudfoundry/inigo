@@ -37,8 +37,23 @@ func LRPStatePoller(receptorClient receptor.Client, processGuid string, lrp *rec
 			return receptor.ActualLRPStateInvalid
 		}
 
-		*lrp = lrps[0]
+		if lrp != nil {
+			*lrp = lrps[0]
+		}
 
-		return lrp.State
+		return lrps[0].State
+	}
+}
+
+func LRPInstanceStatePoller(receptorClient receptor.Client, processGuid string, index int, lrp *receptor.ActualLRPResponse) func() receptor.ActualLRPState {
+	return func() receptor.ActualLRPState {
+		lrpInstance, err := receptorClient.ActualLRPByProcessGuidAndIndex(processGuid, index)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		if lrp != nil {
+			*lrp = lrpInstance
+		}
+
+		return lrpInstance.State
 	}
 }
