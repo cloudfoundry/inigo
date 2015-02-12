@@ -35,7 +35,14 @@ var _ = Describe("Executor/Garden", func() {
 		runner               *ginkgomon.Runner
 		gardenCapacity       garden.Capacity
 		exportNetworkEnvVars bool
+		cachePath            string
 	)
+
+	BeforeEach(func() {
+		var err error
+		cachePath, err = ioutil.TempDir("", "executor-tmp")
+		Ω(err).ShouldNot(HaveOccurred())
+	})
 
 	JustBeforeEach(func() {
 		var err error
@@ -45,6 +52,7 @@ var _ = Describe("Executor/Garden", func() {
 			"-healthyMonitoringInterval", "1s",
 			"-unhealthyMonitoringInterval", "100ms",
 			"-exportNetworkEnvVars="+strconv.FormatBool(exportNetworkEnvVars),
+			"-cachePath", cachePath,
 		)
 
 		executorClient = componentMaker.ExecutorClient()
@@ -57,6 +65,8 @@ var _ = Describe("Executor/Garden", func() {
 		if process != nil {
 			ginkgomon.Kill(process)
 		}
+
+		os.RemoveAll(cachePath)
 	})
 
 	generateGuid := func() string {
@@ -111,48 +121,51 @@ var _ = Describe("Executor/Garden", func() {
 	}
 
 	Describe("starting up", func() {
-		var workingDir string
+		BeforeEach(func() {
+			os.RemoveAll(cachePath)
+		})
 
 		JustBeforeEach(func() {
 			runner.StartCheck = ""
 			process = ginkgomon.Invoke(runner)
 		})
 
-		BeforeEach(func() {
-			workingDir = filepath.Join(componentMaker.ExecutorTmpDir, "executor-work")
-			os.RemoveAll(workingDir)
-		})
-
-		Context("when the working directory exists and contains files", func() {
+		Context("when the cache directory exists and contains files", func() {
 			BeforeEach(func() {
-				err := os.MkdirAll(workingDir, 0755)
+				err := os.MkdirAll(cachePath, 0755)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				err = ioutil.WriteFile(filepath.Join(workingDir, "should-get-deleted"), []byte("some-contents"), 0755)
+				err = ioutil.WriteFile(filepath.Join(cachePath, "should-get-deleted"), []byte("some-contents"), 0755)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
-			It("cleans up its working directory", func() {
-				Eventually(func() bool {
-					files, err := ioutil.ReadDir(workingDir)
+			It("clears it out", func() {
+				Eventually(func() []string {
+					files, err := ioutil.ReadDir(cachePath)
 					if err != nil {
-						return false
+						return nil
 					}
-					return len(files) == 0
-				}).Should(BeTrue())
+
+					filenames := make([]string, len(files))
+					for i := 0; i < len(files); i++ {
+						filenames[i] = files[i].Name()
+					}
+
+					return filenames
+				}, 10*time.Second).Should(BeEmpty())
 			})
 		})
 
-		Context("when the working directory doesn't exist", func() {
-			It("creates a new working directory", func() {
+		Context("when the cache directory doesn't exist", func() {
+			It("creates a new cache directory", func() {
 				Eventually(func() bool {
-					workingDirInfo, err := os.Stat(workingDir)
+					dirInfo, err := os.Stat(cachePath)
 					if err != nil {
 						return false
 					}
 
-					return workingDirInfo.IsDir()
-				}).Should(BeTrue())
+					return dirInfo.IsDir()
+				}, 10*time.Second).Should(BeTrue())
 			})
 		})
 
