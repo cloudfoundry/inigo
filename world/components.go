@@ -67,8 +67,6 @@ type ComponentMaker struct {
 	GardenBinPath    string
 	GardenRootFSPath string
 	GardenGraphPath  string
-
-	ExecutorTmpDir string
 }
 
 func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
@@ -132,7 +130,10 @@ func (maker ComponentMaker) GardenLinux(argv ...string) *gardenrunner.Runner {
 }
 
 func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
-	cachePath := path.Join(maker.ExecutorTmpDir, "cache")
+	tmpDir, err := ioutil.TempDir(os.TempDir(), "executor")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	cachePath := path.Join(tmpDir, "cache")
 
 	return ginkgomon.New(ginkgomon.Config{
 		Name:          "executor",
@@ -148,13 +149,17 @@ func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
 				"-gardenAddr", maker.Addresses.GardenLinux,
 				"-containerMaxCpuShares", "1024",
 				"-cachePath", cachePath,
-				"-tempDir", maker.ExecutorTmpDir,
+				"-tempDir", tmpDir,
 			}, argv...)...,
 		),
+		Cleanup: func() {
+			err := os.RemoveAll(tmpDir)
+			Ω(err).ShouldNot(HaveOccurred())
+		},
 	})
 }
 
-func (maker ComponentMaker) Rep(argv ...string) ifrit.Runner {
+func (maker ComponentMaker) Rep(argv ...string) *ginkgomon.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:          "rep",
 		AnsiColorCode: "92m",
@@ -173,6 +178,7 @@ func (maker ComponentMaker) Rep(argv ...string) ifrit.Runner {
 					"-executorURL", "http://" + maker.Addresses.Executor,
 					"-heartbeatInterval", "1s",
 					"-pollingInterval", "1s",
+					"-evacuationPollingInterval", "1s",
 					"-evacuationTimeout", "1s",
 				},
 				argv...,

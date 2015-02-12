@@ -3,10 +3,8 @@ package helpers
 import (
 	"fmt"
 	"os"
-	"path"
 
 	"github.com/cloudfoundry-incubator/inigo/world"
-	"github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-golang/localip"
@@ -59,6 +57,5 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts) world.ComponentMake
 		GardenBinPath:    gardenBinPath,
 		GardenRootFSPath: gardenRootFSPath,
 		GardenGraphPath:  gardenGraphPath,
-		ExecutorTmpDir:   path.Join(os.TempDir(), fmt.Sprintf("executor_%d", ginkgo.GinkgoParallelNode())),
 	}
 }
