@@ -153,8 +153,7 @@ func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
 			}, argv...)...,
 		),
 		Cleanup: func() {
-			err := os.RemoveAll(tmpDir)
-			Ω(err).ShouldNot(HaveOccurred())
+			os.RemoveAll(tmpDir)
 		},
 	})
 }
