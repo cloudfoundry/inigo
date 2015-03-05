@@ -440,68 +440,6 @@ echo should have died by now
 		})
 	})
 
-	Describe("Running a privileged command", func() {
-		var guid string
-		var executorClient executor.Client
-
-		BeforeEach(func() {
-			guid = factories.GenerateGuid()
-
-			env := []models.EnvironmentVariable{
-				{"FOO", "OLD-BAR"},
-				{"BAZ", "WIBBLE"},
-				{"FOO", "NEW-BAR"},
-			}
-
-			taskRequest := receptor.TaskCreateRequest{
-				Domain:   INIGO_DOMAIN,
-				TaskGuid: guid,
-				Stack:    componentMaker.Stack,
-				Action: &models.RunAction{
-					Path:       "sh",
-					Args:       []string{"-c", "while true; do sleep 1; done"},
-					Env:        env,
-					Privileged: true,
-				},
-			}
-
-			err := receptorClient.CreateTask(taskRequest)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			executorClient = componentMaker.ExecutorClient()
-		})
-
-		It("creates a container with a privileged run action", func() {
-			Eventually(func() bool {
-				container, err := executorClient.GetContainer(guid)
-				if err != nil {
-					return false
-				}
-
-				if action, ok := container.Action.(*models.RunAction); ok {
-					return action.Privileged
-				}
-
-				return false
-			}).Should(BeTrue())
-		})
-
-		It("correctly marshals the privileged flag back when querying the task through the receptor", func() {
-			Eventually(func() bool {
-				taskResponse, err := receptorClient.GetTask(guid)
-				if err != nil {
-					return false
-				}
-
-				if action, ok := taskResponse.Action.(*models.RunAction); ok {
-					return action.Privileged
-				}
-
-				return false
-			}).Should(BeTrue())
-		})
-	})
-
 	Describe("Running a downloaded file", func() {
 		var guid string
 
