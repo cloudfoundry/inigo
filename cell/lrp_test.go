@@ -64,6 +64,49 @@ var _ = Describe("LRP", func() {
 		helpers.StopProcesses(runtime)
 	})
 
+	FDescribe("volume sets", func() {
+		var volSet receptor.VolumeSetCreateRequest
+		BeforeEach(func() {
+			volSet = receptor.VolumeSetCreateRequest{
+				VolumeSetGuid:    factories.GenerateGuid(),
+				Instances:        2,
+				Stack:            componentMaker.Stack,
+				SizeMB:           10,
+				ReservedMemoryMB: 10,
+			}
+		})
+
+		JustBeforeEach(func() {
+			err := receptorClient.CreateVolumeSet(volSet)
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		fetchVols := func() []receptor.VolumeResponse {
+			vols, err := receptorClient.VolumesByVolumeSetGuid(volSet.VolumeSetGuid)
+			Ω(err).ShouldNot(HaveOccurred())
+			return vols
+		}
+
+		volsRunning := func() bool {
+			vols := fetchVols()
+			Ω(vols).Should(HaveLen(2))
+			for i := range vols {
+				switch vols[i].State {
+				case receptor.VolumeStatePending:
+					return false
+				case receptor.VolumeStateFailed:
+					Fail(vols[i].PlacementError)
+				}
+			}
+			return true
+		}
+
+		It("eventually creates and runs the volumes", func() {
+			Eventually(fetchVols).Should(HaveLen(2))
+			Eventually(volsRunning).Should(BeTrue())
+		})
+	})
+
 	Describe("desiring", func() {
 		var lrp receptor.DesiredLRPCreateRequest
 

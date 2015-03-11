@@ -261,6 +261,71 @@ var _ = Describe("Executor/Garden", func() {
 			})
 		})
 
+		Describe("running a container with a persistent volume", func() {
+			FIt("lists created volumes", func() {
+				volumes := []executor.Volume{}
+				for i := 0; i < 6; i++ {
+					vol := executor.Volume{
+						VolumeSetGuid:    "vol-set-1",
+						VolumeGuid:       generateGuid(),
+						Index:            1,
+						SizeMB:           10,
+						ReservedMemoryMB: 128,
+					}
+					err := executorClient.CreateVolume(vol)
+					Ω(err).ShouldNot(HaveOccurred())
+					volumes = append(volumes, vol)
+				}
+
+				vols, err := executorClient.ListVolumes()
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(vols).Should(ConsistOf(volumes))
+			})
+
+			FIt("successfully creates a volume and binds it to a container", func() {
+				guid := generateGuid()
+				volID := generateGuid()
+				vol := executor.Volume{
+					VolumeSetGuid:    "vol-set-1",
+					VolumeGuid:       volID,
+					Index:            1,
+					SizeMB:           10,
+					ReservedMemoryMB: 128,
+				}
+				err := executorClient.CreateVolume(vol)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				container := executor.Container{
+					Guid: guid,
+					VolumeMount: &executor.VolumeMount{
+						VolumeGuid: volID,
+						Path:       "/media/persistent_volume",
+					},
+					Action: &models.RunAction{
+						Path: "touch",
+						Args: []string{"/media/persistent_volume/interesting_file"},
+					},
+				}
+
+				allocationErrorMap, err := executorClient.AllocateContainers([]executor.Container{container})
+				Ω(allocationErrorMap).Should(BeEmpty())
+				Ω(err).ShouldNot(HaveOccurred())
+
+				err = executorClient.RunContainer(guid)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				containers, err := executorClient.ListContainers(nil)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(containers).Should(HaveLen(1))
+
+				Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
+
+				container = getContainer(guid)
+				Ω(container.RunResult.Failed).Should(BeFalse())
+				Ω(container.RunResult.FailureReason).Should(BeEmpty())
+			})
+		})
+
 		Describe("allocating a container", func() {
 			var (
 				container executor.Container
