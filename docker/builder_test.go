@@ -75,7 +75,7 @@ var _ = Describe("Building", func() {
 		dockerRef = ""
 		dockerImageURL = ""
 		insecureDockerRegistries = ""
-		dockerDaemonExecutablePath = "./docker"
+		dockerDaemonExecutablePath = "/usr/bin/docker"
 
 		outputMetadataDir, err = ioutil.TempDir("", "building-result")
 		Ω(err).ShouldNot(HaveOccurred())
@@ -85,16 +85,26 @@ var _ = Describe("Building", func() {
 		fakeDockerRegistry = ghttp.NewServer()
 	})
 
+	dockerPidExists := func() bool {
+		_, err := os.Stat("/var/run/docker.pid")
+		return err == nil
+	}
+
 	AfterEach(func() {
+		Eventually(dockerPidExists).Should(BeFalse())
 		os.RemoveAll(outputMetadataDir)
 	})
 
 	JustBeforeEach(func() {
-		args := []string{"-dockerImageURL", dockerImageURL,
-			"-dockerRef", dockerRef,
-			"-dockerDaemonExecutablePath", dockerDaemonExecutablePath,
+		args := []string{"-dockerDaemonExecutablePath", dockerDaemonExecutablePath,
 			"-outputMetadataJSONFilename", outputMetadataJSONFilename}
 
+		if len(dockerImageURL) > 0 {
+			args = append(args, "-dockerImageURL", dockerImageURL)
+		}
+		if len(dockerRef) > 0 {
+			args = append(args, "-dockerRef", dockerRef)
+		}
 		if len(insecureDockerRegistries) > 0 {
 			args = append(args, "-insecureDockerRegistries", insecureDockerRegistries)
 		}
@@ -135,13 +145,13 @@ var _ = Describe("Building", func() {
 
 			It("should exit successfully", func() {
 				session := setupBuilder()
-				Eventually(session).Should(gexec.Exit(0))
+				Eventually(session, 10*time.Second).Should(gexec.Exit(0))
 			})
 
 			Describe("the json", func() {
 				It("should contain the execution metadata", func() {
 					session := setupBuilder()
-					Eventually(session).Should(gexec.Exit(0))
+					Eventually(session, 10*time.Second).Should(gexec.Exit(0))
 
 					result := resultJSON()
 
