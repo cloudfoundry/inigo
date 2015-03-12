@@ -302,8 +302,8 @@ var _ = Describe("Executor/Garden", func() {
 						Path:       "/media/persistent_volume",
 					},
 					Action: &models.RunAction{
-						Path: "touch",
-						Args: []string{"/media/persistent_volume/interesting_file"},
+						Path: "ls",
+						Args: []string{"/media/persistent_volume"},
 					},
 				}
 

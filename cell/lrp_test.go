@@ -66,13 +66,51 @@ var _ = Describe("LRP", func() {
 
 	FDescribe("volume sets", func() {
 		var volSet receptor.VolumeSetCreateRequest
+		var lrp receptor.DesiredLRPCreateRequest
+
 		BeforeEach(func() {
 			volSet = receptor.VolumeSetCreateRequest{
 				VolumeSetGuid:    factories.GenerateGuid(),
-				Instances:        2,
+				Instances:        1,
 				Stack:            componentMaker.Stack,
 				SizeMB:           10,
 				ReservedMemoryMB: 10,
+			}
+			lrp = receptor.DesiredLRPCreateRequest{
+				Domain:      INIGO_DOMAIN,
+				ProcessGuid: processGuid,
+				Instances:   1,
+				Stack:       componentMaker.Stack,
+				VolumeMount: &receptor.VolumeSetAttachment{
+					VolumeSetGuid: volSet.VolumeSetGuid,
+					Path:          "/data",
+				},
+				Routes: cfroutes.CFRoutes{{Port: 8080, Hostnames: []string{"lrp-route"}}}.RoutingInfo(),
+				Ports:  []uint16{8080},
+
+				Setup: &models.SerialAction{
+					Actions: []models.Action{
+						&models.DownloadAction{
+							From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+							To:   ".",
+						},
+						&models.RunAction{
+							Path: "ls",
+							Args: []string{"/data"},
+						},
+					},
+				},
+
+				Action: &models.RunAction{
+					Path: "bash",
+					Args: []string{"server.sh"},
+					Env:  []models.EnvironmentVariable{{"PORT", "8080"}},
+				},
+
+				Monitor: &models.RunAction{
+					Path: "touch",
+					Args: []string{"/data/some_file"},
+				},
 			}
 		})
 
@@ -89,7 +127,7 @@ var _ = Describe("LRP", func() {
 
 		volsRunning := func() bool {
 			vols := fetchVols()
-			Ω(vols).Should(HaveLen(2))
+			Ω(vols).Should(HaveLen(1))
 			for i := range vols {
 				switch vols[i].State {
 				case receptor.VolumeStatePending:
@@ -101,9 +139,20 @@ var _ = Describe("LRP", func() {
 			return true
 		}
 
-		It("eventually creates and runs the volumes", func() {
-			Eventually(fetchVols).Should(HaveLen(2))
+		It("eventually creates and runs the volumes, and schedules an app", func() {
+			Eventually(fetchVols).Should(HaveLen(1))
 			Eventually(volsRunning).Should(BeTrue())
+
+			err := receptorClient.CreateDesiredLRP(lrp)
+			Ω(err).ShouldNot(HaveOccurred())
+			Eventually(func() []receptor.ActualLRPResponse {
+				lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				return lrps
+			}).Should(HaveLen(1))
+
+			Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "lrp-route")).Should(ConsistOf([]string{"0"}))
 		})
 	})
 
