@@ -16,6 +16,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	. "github.com/onsi/ginkgo"
@@ -178,11 +179,12 @@ var _ = Describe("Executor", func() {
 				}).Should(HaveLen(1))
 
 				instanceGuid = actualLRPs[0].InstanceGuid
+				containerGuid := rep.LRPContainerGuid(processGuid, instanceGuid)
 
 				executorClient := componentMaker.ExecutorClient()
 
 				Eventually(func() executor.State {
-					container, err := executorClient.GetContainer(instanceGuid)
+					container, err := executorClient.GetContainer(containerGuid)
 					if err == nil {
 						return container.State
 					}
