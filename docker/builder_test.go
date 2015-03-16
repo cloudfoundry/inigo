@@ -15,6 +15,7 @@ import (
 	"github.com/cloudfoundry-incubator/docker_app_lifecycle/Godeps/_workspace/src/github.com/onsi/gomega/gbytes"
 	"github.com/cloudfoundry-incubator/docker_app_lifecycle/Godeps/_workspace/src/github.com/onsi/gomega/gexec"
 	"github.com/cloudfoundry-incubator/docker_app_lifecycle/Godeps/_workspace/src/github.com/onsi/gomega/ghttp"
+	"github.com/cloudfoundry-incubator/garden/client"
 )
 
 var _ = Describe("Building", func() {
@@ -24,6 +25,7 @@ var _ = Describe("Building", func() {
 		dockerImageURL             string
 		insecureDockerRegistries   string
 		dockerDaemonExecutablePath string
+		cacheDockerImage           bool
 		outputMetadataDir          string
 		outputMetadataJSONFilename string
 		fakeDockerRegistry         *ghttp.Server
@@ -76,6 +78,7 @@ var _ = Describe("Building", func() {
 		dockerImageURL = ""
 		insecureDockerRegistries = ""
 		dockerDaemonExecutablePath = "/usr/bin/docker"
+		cacheDockerImage = false
 
 		outputMetadataDir, err = ioutil.TempDir("", "building-result")
 		Ω(err).ShouldNot(HaveOccurred())
@@ -108,18 +111,14 @@ var _ = Describe("Building", func() {
 		if len(insecureDockerRegistries) > 0 {
 			args = append(args, "-insecureDockerRegistries", insecureDockerRegistries)
 		}
+		if cacheDockerImage {
+			args = append(args, "-cacheDockerImage")
+		}
 
 		builderCmd = exec.Command(builderPath, args...)
 
 		builderCmd.Env = os.Environ()
 	})
-
-	resultJSON := func() []byte {
-		resultInfo, err := ioutil.ReadFile(outputMetadataJSONFilename)
-		Ω(err).ShouldNot(HaveOccurred())
-
-		return resultInfo
-	}
 
 	buildDockerImageURL := func() string {
 		parts, err := url.Parse(fakeDockerRegistry.URL())
@@ -129,77 +128,12 @@ var _ = Describe("Building", func() {
 
 	Context("when running the main", func() {
 
-		testValid := func() {
-			BeforeEach(func() {
-				setupFakeDockerRegistry()
-				fakeDockerRegistry.AppendHandlers(
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", "/v1/images/id-1/json"),
-						http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-							w.Header().Add("X-Docker-Size", "789")
-							w.Write([]byte(`{"id":"layer-1","parent":"parent-1","Config":{"Cmd":["-bazbot","-foobar"],"Entrypoint":["/dockerapp","-t"],"WorkingDir":"/workdir"}}`))
-						}),
-					),
-				)
-			})
-
-			It("should exit successfully", func() {
-				session := setupBuilder()
-				Eventually(session, 10*time.Second).Should(gexec.Exit(0))
-			})
-
-			Describe("the json", func() {
-				It("should contain the execution metadata", func() {
-					session := setupBuilder()
-					Eventually(session, 10*time.Second).Should(gexec.Exit(0))
-
-					result := resultJSON()
-
-					Ω(result).Should(ContainSubstring(`\"cmd\":[\"-bazbot\",\"-foobar\"]`))
-					Ω(result).Should(ContainSubstring(`\"entrypoint\":[\"/dockerapp\",\"-t\"]`))
-					Ω(result).Should(ContainSubstring(`\"workdir\":\"/workdir\"`))
-				})
-			})
-		}
-
-		dockerURLFunc := func() {
-			BeforeEach(func() {
-				dockerImageURL = buildDockerImageURL()
-			})
-
-			testValid()
-		}
-
-		dockerRefFunc := func() {
-			BeforeEach(func() {
-				parts, err := url.Parse(fakeDockerRegistry.URL())
-				Ω(err).ShouldNot(HaveOccurred())
-				dockerRef = fmt.Sprintf("%s/some-repo", parts.Host)
-			})
-
-			testValid()
-		}
-
-		Context("with a valid insecure docker registries", func() {
-			BeforeEach(func() {
-				parts, err := url.Parse(fakeDockerRegistry.URL())
-				Ω(err).ShouldNot(HaveOccurred())
-				insecureDockerRegistries = parts.Host + ",10.244.2.6:80"
-			})
-
-			Context("with a valid docker url", dockerURLFunc)
-			Context("with a valid docker ref", dockerRefFunc)
-		})
-
-		Context("without docker registries", func() {
-			Context("with a valid docker url", dockerURLFunc)
-			Context("with a valid docker ref", dockerRefFunc)
-		})
-
 		Context("when signalled", func() {
 			var session *gexec.Session
 
 			BeforeEach(func() {
+				cacheDockerImage = true
+
 				dockerImageURL = buildDockerImageURL()
 
 				setupFakeDockerRegistry()
@@ -246,5 +180,23 @@ var _ = Describe("Building", func() {
 			})
 		})
 
+		Context("when caching enabled", func() {
+			var session *gexec.Session
+
+			BeforeEach(func() {
+				cacheDockerImage = true
+			})
+
+			It("finishes successfully", func() {
+				Eventually(session).Should(gexec.Exit(0))
+			})
+
+			It("stores the public image in the private registry", func() {
+				client := client.Client{}
+				resp, err := client.Get("http://10.244.2.6:8080/v1/search?q=image_id")
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(resp.StatusCode).Should(Equal(http.StatusOK))
+			})
+		})
 	})
 })
