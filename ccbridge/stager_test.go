@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -125,11 +126,14 @@ EOF
 				[]byte(fmt.Sprintf(`{
 					"app_id": "%s",
 					"task_id": "%s",
-					"app_bits_download_uri": "some-download-uri",
-					"build_artifacts_cache_download_uri": "artifacts-download-uri",
-					"build_artifacts_cache_upload_uri": "%s",
-					"droplet_upload_uri": "%s",
-					"stack": "no-lifecycle"
+					"stack": "no-lifecycle",
+					"lifecycle": "buildpack",
+					"lifecycle_data": {
+						"app_bits_download_uri": "some-download-uri",
+						"build_artifacts_cache_download_uri": "artifacts-download-uri",
+						"build_artifacts_cache_upload_uri": "%s",
+						"droplet_upload_uri": "%s"
+					}
 				}`, appId, taskId,
 					buildArtifactsUploadUri, dropletUploadUri)),
 			)
@@ -204,21 +208,24 @@ EOF
 						"memory_mb": %d,
 						"disk_mb": 128,
 						"file_descriptors": 1024,
+						"environment": [{ "name": "SOME_STAGING_ENV", "value": "%s"}],
 						"stack": "lucid64",
-						"app_bits_download_uri": "%s",
-						"build_artifacts_cache_upload_uri": "%s",
-						"droplet_upload_uri": "%s",
-						"buildpacks" : %s,
-						"environment": [{ "name": "SOME_STAGING_ENV", "value": "%s"}]
+						"lifecycle": "buildpack",
+						"lifecycle_data": {
+							"app_bits_download_uri": "%s",
+							"build_artifacts_cache_upload_uri": "%s",
+							"droplet_upload_uri": "%s",
+							"buildpacks" : %s
+						}
 					}`,
 					appId,
 					taskId,
 					memory,
+					outputGuid,
 					fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "app.zip"),
 					buildArtifactsUploadUri,
 					dropletUploadUri,
 					buildpacksToUse,
-					outputGuid,
 				))
 		})
 
@@ -236,14 +243,22 @@ EOF
 
 						//wait for staging to complete
 						Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
+						buildpackResponse := cc_messages.BuildpackStagingResponse{
+							BuildpackKey:      buildpackKey,
+							DetectedBuildpack: "My Buildpack",
+						}
+						lifecycleDataJSON, err := json.Marshal(buildpackResponse)
+						Ω(err).ShouldNot(HaveOccurred())
+
+						lifecycleData := json.RawMessage(lifecycleDataJSON)
+
 						Ω(fakeCC.StagingResponses()[0]).Should(Equal(
 							cc_messages.StagingResponseForCC{
 								AppId:                appId,
 								TaskId:               taskId,
-								BuildpackKey:         buildpackKey,
-								DetectedBuildpack:    "My Buildpack",
 								ExecutionMetadata:    "{\"start_command\":\"the-start-command\"}",
 								DetectedStartCommand: map[string]string{"web": "the-start-command"},
+								LifecycleData:        &lifecycleData,
 							}))
 
 						// Assert that the build artifacts cache was downloaded
