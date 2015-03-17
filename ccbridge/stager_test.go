@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
@@ -53,6 +54,8 @@ var _ = Describe("Stager", func() {
 
 	var buildArtifactsUploadUri string
 	var dropletUploadUri string
+
+	var stageURL string
 
 	var adminBuildpackFiles = []zip_helper.ArchiveFile{
 		{
@@ -113,6 +116,8 @@ EOF
 		dropletUploadUri = u.String()
 		u.Path = urljoiner.Join("staging", "buildpack_cache", appId, "upload")
 		buildArtifactsUploadUri = u.String()
+
+		stageURL = urljoiner.Join("http://"+componentMaker.Addresses.Stager, "v1/start")
 	})
 
 	AfterEach(func() {
@@ -121,9 +126,7 @@ EOF
 
 	Context("when unable to find an appropriate compiler", func() {
 		It("returns an error", func() {
-			natsClient.Publish(
-				"diego.staging.start",
-				[]byte(fmt.Sprintf(`{
+			resp, err := http.DefaultClient.Post(stageURL, "application/json", strings.NewReader(fmt.Sprintf(`{
 					"app_id": "%s",
 					"task_id": "%s",
 					"stack": "no-lifecycle",
@@ -134,12 +137,18 @@ EOF
 						"build_artifacts_cache_upload_uri": "%s",
 						"droplet_upload_uri": "%s"
 					}
-				}`, appId, taskId,
-					buildArtifactsUploadUri, dropletUploadUri)),
+				}`, appId, taskId, buildArtifactsUploadUri, dropletUploadUri)),
 			)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(resp.StatusCode).Should(Equal(http.StatusInternalServerError))
 
-			Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
-			Ω(fakeCC.StagingResponses()[0].Error).Should(Equal(&cc_messages.StagingError{
+			decoder := json.NewDecoder(resp.Body)
+
+			var response cc_messages.StagingResponseForCC
+			err = decoder.Decode(&response)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(response.Error).Should(Equal(&cc_messages.StagingError{
 				Id:      cc_messages.STAGING_ERROR,
 				Message: "staging failed",
 			}))
@@ -237,9 +246,9 @@ EOF
 					})
 
 					It("runs the compiler on the executor with the correct environment variables and bits, and responds with the detected buildpack", func() {
-						//publish the staging message
-						err := natsClient.Publish("diego.staging.start", stagingMessage)
+						resp, err := http.DefaultClient.Post(stageURL, "application/json", bytes.NewReader(stagingMessage))
 						Ω(err).ShouldNot(HaveOccurred())
+						Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
 						//wait for staging to complete
 						Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
@@ -384,8 +393,9 @@ EOF
 				})
 
 				It("responds with the error", func() {
-					err := natsClient.Publish("diego.staging.start", stagingMessage)
+					resp, err := http.DefaultClient.Post(stageURL, "application/json", bytes.NewReader(stagingMessage))
 					Ω(err).ShouldNot(HaveOccurred())
+					Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
 					Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
 					Ω(fakeCC.StagingResponses()[0]).Should(Equal(
@@ -406,11 +416,9 @@ EOF
 				})
 
 				It("returns a staging completed response with 'insufficient resources' error", func() {
-					err := natsClient.Publish(
-						"diego.staging.start",
-						stagingMessage,
-					)
+					resp, err := http.DefaultClient.Post(stageURL, "application/json", bytes.NewReader(stagingMessage))
 					Ω(err).ShouldNot(HaveOccurred())
+					Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
 					Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
 					Ω(fakeCC.StagingResponses()[0]).Should(Equal(
@@ -438,11 +446,9 @@ EOF
 			})
 
 			It("only one returns a staging completed response", func() {
-				err := natsClient.Publish(
-					"diego.staging.start",
-					stagingMessage,
-				)
+				resp, err := http.DefaultClient.Post(stageURL, "application/json", bytes.NewReader(stagingMessage))
 				Ω(err).ShouldNot(HaveOccurred())
+				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
 				Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
 				Consistently(fakeCC.StagingResponses).Should(HaveLen(1))
@@ -455,11 +461,9 @@ EOF
 			})
 
 			It("returns a staging completed response with 'found no compatible cell' error", func() {
-				err := natsClient.Publish(
-					"diego.staging.start",
-					stagingMessage,
-				)
+				resp, err := http.DefaultClient.Post(stageURL, "application/json", bytes.NewReader(stagingMessage))
 				Ω(err).ShouldNot(HaveOccurred())
+				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
 				Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
 				Ω(fakeCC.StagingResponses()[0]).Should(Equal(
@@ -493,8 +497,9 @@ EOF
 				fakeCC.SetStagingResponseStatusCode(http.StatusServiceUnavailable)
 				fakeCC.SetStagingResponseBody(`{"error": "bah!"}`)
 
-				err := natsClient.Publish("diego.staging.start", stagingMessage)
+				resp, err := http.DefaultClient.Post(stageURL, "application/json", bytes.NewReader(stagingMessage))
 				Ω(err).ShouldNot(HaveOccurred())
+				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
 				NUM_ATTEMPTS := 2
 				NUM_RETRIES := 3

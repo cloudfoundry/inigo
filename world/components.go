@@ -382,7 +382,6 @@ func (maker ComponentMaker) StagerN(portOffset int, argv ...string) ifrit.Runner
 		Command: exec.Command(
 			maker.Artifacts.Executables["stager"],
 			append([]string{
-				"-natsAddresses", maker.Addresses.NATS,
 				"-ccBaseURL", "http://" + maker.Addresses.FakeCC,
 				"-ccUsername", fake_cc.CC_USERNAME,
 				"-ccPassword", fake_cc.CC_PASSWORD,
