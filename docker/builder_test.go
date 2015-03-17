@@ -15,7 +15,6 @@ import (
 	"github.com/cloudfoundry-incubator/docker_app_lifecycle/Godeps/_workspace/src/github.com/onsi/gomega/gbytes"
 	"github.com/cloudfoundry-incubator/docker_app_lifecycle/Godeps/_workspace/src/github.com/onsi/gomega/gexec"
 	"github.com/cloudfoundry-incubator/docker_app_lifecycle/Godeps/_workspace/src/github.com/onsi/gomega/ghttp"
-	"github.com/cloudfoundry-incubator/garden/client"
 )
 
 var _ = Describe("Building", func() {
@@ -172,30 +171,14 @@ var _ = Describe("Building", func() {
 					cmd.Env = os.Environ()
 					err := cmd.Run()
 					Ω(err).ShouldNot(HaveOccurred())
+
+					os.Remove("/var/run/docker.sock")
 				})
 
 				It("processes the signal and exits", func() {
 					Eventually(session).Should(gexec.Exit(2))
 				})
-			})
-		})
 
-		Context("when caching enabled", func() {
-			var session *gexec.Session
-
-			BeforeEach(func() {
-				cacheDockerImage = true
-			})
-
-			It("finishes successfully", func() {
-				Eventually(session).Should(gexec.Exit(0))
-			})
-
-			It("stores the public image in the private registry", func() {
-				client := client.Client{}
-				resp, err := client.Get("http://10.244.2.6:8080/v1/search?q=image_id")
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(resp.StatusCode).Should(Equal(http.StatusOK))
 			})
 		})
 	})
