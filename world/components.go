@@ -247,8 +247,10 @@ func (maker ComponentMaker) TPS(argv ...string) ifrit.Runner {
 			maker.Artifacts.Executables["tps"],
 			append([]string{
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
-				"-natsAddresses", maker.Addresses.NATS,
 				"-listenAddr", maker.Addresses.TPS,
+				"-ccBaseURL", "http://" + maker.Addresses.FakeCC,
+				"-ccUsername", fake_cc.CC_USERNAME,
+				"-ccPassword", fake_cc.CC_PASSWORD,
 			}, argv...)...,
 		),
 	})
