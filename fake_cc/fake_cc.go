@@ -10,6 +10,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/cloudfoundry-incubator/runtime-schema/cc_messages"
@@ -40,6 +41,7 @@ type FakeCC struct {
 
 	UploadedDroplets             map[string][]byte
 	UploadedBuildArtifactsCaches map[string][]byte
+	stagingGuids                 []string
 	stagingResponses             []cc_messages.StagingResponseForCC
 	stagingResponseStatusCode    int
 	stagingResponseBody          string
@@ -52,6 +54,7 @@ func New(address string) *FakeCC {
 
 		UploadedDroplets:             map[string][]byte{},
 		UploadedBuildArtifactsCaches: map[string][]byte{},
+		stagingGuids:                 []string{},
 		stagingResponses:             []cc_messages.StagingResponseForCC{},
 		stagingResponseStatusCode:    http.StatusOK,
 		stagingResponseBody:          "{}",
@@ -84,6 +87,7 @@ func (f *FakeCC) Reset() {
 	defer f.lock.Unlock()
 	f.UploadedDroplets = map[string][]byte{}
 	f.UploadedBuildArtifactsCaches = map[string][]byte{}
+	f.stagingGuids = []string{}
 	f.stagingResponses = []cc_messages.StagingResponseForCC{}
 	f.stagingResponseStatusCode = http.StatusOK
 	f.stagingResponseBody = "{}"
@@ -95,6 +99,12 @@ func (f *FakeCC) SetStagingResponseStatusCode(statusCode int) {
 
 func (f *FakeCC) SetStagingResponseBody(body string) {
 	f.stagingResponseBody = body
+}
+
+func (f *FakeCC) StagingGuids() []string {
+	f.lock.RLock()
+	defer f.lock.RUnlock()
+	return f.stagingGuids
 }
 
 func (f *FakeCC) StagingResponses() []cc_messages.StagingResponseForCC {
@@ -110,7 +120,7 @@ func (f *FakeCC) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"/staging/droplets/.*/upload":          f.handleDropletUploadRequest,
 		"/staging/buildpack_cache/.*/upload":   f.handleBuildArtifactsCacheUploadRequest,
 		"/staging/buildpack_cache/.*/download": f.handleBuildArtifactsCacheDownloadRequest,
-		"/internal/staging/completed":          f.newHandleStagingRequest(),
+		"/internal/staging/.*/completed":       f.newHandleStagingRequest(),
 	}
 
 	for pattern, handler := range endpoints {
@@ -196,7 +206,7 @@ func (f *FakeCC) handleBuildArtifactsCacheDownloadRequest(w http.ResponseWriter,
 
 func (f *FakeCC) newHandleStagingRequest() http.HandlerFunc {
 	return ghttp.CombineHandlers(
-		ghttp.VerifyRequest("POST", "/internal/staging/completed"),
+		ghttp.VerifyRequest("POST", MatchRegexp("/internal/staging/(.*)/completed")),
 		ghttp.VerifyBasicAuth(CC_USERNAME, CC_PASSWORD),
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var msg cc_messages.StagingResponseForCC
@@ -205,6 +215,8 @@ func (f *FakeCC) newHandleStagingRequest() http.HandlerFunc {
 			r.Body.Close()
 			f.lock.Lock()
 			defer f.lock.Unlock()
+			guid := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/internal/staging/"), "/completed")
+			f.stagingGuids = append(f.stagingGuids, guid)
 			f.stagingResponses = append(f.stagingResponses, msg)
 		}),
 		ghttp.RespondWithPtr(&f.stagingResponseStatusCode, &f.stagingResponseBody),
