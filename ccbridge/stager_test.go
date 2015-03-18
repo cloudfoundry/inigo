@@ -55,8 +55,6 @@ var _ = Describe("Stager", func() {
 	var buildArtifactsUploadUri string
 	var dropletUploadUri string
 
-	var stageURL string
-
 	var adminBuildpackFiles = []zip_helper.ArchiveFile{
 		{
 			Name: "bin/detect",
@@ -116,20 +114,26 @@ EOF
 		dropletUploadUri = u.String()
 		u.Path = urljoiner.Join("staging", "buildpack_cache", appId, "upload")
 		buildArtifactsUploadUri = u.String()
-
-		stageURL = urljoiner.Join("http://"+componentMaker.Addresses.Stager, "v1/start")
 	})
 
 	AfterEach(func() {
 		helpers.StopProcesses(cell, brain, bridge)
 	})
 
+	stageApplication := func(stagingGuid, payload string) (*http.Response, error) {
+		stageURL := urljoiner.Join("http://"+componentMaker.Addresses.Stager, "v1", "staging", stagingGuid)
+		request, err := http.NewRequest("PUT", stageURL, strings.NewReader(payload))
+		Ω(err).ShouldNot(HaveOccurred())
+
+		return http.DefaultClient.Do(request)
+	}
+
 	Context("when unable to find an appropriate compiler", func() {
 		It("returns an error", func() {
-			resp, err := http.DefaultClient.Post(stageURL, "application/json", strings.NewReader(fmt.Sprintf(`{
+			resp, err := stageApplication(fmt.Sprintf("%s-%s", appId, taskId), fmt.Sprintf(`{
 					"app_id": "%s",
-					"task_id": "%s",
 					"stack": "no-lifecycle",
+					"log_guid": "%s",
 					"lifecycle": "buildpack",
 					"lifecycle_data": {
 						"app_bits_download_uri": "some-download-uri",
@@ -137,7 +141,7 @@ EOF
 						"build_artifacts_cache_upload_uri": "%s",
 						"droplet_upload_uri": "%s"
 					}
-				}`, appId, taskId, buildArtifactsUploadUri, dropletUploadUri)),
+				}`, appId, appId, buildArtifactsUploadUri, dropletUploadUri),
 			)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(resp.StatusCode).Should(Equal(http.StatusInternalServerError))
@@ -158,6 +162,7 @@ EOF
 	Describe("Staging", func() {
 		var outputGuid string
 		var memory int
+		var stagingGuid string
 		var stagingMessage []byte
 		var buildpacksToUse string
 
@@ -209,11 +214,12 @@ EOF
 		})
 
 		JustBeforeEach(func() {
+			stagingGuid = fmt.Sprintf("%s-%s", appId, taskId)
 			stagingMessage = []byte(
 				fmt.Sprintf(
 					`{
 						"app_id": "%s",
-						"task_id": "%s",
+						"log_guid": "%s",
 						"memory_mb": %d,
 						"disk_mb": 128,
 						"file_descriptors": 1024,
@@ -228,7 +234,7 @@ EOF
 						}
 					}`,
 					appId,
-					taskId,
+					appId,
 					memory,
 					outputGuid,
 					fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "app.zip"),
@@ -246,7 +252,7 @@ EOF
 					})
 
 					It("runs the compiler on the executor with the correct environment variables and bits, and responds with the detected buildpack", func() {
-						resp, err := http.DefaultClient.Post(stageURL, "application/json", bytes.NewReader(stagingMessage))
+						resp, err := stageApplication(stagingGuid, string(stagingMessage))
 						Ω(err).ShouldNot(HaveOccurred())
 						Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
@@ -263,12 +269,12 @@ EOF
 
 						Ω(fakeCC.StagingResponses()[0]).Should(Equal(
 							cc_messages.StagingResponseForCC{
-								AppId:                appId,
-								TaskId:               taskId,
 								ExecutionMetadata:    "{\"start_command\":\"the-start-command\"}",
 								DetectedStartCommand: map[string]string{"web": "the-start-command"},
 								LifecycleData:        &lifecycleData,
-							}))
+							}),
+						)
+						Ω(fakeCC.StagingGuids()[0]).Should(Equal(stagingGuid))
 
 						// Assert that the build artifacts cache was downloaded
 						//TODO: how do we test they were downloaded??
@@ -393,20 +399,19 @@ EOF
 				})
 
 				It("responds with the error", func() {
-					resp, err := http.DefaultClient.Post(stageURL, "application/json", bytes.NewReader(stagingMessage))
+					resp, err := stageApplication(stagingGuid, string(stagingMessage))
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
 					Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
 					Ω(fakeCC.StagingResponses()[0]).Should(Equal(
 						cc_messages.StagingResponseForCC{
-							AppId:  appId,
-							TaskId: taskId,
 							Error: &cc_messages.StagingError{
 								Id:      cc_messages.STAGING_ERROR,
 								Message: "staging failed",
 							},
 						}))
+					Ω(fakeCC.StagingGuids()[0]).Should(Equal(stagingGuid))
 				})
 			})
 
@@ -416,20 +421,19 @@ EOF
 				})
 
 				It("returns a staging completed response with 'insufficient resources' error", func() {
-					resp, err := http.DefaultClient.Post(stageURL, "application/json", bytes.NewReader(stagingMessage))
+					resp, err := stageApplication(stagingGuid, string(stagingMessage))
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
 					Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
 					Ω(fakeCC.StagingResponses()[0]).Should(Equal(
 						cc_messages.StagingResponseForCC{
-							AppId:  appId,
-							TaskId: taskId,
 							Error: &cc_messages.StagingError{
 								Id:      cc_messages.INSUFFICIENT_RESOURCES,
 								Message: "insufficient resources",
 							},
 						}))
+					Ω(fakeCC.StagingGuids()[0]).Should(Equal(stagingGuid))
 				})
 			})
 		})
@@ -446,7 +450,7 @@ EOF
 			})
 
 			It("only one returns a staging completed response", func() {
-				resp, err := http.DefaultClient.Post(stageURL, "application/json", bytes.NewReader(stagingMessage))
+				resp, err := stageApplication(stagingGuid, string(stagingMessage))
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
@@ -461,20 +465,19 @@ EOF
 			})
 
 			It("returns a staging completed response with 'found no compatible cell' error", func() {
-				resp, err := http.DefaultClient.Post(stageURL, "application/json", bytes.NewReader(stagingMessage))
+				resp, err := stageApplication(stagingGuid, string(stagingMessage))
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
 				Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
 				Ω(fakeCC.StagingResponses()[0]).Should(Equal(
 					cc_messages.StagingResponseForCC{
-						AppId:  appId,
-						TaskId: taskId,
 						Error: &cc_messages.StagingError{
 							Id:      cc_messages.NO_COMPATIBLE_CELL,
 							Message: "found no compatible cell",
 						},
 					}))
+				Ω(fakeCC.StagingGuids()[0]).Should(Equal(stagingGuid))
 			})
 		})
 
@@ -497,7 +500,7 @@ EOF
 				fakeCC.SetStagingResponseStatusCode(http.StatusServiceUnavailable)
 				fakeCC.SetStagingResponseBody(`{"error": "bah!"}`)
 
-				resp, err := http.DefaultClient.Post(stageURL, "application/json", bytes.NewReader(stagingMessage))
+				resp, err := stageApplication(stagingGuid, string(stagingMessage))
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
