@@ -21,7 +21,6 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry/gunk/diegonats"
 )
 
 var (
@@ -29,7 +28,6 @@ var (
 
 	plumbing       ifrit.Process
 	receptorClient receptor.Client
-	natsClient     diegonats.NATSClient
 	gardenClient   garden.Client
 )
 
@@ -58,7 +56,6 @@ var _ = BeforeEach(func() {
 	}))
 
 	gardenClient = componentMaker.GardenClient()
-	natsClient = componentMaker.NATSClient()
 	receptorClient = componentMaker.ReceptorClient()
 
 	inigo_announcement_server.Start(componentMaker.ExternalAddress)

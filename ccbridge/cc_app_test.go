@@ -5,11 +5,14 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
+	"github.com/cloudfoundry/gunk/urljoiner"
 
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -27,6 +30,36 @@ var _ = Describe("AppRunner", func() {
 		runtime ifrit.Process
 		bridge  ifrit.Process
 	)
+
+	desireApp := func(guid string, routes string, instances int) (*http.Response, error) {
+		desireMessage := fmt.Sprintf(
+			`
+						{
+							"process_guid": "%s",
+							"droplet_uri": "%s",
+							"stack": "%s",
+							"num_instances": `+strconv.Itoa(instances)+`,
+							"memory_mb": 256,
+							"disk_mb": 1024,
+							"file_descriptors": 16384,
+							"environment":[{"name":"VCAP_APPLICATION", "value":"{}"}],
+							"routes": `+routes+`,
+							"log_guid": "%s"
+						}
+						`,
+			guid,
+			fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "droplet.zip"),
+			componentMaker.Stack,
+			appId,
+		)
+
+		desireURL := urljoiner.Join("http://"+componentMaker.Addresses.NsyncListener, "v1", "apps", guid)
+		request, err := http.NewRequest("PUT", desireURL, strings.NewReader(desireMessage))
+		Ω(err).ShouldNot(HaveOccurred())
+
+		request.Header.Set("Content-Type", "application/json")
+		return http.DefaultClient.Do(request)
+	}
 
 	BeforeEach(func() {
 		appId = factories.GenerateGuid()
@@ -64,38 +97,18 @@ var _ = Describe("AppRunner", func() {
 		helpers.StopProcesses(runtime, bridge)
 	})
 
-	Describe("Running", func() {
+	Describe("Start an application", func() {
+		guid := "process-guid"
+
 		Context("when the running message contains a start_command", func() {
 			It("runs the app on the executor, registers routes, and shows that they are running via the tps", func() {
-				runningMessage := []byte(
-					fmt.Sprintf(
-						`
-						{
-							"process_guid": "process-guid",
-							"droplet_uri": "%s",
-							"stack": "%s",
-							"start_command": "bash server.sh",
-							"num_instances": 2,
-							"memory_mb": 256,
-							"disk_mb": 1024,
-							"file_descriptors": 16384,
-							"environment":[{"name":"VCAP_APPLICATION", "value":"{}"}],
-							"routes": ["route-1", "route-2"],
-							"log_guid": "%s"
-						}
-						`,
-						fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "droplet.zip"),
-						componentMaker.Stack,
-						appId,
-					),
-				)
-
-				// publish the app run message
-				err := natsClient.Publish("diego.desire.app", runningMessage)
+				// desire the app
+				resp, err := desireApp(guid, `["route-1", "route-2"]`, 2)
 				Ω(err).ShouldNot(HaveOccurred())
+				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
 				// check lrp instance statuses
-				Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, "process-guid")).Should(HaveLen(2))
+				Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, guid)).Should(HaveLen(2))
 
 				//both routes should be routable
 				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-1")).Should(Equal(http.StatusOK))
@@ -109,33 +122,12 @@ var _ = Describe("AppRunner", func() {
 
 		Context("when the start message does not include a start_command", func() {
 			It("runs the app, registers a route, and shows running via tps", func() {
-				runningMessage := []byte(
-					fmt.Sprintf(
-						`
-						{
-							"process_guid": "process-guid",
-							"droplet_uri": "%s",
-							"stack": "%s",
-							"num_instances": 1,
-							"memory_mb": 256,
-							"disk_mb": 1024,
-							"file_descriptors": 16384,
-							"environment":[{"name":"VCAP_APPLICATION", "value":"{}"}],
-							"routes": ["route-1"],
-							"log_guid": "%s"
-						}
-						`,
-						fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "droplet.zip"),
-						componentMaker.Stack,
-						appId,
-					),
-				)
-
-				// publish the app run message
-				err := natsClient.Publish("diego.desire.app", runningMessage)
+				// desire the app
+				resp, err := desireApp(guid, `["route-1"]`, 1)
 				Ω(err).ShouldNot(HaveOccurred())
+				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
-				Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, "process-guid")).Should(HaveLen(1))
+				Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, guid)).Should(HaveLen(1))
 				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-1")).Should(Equal(http.StatusOK))
 
 				//a given route should route to the running instance
@@ -145,50 +137,38 @@ var _ = Describe("AppRunner", func() {
 		})
 	})
 
-	Describe("Stop Index", func() {
-		Context("when there is an instance running", func() {
-			BeforeEach(func() {
-				runningMessage := []byte(
-					fmt.Sprintf(
-						`
-						{
-							"process_guid": "process-guid",
-							"droplet_uri": "%s",
-							"stack": "%s",
-							"start_command": "bash server.sh",
-							"num_instances": 2,
-							"environment":[{"name":"VCAP_APPLICATION", "value":"{}"}],
-							"memory_mb": 256,
-							"disk_mb": 1024,
-							"file_descriptors": 16384,
-							"routes": ["route-1", "route-2"],
-							"log_guid": "%s"
-						}
-						`,
-						fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "droplet.zip"),
-						componentMaker.Stack,
-						appId,
-					),
-				)
+	Describe("Stop an index", func() {
+		killIndex := func(guid string, index int) (*http.Response, error) {
+			killURL := urljoiner.Join("http://"+componentMaker.Addresses.NsyncListener, "v1", "apps", guid, "index", strconv.Itoa(index))
+			request, err := http.NewRequest("DELETE", killURL, nil)
+			Ω(err).ShouldNot(HaveOccurred())
 
-				// publish the app run message
-				err := natsClient.Publish("diego.desire.app", runningMessage)
+			return http.DefaultClient.Do(request)
+		}
+
+		Context("when there is an instance running", func() {
+			guid := "process-guid"
+
+			BeforeEach(func() {
+				// desire the app
+				resp, err := desireApp(guid, `["route-1"]`, 2)
 				Ω(err).ShouldNot(HaveOccurred())
+				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
 				// wait for intances to come up
-				Eventually(runningIndexPoller(componentMaker.Addresses.TPS, "process-guid")).Should(ConsistOf(0, 1))
+				Eventually(runningIndexPoller(componentMaker.Addresses.TPS, guid)).Should(ConsistOf(0, 1))
 			})
 
 			It("stops the app on the desired index, and then eventually starts it back up", func() {
-				stopMessage := []byte(`{"process_guid": "process-guid", "index": 0}`)
-				err := natsClient.Publish("diego.stop.index", stopMessage)
+				resp, err := killIndex(guid, 0)
 				Ω(err).ShouldNot(HaveOccurred())
+				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
 				// wait for stop to take effect
-				Eventually(runningIndexPoller(componentMaker.Addresses.TPS, "process-guid")).Should(ConsistOf(1))
+				Eventually(runningIndexPoller(componentMaker.Addresses.TPS, guid)).Should(ConsistOf(1))
 
 				// wait for system to re-converge on desired state
-				Eventually(runningIndexPoller(componentMaker.Addresses.TPS, "process-guid")).Should(ConsistOf(0, 1))
+				Eventually(runningIndexPoller(componentMaker.Addresses.TPS, guid)).Should(ConsistOf(0, 1))
 			})
 		})
 	})

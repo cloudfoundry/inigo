@@ -30,6 +30,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts) world.ComponentMake
 		Receptor:            fmt.Sprintf("127.0.0.1:%d", 21000+config.GinkgoConfig.ParallelNode),
 		ReceptorTaskHandler: fmt.Sprintf("127.0.0.1:%d", 21500+config.GinkgoConfig.ParallelNode),
 		Stager:              fmt.Sprintf("127.0.0.1:%d", 22000+config.GinkgoConfig.ParallelNode),
+		NsyncListener:       fmt.Sprintf("127.0.0.1:%d", 22500+config.GinkgoConfig.ParallelNode),
 		Auctioneer:          fmt.Sprintf("0.0.0.0:%d", 23000+config.GinkgoConfig.ParallelNode),
 	}
 
