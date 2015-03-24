@@ -61,7 +61,7 @@ var _ = Describe("Executor", func() {
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				TaskGuid: firstGuyGuid,
 				Domain:   INIGO_DOMAIN,
-				Stack:    componentMaker.Stack,
+				RootFS:   componentMaker.PreloadedRootFS(),
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Action: &models.RunAction{
@@ -76,7 +76,7 @@ var _ = Describe("Executor", func() {
 			err = receptorClient.CreateTask(receptor.TaskCreateRequest{
 				TaskGuid: secondGuyGuid,
 				Domain:   INIGO_DOMAIN,
-				Stack:    componentMaker.Stack,
+				RootFS:   componentMaker.PreloadedRootFS(),
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Action: &models.RunAction{
@@ -100,7 +100,7 @@ var _ = Describe("Executor", func() {
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 					TaskGuid: taskGuid,
 					Domain:   INIGO_DOMAIN,
-					Stack:    componentMaker.Stack,
+					RootFS:   componentMaker.PreloadedRootFS(),
 					Action: &models.RunAction{
 						Path: "sh",
 						Args: []string{"-c", "while true; do sleep 1; done"},
@@ -154,7 +154,7 @@ var _ = Describe("Executor", func() {
 					Domain:      INIGO_DOMAIN,
 					ProcessGuid: processGuid,
 					Instances:   1,
-					Stack:       componentMaker.Stack,
+					RootFS:      componentMaker.PreloadedRootFS(),
 					MemoryMB:    128,
 					DiskMB:      1024,
 					Ports:       []uint16{8080},
@@ -211,17 +211,17 @@ var _ = Describe("Executor", func() {
 		})
 	})
 
-	Describe("Stack", func() {
+	Describe("Preloaded RootFSes", func() {
 		var wrongStack = "penguin"
 
-		It("should only pick up tasks if the stacks match", func() {
+		It("should only pick up tasks if the preloaded rootfses match", func() {
 			matchingGuid := factories.GenerateGuid()
 			nonMatchingGuid := factories.GenerateGuid()
 
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				TaskGuid: matchingGuid,
 				Domain:   INIGO_DOMAIN,
-				Stack:    componentMaker.Stack,
+				RootFS:   componentMaker.PreloadedRootFS(),
 				Action: &models.RunAction{
 					Path: "curl",
 					Args: []string{inigo_announcement_server.AnnounceURL(matchingGuid)},
@@ -232,7 +232,7 @@ var _ = Describe("Executor", func() {
 			err = receptorClient.CreateTask(receptor.TaskCreateRequest{
 				TaskGuid: nonMatchingGuid,
 				Domain:   INIGO_DOMAIN,
-				Stack:    wrongStack,
+				RootFS:   fmt.Sprintf("preloaded:%s", wrongStack),
 				Action: &models.RunAction{
 					Path: "curl",
 					Args: []string{inigo_announcement_server.AnnounceURL(nonMatchingGuid)},
@@ -256,7 +256,7 @@ var _ = Describe("Executor", func() {
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				TaskGuid: guid,
 				Domain:   INIGO_DOMAIN,
-				Stack:    componentMaker.Stack,
+				RootFS:   componentMaker.PreloadedRootFS(),
 				Action: &models.RunAction{
 					Path: "sh",
 					Args: []string{"-c", `[ "$FOO" = NEW-BAR -a "$BAZ" = WIBBLE ]`},
@@ -287,7 +287,7 @@ var _ = Describe("Executor", func() {
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				TaskGuid: guid,
 				Domain:   INIGO_DOMAIN,
-				Stack:    componentMaker.Stack,
+				RootFS:   componentMaker.PreloadedRootFS(),
 				Action: &models.RunAction{
 					Path: "sh",
 					Args: []string{"-c", `[ $PWD = /tmp ]`},
@@ -315,7 +315,7 @@ var _ = Describe("Executor", func() {
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 					Domain:   INIGO_DOMAIN,
 					TaskGuid: guid,
-					Stack:    componentMaker.Stack,
+					RootFS:   componentMaker.PreloadedRootFS(),
 					MemoryMB: 10,
 					DiskMB:   1024,
 					Action: models.Serial(
@@ -361,7 +361,7 @@ var _ = Describe("Executor", func() {
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 					Domain:   INIGO_DOMAIN,
 					TaskGuid: guid,
-					Stack:    componentMaker.Stack,
+					RootFS:   componentMaker.PreloadedRootFS(),
 					Action: models.Serial(
 						&models.RunAction{
 							Path: "sh",
@@ -413,7 +413,7 @@ echo should have died by now
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 					Domain:   INIGO_DOMAIN,
 					TaskGuid: guid,
-					Stack:    componentMaker.Stack,
+					RootFS:   componentMaker.PreloadedRootFS(),
 					Action: models.Serial(
 						models.Timeout(
 							&models.RunAction{
@@ -461,7 +461,7 @@ echo should have died by now
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				Domain:   INIGO_DOMAIN,
 				TaskGuid: guid,
-				Stack:    componentMaker.Stack,
+				RootFS:   componentMaker.PreloadedRootFS(),
 				Action: models.Serial(
 					&models.DownloadAction{
 						From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "announce.tar.gz"),
@@ -512,7 +512,7 @@ echo should have died by now
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				Domain:   INIGO_DOMAIN,
 				TaskGuid: guid,
-				Stack:    componentMaker.Stack,
+				RootFS:   componentMaker.PreloadedRootFS(),
 				Action: models.Serial(
 					&models.RunAction{
 						Path: "sh",
@@ -543,7 +543,7 @@ echo should have died by now
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				Domain:     INIGO_DOMAIN,
 				TaskGuid:   guid,
-				Stack:      componentMaker.Stack,
+				RootFS:     componentMaker.PreloadedRootFS(),
 				ResultFile: "thingy",
 				Action: &models.RunAction{
 					Path: "sh",

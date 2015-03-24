@@ -44,7 +44,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 		return receptor.DesiredLRPCreateRequest{
 			Domain:      INIGO_DOMAIN,
-			Stack:       componentMaker.Stack,
+			RootFS:      componentMaker.PreloadedRootFS(),
 			ProcessGuid: processGuid,
 			Instances:   numInstances,
 			LogGuid:     appId,

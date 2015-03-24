@@ -171,7 +171,8 @@ func (maker ComponentMaker) Rep(argv ...string) *ginkgomon.Runner {
 			maker.Artifacts.Executables["rep"],
 			append(
 				[]string{
-					"-stack", maker.Stack,
+					"-preloadedRootFS", fmt.Sprintf("%s:%s", maker.Stack, maker.GardenRootFSPath),
+					"-rootFSProvider", "docker",
 					"-etcdCluster", "http://" + maker.Addresses.Etcd,
 					"-listenAddr", maker.Addresses.Rep,
 					"-cellID", "the-cell-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()),
@@ -433,6 +434,10 @@ func (maker ComponentMaker) ExecutorClient() executor.Client {
 
 func (maker ComponentMaker) ReceptorClient() receptor.Client {
 	return receptor.NewClient("http://" + maker.Addresses.Receptor)
+}
+
+func (maker ComponentMaker) PreloadedRootFS() string {
+	return fmt.Sprintf("preloaded:%s", maker.Stack)
 }
 
 // offsetPort retuns a new port offest by a given number in such a way

@@ -42,7 +42,7 @@ var _ = Describe("Privileges", func() {
 			taskRequest = &receptor.TaskCreateRequest{
 				Domain:   INIGO_DOMAIN,
 				TaskGuid: factories.GenerateGuid(),
-				Stack:    componentMaker.Stack,
+				RootFS:   componentMaker.PreloadedRootFS(),
 				Action: &models.RunAction{
 					Path: "sh",
 					// always run as root; tests change task-level privileged
@@ -99,7 +99,7 @@ var _ = Describe("Privileges", func() {
 				Domain:      INIGO_DOMAIN,
 				ProcessGuid: factories.GenerateGuid(),
 				Instances:   1,
-				Stack:       componentMaker.Stack,
+				RootFS:      componentMaker.PreloadedRootFS(),
 
 				Routes: routingInfo,
 				Ports:  []uint16{8080},

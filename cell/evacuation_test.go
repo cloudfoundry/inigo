@@ -112,7 +112,7 @@ var _ = Describe("Evacuation", func() {
 			Domain:      INIGO_DOMAIN,
 			ProcessGuid: processGuid,
 			Instances:   1,
-			Stack:       componentMaker.Stack,
+			RootFS:      componentMaker.PreloadedRootFS(),
 
 			Routes: cfroutes.CFRoutes{{Port: 8080, Hostnames: []string{"lrp-route"}}}.RoutingInfo(),
 			Ports:  []uint16{8080},
