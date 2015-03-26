@@ -53,6 +53,7 @@ type ComponentAddresses struct {
 	Receptor            string
 	ReceptorTaskHandler string
 	Stager              string
+	NsyncListener       string
 	Auctioneer          string
 }
 
@@ -257,6 +258,10 @@ func (maker ComponentMaker) TPS(argv ...string) ifrit.Runner {
 }
 
 func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
+	address := maker.Addresses.NsyncListener
+	port, err := strconv.Atoi(strings.Split(address, ":")[1])
+	Ω(err).ShouldNot(HaveOccurred())
+
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "nsync-listener",
 		AnsiColorCode:     "97m",
@@ -266,10 +271,8 @@ func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 			maker.Artifacts.Executables["nsync-listener"],
 			append([]string{
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
-				"-etcdCluster", "http://" + maker.Addresses.Etcd,
-				"-natsAddresses", maker.Addresses.NATS,
-				"-lifecycles", fmt.Sprintf(`{"%s": "%s"}`, maker.Stack, LifecycleFilename),
-				"-dockerLifecyclePath", "unused",
+				"-nsyncURL", fmt.Sprintf("http://127.0.0.1:%d", port),
+				"-lifecycles", fmt.Sprintf(`{"buildpack/%s": "%s"}`, maker.Stack, LifecycleFilename),
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,
 			}, argv...)...,
 		),
