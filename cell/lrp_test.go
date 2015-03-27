@@ -14,7 +14,6 @@ import (
 	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 	"github.com/cloudfoundry-incubator/runtime-schema/diego_errors"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -36,7 +35,7 @@ var _ = Describe("LRP", func() {
 	)
 
 	BeforeEach(func() {
-		processGuid = factories.GenerateGuid()
+		processGuid = helpers.GenerateGuid()
 
 		var fileServer ifrit.Runner
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
@@ -390,7 +389,7 @@ var _ = Describe("Crashing LRPs", func() {
 	BeforeEach(func() {
 		fileServer, _ := componentMaker.FileServer()
 
-		processGuid = factories.GenerateGuid()
+		processGuid = helpers.GenerateGuid()
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},

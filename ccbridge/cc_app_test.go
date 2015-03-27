@@ -11,7 +11,6 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/world"
-	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	"github.com/cloudfoundry/gunk/urljoiner"
 
 	"github.com/tedsuo/ifrit"
@@ -62,7 +61,7 @@ var _ = Describe("AppRunner", func() {
 	}
 
 	BeforeEach(func() {
-		appId = factories.GenerateGuid()
+		appId = helpers.GenerateGuid()
 
 		fileServer, fileServerStaticDir := componentMaker.FileServer()
 

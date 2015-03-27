@@ -10,7 +10,6 @@ import (
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/diego_errors"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -62,7 +61,7 @@ var _ = Describe("Task", func() {
 
 			BeforeEach(func() {
 				taskSleepSeconds = 10
-				taskGuid = factories.GenerateGuid()
+				taskGuid = helpers.GenerateGuid()
 				rootfs = componentMaker.PreloadedRootFS()
 				memory = 512
 			})
@@ -203,7 +202,7 @@ var _ = Describe("Task", func() {
 			)
 
 			BeforeEach(func() {
-				taskGuid = factories.GenerateGuid()
+				taskGuid = helpers.GenerateGuid()
 				announcement = fmt.Sprintf("%s-0", taskGuid)
 				taskSleepSeconds = 10
 				taskCreateRequest = receptor.TaskCreateRequest{
@@ -281,7 +280,7 @@ exit 0
 			var taskGuid string
 
 			BeforeEach(func() {
-				taskGuid = factories.GenerateGuid()
+				taskGuid = helpers.GenerateGuid()
 
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 					Domain:   INIGO_DOMAIN,
@@ -323,7 +322,7 @@ exit 0
 			var taskGuid string
 
 			BeforeEach(func() {
-				taskGuid = factories.GenerateGuid()
+				taskGuid = helpers.GenerateGuid()
 
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 					Domain:   INIGO_DOMAIN,

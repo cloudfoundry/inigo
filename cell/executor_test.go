@@ -18,7 +18,6 @@ import (
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
@@ -55,8 +54,8 @@ var _ = Describe("Executor", func() {
 
 	Describe("Resource limits", func() {
 		It("should only pick up tasks if it has capacity", func() {
-			firstGuyGuid := factories.GenerateGuid()
-			secondGuyGuid := factories.GenerateGuid()
+			firstGuyGuid := helpers.GenerateGuid()
+			secondGuyGuid := helpers.GenerateGuid()
 
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				TaskGuid: firstGuyGuid,
@@ -95,7 +94,7 @@ var _ = Describe("Executor", func() {
 			var taskGuid string
 
 			BeforeEach(func() {
-				taskGuid = factories.GenerateGuid()
+				taskGuid = helpers.GenerateGuid()
 
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 					TaskGuid: taskGuid,
@@ -147,7 +146,7 @@ var _ = Describe("Executor", func() {
 			)
 
 			BeforeEach(func() {
-				processGuid = factories.GenerateGuid()
+				processGuid = helpers.GenerateGuid()
 				index = 0
 
 				err := receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
@@ -215,8 +214,8 @@ var _ = Describe("Executor", func() {
 		var wrongStack = "penguin"
 
 		It("should only pick up tasks if the preloaded rootfses match", func() {
-			matchingGuid := factories.GenerateGuid()
-			nonMatchingGuid := factories.GenerateGuid()
+			matchingGuid := helpers.GenerateGuid()
+			nonMatchingGuid := helpers.GenerateGuid()
 
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				TaskGuid: matchingGuid,
@@ -249,7 +248,7 @@ var _ = Describe("Executor", func() {
 		var guid string
 
 		BeforeEach(func() {
-			guid = factories.GenerateGuid()
+			guid = helpers.GenerateGuid()
 		})
 
 		It("runs the command with the provided environment", func() {
@@ -446,7 +445,7 @@ echo should have died by now
 		var guid string
 
 		BeforeEach(func() {
-			guid = factories.GenerateGuid()
+			guid = helpers.GenerateGuid()
 
 			test_helper.CreateTarGZArchive(filepath.Join(fileServerStaticDir, "announce.tar.gz"), []test_helper.ArchiveFile{
 				{
@@ -487,7 +486,7 @@ echo should have died by now
 		var gotRequest chan struct{}
 
 		BeforeEach(func() {
-			guid = factories.GenerateGuid()
+			guid = helpers.GenerateGuid()
 
 			gotRequest = make(chan struct{})
 
@@ -538,7 +537,7 @@ echo should have died by now
 
 	Describe("Fetching results", func() {
 		It("should fetch the contents of the requested file and provide the content in the completed Task", func() {
-			guid := factories.GenerateGuid()
+			guid := helpers.GenerateGuid()
 
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				Domain:     INIGO_DOMAIN,

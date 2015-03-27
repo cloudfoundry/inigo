@@ -25,7 +25,6 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 
 	"github.com/cloudfoundry-incubator/runtime-schema/cc_messages"
-	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	zip_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
@@ -82,8 +81,8 @@ EOF
 	}
 
 	BeforeEach(func() {
-		appId = factories.GenerateGuid()
-		taskId = factories.GenerateGuid()
+		appId = helpers.GenerateGuid()
+		taskId = helpers.GenerateGuid()
 
 		fileServer, dir := componentMaker.FileServer()
 		fileServerStaticDir = dir
@@ -176,7 +175,7 @@ EOF
 
 		BeforeEach(func() {
 			buildpacksToUse, _ = createBuildpack("test-buildpack", "test-buildpack-key", buildpack_zip)
-			outputGuid = factories.GenerateGuid()
+			outputGuid = helpers.GenerateGuid()
 			memory = 128
 
 			helpers.Copy(
