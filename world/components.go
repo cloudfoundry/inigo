@@ -293,10 +293,7 @@ func (maker ComponentMaker) FileServer(argv ...string) (ifrit.Runner, string) {
 			maker.Artifacts.Executables["file-server"],
 			append([]string{
 				"-address", maker.Addresses.FileServer,
-				"-ccAddress", "http://" + maker.Addresses.FakeCC,
 				"-ccJobPollingInterval", "100ms",
-				"-ccUsername", fake_cc.CC_USERNAME,
-				"-ccPassword", fake_cc.CC_PASSWORD,
 				"-staticDirectory", servedFilesDir,
 			}, argv...)...,
 		),
