@@ -1,7 +1,6 @@
 package cell_test
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -9,8 +8,6 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -36,34 +33,6 @@ var _ = Describe("Convergence to desired state", func() {
 		helloWorldInstancePoller func() []string
 	)
 
-	constructDesiredLRPRequest := func(numInstances int) receptor.DesiredLRPCreateRequest {
-		routingInfo := cfroutes.CFRoutes{
-			{Hostnames: []string{"route-to-simple"}, Port: 8080},
-		}.RoutingInfo()
-
-		return receptor.DesiredLRPCreateRequest{
-			Domain:      INIGO_DOMAIN,
-			RootFS:      componentMaker.PreloadedRootFS(),
-			ProcessGuid: processGuid,
-			Instances:   numInstances,
-			LogGuid:     appId,
-
-			Routes: routingInfo,
-			Ports:  []uint16{8080},
-
-			Setup: &models.DownloadAction{
-				From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
-				To:   ".",
-			},
-
-			Action: &models.RunAction{
-				Path: "bash",
-				Args: []string{"server.sh"},
-				Env:  []models.EnvironmentVariable{{"PORT", "8080"}},
-			},
-		}
-	}
-
 	BeforeEach(func() {
 		fileServer, fileServerStaticDir := componentMaker.FileServer()
 
@@ -86,7 +55,7 @@ var _ = Describe("Convergence to desired state", func() {
 			return helpers.ActiveActualLRPs(receptorClient, processGuid)
 		}
 
-		helloWorldInstancePoller = helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-to-simple")
+		helloWorldInstancePoller = helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)
 	})
 
 	AfterEach(func() {
@@ -109,7 +78,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
-					err := receptorClient.CreateDesiredLRP(constructDesiredLRPRequest(2))
+					err := receptorClient.CreateDesiredLRP(helpers.DefaultLRPCreateRequest(processGuid, appId, 2))
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Eventually(runningLRPsPoller).Should(HaveLen(2))
@@ -181,7 +150,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
-					err := receptorClient.CreateDesiredLRP(constructDesiredLRPRequest(1))
+					err := receptorClient.CreateDesiredLRP(helpers.DefaultLRPCreateRequest(processGuid, appId, 1))
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
@@ -218,7 +187,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
-					err := receptorClient.CreateDesiredLRP(constructDesiredLRPRequest(1))
+					err := receptorClient.CreateDesiredLRP(helpers.DefaultLRPCreateRequest(processGuid, appId, 1))
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
@@ -245,7 +214,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
-					err := receptorClient.CreateDesiredLRP(constructDesiredLRPRequest(1))
+					err := receptorClient.CreateDesiredLRP(helpers.DefaultLRPCreateRequest(processGuid, appId, 1))
 					Ω(err).ShouldNot(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())

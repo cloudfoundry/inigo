@@ -9,8 +9,6 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -107,37 +105,14 @@ var _ = Describe("Evacuation", func() {
 
 	It("handles evacuation", func() {
 		By("desiring an LRP")
-		lrp := receptor.DesiredLRPCreateRequest{
-			Domain:      INIGO_DOMAIN,
-			ProcessGuid: processGuid,
-			Instances:   1,
-			RootFS:      componentMaker.PreloadedRootFS(),
-
-			Routes: cfroutes.CFRoutes{{Port: 8080, Hostnames: []string{"lrp-route"}}}.RoutingInfo(),
-			Ports:  []uint16{8080},
-
-			Setup: &models.DownloadAction{
-				From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
-				To:   ".",
-			},
-
-			Action: &models.RunAction{
-				Path: "bash",
-				Args: []string{"server.sh"},
-				Env:  []models.EnvironmentVariable{{"PORT", "8080"}},
-			},
-
-			Monitor: &models.RunAction{
-				Path: "true",
-			},
-		}
+		lrp := helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
 
 		err := receptorClient.CreateDesiredLRP(lrp)
 		Ω(err).ShouldNot(HaveOccurred())
 
 		By("running an actual LRP instance")
 		Eventually(helpers.LRPStatePoller(receptorClient, processGuid, nil)).Should(Equal(receptor.ActualLRPStateRunning))
-		Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route")).Should(Equal(http.StatusOK))
+		Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 
 		actualLRP, err := receptorClient.ActualLRPByProcessGuidAndIndex(processGuid, 0)
 		Ω(err).ShouldNot(HaveOccurred())
@@ -164,11 +139,11 @@ var _ = Describe("Evacuation", func() {
 
 		By("staying routable so long as its rep is alive")
 		Eventually(func() int {
-			Ω(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route")()).Should(Equal(http.StatusOK))
+			Ω(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)()).Should(Equal(http.StatusOK))
 			return evacutaingRepRunner.ExitCode()
 		}).Should(Equal(0))
 
 		By("still being routable after the evacuated rep has exited")
-		Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route")).Should(Equal(http.StatusOK))
+		Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 	})
 })

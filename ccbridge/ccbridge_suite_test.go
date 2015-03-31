@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/pivotal-golang/lager/ginkgoreporter"
+	"github.com/pivotal-golang/localip"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -45,7 +46,10 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	err := json.Unmarshal(encodedBuiltArtifacts, &builtArtifacts)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	componentMaker = helpers.MakeComponentMaker(builtArtifacts)
+	localIP, err := localip.LocalIP()
+	Ω(err).ShouldNot(HaveOccurred())
+
+	componentMaker = helpers.MakeComponentMaker(builtArtifacts, localIP)
 })
 
 var _ = BeforeEach(func() {

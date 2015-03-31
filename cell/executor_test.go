@@ -57,32 +57,28 @@ var _ = Describe("Executor", func() {
 			firstGuyGuid := helpers.GenerateGuid()
 			secondGuyGuid := helpers.GenerateGuid()
 
-			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-				TaskGuid: firstGuyGuid,
-				Domain:   INIGO_DOMAIN,
-				RootFS:   componentMaker.PreloadedRootFS(),
-				MemoryMB: 1024,
-				DiskMB:   1024,
-				Action: &models.RunAction{
+			err := receptorClient.CreateTask(helpers.TaskCreateRequestWithMemoryAndDisk(
+				firstGuyGuid,
+				&models.RunAction{
 					Path: "/bin/bash",
 					Args: []string{"-c", "curl " + inigo_announcement_server.AnnounceURL(firstGuyGuid) + " && tail -f /dev/null"},
 				},
-			})
+				1024,
+				1024,
+			))
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(inigo_announcement_server.Announcements).Should(ContainElement(firstGuyGuid))
 
-			err = receptorClient.CreateTask(receptor.TaskCreateRequest{
-				TaskGuid: secondGuyGuid,
-				Domain:   INIGO_DOMAIN,
-				RootFS:   componentMaker.PreloadedRootFS(),
-				MemoryMB: 1024,
-				DiskMB:   1024,
-				Action: &models.RunAction{
+			err = receptorClient.CreateTask(helpers.TaskCreateRequestWithMemoryAndDisk(
+				secondGuyGuid,
+				&models.RunAction{
 					Path: "curl",
 					Args: []string{inigo_announcement_server.AnnounceURL(secondGuyGuid)},
 				},
-			})
+				1024,
+				1024,
+			))
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Consistently(inigo_announcement_server.Announcements).ShouldNot(ContainElement(secondGuyGuid))
@@ -96,15 +92,13 @@ var _ = Describe("Executor", func() {
 			BeforeEach(func() {
 				taskGuid = helpers.GenerateGuid()
 
-				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-					TaskGuid: taskGuid,
-					Domain:   INIGO_DOMAIN,
-					RootFS:   componentMaker.PreloadedRootFS(),
-					Action: &models.RunAction{
+				err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+					taskGuid,
+					&models.RunAction{
 						Path: "sh",
 						Args: []string{"-c", "while true; do sleep 1; done"},
 					},
-				})
+				))
 				Ω(err).ShouldNot(HaveOccurred())
 
 				executorClient := componentMaker.ExecutorClient()
@@ -149,26 +143,7 @@ var _ = Describe("Executor", func() {
 				processGuid = helpers.GenerateGuid()
 				index = 0
 
-				err := receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
-					Domain:      INIGO_DOMAIN,
-					ProcessGuid: processGuid,
-					Instances:   1,
-					RootFS:      componentMaker.PreloadedRootFS(),
-					MemoryMB:    128,
-					DiskMB:      1024,
-					Ports:       []uint16{8080},
-					Action: &models.RunAction{
-						Path: "sh",
-						Args: []string{
-							"-c",
-							"while true; do sleep 1; done",
-						},
-					},
-					Monitor: &models.RunAction{
-						Path: "sh",
-						Args: []string{"-c", "echo all good"},
-					},
-				})
+				err := receptorClient.CreateDesiredLRP(helpers.LightweightLRPCreateRequest(processGuid))
 				Ω(err).ShouldNot(HaveOccurred())
 
 				var actualLRPs []receptor.ActualLRPResponse
@@ -211,32 +186,26 @@ var _ = Describe("Executor", func() {
 	})
 
 	Describe("Preloaded RootFSes", func() {
-		var wrongStack = "penguin"
-
 		It("should only pick up tasks if the preloaded rootfses match", func() {
 			matchingGuid := helpers.GenerateGuid()
 			nonMatchingGuid := helpers.GenerateGuid()
 
-			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-				TaskGuid: matchingGuid,
-				Domain:   INIGO_DOMAIN,
-				RootFS:   componentMaker.PreloadedRootFS(),
-				Action: &models.RunAction{
+			err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+				matchingGuid,
+				&models.RunAction{
 					Path: "curl",
 					Args: []string{inigo_announcement_server.AnnounceURL(matchingGuid)},
 				},
-			})
+			))
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = receptorClient.CreateTask(receptor.TaskCreateRequest{
-				TaskGuid: nonMatchingGuid,
-				Domain:   INIGO_DOMAIN,
-				RootFS:   fmt.Sprintf("preloaded:%s", wrongStack),
-				Action: &models.RunAction{
+			err = receptorClient.CreateTask(helpers.UnsupportedRootFSTaskCreateRequest(
+				nonMatchingGuid,
+				&models.RunAction{
 					Path: "curl",
 					Args: []string{inigo_announcement_server.AnnounceURL(nonMatchingGuid)},
 				},
-			})
+			))
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Consistently(inigo_announcement_server.Announcements).ShouldNot(ContainElement(nonMatchingGuid), "Did not expect to see this app running, as it has the wrong stack.")
@@ -252,11 +221,9 @@ var _ = Describe("Executor", func() {
 		})
 
 		It("runs the command with the provided environment", func() {
-			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-				TaskGuid: guid,
-				Domain:   INIGO_DOMAIN,
-				RootFS:   componentMaker.PreloadedRootFS(),
-				Action: &models.RunAction{
+			err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+				guid,
+				&models.RunAction{
 					Path: "sh",
 					Args: []string{"-c", `[ "$FOO" = NEW-BAR -a "$BAZ" = WIBBLE ]`},
 					Env: []models.EnvironmentVariable{
@@ -265,7 +232,7 @@ var _ = Describe("Executor", func() {
 						{"FOO", "NEW-BAR"},
 					},
 				},
-			})
+			))
 			Ω(err).ShouldNot(HaveOccurred())
 
 			var task receptor.TaskResponse
@@ -283,16 +250,14 @@ var _ = Describe("Executor", func() {
 		})
 
 		It("runs the command with the provided working directory", func() {
-			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-				TaskGuid: guid,
-				Domain:   INIGO_DOMAIN,
-				RootFS:   componentMaker.PreloadedRootFS(),
-				Action: &models.RunAction{
+			err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+				guid,
+				&models.RunAction{
 					Path: "sh",
 					Args: []string{"-c", `[ $PWD = /tmp ]`},
 					Dir:  "/tmp",
 				},
-			})
+			))
 			Ω(err).ShouldNot(HaveOccurred())
 
 			var task receptor.TaskResponse
@@ -311,13 +276,9 @@ var _ = Describe("Executor", func() {
 
 		Context("when the command exceeds its memory limit", func() {
 			It("should fail the Task", func() {
-				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-					Domain:   INIGO_DOMAIN,
-					TaskGuid: guid,
-					RootFS:   componentMaker.PreloadedRootFS(),
-					MemoryMB: 10,
-					DiskMB:   1024,
-					Action: models.Serial(
+				err := receptorClient.CreateTask(helpers.TaskCreateRequestWithMemoryAndDisk(
+					guid,
+					models.Serial(
 						&models.RunAction{
 							Path: "curl",
 							Args: []string{inigo_announcement_server.AnnounceURL("before-memory-overdose")},
@@ -331,7 +292,9 @@ var _ = Describe("Executor", func() {
 							Args: []string{inigo_announcement_server.AnnounceURL("after-memory-overdose")},
 						},
 					),
-				})
+					10,
+					1024,
+				))
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Eventually(inigo_announcement_server.Announcements).Should(ContainElement("before-memory-overdose"))
@@ -357,11 +320,9 @@ var _ = Describe("Executor", func() {
 			It("should fail the Task", func() {
 				nofile := uint64(10)
 
-				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-					Domain:   INIGO_DOMAIN,
-					TaskGuid: guid,
-					RootFS:   componentMaker.PreloadedRootFS(),
-					Action: models.Serial(
+				err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+					guid,
+					models.Serial(
 						&models.RunAction{
 							Path: "sh",
 							Args: []string{"-c", `
@@ -387,7 +348,7 @@ echo should have died by now
 							},
 						},
 					),
-				})
+				))
 				Ω(err).ShouldNot(HaveOccurred())
 
 				var task receptor.TaskResponse
@@ -409,11 +370,9 @@ echo should have died by now
 
 		Context("when the command times out", func() {
 			It("should fail the Task", func() {
-				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-					Domain:   INIGO_DOMAIN,
-					TaskGuid: guid,
-					RootFS:   componentMaker.PreloadedRootFS(),
-					Action: models.Serial(
+				err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+					guid,
+					models.Serial(
 						models.Timeout(
 							&models.RunAction{
 								Path: "sleep",
@@ -422,7 +381,7 @@ echo should have died by now
 							500*time.Millisecond,
 						),
 					),
-				})
+				))
 				Ω(err).ShouldNot(HaveOccurred())
 
 				var task receptor.TaskResponse
@@ -457,11 +416,9 @@ echo should have died by now
 		})
 
 		It("downloads the file", func() {
-			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-				Domain:   INIGO_DOMAIN,
-				TaskGuid: guid,
-				RootFS:   componentMaker.PreloadedRootFS(),
-				Action: models.Serial(
+			err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+				guid,
+				models.Serial(
 					&models.DownloadAction{
 						From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "announce.tar.gz"),
 						To:   ".",
@@ -470,7 +427,7 @@ echo should have died by now
 						Path: "./announce",
 					},
 				),
-			})
+			))
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
@@ -508,11 +465,9 @@ echo should have died by now
 		})
 
 		It("uploads the specified files", func() {
-			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-				Domain:   INIGO_DOMAIN,
-				TaskGuid: guid,
-				RootFS:   componentMaker.PreloadedRootFS(),
-				Action: models.Serial(
+			err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+				guid,
+				models.Serial(
 					&models.RunAction{
 						Path: "sh",
 						Args: []string{"-c", "echo tasty thingy > thingy"},
@@ -526,7 +481,7 @@ echo should have died by now
 						Args: []string{inigo_announcement_server.AnnounceURL(guid)},
 					},
 				),
-			})
+			))
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(gotRequest).Should(BeClosed())
@@ -539,16 +494,15 @@ echo should have died by now
 		It("should fetch the contents of the requested file and provide the content in the completed Task", func() {
 			guid := helpers.GenerateGuid()
 
-			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-				Domain:     INIGO_DOMAIN,
-				TaskGuid:   guid,
-				RootFS:     componentMaker.PreloadedRootFS(),
-				ResultFile: "thingy",
-				Action: &models.RunAction{
+			taskRequest := helpers.TaskCreateRequest(
+				guid,
+				&models.RunAction{
 					Path: "sh",
 					Args: []string{"-c", "echo tasty thingy > thingy"},
 				},
-			})
+			)
+			taskRequest.ResultFile = "thingy"
+			err := receptorClient.CreateTask(taskRequest)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			var task receptor.TaskResponse

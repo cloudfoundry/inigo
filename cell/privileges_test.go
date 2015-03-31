@@ -6,7 +6,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -35,14 +34,12 @@ var _ = Describe("Privileges", func() {
 	})
 
 	Context("when a task that tries to do privileged things is requested", func() {
-		var taskRequest *receptor.TaskCreateRequest
+		var taskRequest receptor.TaskCreateRequest
 
 		BeforeEach(func() {
-			taskRequest = &receptor.TaskCreateRequest{
-				Domain:   INIGO_DOMAIN,
-				TaskGuid: helpers.GenerateGuid(),
-				RootFS:   componentMaker.PreloadedRootFS(),
-				Action: &models.RunAction{
+			taskRequest = helpers.TaskCreateRequest(
+				helpers.GenerateGuid(),
+				&models.RunAction{
 					Path: "sh",
 					// always run as root; tests change task-level privileged
 					Privileged: true,
@@ -53,11 +50,11 @@ var _ = Describe("Privileges", func() {
 						"echo h > /proc/sysrq-trigger",
 					},
 				},
-			}
+			)
 		})
 
 		JustBeforeEach(func() {
-			err := receptorClient.CreateTask(*taskRequest)
+			err := receptorClient.CreateTask(taskRequest)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -87,52 +84,14 @@ var _ = Describe("Privileges", func() {
 	})
 
 	Context("when a LRP that tries to do privileged things is requested", func() {
-		var lrpRequest *receptor.DesiredLRPCreateRequest
+		var lrpRequest receptor.DesiredLRPCreateRequest
 
 		BeforeEach(func() {
-			routingInfo := cfroutes.CFRoutes{
-				{Hostnames: []string{"lrp-route"}, Port: 8080},
-			}.RoutingInfo()
-
-			lrpRequest = &receptor.DesiredLRPCreateRequest{
-				Domain:      INIGO_DOMAIN,
-				ProcessGuid: helpers.GenerateGuid(),
-				Instances:   1,
-				RootFS:      componentMaker.PreloadedRootFS(),
-
-				Routes: routingInfo,
-				Ports:  []uint16{8080},
-
-				Action: &models.RunAction{
-					Path: "bash",
-					// always run as root; tests change task-level privileged
-					Privileged: true,
-					Args: []string{
-						"-c",
-						`
-						mkfifo request
-
-						while true; do
-						{
-							read < request
-
-							status="200 OK"
-							if ! echo h > /proc/sysrq-trigger; then
-								status="500 Internal Server Error"
-							fi
-
-						  echo -n -e "HTTP/1.1 ${status}\r\n"
-						  echo -n -e "Content-Length: 0\r\n\r\n"
-						} | nc -l 0.0.0.0 8080 > request;
-						done
-						`,
-					},
-				},
-			}
+			lrpRequest = helpers.PrivilegedLRPCreateRequest(helpers.GenerateGuid())
 		})
 
 		JustBeforeEach(func() {
-			err := receptorClient.CreateDesiredLRP(*lrpRequest)
+			err := receptorClient.CreateDesiredLRP(lrpRequest)
 			Ω(err).ShouldNot(HaveOccurred())
 		})
 
@@ -142,7 +101,7 @@ var _ = Describe("Privileges", func() {
 			})
 
 			It("succeeds", func() {
-				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route")).Should(Equal(http.StatusOK))
+				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 			})
 		})
 
@@ -152,7 +111,7 @@ var _ = Describe("Privileges", func() {
 			})
 
 			It("fails", func() {
-				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route")).Should(Equal(http.StatusInternalServerError))
+				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusInternalServerError))
 			})
 		})
 	})

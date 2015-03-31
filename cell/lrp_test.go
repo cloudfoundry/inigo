@@ -1,7 +1,6 @@
 package cell_test
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -67,30 +66,7 @@ var _ = Describe("LRP", func() {
 		var lrp receptor.DesiredLRPCreateRequest
 
 		BeforeEach(func() {
-			lrp = receptor.DesiredLRPCreateRequest{
-				Domain:      INIGO_DOMAIN,
-				ProcessGuid: processGuid,
-				Instances:   1,
-				RootFS:      componentMaker.PreloadedRootFS(),
-
-				Routes: cfroutes.CFRoutes{{Port: 8080, Hostnames: []string{"lrp-route"}}}.RoutingInfo(),
-				Ports:  []uint16{8080},
-
-				Setup: &models.DownloadAction{
-					From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
-					To:   ".",
-				},
-
-				Action: &models.RunAction{
-					Path: "bash",
-					Args: []string{"server.sh"},
-					Env:  []models.EnvironmentVariable{{"PORT", "8080"}},
-				},
-
-				Monitor: &models.RunAction{
-					Path: "true",
-				},
-			}
+			lrp = helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
 		})
 
 		JustBeforeEach(func() {
@@ -106,7 +82,7 @@ var _ = Describe("LRP", func() {
 				return lrps
 			}).Should(HaveLen(1))
 
-			Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "lrp-route")).Should(ConsistOf([]string{"0"}))
+			Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 		})
 
 		Context("when it's unhealthy for longer than its start timeout", func() {
@@ -227,7 +203,7 @@ var _ = Describe("LRP", func() {
 							return lrps
 						}).Should(HaveLen(3))
 
-						Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "lrp-route")).Should(ConsistOf([]string{"0", "1", "2"}))
+						Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0", "1", "2"}))
 					})
 				})
 
@@ -244,7 +220,7 @@ var _ = Describe("LRP", func() {
 							return lrps
 						}).Should(HaveLen(1))
 
-						Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "lrp-route")).Should(ConsistOf([]string{"0"}))
+						Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 					})
 				})
 
@@ -261,7 +237,7 @@ var _ = Describe("LRP", func() {
 							return lrps
 						}).Should(BeEmpty())
 
-						Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "lrp-route")).Should(BeEmpty())
+						Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(BeEmpty())
 					})
 
 					It("can be scaled back up", func() {
@@ -278,7 +254,7 @@ var _ = Describe("LRP", func() {
 							return lrps
 						}).Should(HaveLen(1))
 
-						Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "lrp-route")).Should(ConsistOf([]string{"0"}))
+						Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 					})
 				})
 			})
@@ -297,7 +273,7 @@ var _ = Describe("LRP", func() {
 						return lrps
 					}).Should(BeEmpty())
 
-					Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "lrp-route")).Should(BeEmpty())
+					Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(BeEmpty())
 				})
 			})
 		})
@@ -310,7 +286,7 @@ var _ = Describe("LRP", func() {
 			Context("default networking", func() {
 				It("rejects outbound tcp traffic", func() {
 					Eventually(func() string {
-						bytes, statusCode, err := helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses.Router, "lrp-route")
+						bytes, statusCode, err := helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses.Router, helpers.DefaultHost)
 						if err != nil {
 							return err.Error()
 						}
@@ -344,7 +320,7 @@ var _ = Describe("LRP", func() {
 
 				It("allows outbound tcp traffic", func() {
 					Eventually(func() string {
-						bytes, statusCode, err := helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses.Router, "lrp-route")
+						bytes, statusCode, err := helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses.Router, helpers.DefaultHost)
 						if err != nil {
 							return err.Error()
 						}
@@ -360,7 +336,7 @@ var _ = Describe("LRP", func() {
 
 		Context("Unsupported preloaded rootfs is requested", func() {
 			BeforeEach(func() {
-				lrp.RootFS = "preloaded:unsupported_stack"
+				lrp = helpers.UnsupportedRootFSLRPCreateRequest(processGuid)
 			})
 
 			It("fails and sets a placement error", func() {
@@ -412,17 +388,7 @@ var _ = Describe("Crashing LRPs", func() {
 	Describe("crashing apps", func() {
 		Context("when an app flaps", func() {
 			BeforeEach(func() {
-				lrp := receptor.DesiredLRPCreateRequest{
-					Domain:      INIGO_DOMAIN,
-					ProcessGuid: processGuid,
-					Instances:   1,
-					RootFS:      componentMaker.PreloadedRootFS(),
-					Ports:       []uint16{},
-
-					Action: &models.RunAction{
-						Path: "false",
-					},
-				}
+				lrp := helpers.CrashingLRPCreateRequest(processGuid)
 
 				err := receptorClient.CreateDesiredLRP(lrp)
 				Ω(err).ShouldNot(HaveOccurred())
