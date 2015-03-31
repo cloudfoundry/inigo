@@ -8,7 +8,6 @@ import (
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
@@ -41,8 +40,8 @@ var _ = Describe("Privileges", func() {
 		BeforeEach(func() {
 			taskRequest = &receptor.TaskCreateRequest{
 				Domain:   INIGO_DOMAIN,
-				TaskGuid: factories.GenerateGuid(),
-				Stack:    componentMaker.Stack,
+				TaskGuid: helpers.GenerateGuid(),
+				RootFS:   componentMaker.PreloadedRootFS(),
 				Action: &models.RunAction{
 					Path: "sh",
 					// always run as root; tests change task-level privileged
@@ -97,9 +96,9 @@ var _ = Describe("Privileges", func() {
 
 			lrpRequest = &receptor.DesiredLRPCreateRequest{
 				Domain:      INIGO_DOMAIN,
-				ProcessGuid: factories.GenerateGuid(),
+				ProcessGuid: helpers.GenerateGuid(),
 				Instances:   1,
-				Stack:       componentMaker.Stack,
+				RootFS:      componentMaker.PreloadedRootFS(),
 
 				Routes: routingInfo,
 				Ports:  []uint16{8080},
@@ -121,7 +120,7 @@ var _ = Describe("Privileges", func() {
 							if ! echo h > /proc/sysrq-trigger; then
 								status="500 Internal Server Error"
 							fi
-							
+
 						  echo -n -e "HTTP/1.1 ${status}\r\n"
 						  echo -n -e "Content-Length: 0\r\n\r\n"
 						} | nc -l 0.0.0.0 8080 > request;

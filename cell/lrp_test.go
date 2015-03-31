@@ -14,7 +14,6 @@ import (
 	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 	"github.com/cloudfoundry-incubator/runtime-schema/diego_errors"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -36,7 +35,7 @@ var _ = Describe("LRP", func() {
 	)
 
 	BeforeEach(func() {
-		processGuid = factories.GenerateGuid()
+		processGuid = helpers.GenerateGuid()
 
 		var fileServer ifrit.Runner
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
@@ -72,7 +71,7 @@ var _ = Describe("LRP", func() {
 				Domain:      INIGO_DOMAIN,
 				ProcessGuid: processGuid,
 				Instances:   1,
-				Stack:       componentMaker.Stack,
+				RootFS:      componentMaker.PreloadedRootFS(),
 
 				Routes: cfroutes.CFRoutes{{Port: 8080, Hostnames: []string{"lrp-route"}}}.RoutingInfo(),
 				Ports:  []uint16{8080},
@@ -359,9 +358,9 @@ var _ = Describe("LRP", func() {
 			})
 		})
 
-		Context("Unsupported stack is requested", func() {
+		Context("Unsupported preloaded rootfs is requested", func() {
 			BeforeEach(func() {
-				lrp.Stack = "unsupported_stack"
+				lrp.RootFS = "preloaded:unsupported_stack"
 			})
 
 			It("fails and sets a placement error", func() {
@@ -390,7 +389,7 @@ var _ = Describe("Crashing LRPs", func() {
 	BeforeEach(func() {
 		fileServer, _ := componentMaker.FileServer()
 
-		processGuid = factories.GenerateGuid()
+		processGuid = helpers.GenerateGuid()
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},
@@ -417,7 +416,7 @@ var _ = Describe("Crashing LRPs", func() {
 					Domain:      INIGO_DOMAIN,
 					ProcessGuid: processGuid,
 					Instances:   1,
-					Stack:       componentMaker.Stack,
+					RootFS:      componentMaker.PreloadedRootFS(),
 					Ports:       []uint16{},
 
 					Action: &models.RunAction{

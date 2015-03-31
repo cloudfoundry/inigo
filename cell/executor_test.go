@@ -18,7 +18,6 @@ import (
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
@@ -55,13 +54,13 @@ var _ = Describe("Executor", func() {
 
 	Describe("Resource limits", func() {
 		It("should only pick up tasks if it has capacity", func() {
-			firstGuyGuid := factories.GenerateGuid()
-			secondGuyGuid := factories.GenerateGuid()
+			firstGuyGuid := helpers.GenerateGuid()
+			secondGuyGuid := helpers.GenerateGuid()
 
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				TaskGuid: firstGuyGuid,
 				Domain:   INIGO_DOMAIN,
-				Stack:    componentMaker.Stack,
+				RootFS:   componentMaker.PreloadedRootFS(),
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Action: &models.RunAction{
@@ -76,7 +75,7 @@ var _ = Describe("Executor", func() {
 			err = receptorClient.CreateTask(receptor.TaskCreateRequest{
 				TaskGuid: secondGuyGuid,
 				Domain:   INIGO_DOMAIN,
-				Stack:    componentMaker.Stack,
+				RootFS:   componentMaker.PreloadedRootFS(),
 				MemoryMB: 1024,
 				DiskMB:   1024,
 				Action: &models.RunAction{
@@ -95,12 +94,12 @@ var _ = Describe("Executor", func() {
 			var taskGuid string
 
 			BeforeEach(func() {
-				taskGuid = factories.GenerateGuid()
+				taskGuid = helpers.GenerateGuid()
 
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 					TaskGuid: taskGuid,
 					Domain:   INIGO_DOMAIN,
-					Stack:    componentMaker.Stack,
+					RootFS:   componentMaker.PreloadedRootFS(),
 					Action: &models.RunAction{
 						Path: "sh",
 						Args: []string{"-c", "while true; do sleep 1; done"},
@@ -147,14 +146,14 @@ var _ = Describe("Executor", func() {
 			)
 
 			BeforeEach(func() {
-				processGuid = factories.GenerateGuid()
+				processGuid = helpers.GenerateGuid()
 				index = 0
 
 				err := receptorClient.CreateDesiredLRP(receptor.DesiredLRPCreateRequest{
 					Domain:      INIGO_DOMAIN,
 					ProcessGuid: processGuid,
 					Instances:   1,
-					Stack:       componentMaker.Stack,
+					RootFS:      componentMaker.PreloadedRootFS(),
 					MemoryMB:    128,
 					DiskMB:      1024,
 					Ports:       []uint16{8080},
@@ -211,17 +210,17 @@ var _ = Describe("Executor", func() {
 		})
 	})
 
-	Describe("Stack", func() {
+	Describe("Preloaded RootFSes", func() {
 		var wrongStack = "penguin"
 
-		It("should only pick up tasks if the stacks match", func() {
-			matchingGuid := factories.GenerateGuid()
-			nonMatchingGuid := factories.GenerateGuid()
+		It("should only pick up tasks if the preloaded rootfses match", func() {
+			matchingGuid := helpers.GenerateGuid()
+			nonMatchingGuid := helpers.GenerateGuid()
 
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				TaskGuid: matchingGuid,
 				Domain:   INIGO_DOMAIN,
-				Stack:    componentMaker.Stack,
+				RootFS:   componentMaker.PreloadedRootFS(),
 				Action: &models.RunAction{
 					Path: "curl",
 					Args: []string{inigo_announcement_server.AnnounceURL(matchingGuid)},
@@ -232,7 +231,7 @@ var _ = Describe("Executor", func() {
 			err = receptorClient.CreateTask(receptor.TaskCreateRequest{
 				TaskGuid: nonMatchingGuid,
 				Domain:   INIGO_DOMAIN,
-				Stack:    wrongStack,
+				RootFS:   fmt.Sprintf("preloaded:%s", wrongStack),
 				Action: &models.RunAction{
 					Path: "curl",
 					Args: []string{inigo_announcement_server.AnnounceURL(nonMatchingGuid)},
@@ -249,14 +248,14 @@ var _ = Describe("Executor", func() {
 		var guid string
 
 		BeforeEach(func() {
-			guid = factories.GenerateGuid()
+			guid = helpers.GenerateGuid()
 		})
 
 		It("runs the command with the provided environment", func() {
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				TaskGuid: guid,
 				Domain:   INIGO_DOMAIN,
-				Stack:    componentMaker.Stack,
+				RootFS:   componentMaker.PreloadedRootFS(),
 				Action: &models.RunAction{
 					Path: "sh",
 					Args: []string{"-c", `[ "$FOO" = NEW-BAR -a "$BAZ" = WIBBLE ]`},
@@ -287,7 +286,7 @@ var _ = Describe("Executor", func() {
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				TaskGuid: guid,
 				Domain:   INIGO_DOMAIN,
-				Stack:    componentMaker.Stack,
+				RootFS:   componentMaker.PreloadedRootFS(),
 				Action: &models.RunAction{
 					Path: "sh",
 					Args: []string{"-c", `[ $PWD = /tmp ]`},
@@ -315,7 +314,7 @@ var _ = Describe("Executor", func() {
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 					Domain:   INIGO_DOMAIN,
 					TaskGuid: guid,
-					Stack:    componentMaker.Stack,
+					RootFS:   componentMaker.PreloadedRootFS(),
 					MemoryMB: 10,
 					DiskMB:   1024,
 					Action: models.Serial(
@@ -361,7 +360,7 @@ var _ = Describe("Executor", func() {
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 					Domain:   INIGO_DOMAIN,
 					TaskGuid: guid,
-					Stack:    componentMaker.Stack,
+					RootFS:   componentMaker.PreloadedRootFS(),
 					Action: models.Serial(
 						&models.RunAction{
 							Path: "sh",
@@ -413,7 +412,7 @@ echo should have died by now
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 					Domain:   INIGO_DOMAIN,
 					TaskGuid: guid,
-					Stack:    componentMaker.Stack,
+					RootFS:   componentMaker.PreloadedRootFS(),
 					Action: models.Serial(
 						models.Timeout(
 							&models.RunAction{
@@ -446,7 +445,7 @@ echo should have died by now
 		var guid string
 
 		BeforeEach(func() {
-			guid = factories.GenerateGuid()
+			guid = helpers.GenerateGuid()
 
 			test_helper.CreateTarGZArchive(filepath.Join(fileServerStaticDir, "announce.tar.gz"), []test_helper.ArchiveFile{
 				{
@@ -461,7 +460,7 @@ echo should have died by now
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				Domain:   INIGO_DOMAIN,
 				TaskGuid: guid,
-				Stack:    componentMaker.Stack,
+				RootFS:   componentMaker.PreloadedRootFS(),
 				Action: models.Serial(
 					&models.DownloadAction{
 						From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "announce.tar.gz"),
@@ -487,7 +486,7 @@ echo should have died by now
 		var gotRequest chan struct{}
 
 		BeforeEach(func() {
-			guid = factories.GenerateGuid()
+			guid = helpers.GenerateGuid()
 
 			gotRequest = make(chan struct{})
 
@@ -512,7 +511,7 @@ echo should have died by now
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				Domain:   INIGO_DOMAIN,
 				TaskGuid: guid,
-				Stack:    componentMaker.Stack,
+				RootFS:   componentMaker.PreloadedRootFS(),
 				Action: models.Serial(
 					&models.RunAction{
 						Path: "sh",
@@ -538,12 +537,12 @@ echo should have died by now
 
 	Describe("Fetching results", func() {
 		It("should fetch the contents of the requested file and provide the content in the completed Task", func() {
-			guid := factories.GenerateGuid()
+			guid := helpers.GenerateGuid()
 
 			err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 				Domain:     INIGO_DOMAIN,
 				TaskGuid:   guid,
-				Stack:      componentMaker.Stack,
+				RootFS:     componentMaker.PreloadedRootFS(),
 				ResultFile: "thingy",
 				Action: &models.RunAction{
 					Path: "sh",

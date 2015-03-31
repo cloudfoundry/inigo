@@ -171,7 +171,8 @@ func (maker ComponentMaker) Rep(argv ...string) *ginkgomon.Runner {
 			maker.Artifacts.Executables["rep"],
 			append(
 				[]string{
-					"-stack", maker.Stack,
+					"-preloadedRootFS", fmt.Sprintf("%s:%s", maker.Stack, maker.GardenRootFSPath),
+					"-rootFSProvider", "docker",
 					"-etcdCluster", "http://" + maker.Addresses.Etcd,
 					"-listenAddr", maker.Addresses.Rep,
 					"-cellID", "the-cell-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()),
@@ -292,10 +293,7 @@ func (maker ComponentMaker) FileServer(argv ...string) (ifrit.Runner, string) {
 			maker.Artifacts.Executables["file-server"],
 			append([]string{
 				"-address", maker.Addresses.FileServer,
-				"-ccAddress", "http://" + maker.Addresses.FakeCC,
 				"-ccJobPollingInterval", "100ms",
-				"-ccUsername", fake_cc.CC_USERNAME,
-				"-ccPassword", fake_cc.CC_PASSWORD,
 				"-staticDirectory", servedFilesDir,
 			}, argv...)...,
 		),
@@ -433,6 +431,10 @@ func (maker ComponentMaker) ExecutorClient() executor.Client {
 
 func (maker ComponentMaker) ReceptorClient() receptor.Client {
 	return receptor.NewClient("http://" + maker.Addresses.Receptor)
+}
+
+func (maker ComponentMaker) PreloadedRootFS() string {
+	return fmt.Sprintf("preloaded:%s", maker.Stack)
 }
 
 // offsetPort retuns a new port offest by a given number in such a way

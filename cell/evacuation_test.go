@@ -11,7 +11,6 @@ import (
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	"github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -44,8 +43,8 @@ var _ = Describe("Evacuation", func() {
 	)
 
 	BeforeEach(func() {
-		processGuid = factories.GenerateGuid()
-		appId = factories.GenerateGuid()
+		processGuid = helpers.GenerateGuid()
+		appId = helpers.GenerateGuid()
 
 		fileServer, fileServerStaticDir := componentMaker.FileServer()
 
@@ -112,7 +111,7 @@ var _ = Describe("Evacuation", func() {
 			Domain:      INIGO_DOMAIN,
 			ProcessGuid: processGuid,
 			Instances:   1,
-			Stack:       componentMaker.Stack,
+			RootFS:      componentMaker.PreloadedRootFS(),
 
 			Routes: cfroutes.CFRoutes{{Port: 8080, Hostnames: []string{"lrp-route"}}}.RoutingInfo(),
 			Ports:  []uint16{8080},

@@ -10,7 +10,6 @@ import (
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/diego_errors"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -57,13 +56,13 @@ var _ = Describe("Task", func() {
 		Context("and a standard Task is desired", func() {
 			var taskGuid string
 			var taskSleepSeconds int
-			var stack string
+			var rootfs string
 			var memory int
 
 			BeforeEach(func() {
 				taskSleepSeconds = 10
-				taskGuid = factories.GenerateGuid()
-				stack = componentMaker.Stack
+				taskGuid = helpers.GenerateGuid()
+				rootfs = componentMaker.PreloadedRootFS()
 				memory = 512
 			})
 
@@ -89,7 +88,7 @@ var _ = Describe("Task", func() {
 					Domain:   INIGO_DOMAIN,
 					TaskGuid: taskGuid,
 					MemoryMB: memory,
-					Stack:    stack,
+					RootFS:   rootfs,
 					Action: &models.RunAction{
 						Path: "sh",
 						Args: []string{
@@ -102,15 +101,15 @@ var _ = Describe("Task", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
-			Context("when there is a matching stack", func() {
+			Context("when there is a matching rootfs", func() {
 				It("eventually runs the Task", func() {
 					Eventually(inigo_announcement_server.Announcements).Should(ContainElement(taskGuid))
 				})
 			})
 
-			Context("when there is no matching stack", func() {
+			Context("when there is no matching rootfs", func() {
 				BeforeEach(func() {
-					stack = "bogus-stack"
+					rootfs = "preloaded:bogus-stack"
 				})
 
 				It("marks the task as complete, failed and cancelled", func() {
@@ -203,14 +202,14 @@ var _ = Describe("Task", func() {
 			)
 
 			BeforeEach(func() {
-				taskGuid = factories.GenerateGuid()
+				taskGuid = helpers.GenerateGuid()
 				announcement = fmt.Sprintf("%s-0", taskGuid)
 				taskSleepSeconds = 10
 				taskCreateRequest = receptor.TaskCreateRequest{
 					Domain:   INIGO_DOMAIN,
 					TaskGuid: taskGuid,
 					MemoryMB: 512,
-					Stack:    componentMaker.Stack,
+					RootFS:   componentMaker.PreloadedRootFS(),
 					Action: &models.RunAction{
 						Path: "sh",
 						Args: []string{
@@ -281,12 +280,12 @@ exit 0
 			var taskGuid string
 
 			BeforeEach(func() {
-				taskGuid = factories.GenerateGuid()
+				taskGuid = helpers.GenerateGuid()
 
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 					Domain:   INIGO_DOMAIN,
 					TaskGuid: taskGuid,
-					Stack:    componentMaker.Stack,
+					RootFS:   componentMaker.PreloadedRootFS(),
 					Action: &models.RunAction{
 						Path: "curl",
 						Args: []string{inigo_announcement_server.AnnounceURL(taskGuid)},
@@ -323,12 +322,12 @@ exit 0
 			var taskGuid string
 
 			BeforeEach(func() {
-				taskGuid = factories.GenerateGuid()
+				taskGuid = helpers.GenerateGuid()
 
 				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
 					Domain:   INIGO_DOMAIN,
 					TaskGuid: taskGuid,
-					Stack:    componentMaker.Stack,
+					RootFS:   componentMaker.PreloadedRootFS(),
 					Action: &models.RunAction{
 						Path: "curl",
 						Args: []string{inigo_announcement_server.AnnounceURL(taskGuid)},

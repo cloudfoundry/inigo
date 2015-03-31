@@ -11,7 +11,6 @@ import (
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	"github.com/cloudfoundry-incubator/runtime-schema/models/factories"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -44,7 +43,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 		return receptor.DesiredLRPCreateRequest{
 			Domain:      INIGO_DOMAIN,
-			Stack:       componentMaker.Stack,
+			RootFS:      componentMaker.PreloadedRootFS(),
 			ProcessGuid: processGuid,
 			Instances:   numInstances,
 			LogGuid:     appId,
@@ -79,9 +78,9 @@ var _ = Describe("Convergence to desired state", func() {
 			fixtures.HelloWorldIndexLRP(),
 		)
 
-		appId = factories.GenerateGuid()
+		appId = helpers.GenerateGuid()
 
-		processGuid = factories.GenerateGuid()
+		processGuid = helpers.GenerateGuid()
 
 		runningLRPsPoller = func() []receptor.ActualLRPResponse {
 			return helpers.ActiveActualLRPs(receptorClient, processGuid)
