@@ -136,6 +136,39 @@ var _ = Describe("AppRunner", func() {
 		})
 	})
 
+	Describe("Stop an applicaiton", func() {
+		stopApp := func(guid string) (*http.Response, error) {
+			stopURL := urljoiner.Join("http://"+componentMaker.Addresses.NsyncListener, "v1", "apps", guid)
+			request, err := http.NewRequest("DELETE", stopURL, nil)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			return http.DefaultClient.Do(request)
+		}
+
+		Context("when the application is running", func() {
+			guid := "process-guid"
+
+			BeforeEach(func() {
+				// desire the app
+				resp, err := desireApp(guid, `["route-1"]`, 2)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
+
+				// wait for intances to come up
+				Eventually(runningIndexPoller(componentMaker.Addresses.TPS, guid)).Should(ConsistOf(0, 1))
+			})
+
+			It("stops the application", func() {
+				resp, err := stopApp(guid)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
+
+				poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-1")
+				Eventually(poller).Should(BeEmpty())
+			})
+		})
+	})
+
 	Describe("Stop an index", func() {
 		killIndex := func(guid string, index int) (*http.Response, error) {
 			killURL := urljoiner.Join("http://"+componentMaker.Addresses.NsyncListener, "v1", "apps", guid, "index", strconv.Itoa(index))
