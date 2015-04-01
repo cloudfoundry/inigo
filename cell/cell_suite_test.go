@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/pivotal-golang/lager/ginkgoreporter"
+	"github.com/pivotal-golang/localip"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -23,8 +24,6 @@ import (
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry/gunk/diegonats"
 )
-
-const INIGO_DOMAIN = "inigo"
 
 var (
 	componentMaker world.ComponentMaker
@@ -49,7 +48,10 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	err := json.Unmarshal(encodedBuiltArtifacts, &builtArtifacts)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	componentMaker = helpers.MakeComponentMaker(builtArtifacts)
+	localIP, err := localip.LocalIP()
+	Ω(err).ShouldNot(HaveOccurred())
+
+	componentMaker = helpers.MakeComponentMaker(builtArtifacts, localIP)
 })
 
 var _ = BeforeEach(func() {
@@ -64,8 +66,7 @@ var _ = BeforeEach(func() {
 	natsClient = componentMaker.NATSClient()
 	receptorClient = componentMaker.ReceptorClient()
 
-	err := receptorClient.UpsertDomain(INIGO_DOMAIN, 0)
-	Ω(err).ShouldNot(HaveOccurred())
+	helpers.UpsertInigoDomain(receptorClient)
 
 	inigo_announcement_server.Start(componentMaker.ExternalAddress)
 })

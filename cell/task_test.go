@@ -56,14 +56,25 @@ var _ = Describe("Task", func() {
 		Context("and a standard Task is desired", func() {
 			var taskGuid string
 			var taskSleepSeconds int
-			var rootfs string
-			var memory int
+
+			var taskRequest receptor.TaskCreateRequest
 
 			BeforeEach(func() {
 				taskSleepSeconds = 10
 				taskGuid = helpers.GenerateGuid()
-				rootfs = componentMaker.PreloadedRootFS()
-				memory = 512
+
+				taskRequest = helpers.TaskCreateRequestWithMemory(
+					taskGuid,
+					&models.RunAction{
+						Path: "sh",
+						Args: []string{
+							"-c",
+							// sleep a bit so that we can make assertions around behavior as it's running
+							fmt.Sprintf("curl %s; sleep %d", inigo_announcement_server.AnnounceURL(taskGuid), taskSleepSeconds),
+						},
+					},
+					512,
+				)
 			})
 
 			theFailureReason := func() string {
@@ -84,20 +95,7 @@ var _ = Describe("Task", func() {
 			}
 
 			JustBeforeEach(func() {
-				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-					Domain:   INIGO_DOMAIN,
-					TaskGuid: taskGuid,
-					MemoryMB: memory,
-					RootFS:   rootfs,
-					Action: &models.RunAction{
-						Path: "sh",
-						Args: []string{
-							"-c",
-							// sleep a bit so that we can make assertions around behavior as it's running
-							fmt.Sprintf("curl %s; sleep %d", inigo_announcement_server.AnnounceURL(taskGuid), taskSleepSeconds),
-						},
-					},
-				})
+				err := receptorClient.CreateTask(taskRequest)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
@@ -109,7 +107,12 @@ var _ = Describe("Task", func() {
 
 			Context("when there is no matching rootfs", func() {
 				BeforeEach(func() {
-					rootfs = "preloaded:bogus-stack"
+					taskRequest = helpers.UnsupportedRootFSTaskCreateRequest(
+						taskGuid,
+						&models.RunAction{
+							Path: "true",
+						},
+					)
 				})
 
 				It("marks the task as complete, failed and cancelled", func() {
@@ -119,7 +122,18 @@ var _ = Describe("Task", func() {
 
 			Context("when there is not enough resources", func() {
 				BeforeEach(func() {
-					memory = 2048
+					taskRequest = helpers.TaskCreateRequestWithMemory(
+						taskGuid,
+						&models.RunAction{
+							Path: "sh",
+							Args: []string{
+								"-c",
+								// sleep a bit so that we can make assertions around behavior as it's running
+								fmt.Sprintf("curl %s; sleep %d", inigo_announcement_server.AnnounceURL(taskGuid), taskSleepSeconds),
+							},
+						},
+						2048,
+					)
 				})
 
 				It("marks the task as complete, failed and cancelled", func() {
@@ -196,21 +210,14 @@ var _ = Describe("Task", func() {
 		Context("Egress Rules", func() {
 			var (
 				taskGuid          string
-				taskSleepSeconds  int
-				announcement      string
 				taskCreateRequest receptor.TaskCreateRequest
 			)
 
 			BeforeEach(func() {
 				taskGuid = helpers.GenerateGuid()
-				announcement = fmt.Sprintf("%s-0", taskGuid)
-				taskSleepSeconds = 10
-				taskCreateRequest = receptor.TaskCreateRequest{
-					Domain:   INIGO_DOMAIN,
-					TaskGuid: taskGuid,
-					MemoryMB: 512,
-					RootFS:   componentMaker.PreloadedRootFS(),
-					Action: &models.RunAction{
+				taskCreateRequest = helpers.TaskCreateRequest(
+					taskGuid,
+					&models.RunAction{
 						Path: "sh",
 						Args: []string{
 							"-c",
@@ -221,8 +228,8 @@ exit 0
 					`,
 						},
 					},
-					ResultFile: "/tmp/result",
-				}
+				)
+				taskCreateRequest.ResultFile = "/tmp/result"
 			})
 
 			JustBeforeEach(func() {
@@ -282,15 +289,13 @@ exit 0
 			BeforeEach(func() {
 				taskGuid = helpers.GenerateGuid()
 
-				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-					Domain:   INIGO_DOMAIN,
-					TaskGuid: taskGuid,
-					RootFS:   componentMaker.PreloadedRootFS(),
-					Action: &models.RunAction{
+				err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+					taskGuid,
+					&models.RunAction{
 						Path: "curl",
 						Args: []string{inigo_announcement_server.AnnounceURL(taskGuid)},
 					},
-				})
+				))
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 
@@ -324,15 +329,13 @@ exit 0
 			BeforeEach(func() {
 				taskGuid = helpers.GenerateGuid()
 
-				err := receptorClient.CreateTask(receptor.TaskCreateRequest{
-					Domain:   INIGO_DOMAIN,
-					TaskGuid: taskGuid,
-					RootFS:   componentMaker.PreloadedRootFS(),
-					Action: &models.RunAction{
+				err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+					taskGuid,
+					&models.RunAction{
 						Path: "curl",
 						Args: []string{inigo_announcement_server.AnnounceURL(taskGuid)},
 					},
-				})
+				))
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 

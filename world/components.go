@@ -387,6 +387,7 @@ func (maker ComponentMaker) StagerN(portOffset int, argv ...string) ifrit.Runner
 				"-ccUsername", fake_cc.CC_USERNAME,
 				"-ccPassword", fake_cc.CC_PASSWORD,
 				"-lifecycles", fmt.Sprintf(`{"buildpack/%s": "%s"}`, maker.Stack, LifecycleFilename),
+				"-dockerStagingStack", maker.Stack,
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 				"-stagerURL", fmt.Sprintf("http://127.0.0.1:%d", offsetPort(port, portOffset)),
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,

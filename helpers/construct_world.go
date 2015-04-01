@@ -6,17 +6,29 @@ import (
 
 	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/onsi/ginkgo/config"
+
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-golang/localip"
 )
 
 const StackName = "lucid64"
 
-func MakeComponentMaker(builtArtifacts world.BuiltArtifacts) world.ComponentMaker {
-	localIP, err := localip.LocalIP()
-	Ω(err).ShouldNot(HaveOccurred())
+var addresses world.ComponentAddresses
 
-	addresses := world.ComponentAddresses{
+func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) world.ComponentMaker {
+	gardenBinPath := os.Getenv("GARDEN_BINPATH")
+	gardenRootFSPath := os.Getenv("GARDEN_ROOTFS")
+	gardenGraphPath := os.Getenv("GARDEN_GRAPH_PATH")
+	externalAddress := os.Getenv("EXTERNAL_ADDRESS")
+
+	if gardenGraphPath == "" {
+		gardenGraphPath = os.TempDir()
+	}
+
+	Ω(gardenBinPath).ShouldNot(BeEmpty(), "must provide $GARDEN_BINPATH")
+	Ω(gardenRootFSPath).ShouldNot(BeEmpty(), "must provide $GARDEN_ROOTFS")
+	Ω(externalAddress).ShouldNot(BeEmpty(), "must provide $EXTERNAL_ADDRESS")
+
+	addresses = world.ComponentAddresses{
 		GardenLinux:         fmt.Sprintf("127.0.0.1:%d", 10000+config.GinkgoConfig.ParallelNode),
 		NATS:                fmt.Sprintf("127.0.0.1:%d", 11000+config.GinkgoConfig.ParallelNode),
 		Etcd:                fmt.Sprintf("127.0.0.1:%d", 12000+config.GinkgoConfig.ParallelNode),
@@ -33,19 +45,6 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts) world.ComponentMake
 		NsyncListener:       fmt.Sprintf("127.0.0.1:%d", 22500+config.GinkgoConfig.ParallelNode),
 		Auctioneer:          fmt.Sprintf("0.0.0.0:%d", 23000+config.GinkgoConfig.ParallelNode),
 	}
-
-	gardenBinPath := os.Getenv("GARDEN_BINPATH")
-	gardenRootFSPath := os.Getenv("GARDEN_ROOTFS")
-	gardenGraphPath := os.Getenv("GARDEN_GRAPH_PATH")
-	externalAddress := os.Getenv("EXTERNAL_ADDRESS")
-
-	if gardenGraphPath == "" {
-		gardenGraphPath = os.TempDir()
-	}
-
-	Ω(gardenBinPath).ShouldNot(BeEmpty(), "must provide $GARDEN_BINPATH")
-	Ω(gardenRootFSPath).ShouldNot(BeEmpty(), "must provide $GARDEN_ROOTFS")
-	Ω(externalAddress).ShouldNot(BeEmpty(), "must provide $EXTERNAL_ADDRESS")
 
 	return world.ComponentMaker{
 		Artifacts: builtArtifacts,
