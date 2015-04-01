@@ -248,7 +248,7 @@ var _ = Describe("Executor", func() {
 
 			err = receptorClient.CreateTask(helpers.TaskCreateRequestWithRootFS(
 				nonMatchingGuid,
-				"soccer://bonkers/fizzyloxgus",
+				"soccer:///bonkers/fizzyloxgus#earl",
 				&models.RunAction{
 					Path: "curl",
 					Args: []string{inigo_announcement_server.AnnounceURL(nonMatchingGuid)},
