@@ -238,7 +238,7 @@ var _ = Describe("Executor", func() {
 
 			err := receptorClient.CreateTask(helpers.TaskCreateRequestWithRootFS(
 				matchingGuid,
-				"docker:///concourse/busyboxplus#curl",
+				"docker:///cloudfoundry/busyboxplus#curl",
 				&models.RunAction{
 					Path: "curl",
 					Args: []string{inigo_announcement_server.AnnounceURL(matchingGuid)},
