@@ -5,12 +5,14 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
+	"github.com/tedsuo/ifrit/grouper"
 
 	"github.com/cloudfoundry-incubator/executor"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
@@ -25,7 +27,7 @@ import (
 
 var _ = Describe("Executor", func() {
 	var (
-		executorProcess, fileServerProcess, repProcess, auctioneerProcess, convergerProcess ifrit.Process
+		executorProcess, cellProcess ifrit.Process
 	)
 
 	var fileServerStaticDir string
@@ -34,16 +36,19 @@ var _ = Describe("Executor", func() {
 		var fileServerRunner ifrit.Runner
 
 		fileServerRunner, fileServerStaticDir = componentMaker.FileServer()
-
 		executorProcess = ginkgomon.Invoke(componentMaker.Executor("-memoryMB", "1024"))
-		fileServerProcess = ginkgomon.Invoke(fileServerRunner)
-		repProcess = ginkgomon.Invoke(componentMaker.Rep())
-		auctioneerProcess = ginkgomon.Invoke(componentMaker.Auctioneer())
-		convergerProcess = ginkgomon.Invoke(componentMaker.Converger())
+
+		cellGroup := grouper.Members{
+			{"file-server", fileServerRunner},
+			{"rep", componentMaker.Rep()},
+			{"auctioneer", componentMaker.Auctioneer()},
+			{"converger", componentMaker.Converger()},
+		}
+		cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, cellGroup))
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(executorProcess, fileServerProcess, repProcess, auctioneerProcess, convergerProcess)
+		helpers.StopProcesses(executorProcess, cellProcess)
 	})
 
 	Describe("Heartbeating", func() {

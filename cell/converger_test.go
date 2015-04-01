@@ -59,6 +59,7 @@ var _ = Describe("Convergence to desired state", func() {
 	})
 
 	AfterEach(func() {
+		By("Stopping all the processes")
 		helpers.StopProcesses(auctioneer, executor, rep, converger, runtime)
 	})
 

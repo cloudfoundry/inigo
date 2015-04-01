@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/onsi/ginkgo/config"
 
@@ -33,6 +34,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		NATS:                fmt.Sprintf("127.0.0.1:%d", 11000+config.GinkgoConfig.ParallelNode),
 		Etcd:                fmt.Sprintf("127.0.0.1:%d", 12000+config.GinkgoConfig.ParallelNode),
 		EtcdPeer:            fmt.Sprintf("127.0.0.1:%d", 12500+config.GinkgoConfig.ParallelNode),
+		Consul:              fmt.Sprintf("127.0.0.1:%d", 12750+config.GinkgoConfig.ParallelNode*consuladapter.PortOffsetLength),
 		Executor:            fmt.Sprintf("127.0.0.1:%d", 13000+config.GinkgoConfig.ParallelNode),
 		Rep:                 fmt.Sprintf("0.0.0.0:%d", 14000+config.GinkgoConfig.ParallelNode),
 		FileServer:          fmt.Sprintf("%s:%d", localIP, 17000+config.GinkgoConfig.ParallelNode),

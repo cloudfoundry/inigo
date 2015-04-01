@@ -56,6 +56,7 @@ var _ = BeforeEach(func() {
 	plumbing = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 		{"etcd", componentMaker.Etcd()},
 		{"nats", componentMaker.NATS()},
+		{"consul", componentMaker.Consul()},
 		{"garden-linux", componentMaker.GardenLinux("-allowHostAccess=true")},
 	}))
 
