@@ -1,7 +1,6 @@
 package world
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -311,12 +310,11 @@ func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 		StartCheckTimeout: 5 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["nsync-listener"],
-			append([]string{
+			append(maker.appendLifecycleArgs([]string{
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 				"-nsyncURL", fmt.Sprintf("http://127.0.0.1:%d", port),
-				"-lifecycles", maker.lifecyclesArg(),
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,
-			}, argv...)...,
+			}), argv...)...,
 		),
 	})
 }
@@ -423,16 +421,15 @@ func (maker ComponentMaker) StagerN(portOffset int, argv ...string) ifrit.Runner
 		StartCheckTimeout: 5 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["stager"],
-			append([]string{
+			append(maker.appendLifecycleArgs([]string{
 				"-ccBaseURL", "http://" + maker.Addresses.FakeCC,
 				"-ccUsername", fake_cc.CC_USERNAME,
 				"-ccPassword", fake_cc.CC_PASSWORD,
-				"-lifecycles", maker.lifecyclesArg(),
 				"-dockerStagingStack", maker.DefaultStack(),
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 				"-stagerURL", fmt.Sprintf("http://127.0.0.1:%d", offsetPort(port, portOffset)),
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,
-			}, argv...)...,
+			}), argv...)...,
 		),
 	})
 }
@@ -456,16 +453,12 @@ func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
 	})
 }
 
-func (maker ComponentMaker) lifecyclesArg() string {
-	lifecycles := map[string]string{}
+func (maker ComponentMaker) appendLifecycleArgs(args []string) []string {
 	for stack, _ := range maker.PreloadedStackPathMap {
-		lifecycles[fmt.Sprintf("buildpack/%s", stack)] = LifecycleFilename
+		args = append(args, "-lifecycle", fmt.Sprintf("buildpack/%s:%s", stack, LifecycleFilename))
 	}
 
-	lifecyclesArg, err := json.Marshal(lifecycles)
-	Ω(err).ShouldNot(HaveOccurred())
-
-	return string(lifecyclesArg)
+	return args
 }
 
 func (maker ComponentMaker) DefaultStack() string {
