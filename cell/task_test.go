@@ -109,7 +109,7 @@ var _ = Describe("Task", func() {
 				BeforeEach(func() {
 					taskRequest = helpers.TaskCreateRequestWithRootFS(
 						taskGuid,
-						"preloaded:bogus-rootfs",
+						helpers.BogusPreloadedRootFS,
 						&models.RunAction{
 							Path: "true",
 						},

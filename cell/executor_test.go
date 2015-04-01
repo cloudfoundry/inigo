@@ -207,7 +207,7 @@ var _ = Describe("Executor", func() {
 
 			err = receptorClient.CreateTask(helpers.TaskCreateRequestWithRootFS(
 				matchingGuid2,
-				"preloaded:lucid65",
+				helpers.SecondaryPreloadedRootFS,
 				&models.RunAction{
 					Path: "curl",
 					Args: []string{inigo_announcement_server.AnnounceURL(matchingGuid2)},
@@ -217,7 +217,7 @@ var _ = Describe("Executor", func() {
 
 			err = receptorClient.CreateTask(helpers.TaskCreateRequestWithRootFS(
 				nonMatchingGuid,
-				"preloaded:bogus-rootfs",
+				helpers.BogusPreloadedRootFS,
 				&models.RunAction{
 					Path: "curl",
 					Args: []string{inigo_announcement_server.AnnounceURL(nonMatchingGuid)},

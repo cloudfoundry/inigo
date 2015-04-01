@@ -336,7 +336,7 @@ var _ = Describe("LRP", func() {
 
 		Context("Unsupported preloaded rootfs is requested", func() {
 			BeforeEach(func() {
-				lrp = helpers.LRPCreateRequestWithRootFS(processGuid, "preloaded:bogus-rootfs")
+				lrp = helpers.LRPCreateRequestWithRootFS(processGuid, helpers.BogusPreloadedRootFS)
 			})
 
 			It("fails and sets a placement error", func() {
