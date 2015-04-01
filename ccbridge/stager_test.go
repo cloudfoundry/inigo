@@ -179,7 +179,7 @@ EOF
 			memory = 128
 
 			helpers.Copy(
-				componentMaker.Artifacts.Lifecycles[componentMaker.Stack],
+				componentMaker.Artifacts.Lifecycles[componentMaker.DefaultStack()],
 				filepath.Join(fileServerStaticDir, world.LifecycleFilename),
 			)
 

@@ -1,6 +1,7 @@
 package world
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -65,11 +66,10 @@ type ComponentMaker struct {
 
 	ExternalAddress string
 
-	Stack string
+	PreloadedStackPathMap map[string]string
 
-	GardenBinPath    string
-	GardenRootFSPath string
-	GardenGraphPath  string
+	GardenBinPath   string
+	GardenGraphPath string
 }
 
 func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
@@ -155,7 +155,7 @@ func (maker ComponentMaker) GardenLinux(argv ...string) *gardenrunner.Runner {
 		maker.Addresses.GardenLinux,
 		maker.Artifacts.Executables["garden-linux"],
 		maker.GardenBinPath,
-		maker.GardenRootFSPath,
+		maker.PreloadedStackPathMap[maker.DefaultStack()],
 		maker.GardenGraphPath,
 		argv...,
 	)
@@ -191,6 +191,27 @@ func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
 }
 
 func (maker ComponentMaker) Rep(argv ...string) *ginkgomon.Runner {
+	args := append(
+		[]string{
+			"-rootFSProvider", "docker",
+			"-etcdCluster", "http://" + maker.Addresses.Etcd,
+			"-listenAddr", maker.Addresses.Rep,
+			"-cellID", "the-cell-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()),
+			"-executorURL", "http://" + maker.Addresses.Executor,
+			"-pollingInterval", "1s",
+			"-evacuationPollingInterval", "1s",
+			"-evacuationTimeout", "1s",
+			"-lockTTL", "10s",
+			"-heartbeatRetryInterval", "1s",
+			"-consulCluster", maker.ConsulCluster(),
+			"-receptorTaskHandlerURL", "http://" + maker.Addresses.ReceptorTaskHandler,
+		},
+		argv...,
+	)
+	for stack, path := range maker.PreloadedStackPathMap {
+		args = append(args, "-preloadedRootFS", fmt.Sprintf("%s:%s", stack, path))
+	}
+
 	return ginkgomon.New(ginkgomon.Config{
 		Name:          "rep",
 		AnsiColorCode: "92m",
@@ -198,27 +219,7 @@ func (maker ComponentMaker) Rep(argv ...string) *ginkgomon.Runner {
 		// rep is not started until it can ping an executor; executor can take a
 		// bit to start, so account for it
 		StartCheckTimeout: 30 * time.Second,
-		Command: exec.Command(
-			maker.Artifacts.Executables["rep"],
-			append(
-				[]string{
-					"-preloadedRootFS", fmt.Sprintf("%s:%s", maker.Stack, maker.GardenRootFSPath),
-					"-rootFSProvider", "docker",
-					"-etcdCluster", maker.EtcdCluster(),
-					"-listenAddr", maker.Addresses.Rep,
-					"-cellID", "the-cell-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()),
-					"-executorURL", "http://" + maker.Addresses.Executor,
-					"-pollingInterval", "1s",
-					"-evacuationPollingInterval", "1s",
-					"-evacuationTimeout", "1s",
-					"-lockTTL", "10s",
-					"-heartbeatRetryInterval", "1s",
-					"-consulCluster", maker.ConsulCluster(),
-					"-receptorTaskHandlerURL", "http://" + maker.Addresses.ReceptorTaskHandler,
-				},
-				argv...,
-			)...,
-		),
+		Command:           exec.Command(maker.Artifacts.Executables["rep"], args...),
 	})
 }
 
@@ -313,7 +314,7 @@ func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 			append([]string{
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 				"-nsyncURL", fmt.Sprintf("http://127.0.0.1:%d", port),
-				"-lifecycles", fmt.Sprintf(`{"buildpack/%s": "%s"}`, maker.Stack, LifecycleFilename),
+				"-lifecycles", maker.lifecyclesArg(),
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,
 			}, argv...)...,
 		),
@@ -426,8 +427,8 @@ func (maker ComponentMaker) StagerN(portOffset int, argv ...string) ifrit.Runner
 				"-ccBaseURL", "http://" + maker.Addresses.FakeCC,
 				"-ccUsername", fake_cc.CC_USERNAME,
 				"-ccPassword", fake_cc.CC_PASSWORD,
-				"-lifecycles", fmt.Sprintf(`{"buildpack/%s": "%s"}`, maker.Stack, LifecycleFilename),
-				"-dockerStagingStack", maker.Stack,
+				"-lifecycles", maker.lifecyclesArg(),
+				"-dockerStagingStack", maker.DefaultStack(),
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 				"-stagerURL", fmt.Sprintf("http://127.0.0.1:%d", offsetPort(port, portOffset)),
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,
@@ -455,6 +456,30 @@ func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
 	})
 }
 
+func (maker ComponentMaker) lifecyclesArg() string {
+	lifecycles := map[string]string{}
+	for stack, _ := range maker.PreloadedStackPathMap {
+		lifecycles[fmt.Sprintf("buildpack/%s", stack)] = LifecycleFilename
+	}
+
+	lifecyclesArg, err := json.Marshal(lifecycles)
+	Ω(err).ShouldNot(HaveOccurred())
+
+	return string(lifecyclesArg)
+}
+
+func (maker ComponentMaker) DefaultStack() string {
+	Ω(maker.PreloadedStackPathMap).ShouldNot(BeEmpty())
+
+	var defaultStack string
+	for stack, _ := range maker.PreloadedStackPathMap {
+		defaultStack = stack
+		break
+	}
+
+	return defaultStack
+}
+
 func (maker ComponentMaker) NATSClient() diegonats.NATSClient {
 	client := diegonats.NewClient()
 
@@ -474,10 +499,6 @@ func (maker ComponentMaker) ExecutorClient() executor.Client {
 
 func (maker ComponentMaker) ReceptorClient() receptor.Client {
 	return receptor.NewClient("http://" + maker.Addresses.Receptor)
-}
-
-func (maker ComponentMaker) PreloadedRootFS() string {
-	return fmt.Sprintf("preloaded:%s", maker.Stack)
 }
 
 func (maker ComponentMaker) ConsulCluster() string {

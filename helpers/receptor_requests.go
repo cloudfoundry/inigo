@@ -11,8 +11,8 @@ import (
 
 const defaultDomain = "inigo"
 
-var defaultRootFS = fmt.Sprintf("preloaded:%s", StackName)
-var bogusRootFS = "preloaded:bogus-rootfs"
+var defaultRootFS = fmt.Sprintf("preloaded:%s", PreloadedStacks[0])
+var dockerRootFS = "docker:///cloudfoundry/diego-docker-app#latest"
 
 var DefaultHost = "lrp-route"
 var defaultRoutes = cfroutes.CFRoutes{{Hostnames: []string{DefaultHost}, Port: 8080}}.RoutingInfo()
@@ -56,11 +56,11 @@ func DefaultLRPCreateRequest(processGuid, logGuid string, numInstances int) rece
 	}
 }
 
-func UnsupportedRootFSLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateRequest {
+func LRPCreateRequestWithRootFS(processGuid, rootfs string) receptor.DesiredLRPCreateRequest {
 	return receptor.DesiredLRPCreateRequest{
 		ProcessGuid: processGuid,
 		Domain:      defaultDomain,
-		RootFS:      bogusRootFS,
+		RootFS:      rootfs,
 		Instances:   1,
 
 		Routes: defaultRoutes,
@@ -68,6 +68,24 @@ func UnsupportedRootFSLRPCreateRequest(processGuid string) receptor.DesiredLRPCr
 
 		Setup:   defaultSetupFunc(),
 		Action:  defaultAction,
+		Monitor: defaultMonitor,
+	}
+}
+
+func DockerLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateRequest {
+	return receptor.DesiredLRPCreateRequest{
+		ProcessGuid: processGuid,
+		Domain:      defaultDomain,
+		RootFS:      dockerRootFS,
+		Instances:   1,
+
+		Routes: defaultRoutes,
+		Ports:  defaultPorts,
+
+		Action: &models.RunAction{
+			Path: "/myapp/dockerapp",
+			Env:  []models.EnvironmentVariable{{"PORT", "8080"}},
+		},
 		Monitor: defaultMonitor,
 	}
 }
@@ -155,8 +173,8 @@ func TaskCreateRequestWithMemory(taskGuid string, action models.Action, memoryMB
 	return taskCreateRequest(taskGuid, defaultRootFS, action, memoryMB, 0)
 }
 
-func UnsupportedRootFSTaskCreateRequest(taskGuid string, action models.Action) receptor.TaskCreateRequest {
-	return taskCreateRequest(taskGuid, bogusRootFS, action, 0, 0)
+func TaskCreateRequestWithRootFS(taskGuid, rootfs string, action models.Action) receptor.TaskCreateRequest {
+	return taskCreateRequest(taskGuid, rootfs, action, 0, 0)
 }
 
 func TaskCreateRequestWithMemoryAndDisk(taskGuid string, action models.Action, memoryMB, diskMB int) receptor.TaskCreateRequest {

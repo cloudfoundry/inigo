@@ -107,8 +107,9 @@ var _ = Describe("Task", func() {
 
 			Context("when there is no matching rootfs", func() {
 				BeforeEach(func() {
-					taskRequest = helpers.UnsupportedRootFSTaskCreateRequest(
+					taskRequest = helpers.TaskCreateRequestWithRootFS(
 						taskGuid,
+						"preloaded:bogus-rootfs",
 						&models.RunAction{
 							Path: "true",
 						},

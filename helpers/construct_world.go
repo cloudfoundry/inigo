@@ -11,8 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const StackName = "lucid64"
-
+var PreloadedStacks = []string{"lucid64", "lucid65"}
 var addresses world.ComponentAddresses
 
 func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) world.ComponentMaker {
@@ -28,6 +27,11 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	Ω(gardenBinPath).ShouldNot(BeEmpty(), "must provide $GARDEN_BINPATH")
 	Ω(gardenRootFSPath).ShouldNot(BeEmpty(), "must provide $GARDEN_ROOTFS")
 	Ω(externalAddress).ShouldNot(BeEmpty(), "must provide $EXTERNAL_ADDRESS")
+
+	stackPathMap := map[string]string{}
+	for _, stack := range PreloadedStacks {
+		stackPathMap[stack] = gardenRootFSPath
+	}
 
 	addresses = world.ComponentAddresses{
 		GardenLinux:         fmt.Sprintf("127.0.0.1:%d", 10000+config.GinkgoConfig.ParallelNode),
@@ -52,12 +56,11 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		Artifacts: builtArtifacts,
 		Addresses: addresses,
 
-		Stack: StackName,
+		PreloadedStackPathMap: stackPathMap,
 
 		ExternalAddress: externalAddress,
 
-		GardenBinPath:    gardenBinPath,
-		GardenRootFSPath: gardenRootFSPath,
-		GardenGraphPath:  gardenGraphPath,
+		GardenBinPath:   gardenBinPath,
+		GardenGraphPath: gardenGraphPath,
 	}
 }

@@ -193,6 +193,7 @@ var _ = Describe("Executor", func() {
 	Describe("Preloaded RootFSes", func() {
 		It("should only pick up tasks if the preloaded rootfses match", func() {
 			matchingGuid := helpers.GenerateGuid()
+			matchingGuid2 := helpers.GenerateGuid()
 			nonMatchingGuid := helpers.GenerateGuid()
 
 			err := receptorClient.CreateTask(helpers.TaskCreateRequest(
@@ -204,8 +205,50 @@ var _ = Describe("Executor", func() {
 			))
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = receptorClient.CreateTask(helpers.UnsupportedRootFSTaskCreateRequest(
+			err = receptorClient.CreateTask(helpers.TaskCreateRequestWithRootFS(
+				matchingGuid2,
+				"preloaded:lucid65",
+				&models.RunAction{
+					Path: "curl",
+					Args: []string{inigo_announcement_server.AnnounceURL(matchingGuid2)},
+				},
+			))
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = receptorClient.CreateTask(helpers.TaskCreateRequestWithRootFS(
 				nonMatchingGuid,
+				"preloaded:bogus-rootfs",
+				&models.RunAction{
+					Path: "curl",
+					Args: []string{inigo_announcement_server.AnnounceURL(nonMatchingGuid)},
+				},
+			))
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Consistently(inigo_announcement_server.Announcements).ShouldNot(ContainElement(nonMatchingGuid), "Did not expect to see this app running, as it has the wrong stack.")
+			Eventually(inigo_announcement_server.Announcements).Should(ContainElement(matchingGuid))
+			Eventually(inigo_announcement_server.Announcements).Should(ContainElement(matchingGuid2))
+		})
+	})
+
+	Describe("'Arbitrary' RootFSes", func() {
+		It("should only pick up tasks if the arbitrary rootfses match", func() {
+			matchingGuid := helpers.GenerateGuid()
+			nonMatchingGuid := helpers.GenerateGuid()
+
+			err := receptorClient.CreateTask(helpers.TaskCreateRequestWithRootFS(
+				matchingGuid,
+				"docker:///concourse/busyboxplus#curl",
+				&models.RunAction{
+					Path: "curl",
+					Args: []string{inigo_announcement_server.AnnounceURL(matchingGuid)},
+				},
+			))
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = receptorClient.CreateTask(helpers.TaskCreateRequestWithRootFS(
+				nonMatchingGuid,
+				"soccer://bonkers/fizzyloxgus",
 				&models.RunAction{
 					Path: "curl",
 					Args: []string{inigo_announcement_server.AnnounceURL(nonMatchingGuid)},

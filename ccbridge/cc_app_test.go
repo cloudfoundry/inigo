@@ -48,7 +48,7 @@ var _ = Describe("AppRunner", func() {
 						`,
 			guid,
 			fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "droplet.zip"),
-			componentMaker.Stack,
+			componentMaker.DefaultStack(),
 			appId,
 		)
 
@@ -87,7 +87,7 @@ var _ = Describe("AppRunner", func() {
 		)
 
 		helpers.Copy(
-			componentMaker.Artifacts.Lifecycles[componentMaker.Stack],
+			componentMaker.Artifacts.Lifecycles[componentMaker.DefaultStack()],
 			filepath.Join(fileServerStaticDir, world.LifecycleFilename),
 		)
 	})
