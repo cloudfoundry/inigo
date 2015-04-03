@@ -131,14 +131,14 @@ EOF
 		It("returns an error", func() {
 			resp, err := stageApplication(fmt.Sprintf("%s-%s", appId, taskId), fmt.Sprintf(`{
 					"app_id": "%s",
-					"stack": "no-lifecycle",
 					"log_guid": "%s",
 					"lifecycle": "buildpack",
 					"lifecycle_data": {
 						"app_bits_download_uri": "some-download-uri",
 						"build_artifacts_cache_download_uri": "artifacts-download-uri",
 						"build_artifacts_cache_upload_uri": "%s",
-						"droplet_upload_uri": "%s"
+						"droplet_upload_uri": "%s",
+						"stack": "no-lifecycle"
 					}
 				}`, appId, appId, buildArtifactsUploadUri, dropletUploadUri),
 			)
@@ -223,12 +223,12 @@ EOF
 						"disk_mb": 128,
 						"file_descriptors": 1024,
 						"environment": [{ "name": "SOME_STAGING_ENV", "value": "%s"}],
-						"stack": "lucid64",
 						"lifecycle": "buildpack",
 						"lifecycle_data": {
 							"app_bits_download_uri": "%s",
 							"build_artifacts_cache_upload_uri": "%s",
 							"droplet_upload_uri": "%s",
+							"stack": "lucid64",
 							"buildpacks" : %s
 						}
 					}`,
