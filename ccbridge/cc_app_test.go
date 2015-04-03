@@ -77,7 +77,7 @@ var _ = Describe("AppRunner", func() {
 		}))
 
 		bridge = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"tps", componentMaker.TPS()},
+			{"tps-listener", componentMaker.TPSListener()},
 			{"nsync-listener", componentMaker.NsyncListener()},
 		}))
 
@@ -107,7 +107,7 @@ var _ = Describe("AppRunner", func() {
 				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
 				// check lrp instance statuses
-				Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, guid)).Should(HaveLen(2))
+				Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPSListener, guid)).Should(HaveLen(2))
 
 				//both routes should be routable
 				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-1")).Should(Equal(http.StatusOK))
@@ -126,7 +126,7 @@ var _ = Describe("AppRunner", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
-				Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPS, guid)).Should(HaveLen(1))
+				Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPSListener, guid)).Should(HaveLen(1))
 				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-1")).Should(Equal(http.StatusOK))
 
 				//a given route should route to the running instance
@@ -155,7 +155,7 @@ var _ = Describe("AppRunner", func() {
 				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
 				// wait for intances to come up
-				Eventually(runningIndexPoller(componentMaker.Addresses.TPS, guid)).Should(ConsistOf(0, 1))
+				Eventually(runningIndexPoller(componentMaker.Addresses.TPSListener, guid)).Should(ConsistOf(0, 1))
 			})
 
 			It("stops the application", func() {
@@ -188,7 +188,7 @@ var _ = Describe("AppRunner", func() {
 				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
 				// wait for intances to come up
-				Eventually(runningIndexPoller(componentMaker.Addresses.TPS, guid)).Should(ConsistOf(0, 1))
+				Eventually(runningIndexPoller(componentMaker.Addresses.TPSListener, guid)).Should(ConsistOf(0, 1))
 			})
 
 			It("stops the app on the desired index, and then eventually starts it back up", func() {
@@ -197,10 +197,10 @@ var _ = Describe("AppRunner", func() {
 				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
 
 				// wait for stop to take effect
-				Eventually(runningIndexPoller(componentMaker.Addresses.TPS, guid)).Should(ConsistOf(1))
+				Eventually(runningIndexPoller(componentMaker.Addresses.TPSListener, guid)).Should(ConsistOf(1))
 
 				// wait for system to re-converge on desired state
-				Eventually(runningIndexPoller(componentMaker.Addresses.TPS, guid)).Should(ConsistOf(0, 1))
+				Eventually(runningIndexPoller(componentMaker.Addresses.TPSListener, guid)).Should(ConsistOf(0, 1))
 			})
 		})
 	})

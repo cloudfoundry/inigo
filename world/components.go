@@ -50,7 +50,7 @@ type ComponentAddresses struct {
 	FakeCC              string
 	FileServer          string
 	Router              string
-	TPS                 string
+	TPSListener         string
 	GardenLinux         string
 	Receptor            string
 	ReceptorTaskHandler string
@@ -279,20 +279,17 @@ func (maker ComponentMaker) RouteEmitter(argv ...string) ifrit.Runner {
 	})
 }
 
-func (maker ComponentMaker) TPS(argv ...string) ifrit.Runner {
+func (maker ComponentMaker) TPSListener(argv ...string) ifrit.Runner {
 	return ginkgomon.New(ginkgomon.Config{
-		Name:              "tps",
+		Name:              "tps-listener",
 		AnsiColorCode:     "96m",
-		StartCheck:        `"tps.started"`,
+		StartCheck:        `"tps-listener.started"`,
 		StartCheckTimeout: 5 * time.Second,
 		Command: exec.Command(
-			maker.Artifacts.Executables["tps"],
+			maker.Artifacts.Executables["tps-listener"],
 			append([]string{
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
-				"-listenAddr", maker.Addresses.TPS,
-				"-ccBaseURL", "http://" + maker.Addresses.FakeCC,
-				"-ccUsername", fake_cc.CC_USERNAME,
-				"-ccPassword", fake_cc.CC_PASSWORD,
+				"-listenAddr", maker.Addresses.TPSListener,
 			}, argv...)...,
 		),
 	})
