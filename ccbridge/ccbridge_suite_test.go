@@ -56,6 +56,7 @@ var _ = BeforeEach(func() {
 	plumbing = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 		{"etcd", componentMaker.Etcd()},
 		{"nats", componentMaker.NATS()},
+		{"consul", componentMaker.Consul()},
 		{"garden-linux", componentMaker.GardenLinux("-allowHostAccess=true")},
 	}))
 
@@ -167,7 +168,9 @@ func BuildLifecycles() world.BuiltLifecycles {
 	err = cmd.Run()
 	Ω(err).ShouldNot(HaveOccurred())
 
-	builtLifecycles[helpers.StackName] = filepath.Join(lifecycleDir, "lifecycle.tar.gz")
+	for _, stack := range helpers.PreloadedStacks {
+		builtLifecycles[stack] = filepath.Join(lifecycleDir, "lifecycle.tar.gz")
+	}
 
 	return builtLifecycles
 }

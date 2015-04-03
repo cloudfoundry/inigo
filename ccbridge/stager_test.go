@@ -91,7 +91,7 @@ EOF
 
 		cell = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"exec", componentMaker.Executor("-memoryMB=1024")},
-			{"rep", componentMaker.Rep("-heartbeatInterval", "10s")},
+			{"rep", componentMaker.Rep("-heartbeatRetryInterval", "10s")},
 		}))
 
 		brain = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
@@ -179,7 +179,7 @@ EOF
 			memory = 128
 
 			helpers.Copy(
-				componentMaker.Artifacts.Lifecycles[componentMaker.Stack],
+				componentMaker.Artifacts.Lifecycles[componentMaker.DefaultStack()],
 				filepath.Join(fileServerStaticDir, world.LifecycleFilename),
 			)
 

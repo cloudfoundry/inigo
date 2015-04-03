@@ -336,7 +336,7 @@ var _ = Describe("LRP", func() {
 
 		Context("Unsupported preloaded rootfs is requested", func() {
 			BeforeEach(func() {
-				lrp = helpers.UnsupportedRootFSLRPCreateRequest(processGuid)
+				lrp = helpers.LRPCreateRequestWithRootFS(processGuid, helpers.BogusPreloadedRootFS)
 			})
 
 			It("fails and sets a placement error", func() {
@@ -351,6 +351,61 @@ var _ = Describe("LRP", func() {
 				}
 
 				Eventually(lrpFunc).Should(Equal(diego_errors.CELL_MISMATCH_MESSAGE))
+			})
+		})
+
+		Context("Non-default preloaded rootfs is requested", func() {
+			BeforeEach(func() {
+				lrp = helpers.LRPCreateRequestWithRootFS(processGuid, "preloaded:lucid65")
+			})
+
+			It("runs", func() {
+				Eventually(func() []receptor.ActualLRPResponse {
+					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+					Ω(err).ShouldNot(HaveOccurred())
+					return lrps
+				}).Should(HaveLen(1))
+
+				poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)
+				Eventually(poller).Should(ConsistOf([]string{"0"}))
+			})
+		})
+
+		Context("Unsupported arbitrary rootfs is requested", func() {
+			BeforeEach(func() {
+				lrp = helpers.LRPCreateRequestWithRootFS(processGuid, "socker://hello")
+			})
+
+			It("fails and sets a placement error", func() {
+				lrpFunc := func() string {
+					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+					Ω(err).ShouldNot(HaveOccurred())
+					if len(lrps) == 0 {
+						return ""
+					}
+
+					return lrps[0].PlacementError
+				}
+
+				Eventually(lrpFunc).Should(Equal(diego_errors.CELL_MISMATCH_MESSAGE))
+			})
+		})
+
+		Context("Supported arbitrary rootfs is requested", func() {
+			BeforeEach(func() {
+				// docker is supported
+				lrp = helpers.DockerLRPCreateRequest(processGuid)
+			})
+
+			It("runs", func() {
+				Eventually(func() []receptor.ActualLRPResponse {
+					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+					Ω(err).ShouldNot(HaveOccurred())
+					return lrps
+				}).Should(HaveLen(1))
+
+				poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)
+				Eventually(poller).Should(ConsistOf([]string{"0"}))
 			})
 		})
 	})

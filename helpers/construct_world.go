@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/onsi/ginkgo/config"
 
 	. "github.com/onsi/gomega"
 )
 
-const StackName = "lucid64"
-
+var PreloadedStacks = []string{"lucid64", "lucid65"}
 var addresses world.ComponentAddresses
 
 func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) world.ComponentMaker {
@@ -28,11 +28,17 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	Ω(gardenRootFSPath).ShouldNot(BeEmpty(), "must provide $GARDEN_ROOTFS")
 	Ω(externalAddress).ShouldNot(BeEmpty(), "must provide $EXTERNAL_ADDRESS")
 
+	stackPathMap := map[string]string{}
+	for _, stack := range PreloadedStacks {
+		stackPathMap[stack] = gardenRootFSPath
+	}
+
 	addresses = world.ComponentAddresses{
 		GardenLinux:         fmt.Sprintf("127.0.0.1:%d", 10000+config.GinkgoConfig.ParallelNode),
 		NATS:                fmt.Sprintf("127.0.0.1:%d", 11000+config.GinkgoConfig.ParallelNode),
 		Etcd:                fmt.Sprintf("127.0.0.1:%d", 12000+config.GinkgoConfig.ParallelNode),
 		EtcdPeer:            fmt.Sprintf("127.0.0.1:%d", 12500+config.GinkgoConfig.ParallelNode),
+		Consul:              fmt.Sprintf("127.0.0.1:%d", 12750+config.GinkgoConfig.ParallelNode*consuladapter.PortOffsetLength),
 		Executor:            fmt.Sprintf("127.0.0.1:%d", 13000+config.GinkgoConfig.ParallelNode),
 		Rep:                 fmt.Sprintf("0.0.0.0:%d", 14000+config.GinkgoConfig.ParallelNode),
 		FileServer:          fmt.Sprintf("%s:%d", localIP, 17000+config.GinkgoConfig.ParallelNode),
@@ -50,12 +56,11 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		Artifacts: builtArtifacts,
 		Addresses: addresses,
 
-		Stack: StackName,
+		PreloadedStackPathMap: stackPathMap,
 
 		ExternalAddress: externalAddress,
 
-		GardenBinPath:    gardenBinPath,
-		GardenRootFSPath: gardenRootFSPath,
-		GardenGraphPath:  gardenGraphPath,
+		GardenBinPath:   gardenBinPath,
+		GardenGraphPath: gardenGraphPath,
 	}
 }

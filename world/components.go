@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
+	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/executor"
 	executorclient "github.com/cloudfoundry-incubator/executor/http/client"
 	"github.com/cloudfoundry-incubator/garden"
@@ -43,6 +44,7 @@ type ComponentAddresses struct {
 	NATS                string
 	Etcd                string
 	EtcdPeer            string
+	Consul              string
 	Executor            string
 	Rep                 string
 	FakeCC              string
@@ -63,11 +65,10 @@ type ComponentMaker struct {
 
 	ExternalAddress string
 
-	Stack string
+	PreloadedStackPathMap map[string]string
 
-	GardenBinPath    string
-	GardenRootFSPath string
-	GardenGraphPath  string
+	GardenBinPath   string
+	GardenGraphPath string
 }
 
 func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
@@ -118,13 +119,42 @@ func (maker ComponentMaker) Etcd(argv ...string) ifrit.Runner {
 	})
 }
 
+func (maker ComponentMaker) Consul(argv ...string) ifrit.Runner {
+	_, port, err := net.SplitHostPort(maker.Addresses.Consul)
+	Ω(err).ShouldNot(HaveOccurred())
+	httpPort, err := strconv.Atoi(port)
+	Ω(err).ShouldNot(HaveOccurred())
+
+	startingPort := httpPort - consuladapter.PortOffsetHTTP
+
+	clusterRunner := consuladapter.NewClusterRunner(startingPort, 1, "http")
+	return ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
+		done := make(chan struct{})
+		go func() {
+			clusterRunner.Start()
+			close(done)
+		}()
+
+		Eventually(done, 10).Should(BeClosed())
+
+		close(ready)
+
+		select {
+		case <-signals:
+			clusterRunner.Stop()
+		}
+
+		return nil
+	})
+}
+
 func (maker ComponentMaker) GardenLinux(argv ...string) *gardenrunner.Runner {
 	return gardenrunner.New(
 		"tcp",
 		maker.Addresses.GardenLinux,
 		maker.Artifacts.Executables["garden-linux"],
 		maker.GardenBinPath,
-		maker.GardenRootFSPath,
+		maker.PreloadedStackPathMap[maker.DefaultStack()],
 		maker.GardenGraphPath,
 		argv...,
 	)
@@ -139,7 +169,7 @@ func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:          "executor",
 		AnsiColorCode: "91m",
-		StartCheck:    "executor.started",
+		StartCheck:    `"executor.started"`,
 		// executor may destroy containers on start, which can take a bit
 		StartCheckTimeout: 30 * time.Second,
 		Command: exec.Command(
@@ -160,31 +190,35 @@ func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
 }
 
 func (maker ComponentMaker) Rep(argv ...string) *ginkgomon.Runner {
+	args := append(
+		[]string{
+			"-rootFSProvider", "docker",
+			"-etcdCluster", "http://" + maker.Addresses.Etcd,
+			"-listenAddr", maker.Addresses.Rep,
+			"-cellID", "the-cell-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()),
+			"-executorURL", "http://" + maker.Addresses.Executor,
+			"-pollingInterval", "1s",
+			"-evacuationPollingInterval", "1s",
+			"-evacuationTimeout", "1s",
+			"-lockTTL", "10s",
+			"-heartbeatRetryInterval", "1s",
+			"-consulCluster", maker.ConsulCluster(),
+			"-receptorTaskHandlerURL", "http://" + maker.Addresses.ReceptorTaskHandler,
+		},
+		argv...,
+	)
+	for stack, path := range maker.PreloadedStackPathMap {
+		args = append(args, "-preloadedRootFS", fmt.Sprintf("%s:%s", stack, path))
+	}
+
 	return ginkgomon.New(ginkgomon.Config{
 		Name:          "rep",
 		AnsiColorCode: "92m",
-		StartCheck:    "rep.started",
+		StartCheck:    `"rep.started"`,
 		// rep is not started until it can ping an executor; executor can take a
 		// bit to start, so account for it
 		StartCheckTimeout: 30 * time.Second,
-		Command: exec.Command(
-			maker.Artifacts.Executables["rep"],
-			append(
-				[]string{
-					"-preloadedRootFS", fmt.Sprintf("%s:%s", maker.Stack, maker.GardenRootFSPath),
-					"-rootFSProvider", "docker",
-					"-etcdCluster", "http://" + maker.Addresses.Etcd,
-					"-listenAddr", maker.Addresses.Rep,
-					"-cellID", "the-cell-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()),
-					"-executorURL", "http://" + maker.Addresses.Executor,
-					"-heartbeatInterval", "1s",
-					"-pollingInterval", "1s",
-					"-evacuationPollingInterval", "1s",
-					"-evacuationTimeout", "1s",
-				},
-				argv...,
-			)...,
-		),
+		Command:           exec.Command(maker.Artifacts.Executables["rep"], args...),
 	})
 }
 
@@ -192,14 +226,17 @@ func (maker ComponentMaker) Converger(argv ...string) ifrit.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "converger",
 		AnsiColorCode:     "93m",
-		StartCheck:        "converger.started",
-		StartCheckTimeout: 5 * time.Second,
+		StartCheck:        `"converger.started"`,
+		StartCheckTimeout: 15 * time.Second,
 
 		Command: exec.Command(
 			maker.Artifacts.Executables["converger"],
 			append([]string{
-				"-etcdCluster", "http://" + maker.Addresses.Etcd,
-				"-heartbeatInterval", "1s",
+				"-etcdCluster", maker.EtcdCluster(),
+				"-lockTTL", "10s",
+				"-heartbeatRetryInterval", "1s",
+				"-consulCluster", maker.ConsulCluster(),
+				"-receptorTaskHandlerURL", "http://" + maker.Addresses.ReceptorTaskHandler,
 			}, argv...)...,
 		),
 	})
@@ -209,14 +246,16 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "auctioneer",
 		AnsiColorCode:     "94m",
-		StartCheck:        "auctioneer.started",
+		StartCheck:        `"auctioneer.started"`,
 		StartCheckTimeout: 5 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["auctioneer"],
 			append([]string{
-				"-etcdCluster", "http://" + maker.Addresses.Etcd,
-				"-heartbeatInterval", "1s",
+				"-etcdCluster", maker.EtcdCluster(),
 				"-listenAddr", maker.Addresses.Auctioneer,
+				"-heartbeatRetryInterval", "1s",
+				"-consulCluster", maker.ConsulCluster(),
+				"-receptorTaskHandlerURL", "http://" + maker.Addresses.ReceptorTaskHandler,
 			}, argv...)...,
 		),
 	})
@@ -226,14 +265,15 @@ func (maker ComponentMaker) RouteEmitter(argv ...string) ifrit.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "route-emitter",
 		AnsiColorCode:     "95m",
-		StartCheck:        "route-emitter.started",
+		StartCheck:        `"route-emitter.started"`,
 		StartCheckTimeout: 5 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["route-emitter"],
 			append([]string{
-				"-etcdCluster", "http://" + maker.Addresses.Etcd,
 				"-natsAddresses", maker.Addresses.NATS,
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
+				"-heartbeatRetryInterval", "1s",
+				"-consulCluster", maker.ConsulCluster(),
 			}, argv...)...,
 		),
 	})
@@ -243,7 +283,7 @@ func (maker ComponentMaker) TPS(argv ...string) ifrit.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "tps",
 		AnsiColorCode:     "96m",
-		StartCheck:        "tps.started",
+		StartCheck:        `"tps.started"`,
 		StartCheckTimeout: 5 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["tps"],
@@ -266,16 +306,15 @@ func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "nsync-listener",
 		AnsiColorCode:     "97m",
-		StartCheck:        "nsync.listener.started",
+		StartCheck:        `"nsync.listener.started"`,
 		StartCheckTimeout: 5 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["nsync-listener"],
-			append([]string{
+			append(maker.appendLifecycleArgs([]string{
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 				"-nsyncURL", fmt.Sprintf("http://127.0.0.1:%d", port),
-				"-lifecycles", fmt.Sprintf(`{"buildpack/%s": "%s"}`, maker.Stack, LifecycleFilename),
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,
-			}, argv...)...,
+			}), argv...)...,
 		),
 	})
 }
@@ -287,7 +326,7 @@ func (maker ComponentMaker) FileServer(argv ...string) (ifrit.Runner, string) {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "file-server",
 		AnsiColorCode:     "90m",
-		StartCheck:        "file-server.ready",
+		StartCheck:        `"file-server.ready"`,
 		StartCheckTimeout: 5 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["file-server"],
@@ -382,16 +421,15 @@ func (maker ComponentMaker) StagerN(portOffset int, argv ...string) ifrit.Runner
 		StartCheckTimeout: 5 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["stager"],
-			append([]string{
+			append(maker.appendLifecycleArgs([]string{
 				"-ccBaseURL", "http://" + maker.Addresses.FakeCC,
 				"-ccUsername", fake_cc.CC_USERNAME,
 				"-ccPassword", fake_cc.CC_PASSWORD,
-				"-lifecycles", fmt.Sprintf(`{"buildpack/%s": "%s"}`, maker.Stack, LifecycleFilename),
-				"-dockerStagingStack", maker.Stack,
+				"-dockerStagingStack", maker.DefaultStack(),
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 				"-stagerURL", fmt.Sprintf("http://127.0.0.1:%d", offsetPort(port, portOffset)),
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,
-			}, argv...)...,
+			}), argv...)...,
 		),
 	})
 }
@@ -407,10 +445,32 @@ func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
 			append([]string{
 				"-address", maker.Addresses.Receptor,
 				"-taskHandlerAddress", maker.Addresses.ReceptorTaskHandler,
-				"-etcdCluster", "http://" + maker.Addresses.Etcd,
+				"-etcdCluster", maker.EtcdCluster(),
+				"-heartbeatRetryInterval", "1s",
+				"-consulCluster", maker.ConsulCluster(),
 			}, argv...)...,
 		),
 	})
+}
+
+func (maker ComponentMaker) appendLifecycleArgs(args []string) []string {
+	for stack, _ := range maker.PreloadedStackPathMap {
+		args = append(args, "-lifecycle", fmt.Sprintf("buildpack/%s:%s", stack, LifecycleFilename))
+	}
+
+	return args
+}
+
+func (maker ComponentMaker) DefaultStack() string {
+	Ω(maker.PreloadedStackPathMap).ShouldNot(BeEmpty())
+
+	var defaultStack string
+	for stack, _ := range maker.PreloadedStackPathMap {
+		defaultStack = stack
+		break
+	}
+
+	return defaultStack
 }
 
 func (maker ComponentMaker) NATSClient() diegonats.NATSClient {
@@ -434,8 +494,12 @@ func (maker ComponentMaker) ReceptorClient() receptor.Client {
 	return receptor.NewClient("http://" + maker.Addresses.Receptor)
 }
 
-func (maker ComponentMaker) PreloadedRootFS() string {
-	return fmt.Sprintf("preloaded:%s", maker.Stack)
+func (maker ComponentMaker) ConsulCluster() string {
+	return "http://" + maker.Addresses.Consul
+}
+
+func (maker ComponentMaker) EtcdCluster() string {
+	return "http://" + maker.Addresses.Etcd
 }
 
 // offsetPort retuns a new port offest by a given number in such a way
