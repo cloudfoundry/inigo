@@ -227,7 +227,7 @@ func (maker ComponentMaker) Converger(argv ...string) ifrit.Runner {
 		Name:              "converger",
 		AnsiColorCode:     "93m",
 		StartCheck:        `"converger.started"`,
-		StartCheckTimeout: 5 * time.Second,
+		StartCheckTimeout: 15 * time.Second,
 
 		Command: exec.Command(
 			maker.Artifacts.Executables["converger"],
