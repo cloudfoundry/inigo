@@ -106,6 +106,34 @@ var _ = Describe("Convergence to desired state", func() {
 					})
 				})
 
+				Context("and a new rep is introduced", func() {
+					var firstActualLRPs []receptor.ActualLRPResponse
+					var rep2 ifrit.Process
+
+					BeforeEach(func() {
+						firstActualLRPs = runningLRPsPoller()
+						rep2 = ginkgomon.Invoke(componentMaker.RepN(1))
+					})
+
+					AfterEach(func() {
+						helpers.StopProcesses(rep2)
+					})
+
+					Context("and the first rep goes away", func() {
+						BeforeEach(func() {
+							rep.Signal(syscall.SIGKILL)
+						})
+
+						It("eventually brings up the LRP on the new rep", func() {
+							Eventually(func() bool {
+								secondActualLRPs := runningLRPsPoller()
+								return secondActualLRPs[0].CellID != firstActualLRPs[0].CellID &&
+									secondActualLRPs[1].CellID != firstActualLRPs[1].CellID
+							}).Should(BeTrue())
+						})
+					})
+				})
+
 				Context("and the rep and converger go away", func() {
 					BeforeEach(func() {
 						converger.Signal(syscall.SIGKILL)

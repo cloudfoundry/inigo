@@ -190,12 +190,21 @@ func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
 }
 
 func (maker ComponentMaker) Rep(argv ...string) *ginkgomon.Runner {
+	return maker.RepN(0, argv...)
+}
+
+func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
+	host, portString, err := net.SplitHostPort(maker.Addresses.Rep)
+	Ω(err).ShouldNot(HaveOccurred())
+	port, err := strconv.Atoi(portString)
+	Ω(err).ShouldNot(HaveOccurred())
+
 	args := append(
 		[]string{
 			"-rootFSProvider", "docker",
 			"-etcdCluster", "http://" + maker.Addresses.Etcd,
-			"-listenAddr", maker.Addresses.Rep,
-			"-cellID", "the-cell-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()),
+			"-listenAddr", fmt.Sprintf("%s:%d", host, offsetPort(port, n)),
+			"-cellID", "the-cell-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()) + "-" + strconv.Itoa(n),
 			"-executorURL", "http://" + maker.Addresses.Executor,
 			"-pollingInterval", "1s",
 			"-evacuationPollingInterval", "1s",
