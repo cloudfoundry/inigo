@@ -127,6 +127,9 @@ var _ = Describe("Convergence to desired state", func() {
 						It("eventually brings up the LRP on the new rep", func() {
 							Eventually(func() bool {
 								secondActualLRPs := runningLRPsPoller()
+								if len(secondActualLRPs) != 2 {
+									return false
+								}
 								return secondActualLRPs[0].CellID != firstActualLRPs[0].CellID &&
 									secondActualLRPs[1].CellID != firstActualLRPs[1].CellID
 							}).Should(BeTrue())
