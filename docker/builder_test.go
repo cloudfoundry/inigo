@@ -22,6 +22,7 @@ var _ = Describe("Building", func() {
 		builderCmd                 *exec.Cmd
 		dockerRef                  string
 		dockerImageURL             string
+		dockerRegistryAddresses    string
 		insecureDockerRegistries   string
 		dockerDaemonExecutablePath string
 		cacheDockerImage           bool
@@ -75,9 +76,10 @@ var _ = Describe("Building", func() {
 
 		dockerRef = ""
 		dockerImageURL = ""
+		dockerRegistryAddresses = ""
 		insecureDockerRegistries = ""
 		dockerDaemonExecutablePath = "/usr/bin/docker"
-		cacheDockerImage = false
+		cacheDockerImage = true
 
 		outputMetadataDir, err = ioutil.TempDir("", "building-result")
 		Ω(err).ShouldNot(HaveOccurred())
@@ -107,6 +109,9 @@ var _ = Describe("Building", func() {
 		if len(dockerRef) > 0 {
 			args = append(args, "-dockerRef", dockerRef)
 		}
+		if len(dockerRegistryAddresses) > 0 {
+			args = append(args, "-dockerRegistryAddresses", dockerRegistryAddresses)
+		}
 		if len(insecureDockerRegistries) > 0 {
 			args = append(args, "-insecureDockerRegistries", insecureDockerRegistries)
 		}
@@ -131,9 +136,11 @@ var _ = Describe("Building", func() {
 			var session *gexec.Session
 
 			BeforeEach(func() {
-				cacheDockerImage = true
-
 				dockerImageURL = buildDockerImageURL()
+
+				parts, err := url.Parse(fakeDockerRegistry.URL())
+				Ω(err).ShouldNot(HaveOccurred())
+				dockerRegistryAddresses = parts.Host
 
 				setupFakeDockerRegistry()
 				fakeDockerRegistry.AppendHandlers(
@@ -181,5 +188,6 @@ var _ = Describe("Building", func() {
 
 			})
 		})
+
 	})
 })
