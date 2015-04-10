@@ -199,8 +199,11 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 	port, err := strconv.Atoi(portString)
 	Ω(err).ShouldNot(HaveOccurred())
 
+	name := "rep-" + strconv.Itoa(n)
+
 	args := append(
 		[]string{
+			"-sessionName", name,
 			"-rootFSProvider", "docker",
 			"-etcdCluster", "http://" + maker.Addresses.Etcd,
 			"-listenAddr", fmt.Sprintf("%s:%d", host, offsetPort(port, n)),
@@ -221,9 +224,9 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 	}
 
 	return ginkgomon.New(ginkgomon.Config{
-		Name:          "rep",
+		Name:          name,
 		AnsiColorCode: "92m",
-		StartCheck:    `"rep.started"`,
+		StartCheck:    `"` + name + `.started"`,
 		// rep is not started until it can ping an executor; executor can take a
 		// bit to start, so account for it
 		StartCheckTimeout: 30 * time.Second,

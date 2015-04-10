@@ -63,14 +63,14 @@ var _ = Describe("Evacuation", func() {
 		cellARepAddr = fmt.Sprintf("0.0.0.0:%d", 14100+GinkgoParallelNode())
 		cellBRepAddr = fmt.Sprintf("0.0.0.0:%d", 14200+GinkgoParallelNode())
 
-		cellARepRunner = componentMaker.Rep(
+		cellARepRunner = componentMaker.RepN(0,
 			"-cellID", cellAID,
 			"-executorURL", "http://"+cellAExecutorAddr,
 			"-listenAddr", cellARepAddr,
 			"-evacuationTimeout", "30s",
 		)
 
-		cellBRepRunner = componentMaker.Rep(
+		cellBRepRunner = componentMaker.RepN(1,
 			"-cellID", cellBID,
 			"-executorURL", "http://"+cellBExecutorAddr,
 			"-listenAddr", cellBRepAddr,
