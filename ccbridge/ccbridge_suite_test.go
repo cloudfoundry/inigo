@@ -60,6 +60,8 @@ var _ = BeforeEach(func() {
 		{"garden-linux", componentMaker.GardenLinux("-allowHostAccess=true")},
 	}))
 
+	helpers.ConsulWaitUntilReady()
+
 	gardenClient = componentMaker.GardenClient()
 	receptorClient = componentMaker.ReceptorClient()
 
