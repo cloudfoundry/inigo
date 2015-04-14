@@ -213,7 +213,7 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 			"-evacuationPollingInterval", "1s",
 			"-evacuationTimeout", "1s",
 			"-lockTTL", "10s",
-			"-heartbeatRetryInterval", "1s",
+			"-lockRetryInterval", "1s",
 			"-consulCluster", maker.ConsulCluster(),
 			"-receptorTaskHandlerURL", "http://" + maker.Addresses.ReceptorTaskHandler,
 		},
@@ -246,7 +246,7 @@ func (maker ComponentMaker) Converger(argv ...string) ifrit.Runner {
 			append([]string{
 				"-etcdCluster", maker.EtcdCluster(),
 				"-lockTTL", "10s",
-				"-heartbeatRetryInterval", "1s",
+				"-lockRetryInterval", "1s",
 				"-consulCluster", maker.ConsulCluster(),
 				"-receptorTaskHandlerURL", "http://" + maker.Addresses.ReceptorTaskHandler,
 			}, argv...)...,
@@ -265,7 +265,7 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 			append([]string{
 				"-etcdCluster", maker.EtcdCluster(),
 				"-listenAddr", maker.Addresses.Auctioneer,
-				"-heartbeatRetryInterval", "1s",
+				"-lockRetryInterval", "1s",
 				"-consulCluster", maker.ConsulCluster(),
 				"-receptorTaskHandlerURL", "http://" + maker.Addresses.ReceptorTaskHandler,
 			}, argv...)...,
@@ -284,7 +284,7 @@ func (maker ComponentMaker) RouteEmitter(argv ...string) ifrit.Runner {
 			append([]string{
 				"-natsAddresses", maker.Addresses.NATS,
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
-				"-heartbeatRetryInterval", "1s",
+				"-lockRetryInterval", "1s",
 				"-consulCluster", maker.ConsulCluster(),
 			}, argv...)...,
 		),
@@ -455,7 +455,6 @@ func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
 				"-address", maker.Addresses.Receptor,
 				"-taskHandlerAddress", maker.Addresses.ReceptorTaskHandler,
 				"-etcdCluster", maker.EtcdCluster(),
-				"-heartbeatRetryInterval", "1s",
 				"-consulCluster", maker.ConsulCluster(),
 			}, argv...)...,
 		),
