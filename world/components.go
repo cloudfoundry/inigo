@@ -40,6 +40,12 @@ type BuiltArtifacts struct {
 	Lifecycles  BuiltLifecycles
 }
 
+type SshKeys struct {
+	HostKey    string
+	PrivateKey string
+	PublicKey  string
+}
+
 type ComponentAddresses struct {
 	NATS                string
 	Etcd                string
@@ -57,6 +63,7 @@ type ComponentAddresses struct {
 	Stager              string
 	NsyncListener       string
 	Auctioneer          string
+	SSHProxy            string
 }
 
 type ComponentMaker struct {
@@ -69,6 +76,8 @@ type ComponentMaker struct {
 
 	GardenBinPath   string
 	GardenGraphPath string
+
+	SshConfig SshKeys
 }
 
 func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
@@ -456,6 +465,25 @@ func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
 				"-taskHandlerAddress", maker.Addresses.ReceptorTaskHandler,
 				"-etcdCluster", maker.EtcdCluster(),
 				"-consulCluster", maker.ConsulCluster(),
+			}, argv...)...,
+		),
+	})
+}
+
+func (maker ComponentMaker) SSHProxy(argv ...string) ifrit.Runner {
+
+	return ginkgomon.New(ginkgomon.Config{
+		Name:              "ssh-proxy",
+		AnsiColorCode:     "95m",
+		StartCheck:        "started",
+		StartCheckTimeout: 5 * time.Second,
+		Command: exec.Command(
+			maker.Artifacts.Executables["ssh-proxy"],
+			append([]string{
+				"-address", maker.Addresses.SSHProxy,
+				"-hostKey", maker.SshConfig.HostKey,
+				"-privateKey", maker.SshConfig.PrivateKey,
+				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 			}, argv...)...,
 		),
 	})
