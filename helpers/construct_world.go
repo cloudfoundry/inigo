@@ -5,7 +5,10 @@ import (
 	"os"
 
 	"github.com/cloudfoundry-incubator/consuladapter"
+	"github.com/cloudfoundry-incubator/diego-ssh/helpers"
+	"github.com/cloudfoundry-incubator/diego-ssh/test_helpers"
 	"github.com/cloudfoundry-incubator/inigo/world"
+
 	"github.com/onsi/ginkgo/config"
 
 	. "github.com/onsi/gomega"
@@ -50,6 +53,17 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		Stager:              fmt.Sprintf("127.0.0.1:%d", 22000+config.GinkgoConfig.ParallelNode),
 		NsyncListener:       fmt.Sprintf("127.0.0.1:%d", 22500+config.GinkgoConfig.ParallelNode),
 		Auctioneer:          fmt.Sprintf("0.0.0.0:%d", 23000+config.GinkgoConfig.ParallelNode),
+		SSHProxy:            fmt.Sprintf("127.0.0.1:%d", 23500+config.GinkgoConfig.ParallelNode),
+	}
+
+	hostKeyPem, err := helpers.GeneratePemEncodedRsaKey()
+	Ω(err).ShouldNot(HaveOccurred())
+
+	privateKeyPem, publicAuthorizedKey := test_helpers.SSHKeyGen()
+	sshKeys := world.SshKeys{
+		HostKey:       string(hostKeyPem),
+		PrivateKeyPem: string(privateKeyPem),
+		AuthorizedKey: string(publicAuthorizedKey),
 	}
 
 	return world.ComponentMaker{
@@ -62,5 +76,6 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 
 		GardenBinPath:   gardenBinPath,
 		GardenGraphPath: gardenGraphPath,
+		SshConfig:       sshKeys,
 	}
 }

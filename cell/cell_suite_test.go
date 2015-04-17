@@ -142,6 +142,12 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	builtExecutables["router"], err = gexec.BuildIn(os.Getenv("ROUTER_GOPATH"), "github.com/cloudfoundry/gorouter", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
+	builtExecutables["ssh-proxy"], err = gexec.Build("github.com/cloudfoundry-incubator/diego-ssh/cmd/ssh-proxy", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	builtExecutables["sshd"], err = gexec.Build("github.com/cloudfoundry-incubator/diego-ssh/cmd/sshd", "-race")
+	Ω(err).ShouldNot(HaveOccurred())
+
 	return builtExecutables
 }
 
