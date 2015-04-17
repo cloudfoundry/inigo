@@ -1,6 +1,7 @@
 package cell_test
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -20,10 +21,6 @@ import (
 
 var _ = Describe("SSH", func() {
 	verifySSH := func(address, processGuid string, index int) {
-		Eventually(
-			helpers.LRPInstanceStatePoller(receptorClient, processGuid, index, nil),
-		).Should(Equal(receptor.ActualLRPStateRunning))
-
 		clientConfig := &ssh.ClientConfig{
 			User: fmt.Sprintf("diego:%s/%d", processGuid, index),
 			Auth: []ssh.AuthMethod{ssh.Password("")},
@@ -98,11 +95,19 @@ var _ = Describe("SSH", func() {
 					},
 				},
 			},
-			Action: &models.RunAction{
-				Path: "/tmp/sshd",
-				Args: append([]string{
-					"-address=0.0.0.0:2222",
-				}, sshdArgs...),
+			Action: &models.ParallelAction{
+				Actions: []models.Action{
+					&models.RunAction{
+						Path: "/tmp/sshd",
+						Args: append([]string{
+							"-address=0.0.0.0:2222",
+						}, sshdArgs...),
+					},
+					&models.RunAction{
+						Path: "bash",
+						Args: []string{"-c", `while true; do echo "sup dawg" | nc -l localhost 9999; done`},
+					},
+				},
 			},
 			Monitor: &models.RunAction{
 				Path: "nc",
@@ -124,13 +129,38 @@ var _ = Describe("SSH", func() {
 
 			return lrps
 		}).Should(HaveLen(2))
+
+		Eventually(
+			helpers.LRPInstanceStatePoller(receptorClient, processGuid, 0, nil),
+		).Should(Equal(receptor.ActualLRPStateRunning))
+
+		Eventually(
+			helpers.LRPInstanceStatePoller(receptorClient, processGuid, 1, nil),
+		).Should(Equal(receptor.ActualLRPStateRunning))
 	})
 
 	Context("when valid processguid and index are used as part of username", func() {
-
 		It("can ssh to appropriate app instance container", func() {
 			verifySSH(address, processGuid, 0)
 			verifySSH(address, processGuid, 1)
+		})
+
+		It("supports local port fowarding", func() {
+			clientConfig := &ssh.ClientConfig{
+				User: fmt.Sprintf("diego:%s/%d", processGuid, 0),
+				Auth: []ssh.AuthMethod{ssh.Password("")},
+			}
+
+			client, err := ssh.Dial("tcp", address, clientConfig)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			lconn, err := client.Dial("tcp", "localhost:9999")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			reader := bufio.NewReader(lconn)
+			line, err := reader.ReadString('\n')
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(line).Should(ContainSubstring("sup dawg"))
 		})
 
 		Context("when invalid password is used", func() {
@@ -151,9 +181,7 @@ var _ = Describe("SSH", func() {
 				_, err := ssh.Dial("tcp", address, clientConfig)
 				Ω(err).Should(HaveOccurred())
 			})
-
 		})
-
 	})
 
 	Context("when non-existent index is used as part of username", func() {
