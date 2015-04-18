@@ -145,7 +145,9 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	builtExecutables["ssh-proxy"], err = gexec.Build("github.com/cloudfoundry-incubator/diego-ssh/cmd/ssh-proxy", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
-	builtExecutables["sshd"], err = gexec.Build("github.com/cloudfoundry-incubator/diego-ssh/cmd/sshd", "-race")
+	os.Setenv("CGO_ENABLED", "0")
+	builtExecutables["sshd"], err = gexec.Build("github.com/cloudfoundry-incubator/diego-ssh/cmd/sshd", "-a", "-installsuffix", "static")
+	os.Unsetenv("CGO_ENABLED")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	return builtExecutables
