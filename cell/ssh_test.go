@@ -10,6 +10,8 @@ import (
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/archiver/compressor"
+	"github.com/pivotal-golang/lager"
+	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -42,21 +44,15 @@ var _ = Describe("SSH", func() {
 		processGuid         string
 		fileServerStaticDir string
 
-		runtime      ifrit.Process
-		sshdFileName string
-		lrp          receptor.DesiredLRPCreateRequest
-		sshdArgs     []string
-		address      string
+		runtime ifrit.Process
+		address string
+
+		lrp receptor.DesiredLRPCreateRequest
 	)
 
 	BeforeEach(func() {
-		sshdFileName = "sshd.tgz"
 		processGuid = helpers.GenerateGuid()
 		address = componentMaker.Addresses.SSHProxy
-		sshdArgs = []string{
-			"-hostKey=" + componentMaker.SshConfig.HostKey,
-			"-authorizedKey=" + componentMaker.SshConfig.AuthorizedKey,
-		}
 
 		var fileServer ifrit.Runner
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
@@ -72,15 +68,9 @@ var _ = Describe("SSH", func() {
 		}))
 
 		tgCompressor := compressor.NewTgz()
-		err := tgCompressor.Compress(componentMaker.Artifacts.Executables["sshd"], filepath.Join(fileServerStaticDir, sshdFileName))
+		err := tgCompressor.Compress(componentMaker.Artifacts.Executables["sshd"], filepath.Join(fileServerStaticDir, "sshd.tgz"))
 		Ω(err).ShouldNot(HaveOccurred())
-	})
 
-	AfterEach(func() {
-		helpers.StopProcesses(runtime)
-	})
-
-	JustBeforeEach(func() {
 		lrp = receptor.DesiredLRPCreateRequest{
 			ProcessGuid: processGuid,
 			Domain:      "inigo",
@@ -89,7 +79,7 @@ var _ = Describe("SSH", func() {
 				Actions: []models.Action{
 					&models.DownloadAction{
 						Artifact: "sshd",
-						From:     fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, sshdFileName),
+						From:     fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "sshd.tgz"),
 						To:       "/tmp",
 						CacheKey: "sshd",
 					},
@@ -99,13 +89,18 @@ var _ = Describe("SSH", func() {
 				Actions: []models.Action{
 					&models.RunAction{
 						Path: "/tmp/sshd",
-						Args: append([]string{
+						Args: []string{
 							"-address=0.0.0.0:2222",
-						}, sshdArgs...),
+							"-hostKey=" + componentMaker.SshConfig.HostKey,
+							"-authorizedKey=" + componentMaker.SshConfig.AuthorizedKey,
+						},
 					},
 					&models.RunAction{
-						Path: "bash",
-						Args: []string{"-c", `while true; do echo "sup dawg" | nc -l localhost 9999; done`},
+						Path: "sh",
+						Args: []string{
+							"-c",
+							`while true; do echo "sup dawg" | nc -l 127.0.0.1 9999; done`,
+						},
 					},
 				},
 			},
@@ -119,6 +114,11 @@ var _ = Describe("SSH", func() {
 			DiskMB:       128,
 			Ports:        []uint16{2222},
 		}
+	})
+
+	JustBeforeEach(func() {
+		logger := lagertest.NewTestLogger("test")
+		logger.Info("desired-ssh-lrp", lager.Data{"lrp": lrp})
 
 		err := receptorClient.CreateDesiredLRP(lrp)
 		Ω(err).ShouldNot(HaveOccurred())
@@ -126,7 +126,6 @@ var _ = Describe("SSH", func() {
 		Eventually(func() []receptor.ActualLRPResponse {
 			lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
 			Ω(err).ShouldNot(HaveOccurred())
-
 			return lrps
 		}).Should(HaveLen(2))
 
@@ -139,7 +138,11 @@ var _ = Describe("SSH", func() {
 		).Should(Equal(receptor.ActualLRPStateRunning))
 	})
 
-	Context("when valid processguid and index are used as part of username", func() {
+	AfterEach(func() {
+		helpers.StopProcesses(runtime)
+	})
+
+	Context("when valid process guid and index are used in the username", func() {
 		It("can ssh to appropriate app instance container", func() {
 			verifySSH(address, processGuid, 0)
 			verifySSH(address, processGuid, 1)
@@ -180,6 +183,66 @@ var _ = Describe("SSH", func() {
 
 				_, err := ssh.Dial("tcp", address, clientConfig)
 				Ω(err).Should(HaveOccurred())
+			})
+		})
+
+		Context("when a bare-bones docker image is used as the root filesystem", func() {
+			BeforeEach(func() {
+				lrp.StartTimeout = 120
+				lrp.RootFS = "docker:///busybox"
+
+				// busybox nc requires -p but ubuntu's won't allow it
+				lrp.Action = &models.ParallelAction{
+					Actions: []models.Action{
+						&models.RunAction{
+							Path: "/tmp/sshd",
+							Args: []string{
+								"-address=0.0.0.0:2222",
+								"-hostKey=" + componentMaker.SshConfig.HostKey,
+								"-authorizedKey=" + componentMaker.SshConfig.AuthorizedKey,
+							},
+						},
+						&models.RunAction{
+							Path: "sh",
+							Args: []string{
+								"-c",
+								`while true; do echo "sup dawg" | nc -l 127.0.0.1 -p 9999; done`,
+							},
+						},
+					},
+				}
+
+				// busybox nc doesn't support -z
+				lrp.Monitor = &models.RunAction{
+					Path: "sh",
+					Args: []string{
+						"-c",
+						"echo -n '' | telnet localhost 2222 >/dev/null 2>&1 && true",
+					},
+				}
+			})
+
+			It("can ssh to appropriate app instance container", func() {
+				verifySSH(address, processGuid, 0)
+				verifySSH(address, processGuid, 1)
+			})
+
+			It("supports local port fowarding", func() {
+				clientConfig := &ssh.ClientConfig{
+					User: fmt.Sprintf("diego:%s/%d", processGuid, 0),
+					Auth: []ssh.AuthMethod{ssh.Password("")},
+				}
+
+				client, err := ssh.Dial("tcp", address, clientConfig)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				lconn, err := client.Dial("tcp", "localhost:9999")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				reader := bufio.NewReader(lconn)
+				line, err := reader.ReadString('\n')
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(line).Should(ContainSubstring("sup dawg"))
 			})
 		})
 	})
