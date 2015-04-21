@@ -8,6 +8,7 @@ import (
 	"github.com/cloudfoundry-incubator/diego-ssh/helpers"
 	"github.com/cloudfoundry-incubator/diego-ssh/test_helpers"
 	"github.com/cloudfoundry-incubator/inigo/world"
+	"golang.org/x/crypto/ssh"
 
 	"github.com/onsi/ginkgo/config"
 
@@ -59,9 +60,13 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	hostKeyPem, err := helpers.GeneratePemEncodedRsaKey()
 	Ω(err).ShouldNot(HaveOccurred())
 
+	hostKey, err := ssh.ParsePrivateKey(hostKeyPem)
+	Ω(err).ShouldNot(HaveOccurred())
+
 	privateKeyPem, publicAuthorizedKey := test_helpers.SSHKeyGen()
-	sshKeys := world.SshKeys{
-		HostKey:       string(hostKeyPem),
+	sshKeys := world.SSHKeys{
+		HostKey:       hostKey,
+		HostKeyPem:    string(hostKeyPem),
 		PrivateKeyPem: string(privateKeyPem),
 		AuthorizedKey: string(publicAuthorizedKey),
 	}
@@ -76,6 +81,6 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 
 		GardenBinPath:   gardenBinPath,
 		GardenGraphPath: gardenGraphPath,
-		SshConfig:       sshKeys,
+		SSHConfig:       sshKeys,
 	}
 }

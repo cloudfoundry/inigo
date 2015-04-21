@@ -2,10 +2,13 @@ package cell_test
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	ssh_helpers "github.com/cloudfoundry-incubator/diego-ssh/helpers"
+	"github.com/cloudfoundry-incubator/diego-ssh/routes"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -71,6 +74,17 @@ var _ = Describe("SSH", func() {
 		err := tgCompressor.Compress(componentMaker.Artifacts.Executables["sshd"], filepath.Join(fileServerStaticDir, "sshd.tgz"))
 		Ω(err).ShouldNot(HaveOccurred())
 
+		sshRoute := routes.SSHRoute{
+			ContainerPort:   3456,
+			PrivateKey:      componentMaker.SSHConfig.PrivateKeyPem,
+			HostFingerprint: ssh_helpers.MD5Fingerprint(componentMaker.SSHConfig.HostKey.PublicKey()),
+		}
+
+		sshRoutePayload, err := json.Marshal(sshRoute)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		sshRouteMessage := json.RawMessage(sshRoutePayload)
+
 		lrp = receptor.DesiredLRPCreateRequest{
 			ProcessGuid: processGuid,
 			Domain:      "inigo",
@@ -90,9 +104,9 @@ var _ = Describe("SSH", func() {
 					&models.RunAction{
 						Path: "/tmp/sshd",
 						Args: []string{
-							"-address=0.0.0.0:2222",
-							"-hostKey=" + componentMaker.SshConfig.HostKey,
-							"-authorizedKey=" + componentMaker.SshConfig.AuthorizedKey,
+							"-address=0.0.0.0:3456",
+							"-hostKey=" + componentMaker.SSHConfig.HostKeyPem,
+							"-authorizedKey=" + componentMaker.SSHConfig.AuthorizedKey,
 						},
 					},
 					&models.RunAction{
@@ -106,13 +120,16 @@ var _ = Describe("SSH", func() {
 			},
 			Monitor: &models.RunAction{
 				Path: "nc",
-				Args: []string{"-z", "127.0.0.1", "2222"},
+				Args: []string{"-z", "127.0.0.1", "3456"},
 			},
 			StartTimeout: 60,
 			RootFS:       "preloaded:" + helpers.PreloadedStacks[0],
 			MemoryMB:     128,
 			DiskMB:       128,
-			Ports:        []uint16{2222},
+			Ports:        []uint16{3456},
+			Routes: receptor.RoutingInfo{
+				routes.DIEGO_SSH: &sshRouteMessage,
+			},
 		}
 	})
 
@@ -197,9 +214,9 @@ var _ = Describe("SSH", func() {
 						&models.RunAction{
 							Path: "/tmp/sshd",
 							Args: []string{
-								"-address=0.0.0.0:2222",
-								"-hostKey=" + componentMaker.SshConfig.HostKey,
-								"-authorizedKey=" + componentMaker.SshConfig.AuthorizedKey,
+								"-address=0.0.0.0:3456",
+								"-hostKey=" + componentMaker.SSHConfig.HostKeyPem,
+								"-authorizedKey=" + componentMaker.SSHConfig.AuthorizedKey,
 							},
 						},
 						&models.RunAction{
@@ -217,7 +234,7 @@ var _ = Describe("SSH", func() {
 					Path: "sh",
 					Args: []string{
 						"-c",
-						"echo -n '' | telnet localhost 2222 >/dev/null 2>&1 && true",
+						"echo -n '' | telnet localhost 3456 >/dev/null 2>&1 && true",
 					},
 				}
 			})

@@ -28,6 +28,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
+	"golang.org/x/crypto/ssh"
 )
 
 type BuiltExecutables map[string]string
@@ -40,8 +41,9 @@ type BuiltArtifacts struct {
 	Lifecycles  BuiltLifecycles
 }
 
-type SshKeys struct {
-	HostKey       string
+type SSHKeys struct {
+	HostKey       ssh.Signer
+	HostKeyPem    string
 	PrivateKeyPem string
 	AuthorizedKey string
 }
@@ -77,7 +79,7 @@ type ComponentMaker struct {
 	GardenBinPath   string
 	GardenGraphPath string
 
-	SshConfig SshKeys
+	SSHConfig SSHKeys
 }
 
 func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
@@ -481,8 +483,7 @@ func (maker ComponentMaker) SSHProxy(argv ...string) ifrit.Runner {
 			maker.Artifacts.Executables["ssh-proxy"],
 			append([]string{
 				"-address", maker.Addresses.SSHProxy,
-				"-hostKey", maker.SshConfig.HostKey,
-				"-privateKey", maker.SshConfig.PrivateKeyPem,
+				"-hostKey", maker.SSHConfig.HostKeyPem,
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 			}, argv...)...,
 		),
