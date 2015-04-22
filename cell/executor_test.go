@@ -45,16 +45,12 @@ var _ = Describe("Executor", func() {
 			{"converger", componentMaker.Converger()},
 		}
 		cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, cellGroup))
+
+		Eventually(receptorClient.Cells).Should(HaveLen(1))
 	})
 
 	AfterEach(func() {
 		helpers.StopProcesses(executorProcess, cellProcess)
-	})
-
-	Describe("Heartbeating", func() {
-		It("should heartbeat its presence (through the rep)", func() {
-			Eventually(receptorClient.Cells).Should(HaveLen(1))
-		})
 	})
 
 	Describe("Resource limits", func() {
