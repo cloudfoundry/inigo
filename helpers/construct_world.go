@@ -5,10 +5,8 @@ import (
 	"os"
 
 	"github.com/cloudfoundry-incubator/consuladapter"
-	"github.com/cloudfoundry-incubator/diego-ssh/helpers"
-	"github.com/cloudfoundry-incubator/diego-ssh/test_helpers"
+	"github.com/cloudfoundry-incubator/diego-ssh/keys"
 	"github.com/cloudfoundry-incubator/inigo/world"
-	"golang.org/x/crypto/ssh"
 
 	"github.com/onsi/ginkgo/config"
 
@@ -57,18 +55,17 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		SSHProxy:            fmt.Sprintf("127.0.0.1:%d", 23500+config.GinkgoConfig.ParallelNode),
 	}
 
-	hostKeyPem, err := helpers.GeneratePemEncodedRsaKey()
+	hostKeyPair, err := keys.NewRSA(1024)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	hostKey, err := ssh.ParsePrivateKey(hostKeyPem)
+	userKeyPair, err := keys.NewRSA(1024)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	privateKeyPem, publicAuthorizedKey := test_helpers.SSHKeyGen()
 	sshKeys := world.SSHKeys{
-		HostKey:       hostKey,
-		HostKeyPem:    string(hostKeyPem),
-		PrivateKeyPem: string(privateKeyPem),
-		AuthorizedKey: string(publicAuthorizedKey),
+		HostKey:       hostKeyPair.PrivateKey(),
+		HostKeyPem:    hostKeyPair.PEMEncodedPrivateKey(),
+		PrivateKeyPem: userKeyPair.PEMEncodedPrivateKey(),
+		AuthorizedKey: userKeyPair.AuthorizedKey(),
 	}
 
 	return world.ComponentMaker{
