@@ -55,10 +55,10 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		SSHProxy:            fmt.Sprintf("127.0.0.1:%d", 23500+config.GinkgoConfig.ParallelNode),
 	}
 
-	hostKeyPair, err := keys.NewRSA(1024)
+	hostKeyPair, err := keys.RSAKeyPairFactory.NewKeyPair(1024)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	userKeyPair, err := keys.NewRSA(1024)
+	userKeyPair, err := keys.RSAKeyPairFactory.NewKeyPair(1024)
 	Ω(err).ShouldNot(HaveOccurred())
 
 	sshKeys := world.SSHKeys{
