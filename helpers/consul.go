@@ -12,9 +12,9 @@ import (
 
 func ConsulWaitUntilReady() {
 	_, port, err := net.SplitHostPort(addresses.Consul)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	httpPort, err := strconv.Atoi(port)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	startingPort := httpPort - consuladapter.PortOffsetHTTP
 

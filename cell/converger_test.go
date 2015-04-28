@@ -80,7 +80,7 @@ var _ = Describe("Convergence to desired state", func() {
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
 					err := receptorClient.CreateDesiredLRP(helpers.DefaultLRPCreateRequest(processGuid, appId, 2))
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					Eventually(runningLRPsPoller).Should(HaveLen(2))
 					Eventually(helloWorldInstancePoller).Should(Equal([]string{"0", "1"}))
@@ -150,7 +150,7 @@ var _ = Describe("Convergence to desired state", func() {
 							err := receptorClient.UpdateDesiredLRP(processGuid, receptor.DesiredLRPUpdateRequest{
 								Instances: &onePlease,
 							})
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).NotTo(HaveOccurred())
 
 							Consistently(runningLRPsPoller).Should(HaveLen(2))
 						})
@@ -183,7 +183,7 @@ var _ = Describe("Convergence to desired state", func() {
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
 					err := receptorClient.CreateDesiredLRP(helpers.DefaultLRPCreateRequest(processGuid, appId, 1))
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
 					Consistently(helloWorldInstancePoller).Should(BeEmpty())
@@ -220,7 +220,7 @@ var _ = Describe("Convergence to desired state", func() {
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
 					err := receptorClient.CreateDesiredLRP(helpers.DefaultLRPCreateRequest(processGuid, appId, 1))
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
 					Consistently(helloWorldInstancePoller).Should(BeEmpty())
@@ -247,7 +247,7 @@ var _ = Describe("Convergence to desired state", func() {
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
 					err := receptorClient.CreateDesiredLRP(helpers.DefaultLRPCreateRequest(processGuid, appId, 1))
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
 					Consistently(helloWorldInstancePoller).Should(BeEmpty())

@@ -55,7 +55,7 @@ var _ = Describe("Privileges", func() {
 
 		JustBeforeEach(func() {
 			err := receptorClient.CreateTask(taskRequest)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		Context("when the task is privileged", func() {
@@ -66,7 +66,7 @@ var _ = Describe("Privileges", func() {
 			It("succeeds", func() {
 				var task receptor.TaskResponse
 				Eventually(helpers.TaskStatePoller(receptorClient, taskRequest.TaskGuid, &task)).Should(Equal(receptor.TaskStateCompleted))
-				Ω(task.Failed).Should(BeFalse())
+				Expect(task.Failed).To(BeFalse())
 			})
 		})
 
@@ -78,7 +78,7 @@ var _ = Describe("Privileges", func() {
 			It("fails", func() {
 				var task receptor.TaskResponse
 				Eventually(helpers.TaskStatePoller(receptorClient, taskRequest.TaskGuid, &task)).Should(Equal(receptor.TaskStateCompleted))
-				Ω(task.Failed).Should(BeTrue())
+				Expect(task.Failed).To(BeTrue())
 			})
 		})
 	})
@@ -92,7 +92,7 @@ var _ = Describe("Privileges", func() {
 
 		JustBeforeEach(func() {
 			err := receptorClient.CreateDesiredLRP(lrpRequest)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		Context("when the LRP is privileged", func() {

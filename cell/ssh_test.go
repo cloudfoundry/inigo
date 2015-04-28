@@ -32,15 +32,15 @@ var _ = Describe("SSH", func() {
 		}
 
 		client, err := ssh.Dial("tcp", address, clientConfig)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		session, err := client.NewSession()
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		output, err := session.Output("/usr/bin/env")
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
-		Ω(string(output)).Should(ContainSubstring("USER=vcap"))
+		Expect(string(output)).To(ContainSubstring("USER=vcap"))
 	}
 
 	var (
@@ -72,7 +72,7 @@ var _ = Describe("SSH", func() {
 
 		tgCompressor := compressor.NewTgz()
 		err := tgCompressor.Compress(componentMaker.Artifacts.Executables["sshd"], filepath.Join(fileServerStaticDir, "sshd.tgz"))
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		sshRoute := routes.SSHRoute{
 			ContainerPort:   3456,
@@ -81,7 +81,7 @@ var _ = Describe("SSH", func() {
 		}
 
 		sshRoutePayload, err := json.Marshal(sshRoute)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		sshRouteMessage := json.RawMessage(sshRoutePayload)
 
@@ -138,11 +138,11 @@ var _ = Describe("SSH", func() {
 		logger.Info("desired-ssh-lrp", lager.Data{"lrp": lrp})
 
 		err := receptorClient.CreateDesiredLRP(lrp)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(func() []receptor.ActualLRPResponse {
 			lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 			return lrps
 		}).Should(HaveLen(2))
 
@@ -172,15 +172,15 @@ var _ = Describe("SSH", func() {
 			}
 
 			client, err := ssh.Dial("tcp", address, clientConfig)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			lconn, err := client.Dial("tcp", "localhost:9999")
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			reader := bufio.NewReader(lconn)
 			line, err := reader.ReadString('\n')
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(line).Should(ContainSubstring("sup dawg"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(line).To(ContainSubstring("sup dawg"))
 		})
 
 		Context("when invalid password is used", func() {
@@ -199,7 +199,7 @@ var _ = Describe("SSH", func() {
 				).Should(Equal(receptor.ActualLRPStateRunning))
 
 				_, err := ssh.Dial("tcp", address, clientConfig)
-				Ω(err).Should(HaveOccurred())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
@@ -251,15 +251,15 @@ var _ = Describe("SSH", func() {
 				}
 
 				client, err := ssh.Dial("tcp", address, clientConfig)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				lconn, err := client.Dial("tcp", "localhost:9999")
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				reader := bufio.NewReader(lconn)
 				line, err := reader.ReadString('\n')
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(line).Should(ContainSubstring("sup dawg"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(line).To(ContainSubstring("sup dawg"))
 			})
 		})
 	})
@@ -276,7 +276,7 @@ var _ = Describe("SSH", func() {
 
 		It("returns an error", func() {
 			_, err := ssh.Dial("tcp", address, clientConfig)
-			Ω(err).Should(HaveOccurred())
+			Expect(err).To(HaveOccurred())
 		})
 	})
 
@@ -292,7 +292,7 @@ var _ = Describe("SSH", func() {
 
 		It("returns an error", func() {
 			_, err := ssh.Dial("tcp", address, clientConfig)
-			Ω(err).Should(HaveOccurred())
+			Expect(err).To(HaveOccurred())
 		})
 	})
 
@@ -308,7 +308,7 @@ var _ = Describe("SSH", func() {
 
 		It("returns an error", func() {
 			_, err := ssh.Dial("tcp", address, clientConfig)
-			Ω(err).Should(HaveOccurred())
+			Expect(err).To(HaveOccurred())
 		})
 	})
 })

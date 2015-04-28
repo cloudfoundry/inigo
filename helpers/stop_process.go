@@ -37,10 +37,10 @@ func StopProcesses(processes ...ifrit.Process) {
 				process.Signal(syscall.SIGQUIT)
 				Eventually(process.Wait(), 10*time.Second).Should(Receive())
 
-				Ω(true).Should(BeFalse(), "process did not shut down cleanly; SIGQUIT sent")
+				Expect(true).To(BeFalse(), "process did not shut down cleanly; SIGQUIT sent")
 			}
 		}
 	})
 
-	Ω(failures).Should(BeEmpty(), "at least one process failed to shut down cleanly")
+	Expect(failures).To(BeEmpty(), "at least one process failed to shut down cleanly")
 }

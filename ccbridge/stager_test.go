@@ -107,7 +107,7 @@ EOF
 		}))
 
 		u, err := url.Parse(fakeCC.Address())
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 		u.User = url.UserPassword(fakeCC.Username(), fakeCC.Password())
 		u.Path = urljoiner.Join("staging", "droplets", appId, "upload?async=true")
 		dropletUploadUri = u.String()
@@ -122,7 +122,7 @@ EOF
 	stageApplication := func(stagingGuid, payload string) (*http.Response, error) {
 		stageURL := urljoiner.Join("http://"+componentMaker.Addresses.Stager, "v1", "staging", stagingGuid)
 		request, err := http.NewRequest("PUT", stageURL, strings.NewReader(payload))
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		return http.DefaultClient.Do(request)
 	}
@@ -142,19 +142,20 @@ EOF
 					}
 				}`, appId, appId, buildArtifactsUploadUri, dropletUploadUri),
 			)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(resp.StatusCode).Should(Equal(http.StatusInternalServerError))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(http.StatusInternalServerError))
 
 			decoder := json.NewDecoder(resp.Body)
 
 			var response cc_messages.StagingResponseForCC
 			err = decoder.Decode(&response)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
-			Ω(response.Error).Should(Equal(&cc_messages.StagingError{
+			Expect(response.Error).To(Equal(&cc_messages.StagingError{
 				Id:      cc_messages.STAGING_ERROR,
 				Message: "staging failed",
 			}))
+
 		})
 	})
 
@@ -252,8 +253,8 @@ EOF
 
 					It("runs the compiler on the executor with the correct environment variables and bits, and responds with the detected buildpack", func() {
 						resp, err := stageApplication(stagingGuid, string(stagingMessage))
-						Ω(err).ShouldNot(HaveOccurred())
-						Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
+						Expect(err).NotTo(HaveOccurred())
+						Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
 						//wait for staging to complete
 						Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
@@ -262,29 +263,29 @@ EOF
 							DetectedBuildpack: "My Buildpack",
 						}
 						lifecycleDataJSON, err := json.Marshal(buildpackResponse)
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 
 						lifecycleData := json.RawMessage(lifecycleDataJSON)
 
-						Ω(fakeCC.StagingResponses()[0]).Should(Equal(
+						Expect(fakeCC.StagingResponses()[0]).To(Equal(
 							cc_messages.StagingResponseForCC{
 								ExecutionMetadata:    "{\"start_command\":\"the-start-command\"}",
 								DetectedStartCommand: map[string]string{"web": "the-start-command"},
 								LifecycleData:        &lifecycleData,
-							}),
-						)
-						Ω(fakeCC.StagingGuids()[0]).Should(Equal(stagingGuid))
+							}))
+
+						Expect(fakeCC.StagingGuids()[0]).To(Equal(stagingGuid))
 
 						// Assert that the build artifacts cache was downloaded
 						//TODO: how do we test they were downloaded??
 
 						// Download the build artifacts cache from the file-server
 						buildArtifactsCacheBytes := downloadBuildArtifactsCache(appId)
-						Ω(buildArtifactsCacheBytes).ShouldNot(BeEmpty())
+						Expect(buildArtifactsCacheBytes).NotTo(BeEmpty())
 
 						// Assert that the downloaded build artifacts cache matches what the buildpack created
 						artifactsCache, err := gzip.NewReader(bytes.NewReader(buildArtifactsCacheBytes))
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 
 						untarredBuildArtifactsData := tar.NewReader(artifactsCache)
 						buildArtifactContents := map[string][]byte{}
@@ -294,25 +295,24 @@ EOF
 								break
 							}
 
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).NotTo(HaveOccurred())
 
 							content, err := ioutil.ReadAll(untarredBuildArtifactsData)
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).NotTo(HaveOccurred())
 
 							buildArtifactContents[hdr.Name] = content
 						}
 
-						//Ω(buildArtifactContents).Should(HaveKey("pulled-down-from-artifacts-cache"))
-						Ω(buildArtifactContents).Should(HaveKey("./inserted-into-artifacts-cache"))
+						Expect(buildArtifactContents).To(HaveKey("./inserted-into-artifacts-cache"))
 
 						//Fetch the compiled droplet from the fakeCC
 						dropletData, ok := fakeCC.UploadedDroplets[appId]
-						Ω(ok).Should(BeTrue())
-						Ω(dropletData).ShouldNot(BeEmpty())
+						Expect(ok).To(BeTrue())
+						Expect(dropletData).NotTo(BeEmpty())
 
 						//Unzip the droplet
 						ungzippedDropletData, err := gzip.NewReader(bytes.NewReader(dropletData))
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 
 						//Untar the droplet
 						untarredDropletData := tar.NewReader(ungzippedDropletData)
@@ -322,37 +322,37 @@ EOF
 							if err == io.EOF {
 								break
 							}
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).NotTo(HaveOccurred())
 
 							content, err := ioutil.ReadAll(untarredDropletData)
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).NotTo(HaveOccurred())
 
 							dropletContents[hdr.Name] = content
 						}
 
 						//Assert the droplet has the right files in it
-						Ω(dropletContents).Should(HaveKey("./"))
-						Ω(dropletContents).Should(HaveKey("./staging_info.yml"))
-						Ω(dropletContents).Should(HaveKey("./logs/"))
-						Ω(dropletContents).Should(HaveKey("./tmp/"))
-						Ω(dropletContents).Should(HaveKey("./app/"))
-						Ω(dropletContents).Should(HaveKey("./app/my-app"))
-						Ω(dropletContents).Should(HaveKey("./app/compiled"))
+						Expect(dropletContents).To(HaveKey("./"))
+						Expect(dropletContents).To(HaveKey("./staging_info.yml"))
+						Expect(dropletContents).To(HaveKey("./logs/"))
+						Expect(dropletContents).To(HaveKey("./tmp/"))
+						Expect(dropletContents).To(HaveKey("./app/"))
+						Expect(dropletContents).To(HaveKey("./app/my-app"))
+						Expect(dropletContents).To(HaveKey("./app/compiled"))
 
 						//Assert the files contain the right content
-						Ω(string(dropletContents["./app/my-app"])).Should(Equal("scooby-doo"))
+						Expect(string(dropletContents["./app/my-app"])).To(Equal("scooby-doo"))
 
 						//In particular, staging_info.yml should have the correct detected_buildpack and start_command
 						yamlDecoder := candiedyaml.NewDecoder(bytes.NewReader(dropletContents["./staging_info.yml"]))
 						stagingInfo := map[string]string{}
 						err = yamlDecoder.Decode(&stagingInfo)
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 
-						Ω(stagingInfo["detected_buildpack"]).Should(Equal("My Buildpack"))
-						Ω(stagingInfo["start_command"]).Should(Equal("the-start-command"))
+						Expect(stagingInfo["detected_buildpack"]).To(Equal("My Buildpack"))
+						Expect(stagingInfo["start_command"]).To(Equal("the-start-command"))
 
 						//Assert nothing else crept into the droplet
-						Ω(dropletContents).Should(HaveLen(7))
+						Expect(dropletContents).To(HaveLen(7))
 					})
 				})
 			}
@@ -363,11 +363,11 @@ EOF
 			Context("with a git buildpack", func() {
 				BeforeEach(func() {
 					gitPath, err := exec.LookPath("git")
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					buildpackDir := filepath.Join(fileServerStaticDir, "buildpack")
 					err = os.MkdirAll(buildpackDir, os.ModePerm)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					execute(buildpackDir, "rm", "-rf", ".git")
 					execute(buildpackDir, gitPath, "init")
@@ -377,10 +377,10 @@ EOF
 					for _, bpFile := range adminBuildpackFiles {
 						filename := filepath.Join(buildpackDir, bpFile.Name)
 						err = os.MkdirAll(filepath.Dir(filename), 0777)
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 
 						err = ioutil.WriteFile(filename, []byte(bpFile.Body), 0777)
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 					}
 
 					execute(buildpackDir, gitPath, "add", ".")
@@ -399,18 +399,19 @@ EOF
 
 				It("responds with the error", func() {
 					resp, err := stageApplication(stagingGuid, string(stagingMessage))
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
+					Expect(err).NotTo(HaveOccurred())
+					Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
 					Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
-					Ω(fakeCC.StagingResponses()[0]).Should(Equal(
+					Expect(fakeCC.StagingResponses()[0]).To(Equal(
 						cc_messages.StagingResponseForCC{
 							Error: &cc_messages.StagingError{
 								Id:      cc_messages.STAGING_ERROR,
 								Message: "staging failed",
 							},
 						}))
-					Ω(fakeCC.StagingGuids()[0]).Should(Equal(stagingGuid))
+
+					Expect(fakeCC.StagingGuids()[0]).To(Equal(stagingGuid))
 				})
 			})
 
@@ -421,18 +422,19 @@ EOF
 
 				It("returns a staging completed response with 'insufficient resources' error", func() {
 					resp, err := stageApplication(stagingGuid, string(stagingMessage))
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
+					Expect(err).NotTo(HaveOccurred())
+					Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
 					Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
-					Ω(fakeCC.StagingResponses()[0]).Should(Equal(
+					Expect(fakeCC.StagingResponses()[0]).To(Equal(
 						cc_messages.StagingResponseForCC{
 							Error: &cc_messages.StagingError{
 								Id:      cc_messages.INSUFFICIENT_RESOURCES,
 								Message: "insufficient resources",
 							},
 						}))
-					Ω(fakeCC.StagingGuids()[0]).Should(Equal(stagingGuid))
+
+					Expect(fakeCC.StagingGuids()[0]).To(Equal(stagingGuid))
 				})
 			})
 		})
@@ -450,8 +452,8 @@ EOF
 
 			It("only one returns a staging completed response", func() {
 				resp, err := stageApplication(stagingGuid, string(stagingMessage))
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
 				Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
 				Consistently(fakeCC.StagingResponses).Should(HaveLen(1))
@@ -465,18 +467,19 @@ EOF
 
 			It("returns a staging completed response with 'found no compatible cell' error", func() {
 				resp, err := stageApplication(stagingGuid, string(stagingMessage))
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
 				Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
-				Ω(fakeCC.StagingResponses()[0]).Should(Equal(
+				Expect(fakeCC.StagingResponses()[0]).To(Equal(
 					cc_messages.StagingResponseForCC{
 						Error: &cc_messages.StagingError{
 							Id:      cc_messages.NO_COMPATIBLE_CELL,
 							Message: "found no compatible cell",
 						},
 					}))
-				Ω(fakeCC.StagingGuids()[0]).Should(Equal(stagingGuid))
+
+				Expect(fakeCC.StagingGuids()[0]).To(Equal(stagingGuid))
 			})
 		})
 
@@ -500,8 +503,8 @@ EOF
 				fakeCC.SetStagingResponseBody(`{"error": "bah!"}`)
 
 				resp, err := stageApplication(stagingGuid, string(stagingMessage))
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
 				NUM_ATTEMPTS := 2
 				NUM_RETRIES := 3
@@ -518,14 +521,14 @@ func downloadBuildArtifactsCache(appId string) []byte {
 		fake_cc.CC_USERNAME, fake_cc.CC_PASSWORD, componentMaker.Addresses.FakeCC, appId)
 
 	resp, err := http.Get(buildArtifactUrl)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	defer resp.Body.Close()
 
-	Ω(resp.StatusCode).Should(Equal(http.StatusOK))
+	Expect(resp.StatusCode).To(Equal(http.StatusOK))
 
 	bytes, err := ioutil.ReadAll(resp.Body)
 
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	return bytes
 }
@@ -534,5 +537,5 @@ func execute(dir string, execCmd string, args ...string) {
 	cmd := exec.Command(execCmd, args...)
 	cmd.Dir = dir
 	err := cmd.Run()
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 }

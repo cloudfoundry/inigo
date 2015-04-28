@@ -30,17 +30,17 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	payload, err := json.Marshal(world.BuiltArtifacts{
 		Executables: CompileTestedExecutables(),
 	})
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	return payload
 }, func(encodedBuiltArtifacts []byte) {
 	var builtArtifacts world.BuiltArtifacts
 
 	err := json.Unmarshal(encodedBuiltArtifacts, &builtArtifacts)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	localIP, err := localip.LocalIP()
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	componentMaker = helpers.MakeComponentMaker(builtArtifacts, localIP)
 })
@@ -58,7 +58,7 @@ var _ = AfterEach(func() {
 
 	helpers.StopProcesses(gardenProcess)
 
-	Ω(destroyContainerErrors).Should(
+	Expect(destroyContainerErrors).To(
 		BeEmpty(),
 		"%d containers failed to be destroyed!",
 		len(destroyContainerErrors),
@@ -81,10 +81,10 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	builtExecutables := world.BuiltExecutables{}
 
 	builtExecutables["garden-linux"], err = gexec.BuildIn(os.Getenv("GARDEN_LINUX_GOPATH"), "github.com/cloudfoundry-incubator/garden-linux", "-race", "-a", "-tags", "daemon")
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["exec"], err = gexec.BuildIn(os.Getenv("EXECUTOR_GOPATH"), "github.com/cloudfoundry-incubator/executor/cmd/executor", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	return builtExecutables
 }

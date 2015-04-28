@@ -5,7 +5,7 @@ import . "github.com/onsi/gomega"
 
 func ActiveActualLRPs(receptorClient receptor.Client, processGuid string) []receptor.ActualLRPResponse {
 	lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	startedLRPs := make([]receptor.ActualLRPResponse, 0, len(lrps))
 	for _, l := range lrps {
@@ -20,7 +20,7 @@ func ActiveActualLRPs(receptorClient receptor.Client, processGuid string) []rece
 func TaskStatePoller(receptorClient receptor.Client, taskGuid string, task *receptor.TaskResponse) func() string {
 	return func() string {
 		rTask, err := receptorClient.GetTask(taskGuid)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		*task = rTask
 
@@ -31,7 +31,7 @@ func TaskStatePoller(receptorClient receptor.Client, taskGuid string, task *rece
 func LRPStatePoller(receptorClient receptor.Client, processGuid string, lrp *receptor.ActualLRPResponse) func() receptor.ActualLRPState {
 	return func() receptor.ActualLRPState {
 		lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		if len(lrps) == 0 {
 			return receptor.ActualLRPStateInvalid
@@ -48,7 +48,7 @@ func LRPStatePoller(receptorClient receptor.Client, processGuid string, lrp *rec
 func LRPInstanceStatePoller(receptorClient receptor.Client, processGuid string, index int, lrp *receptor.ActualLRPResponse) func() receptor.ActualLRPState {
 	return func() receptor.ActualLRPState {
 		lrpInstance, err := receptorClient.ActualLRPByProcessGuidAndIndex(processGuid, index)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		if lrp != nil {
 			*lrp = lrpInstance

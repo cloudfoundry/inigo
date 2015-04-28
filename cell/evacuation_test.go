@@ -108,14 +108,14 @@ var _ = Describe("Evacuation", func() {
 		lrp := helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
 
 		err := receptorClient.CreateDesiredLRP(lrp)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		By("running an actual LRP instance")
 		Eventually(helpers.LRPStatePoller(receptorClient, processGuid, nil)).Should(Equal(receptor.ActualLRPStateRunning))
 		Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 
 		actualLRP, err := receptorClient.ActualLRPByProcessGuidAndIndex(processGuid, 0)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		var evacuatingRepAddr string
 		var evacutaingRepRunner *ginkgomon.Runner
@@ -133,13 +133,13 @@ var _ = Describe("Evacuation", func() {
 
 		By("posting the evacuation endpoint")
 		resp, err := http.Post(fmt.Sprintf("http://%s/evacuate", evacuatingRepAddr), "text/html", nil)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 		resp.Body.Close()
-		Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
+		Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
 		By("staying routable so long as its rep is alive")
 		Eventually(func() int {
-			Ω(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)()).Should(Equal(http.StatusOK))
+			Expect(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)()).To(Equal(http.StatusOK))
 			return evacutaingRepRunner.ExitCode()
 		}).Should(Equal(0))
 

@@ -46,14 +46,14 @@ func AnnounceURL(announcement string) string {
 
 func Announcements() []string {
 	response, err := http.Get(fmt.Sprintf("http://%s/announcements", serverAddr))
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	defer response.Body.Close()
 
 	var responses []string
 
 	err = json.NewDecoder(response.Body).Decode(&responses)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	return responses
 }

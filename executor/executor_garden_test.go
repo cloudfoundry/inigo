@@ -41,7 +41,7 @@ var _ = Describe("Executor/Garden", func() {
 	BeforeEach(func() {
 		var err error
 		cachePath, err = ioutil.TempDir("", "executor-tmp")
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	JustBeforeEach(func() {
@@ -58,7 +58,7 @@ var _ = Describe("Executor/Garden", func() {
 		executorClient = componentMaker.ExecutorClient()
 
 		gardenCapacity, err = gardenClient.Capacity()
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {
@@ -71,7 +71,7 @@ var _ = Describe("Executor/Garden", func() {
 
 	generateGuid := func() string {
 		id, err := uuid.NewV4()
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		return id.String()
 	}
@@ -80,14 +80,14 @@ var _ = Describe("Executor/Garden", func() {
 		request.Guid = generateGuid()
 
 		_, err := executorClient.AllocateContainers([]executor.Container{request})
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		return request.Guid
 	}
 
 	getContainer := func(guid string) executor.Container {
 		container, err := executorClient.GetContainer(guid)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		return container
 	}
@@ -102,7 +102,7 @@ var _ = Describe("Executor/Garden", func() {
 		return func() executor.EventType {
 			var err error
 			*event, err = eventSource.Next()
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 			return (*event).EventType()
 		}
 	}
@@ -133,10 +133,10 @@ var _ = Describe("Executor/Garden", func() {
 		Context("when the cache directory exists and contains files", func() {
 			BeforeEach(func() {
 				err := os.MkdirAll(cachePath, 0755)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				err = ioutil.WriteFile(filepath.Join(cachePath, "should-get-deleted"), []byte("some-contents"), 0755)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("clears it out", func() {
@@ -180,14 +180,14 @@ var _ = Describe("Executor/Garden", func() {
 						"executor:owner": ownerName,
 					},
 				})
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				container2, err = gardenClient.Create(garden.ContainerSpec{
 					Properties: garden.Properties{
 						"executor:owner": ownerName,
 					},
 				})
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("deletes those containers (and only those containers)", func() {
@@ -218,7 +218,7 @@ var _ = Describe("Executor/Garden", func() {
 				})
 
 				It("does not return an error", func() {
-					Ω(pingErr).ShouldNot(HaveOccurred())
+					Expect(pingErr).NotTo(HaveOccurred())
 				})
 			})
 
@@ -233,8 +233,8 @@ var _ = Describe("Executor/Garden", func() {
 				})
 
 				It("should return an error", func() {
-					Ω(pingErr).Should(HaveOccurred())
-					Ω(pingErr.Error()).Should(ContainSubstring("status: 502"))
+					Expect(pingErr).To(HaveOccurred())
+					Expect(pingErr.Error()).To(ContainSubstring("status: 502"))
 				})
 			})
 		})
@@ -248,7 +248,7 @@ var _ = Describe("Executor/Garden", func() {
 			})
 
 			It("not return an error", func() {
-				Ω(resourceErr).ShouldNot(HaveOccurred())
+				Expect(resourceErr).NotTo(HaveOccurred())
 			})
 
 			It("returns the preset capacity", func() {
@@ -257,7 +257,7 @@ var _ = Describe("Executor/Garden", func() {
 					DiskMB:     int(gardenCapacity.DiskInBytes / 1024 / 1024),
 					Containers: int(gardenCapacity.MaxContainers),
 				}
-				Ω(resources).Should(Equal(expectedResources))
+				Expect(resources).To(Equal(expectedResources))
 			})
 		})
 
@@ -299,25 +299,25 @@ var _ = Describe("Executor/Garden", func() {
 			})
 
 			It("does not return an error", func() {
-				Ω(allocErr).ShouldNot(HaveOccurred())
+				Expect(allocErr).NotTo(HaveOccurred())
 			})
 
 			It("returns an empty error map", func() {
-				Ω(allocationErrorMap).Should(BeEmpty())
+				Expect(allocationErrorMap).To(BeEmpty())
 			})
 
 			It("shows up in the container list", func() {
 				containers, err := executorClient.ListContainers(nil)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(containers).Should(HaveLen(1))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(containers).To(HaveLen(1))
 
-				Ω(containers[0].State).Should(Equal(executor.StateReserved))
-				Ω(containers[0].Guid).Should(Equal(guid))
-				Ω(containers[0].MemoryMB).Should(Equal(0))
-				Ω(containers[0].DiskMB).Should(Equal(0))
-				Ω(containers[0].Tags).Should(Equal(executor.Tags{"some-tag": "some-value"}))
-				Ω(containers[0].State).Should(Equal(executor.StateReserved))
-				Ω(containers[0].AllocatedAt).Should(BeNumerically("~", time.Now().UnixNano(), time.Second))
+				Expect(containers[0].State).To(Equal(executor.StateReserved))
+				Expect(containers[0].Guid).To(Equal(guid))
+				Expect(containers[0].MemoryMB).To(Equal(0))
+				Expect(containers[0].DiskMB).To(Equal(0))
+				Expect(containers[0].Tags).To(Equal(executor.Tags{"some-tag": "some-value"}))
+				Expect(containers[0].State).To(Equal(executor.StateReserved))
+				Expect(containers[0].AllocatedAt).To(BeNumerically("~", time.Now().UnixNano(), time.Second))
 
 			})
 
@@ -329,18 +329,19 @@ var _ = Describe("Executor/Garden", func() {
 
 				It("returns the limits on the container", func() {
 					containers, err := executorClient.ListContainers(nil)
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(containers).Should(HaveLen(1))
-					Ω(containers[0].MemoryMB).Should(Equal(256))
-					Ω(containers[0].DiskMB).Should(Equal(256))
+					Expect(err).NotTo(HaveOccurred())
+					Expect(containers).To(HaveLen(1))
+					Expect(containers[0].MemoryMB).To(Equal(256))
+					Expect(containers[0].DiskMB).To(Equal(256))
 				})
 
 				It("reduces the capacity by the amount reserved", func() {
-					Ω(executorClient.RemainingResources()).Should(Equal(executor.ExecutorResources{
+					Expect(executorClient.RemainingResources()).To(Equal(executor.ExecutorResources{
 						MemoryMB:   int(gardenCapacity.MemoryInBytes/1024/1024) - 256,
 						DiskMB:     int(gardenCapacity.DiskInBytes/1024/1024) - 256,
 						Containers: int(gardenCapacity.MaxContainers) - 1,
 					}))
+
 				})
 			})
 
@@ -350,21 +351,21 @@ var _ = Describe("Executor/Garden", func() {
 				})
 
 				It("returns an error", func() {
-					Ω(allocErr).ShouldNot(HaveOccurred())
-					Ω(allocationErrorMap[container.Guid]).Should(Equal(executor.ErrLimitsInvalid.Error()))
+					Expect(allocErr).NotTo(HaveOccurred())
+					Expect(allocationErrorMap[container.Guid]).To(Equal(executor.ErrLimitsInvalid.Error()))
 				})
 			})
 
 			Context("when the guid is already taken", func() {
 
 				JustBeforeEach(func() {
-					Ω(allocErr).ShouldNot(HaveOccurred())
+					Expect(allocErr).NotTo(HaveOccurred())
 					allocationErrorMap, allocErr = executorClient.AllocateContainers([]executor.Container{container})
 				})
 
 				It("returns an error", func() {
-					Ω(allocErr).ShouldNot(HaveOccurred())
-					Ω(allocationErrorMap[container.Guid]).Should(Equal(executor.ErrContainerGuidNotAvailable.Error()))
+					Expect(allocErr).NotTo(HaveOccurred())
+					Expect(allocationErrorMap[container.Guid]).To(Equal(executor.ErrContainerGuidNotAvailable.Error()))
 				})
 			})
 
@@ -374,8 +375,8 @@ var _ = Describe("Executor/Garden", func() {
 				})
 
 				It("returns an error", func() {
-					Ω(allocErr).ShouldNot(HaveOccurred())
-					Ω(allocationErrorMap[container.Guid]).Should(Equal(executor.ErrGuidNotSpecified.Error()))
+					Expect(allocErr).NotTo(HaveOccurred())
+					Expect(allocationErrorMap[container.Guid]).To(Equal(executor.ErrGuidNotSpecified.Error()))
 				})
 			})
 
@@ -386,8 +387,8 @@ var _ = Describe("Executor/Garden", func() {
 				})
 
 				It("returns an error", func() {
-					Ω(allocErr).ShouldNot(HaveOccurred())
-					Ω(allocationErrorMap[container.Guid]).Should(Equal(executor.ErrInsufficientResourcesAvailable.Error()))
+					Expect(allocErr).NotTo(HaveOccurred())
+					Expect(allocationErrorMap[container.Guid]).To(Equal(executor.ErrInsufficientResourcesAvailable.Error()))
 				})
 			})
 
@@ -399,7 +400,7 @@ var _ = Describe("Executor/Garden", func() {
 					var err error
 
 					eventSource, err = executorClient.SubscribeToEvents()
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					runErr = executorClient.RunContainer(guid)
 				})
@@ -416,14 +417,14 @@ var _ = Describe("Executor/Garden", func() {
 					})
 
 					It("returns no error", func() {
-						Ω(runErr).ShouldNot(HaveOccurred())
+						Expect(runErr).NotTo(HaveOccurred())
 					})
 
 					It("creates it with the configured owner", func() {
 						info, err := gardenContainer.Info()
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 
-						Ω(info.Properties["executor:owner"]).Should(Equal(ownerName))
+						Expect(info.Properties["executor:owner"]).To(Equal(ownerName))
 					})
 
 					It("sets global environment variables on the container", func() {
@@ -434,19 +435,19 @@ var _ = Describe("Executor/Garden", func() {
 						}, garden.ProcessIO{
 							Stdout: output,
 						})
-						Ω(err).ShouldNot(HaveOccurred())
-						Ω(process.Wait()).Should(Equal(0))
+						Expect(err).NotTo(HaveOccurred())
+						Expect(process.Wait()).To(Equal(0))
 
-						Ω(output.Contents()).Should(ContainSubstring("ENV1=val1"))
-						Ω(output.Contents()).Should(ContainSubstring("ENV2=val2"))
+						Expect(output.Contents()).To(ContainSubstring("ENV1=val1"))
+						Expect(output.Contents()).To(ContainSubstring("ENV2=val2"))
 					})
 
 					It("saves the succeeded run result", func() {
 						Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
 
 						container := getContainer(guid)
-						Ω(container.RunResult.Failed).Should(BeFalse())
-						Ω(container.RunResult.FailureReason).Should(BeEmpty())
+						Expect(container.RunResult.Failed).To(BeFalse())
+						Expect(container.RunResult.FailureReason).To(BeEmpty())
 					})
 
 					Context("when listening for events", func() {
@@ -455,8 +456,8 @@ var _ = Describe("Executor/Garden", func() {
 							Eventually(containerEventPoller(eventSource, &event), 5).Should(Equal(executor.EventTypeContainerComplete))
 
 							completeEvent := event.(executor.ContainerCompleteEvent)
-							Ω(completeEvent.Container().State).Should(Equal(executor.StateCompleted))
-							Ω(completeEvent.Container().RunResult.Failed).Should(BeFalse())
+							Expect(completeEvent.Container().State).To(Equal(executor.StateCompleted))
+							Expect(completeEvent.Container().RunResult.Failed).To(BeFalse())
 						})
 
 						Describe("shutting down", func() {
@@ -598,7 +599,7 @@ var _ = Describe("Executor/Garden", func() {
 								Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
 
 								err := executorClient.DeleteContainer(guid)
-								Ω(err).ShouldNot(HaveOccurred())
+								Expect(err).NotTo(HaveOccurred())
 							}, 5)
 						})
 					})
@@ -614,8 +615,8 @@ var _ = Describe("Executor/Garden", func() {
 							Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
 
 							container := getContainer(guid)
-							Ω(container.RunResult.Failed).Should(BeTrue())
-							Ω(container.RunResult.FailureReason).Should(Equal("Exited with status 1"))
+							Expect(container.RunResult.Failed).To(BeTrue())
+							Expect(container.RunResult.FailureReason).To(Equal("Exited with status 1"))
 						})
 
 						Context("when listening for events", func() {
@@ -624,9 +625,9 @@ var _ = Describe("Executor/Garden", func() {
 								Eventually(containerEventPoller(eventSource, &event), 5).Should(Equal(executor.EventTypeContainerComplete))
 
 								completeEvent := event.(executor.ContainerCompleteEvent)
-								Ω(completeEvent.Container().State).Should(Equal(executor.StateCompleted))
-								Ω(completeEvent.Container().RunResult.Failed).Should(BeTrue())
-								Ω(completeEvent.Container().RunResult.FailureReason).Should(Equal("Exited with status 1"))
+								Expect(completeEvent.Container().State).To(Equal(executor.StateCompleted))
+								Expect(completeEvent.Container().RunResult.Failed).To(BeTrue())
+								Expect(completeEvent.Container().RunResult.FailureReason).To(Equal("Exited with status 1"))
 							})
 						})
 					})
@@ -638,7 +639,7 @@ var _ = Describe("Executor/Garden", func() {
 					})
 
 					It("does not immediately return an error", func() {
-						Ω(runErr).ShouldNot(HaveOccurred())
+						Expect(runErr).NotTo(HaveOccurred())
 					})
 
 					Context("when listening for events", func() {
@@ -646,8 +647,8 @@ var _ = Describe("Executor/Garden", func() {
 							Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
 
 							container := getContainer(guid)
-							Ω(container.RunResult.Failed).Should(BeTrue())
-							Ω(container.RunResult.FailureReason).Should(Equal("failed to initialize container"))
+							Expect(container.RunResult.Failed).To(BeTrue())
+							Expect(container.RunResult.FailureReason).To(Equal("failed to initialize container"))
 						})
 					})
 				})
@@ -657,7 +658,7 @@ var _ = Describe("Executor/Garden", func() {
 		Describe("running a bogus guid", func() {
 			It("returns an error", func() {
 				err := executorClient.RunContainer("bogus")
-				Ω(err).Should(Equal(executor.ErrContainerNotFound))
+				Expect(err).To(Equal(executor.ErrContainerNotFound))
 			})
 		})
 
@@ -674,7 +675,7 @@ var _ = Describe("Executor/Garden", func() {
 			Describe("deleting it", func() {
 				It("makes the previously allocated resources available again", func() {
 					err := executorClient.DeleteContainer(guid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					Eventually(executorClient.RemainingResources).Should(Equal(executor.ExecutorResources{
 						MemoryMB:   int(gardenCapacity.MemoryInBytes / 1024 / 1024),
@@ -687,10 +688,10 @@ var _ = Describe("Executor/Garden", func() {
 			Describe("listing containers", func() {
 				It("shows up in the container list in reserved state", func() {
 					containers, err := executorClient.ListContainers(nil)
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(containers).Should(HaveLen(1))
-					Ω(containers[0].Guid).Should(Equal(guid))
-					Ω(containers[0].State).Should(Equal(executor.StateReserved))
+					Expect(err).NotTo(HaveOccurred())
+					Expect(containers).To(HaveLen(1))
+					Expect(containers[0].Guid).To(Equal(guid))
+					Expect(containers[0].State).To(Equal(executor.StateReserved))
 				})
 			})
 		})
@@ -710,7 +711,7 @@ var _ = Describe("Executor/Garden", func() {
 				})
 
 				err := executorClient.RunContainer(guid)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(containerStatePoller(guid)).Should(Equal(executor.StateRunning))
 			})
@@ -718,31 +719,31 @@ var _ = Describe("Executor/Garden", func() {
 			Describe("StopContainer", func() {
 				It("does not return an error", func() {
 					err := executorClient.StopContainer(guid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("stops the container but does not delete it", func() {
 					err := executorClient.StopContainer(guid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					var container executor.Container
 					Eventually(func() executor.State {
 						container, err = executorClient.GetContainer(guid)
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 						return container.State
 					}).Should(Equal(executor.StateCompleted))
 
-					Ω(container.RunResult.Stopped).Should(BeTrue())
+					Expect(container.RunResult.Stopped).To(BeTrue())
 
 					_, err = gardenClient.Lookup(guid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 				})
 			})
 
 			Describe("DeleteContainer", func() {
 				It("deletes the container", func() {
 					err := executorClient.DeleteContainer(guid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					Eventually(func() error {
 						_, err := gardenClient.Lookup(guid)
@@ -754,20 +755,20 @@ var _ = Describe("Executor/Garden", func() {
 			Describe("listing containers", func() {
 				It("shows up in the container list in running state", func() {
 					containers, err := executorClient.ListContainers(nil)
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(containers).Should(HaveLen(1))
-					Ω(containers[0].Guid).Should(Equal(guid))
-					Ω(containers[0].State).Should(Equal(executor.StateRunning))
+					Expect(err).NotTo(HaveOccurred())
+					Expect(containers).To(HaveLen(1))
+					Expect(containers[0].Guid).To(Equal(guid))
+					Expect(containers[0].State).To(Equal(executor.StateRunning))
 				})
 			})
 
 			Describe("remaining resources", func() {
 				It("has the container's reservation subtracted", func() {
 					remaining, err := executorClient.RemainingResources()
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
-					Ω(remaining.MemoryMB).Should(Equal(int(gardenCapacity.MemoryInBytes/1024/1024) - 64))
-					Ω(remaining.DiskMB).Should(Equal(int(gardenCapacity.DiskInBytes/1024/1024) - 64))
+					Expect(remaining.MemoryMB).To(Equal(int(gardenCapacity.MemoryInBytes/1024/1024) - 64))
+					Expect(remaining.DiskMB).To(Equal(int(gardenCapacity.DiskInBytes/1024/1024) - 64))
 				})
 
 				Context("when the container disappears", func() {
@@ -777,7 +778,7 @@ var _ = Describe("Executor/Garden", func() {
 
 						// kill it
 						err := gardenClient.Destroy(guid)
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 
 						Eventually(executorClient.RemainingResources).Should(Equal(executor.ExecutorResources{
 							MemoryMB:   int(gardenCapacity.MemoryInBytes / 1024 / 1024),
@@ -808,7 +809,7 @@ var _ = Describe("Executor/Garden", func() {
 				})
 
 				It("returns an error", func() {
-					Ω(streamErr).Should(HaveOccurred())
+					Expect(streamErr).To(HaveOccurred())
 				})
 			})
 
@@ -826,7 +827,7 @@ var _ = Describe("Executor/Garden", func() {
 					})
 
 					err := executorClient.RunContainer(guid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					container = findGardenContainer(guid)
 
@@ -834,24 +835,24 @@ var _ = Describe("Executor/Garden", func() {
 						Path: "sh",
 						Args: []string{"-c", "mkdir some; echo hello > some/path"},
 					}, garden.ProcessIO{})
-					Ω(err).ShouldNot(HaveOccurred())
-					Ω(process.Wait()).Should(Equal(0))
+					Expect(err).NotTo(HaveOccurred())
+					Expect(process.Wait()).To(Equal(0))
 
 					stream, streamErr = executorClient.GetFiles(guid, "some/path")
 				})
 
 				It("does not error", func() {
-					Ω(streamErr).ShouldNot(HaveOccurred())
+					Expect(streamErr).NotTo(HaveOccurred())
 				})
 
 				It("returns a stream of the contents of the file", func() {
 					tarReader := tar.NewReader(stream)
 
 					header, err := tarReader.Next()
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
-					Ω(header.FileInfo().Name()).Should(Equal("path"))
-					Ω(ioutil.ReadAll(tarReader)).Should(Equal([]byte("hello\n")))
+					Expect(header.FileInfo().Name()).To(Equal("path"))
+					Expect(ioutil.ReadAll(tarReader)).To(Equal([]byte("hello\n")))
 				})
 			})
 		})
@@ -866,13 +867,13 @@ var _ = Describe("Executor/Garden", func() {
 						DiskMB:   1024,
 					},
 				})
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
-				Ω(executorClient.ListContainers(nil)).Should(HaveLen(1))
+				Expect(executorClient.ListContainers(nil)).To(HaveLen(1))
 
 				Eventually(func() interface{} {
 					containers, err := executorClient.ListContainers(nil)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					return containers
 				}, pruningInterval*3).Should(BeEmpty())
@@ -896,7 +897,7 @@ var _ = Describe("Executor/Garden", func() {
 		Describe("listing containers", func() {
 			Context("with no containers", func() {
 				It("returns an empty set of containers", func() {
-					Ω(executorClient.ListContainers(nil)).Should(BeEmpty())
+					Expect(executorClient.ListContainers(nil)).To(BeEmpty())
 				})
 			})
 
@@ -914,9 +915,9 @@ var _ = Describe("Executor/Garden", func() {
 				Context("without tags", func() {
 					It("includes the allocated container", func() {
 						containers, err := executorClient.ListContainers(nil)
-						Ω(err).ShouldNot(HaveOccurred())
-						Ω(containers).Should(HaveLen(1))
-						Ω(containers[0].Guid).Should(Equal(guid))
+						Expect(err).NotTo(HaveOccurred())
+						Expect(containers).To(HaveLen(1))
+						Expect(containers[0].Guid).To(Equal(guid))
 					})
 				})
 
@@ -932,24 +933,30 @@ var _ = Describe("Executor/Garden", func() {
 							containers, err := executorClient.ListContainers(executor.Tags{
 								"some-tag": "some-value",
 							})
-							Ω(err).ShouldNot(HaveOccurred())
-							Ω(containers).Should(HaveLen(1))
-							Ω(containers[0].Guid).Should(Equal(guid))
+							Expect(err).NotTo(HaveOccurred())
+							Expect(containers).To(HaveLen(1))
+							Expect(containers[0].Guid).To(Equal(guid))
 						})
 
 						It("filters by and-ing the requested tags", func() {
-							Ω(executorClient.ListContainers(executor.Tags{
+							Expect(executorClient.ListContainers(executor.Tags{
 								"some-tag":  "some-value",
 								"bogus-tag": "bogus-value",
-							})).Should(BeEmpty())
+							})).To(
+
+								BeEmpty())
+
 						})
 					})
 
 					Describe("listing by non-matching tags", func() {
 						It("does not include the allocated container", func() {
-							Ω(executorClient.ListContainers(executor.Tags{
+							Expect(executorClient.ListContainers(executor.Tags{
 								"some-tag": "bogus-value",
-							})).Should(BeEmpty())
+							})).To(
+
+								BeEmpty())
+
 						})
 					})
 				})
@@ -975,7 +982,7 @@ var _ = Describe("Executor/Garden", func() {
 					})
 
 					err := executorClient.RunContainer(guid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					Eventually(containerStatePoller(guid)).Should(Equal(executor.StateRunning))
 
@@ -991,7 +998,7 @@ var _ = Describe("Executor/Garden", func() {
 					}).ShouldNot(HaveOccurred())
 
 					containerResponse, err = ioutil.ReadAll(conn)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 				})
 
 				Context("when exportNetworkEnvVars is set", func() {
@@ -1000,7 +1007,7 @@ var _ = Describe("Executor/Garden", func() {
 					})
 
 					It("echoes back the correct CF_INSTANCE_ADDR", func() {
-						Ω(string(containerResponse)).Should(Equal("." + externalAddr + "."))
+						Expect(string(containerResponse)).To(Equal("." + externalAddr + "."))
 					})
 				})
 
@@ -1010,7 +1017,7 @@ var _ = Describe("Executor/Garden", func() {
 					})
 
 					It("echoes back an empty CF_INSTANCE_ADDR", func() {
-						Ω(string(containerResponse)).Should(Equal(".."))
+						Expect(string(containerResponse)).To(Equal(".."))
 					})
 				})
 			})
@@ -1042,7 +1049,7 @@ var _ = Describe("Executor/Garden", func() {
 
 			It("should not exit and continue waiting for a connection", func() {
 				Consistently(runner.Buffer()).ShouldNot(gbytes.Say("started"))
-				Ω(runner).ShouldNot(gexec.Exit())
+				Expect(runner).NotTo(gexec.Exit())
 			})
 		})
 	})

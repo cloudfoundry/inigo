@@ -20,7 +20,7 @@ var _ = Describe("Privileged Containers", func() {
 
 		JustBeforeEach(func() {
 			uuid, err := uuid.NewV4()
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 			containerGuid := uuid.String()
 
 			container := executor.Container{
@@ -35,10 +35,10 @@ var _ = Describe("Privileged Containers", func() {
 			executorClient := componentMaker.ExecutorClient()
 
 			_, err = executorClient.AllocateContainers([]executor.Container{container})
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			err = executorClient.RunContainer(containerGuid)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func() executor.State {
 				container, err := executorClient.GetContainer(containerGuid)
@@ -62,7 +62,7 @@ var _ = Describe("Privileged Containers", func() {
 			})
 
 			It("does not error", func() {
-				Ω(runResult.Failed).Should(BeFalse())
+				Expect(runResult.Failed).To(BeFalse())
 			})
 		})
 
@@ -77,8 +77,8 @@ var _ = Describe("Privileged Containers", func() {
 			})
 
 			It("does error", func() {
-				Ω(runResult.Failed).Should(BeTrue())
-				Ω(runResult.FailureReason).Should(Equal("privileged-action-denied"))
+				Expect(runResult.Failed).To(BeTrue())
+				Expect(runResult.FailureReason).To(Equal("privileged-action-denied"))
 			})
 		})
 	})

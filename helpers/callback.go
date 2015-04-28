@@ -11,7 +11,7 @@ import (
 
 func Callback(listenHost string, handler http.HandlerFunc) (*httptest.Server, string) {
 	externallyReachableListener, err := net.Listen("tcp", listenHost+":0")
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	server := httptest.NewUnstartedServer(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

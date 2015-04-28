@@ -141,10 +141,10 @@ func (f *FakeCC) handleDropletUploadRequest(w http.ResponseWriter, r *http.Reque
 
 	key := getFileUploadKey(r)
 	file, _, err := r.FormFile(key)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	uploadedBytes, err := ioutil.ReadAll(file)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	re := regexp.MustCompile("/staging/droplets/(.*)/upload")
 	appGuid := re.FindStringSubmatch(r.URL.Path)[1]
@@ -162,10 +162,10 @@ func (f *FakeCC) handleBuildArtifactsCacheUploadRequest(w http.ResponseWriter, r
 
 	key := getFileUploadKey(r)
 	file, _, err := r.FormFile(key)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	uploadedBytes, err := ioutil.ReadAll(file)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	re := regexp.MustCompile("/staging/buildpack_cache/(.*)/upload")
 	appGuid := re.FindStringSubmatch(r.URL.Path)[1]
@@ -211,7 +211,7 @@ func (f *FakeCC) newHandleStagingRequest() http.HandlerFunc {
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var msg cc_messages.StagingResponseForCC
 			err := json.NewDecoder(r.Body).Decode(&msg)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 			r.Body.Close()
 			f.lock.Lock()
 			defer f.lock.Unlock()
@@ -225,13 +225,13 @@ func (f *FakeCC) newHandleStagingRequest() http.HandlerFunc {
 
 func getFileUploadKey(r *http.Request) string {
 	err := r.ParseMultipartForm(1024)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
-	Ω(r.MultipartForm.File).Should(HaveLen(1))
+	Expect(r.MultipartForm.File).To(HaveLen(1))
 	var key string
 	for k, _ := range r.MultipartForm.File {
 		key = k
 	}
-	Ω(key).ShouldNot(BeEmpty())
+	Expect(key).NotTo(BeEmpty())
 	return key
 }

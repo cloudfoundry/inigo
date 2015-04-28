@@ -26,9 +26,9 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		gardenGraphPath = os.TempDir()
 	}
 
-	Ω(gardenBinPath).ShouldNot(BeEmpty(), "must provide $GARDEN_BINPATH")
-	Ω(gardenRootFSPath).ShouldNot(BeEmpty(), "must provide $GARDEN_ROOTFS")
-	Ω(externalAddress).ShouldNot(BeEmpty(), "must provide $EXTERNAL_ADDRESS")
+	Expect(gardenBinPath).NotTo(BeEmpty(), "must provide $GARDEN_BINPATH")
+	Expect(gardenRootFSPath).NotTo(BeEmpty(), "must provide $GARDEN_ROOTFS")
+	Expect(externalAddress).NotTo(BeEmpty(), "must provide $EXTERNAL_ADDRESS")
 
 	stackPathMap := map[string]string{}
 	for _, stack := range PreloadedStacks {
@@ -56,10 +56,10 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	}
 
 	hostKeyPair, err := keys.RSAKeyPairFactory.NewKeyPair(1024)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	userKeyPair, err := keys.RSAKeyPairFactory.NewKeyPair(1024)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	sshKeys := world.SSHKeys{
 		HostKey:       hostKeyPair.PrivateKey(),

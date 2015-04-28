@@ -71,13 +71,13 @@ var _ = Describe("LRP", func() {
 
 		JustBeforeEach(func() {
 			err := receptorClient.CreateDesiredLRP(lrp)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("eventually runs", func() {
 			Eventually(func() []receptor.ActualLRPResponse {
 				lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				return lrps
 			}).Should(HaveLen(1))
@@ -97,7 +97,7 @@ var _ = Describe("LRP", func() {
 			It("eventually marks the LRP as crashed", func() {
 				Eventually(func() []receptor.ActualLRPResponse {
 					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					return lrps
 				}).Should(HaveLen(1))
@@ -149,7 +149,7 @@ var _ = Describe("LRP", func() {
 					logger.Info("after-update-desired", lager.Data{
 						"error": err,
 					})
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("can immediately access the container port with the associated routes", func() {
@@ -170,7 +170,7 @@ var _ = Describe("LRP", func() {
 			JustBeforeEach(func() {
 				Eventually(func() []receptor.ActualLRPResponse {
 					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					return lrps
 				}).Should(HaveLen(2))
@@ -187,7 +187,7 @@ var _ = Describe("LRP", func() {
 					err := receptorClient.UpdateDesiredLRP(processGuid, receptor.DesiredLRPUpdateRequest{
 						Instances: &newInstances,
 					})
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 				})
 
 				Context("scaling it up to 3", func() {
@@ -198,7 +198,7 @@ var _ = Describe("LRP", func() {
 					It("scales up to the correct number of instances", func() {
 						Eventually(func() []receptor.ActualLRPResponse {
 							lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).NotTo(HaveOccurred())
 
 							return lrps
 						}).Should(HaveLen(3))
@@ -215,7 +215,7 @@ var _ = Describe("LRP", func() {
 					It("scales down to the correct number of instances", func() {
 						Eventually(func() []receptor.ActualLRPResponse {
 							lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).NotTo(HaveOccurred())
 
 							return lrps
 						}).Should(HaveLen(1))
@@ -232,7 +232,7 @@ var _ = Describe("LRP", func() {
 					It("scales down to the correct number of instances", func() {
 						Eventually(func() []receptor.ActualLRPResponse {
 							lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).NotTo(HaveOccurred())
 
 							return lrps
 						}).Should(BeEmpty())
@@ -245,11 +245,11 @@ var _ = Describe("LRP", func() {
 						err := receptorClient.UpdateDesiredLRP(processGuid, receptor.DesiredLRPUpdateRequest{
 							Instances: &newInstances,
 						})
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 
 						Eventually(func() []receptor.ActualLRPResponse {
 							lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-							Ω(err).ShouldNot(HaveOccurred())
+							Expect(err).NotTo(HaveOccurred())
 
 							return lrps
 						}).Should(HaveLen(1))
@@ -262,13 +262,13 @@ var _ = Describe("LRP", func() {
 			Describe("deleting it", func() {
 				JustBeforeEach(func() {
 					err := receptorClient.DeleteDesiredLRP(processGuid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("stops all instances", func() {
 					Eventually(func() []receptor.ActualLRPResponse {
 						lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-						Ω(err).ShouldNot(HaveOccurred())
+						Expect(err).NotTo(HaveOccurred())
 
 						return lrps
 					}).Should(BeEmpty())
@@ -342,7 +342,7 @@ var _ = Describe("LRP", func() {
 			It("fails and sets a placement error", func() {
 				lrpFunc := func() string {
 					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 					if len(lrps) == 0 {
 						return ""
 					}
@@ -362,7 +362,7 @@ var _ = Describe("LRP", func() {
 			It("runs", func() {
 				Eventually(func() []receptor.ActualLRPResponse {
 					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 					return lrps
 				}).Should(HaveLen(1))
 
@@ -379,7 +379,7 @@ var _ = Describe("LRP", func() {
 			It("fails and sets a placement error", func() {
 				lrpFunc := func() string {
 					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 					if len(lrps) == 0 {
 						return ""
 					}
@@ -400,7 +400,7 @@ var _ = Describe("LRP", func() {
 			It("runs", func() {
 				Eventually(func() []receptor.ActualLRPResponse {
 					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 					return lrps
 				}).Should(HaveLen(1))
 
@@ -446,13 +446,13 @@ var _ = Describe("Crashing LRPs", func() {
 				lrp := helpers.CrashingLRPCreateRequest(processGuid)
 
 				err := receptorClient.CreateDesiredLRP(lrp)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("imediately restarts the app 3 times", func() {
 				crashCount := func() int {
 					actual, err := receptorClient.ActualLRPByProcessGuidAndIndex(processGuid, 0)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 					return actual.CrashCount
 				}
 				// the receptor immediately starts it 3 times

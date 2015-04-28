@@ -67,7 +67,7 @@ var _ = Describe("Executor", func() {
 				1024,
 				1024,
 			))
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(inigo_announcement_server.Announcements).Should(ContainElement(firstGuyGuid))
 
@@ -80,7 +80,7 @@ var _ = Describe("Executor", func() {
 				1024,
 				1024,
 			))
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			Consistently(inigo_announcement_server.Announcements).ShouldNot(ContainElement(secondGuyGuid))
 		})
@@ -100,7 +100,7 @@ var _ = Describe("Executor", func() {
 						Args: []string{"-c", "while true; do sleep 1; done"},
 					},
 				))
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				executorClient := componentMaker.ExecutorClient()
 
@@ -124,12 +124,12 @@ var _ = Describe("Executor", func() {
 					var err error
 
 					task, err = receptorClient.GetTask(taskGuid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					return task.State
 				}).Should(Equal(receptor.TaskStateCompleted))
 
-				Ω(task.Failed).Should(BeTrue())
+				Expect(task.Failed).To(BeTrue())
 			})
 		})
 
@@ -145,7 +145,7 @@ var _ = Describe("Executor", func() {
 				index = 0
 
 				err := receptorClient.CreateDesiredLRP(helpers.LightweightLRPCreateRequest(processGuid))
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				var actualLRPs []receptor.ActualLRPResponse
 				Eventually(func() interface{} {
@@ -199,7 +199,7 @@ var _ = Describe("Executor", func() {
 					Args: []string{inigo_announcement_server.AnnounceURL(matchingGuid)},
 				},
 			))
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			err = receptorClient.CreateTask(helpers.TaskCreateRequestWithRootFS(
 				matchingGuid2,
@@ -209,7 +209,7 @@ var _ = Describe("Executor", func() {
 					Args: []string{inigo_announcement_server.AnnounceURL(matchingGuid2)},
 				},
 			))
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			err = receptorClient.CreateTask(helpers.TaskCreateRequestWithRootFS(
 				nonMatchingGuid,
@@ -219,7 +219,7 @@ var _ = Describe("Executor", func() {
 					Args: []string{inigo_announcement_server.AnnounceURL(nonMatchingGuid)},
 				},
 			))
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			Consistently(inigo_announcement_server.Announcements).ShouldNot(ContainElement(nonMatchingGuid), "Did not expect to see this app running, as it has the wrong stack.")
 			Eventually(inigo_announcement_server.Announcements).Should(ContainElement(matchingGuid))
@@ -240,7 +240,7 @@ var _ = Describe("Executor", func() {
 					Args: []string{inigo_announcement_server.AnnounceURL(matchingGuid)},
 				},
 			))
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			err = receptorClient.CreateTask(helpers.TaskCreateRequestWithRootFS(
 				nonMatchingGuid,
@@ -250,7 +250,7 @@ var _ = Describe("Executor", func() {
 					Args: []string{inigo_announcement_server.AnnounceURL(nonMatchingGuid)},
 				},
 			))
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			Consistently(inigo_announcement_server.Announcements).ShouldNot(ContainElement(nonMatchingGuid), "Did not expect to see this app running, as it has the wrong stack.")
 			Eventually(inigo_announcement_server.Announcements).Should(ContainElement(matchingGuid))
@@ -277,7 +277,7 @@ var _ = Describe("Executor", func() {
 					},
 				},
 			))
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			var task receptor.TaskResponse
 
@@ -285,12 +285,12 @@ var _ = Describe("Executor", func() {
 				var err error
 
 				task, err = receptorClient.GetTask(guid)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				return task.State
 			}).Should(Equal(receptor.TaskStateCompleted))
 
-			Ω(task.Failed).Should(BeFalse())
+			Expect(task.Failed).To(BeFalse())
 		})
 
 		It("runs the command with the provided working directory", func() {
@@ -302,7 +302,7 @@ var _ = Describe("Executor", func() {
 					Dir:  "/tmp",
 				},
 			))
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			var task receptor.TaskResponse
 
@@ -310,12 +310,12 @@ var _ = Describe("Executor", func() {
 				var err error
 
 				task, err = receptorClient.GetTask(guid)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				return task.State
 			}).Should(Equal(receptor.TaskStateCompleted))
 
-			Ω(task.Failed).Should(BeFalse())
+			Expect(task.Failed).To(BeFalse())
 		})
 
 		Context("when the command exceeds its memory limit", func() {
@@ -339,7 +339,7 @@ var _ = Describe("Executor", func() {
 					10,
 					1024,
 				))
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(inigo_announcement_server.Announcements).Should(ContainElement("before-memory-overdose"))
 
@@ -348,15 +348,15 @@ var _ = Describe("Executor", func() {
 					var err error
 
 					task, err = receptorClient.GetTask(guid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					return task.State
 				}).Should(Equal(receptor.TaskStateCompleted))
 
-				Ω(task.Failed).Should(BeTrue())
-				Ω(task.FailureReason).Should(ContainSubstring("out of memory"))
+				Expect(task.Failed).To(BeTrue())
+				Expect(task.FailureReason).To(ContainSubstring("out of memory"))
 
-				Ω(inigo_announcement_server.Announcements()).ShouldNot(ContainElement("after-memory-overdose"))
+				Expect(inigo_announcement_server.Announcements()).NotTo(ContainElement("after-memory-overdose"))
 			})
 		})
 
@@ -393,22 +393,22 @@ echo should have died by now
 						},
 					),
 				))
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				var task receptor.TaskResponse
 				Eventually(func() interface{} {
 					var err error
 
 					task, err = receptorClient.GetTask(guid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					return task.State
 				}).Should(Equal(receptor.TaskStateCompleted))
 
-				Ω(task.Failed).Should(BeTrue())
+				Expect(task.Failed).To(BeTrue())
 
 				// when sh can't open another file the exec exits 2
-				Ω(task.FailureReason).Should(ContainSubstring("status 2"))
+				Expect(task.FailureReason).To(ContainSubstring("status 2"))
 			})
 		})
 
@@ -426,20 +426,20 @@ echo should have died by now
 						),
 					),
 				))
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				var task receptor.TaskResponse
 				Eventually(func() interface{} {
 					var err error
 
 					task, err = receptorClient.GetTask(guid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					return task.State
 				}).Should(Equal(receptor.TaskStateCompleted))
 
-				Ω(task.Failed).Should(BeTrue())
-				Ω(task.FailureReason).Should(ContainSubstring("exceeded 500ms timeout"))
+				Expect(task.Failed).To(BeTrue())
+				Expect(task.FailureReason).To(ContainSubstring("exceeded 500ms timeout"))
 			})
 		})
 	})
@@ -472,7 +472,7 @@ echo should have died by now
 					},
 				),
 			))
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
 		})
@@ -495,9 +495,9 @@ echo should have died by now
 				ghttp.VerifyRequest("POST", "/thingy"),
 				func(w http.ResponseWriter, r *http.Request) {
 					contents, err := ioutil.ReadAll(r.Body)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
-					Ω(string(contents)).Should(Equal("tasty thingy\n"))
+					Expect(string(contents)).To(Equal("tasty thingy\n"))
 
 					close(gotRequest)
 				},
@@ -526,7 +526,7 @@ echo should have died by now
 					},
 				),
 			))
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(gotRequest).Should(BeClosed())
 
@@ -547,19 +547,19 @@ echo should have died by now
 			)
 			taskRequest.ResultFile = "thingy"
 			err := receptorClient.CreateTask(taskRequest)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			var task receptor.TaskResponse
 			Eventually(func() interface{} {
 				var err error
 
 				task, err = receptorClient.GetTask(guid)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				return task.State
 			}).Should(Equal(receptor.TaskStateCompleted))
 
-			Ω(task.Result).Should(Equal("tasty thingy\n"))
+			Expect(task.Result).To(Equal("tasty thingy\n"))
 		})
 	})
 })

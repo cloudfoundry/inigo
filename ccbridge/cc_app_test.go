@@ -54,7 +54,7 @@ var _ = Describe("AppRunner", func() {
 
 		desireURL := urljoiner.Join("http://"+componentMaker.Addresses.NsyncListener, "v1", "apps", guid)
 		request, err := http.NewRequest("PUT", desireURL, strings.NewReader(desireMessage))
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		request.Header.Set("Content-Type", "application/json")
 		return http.DefaultClient.Do(request)
@@ -103,8 +103,8 @@ var _ = Describe("AppRunner", func() {
 			It("runs the app on the executor, registers routes, and shows that they are running via the tps", func() {
 				// desire the app
 				resp, err := desireApp(guid, `["route-1", "route-2"]`, 2)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
 				// check lrp instance statuses
 				Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPSListener, guid)).Should(HaveLen(2))
@@ -123,8 +123,8 @@ var _ = Describe("AppRunner", func() {
 			It("runs the app, registers a route, and shows running via tps", func() {
 				// desire the app
 				resp, err := desireApp(guid, `["route-1"]`, 1)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
 				Eventually(helpers.RunningLRPInstancesPoller(componentMaker.Addresses.TPSListener, guid)).Should(HaveLen(1))
 				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "route-1")).Should(Equal(http.StatusOK))
@@ -140,7 +140,7 @@ var _ = Describe("AppRunner", func() {
 		stopApp := func(guid string) (*http.Response, error) {
 			stopURL := urljoiner.Join("http://"+componentMaker.Addresses.NsyncListener, "v1", "apps", guid)
 			request, err := http.NewRequest("DELETE", stopURL, nil)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			return http.DefaultClient.Do(request)
 		}
@@ -151,8 +151,8 @@ var _ = Describe("AppRunner", func() {
 			BeforeEach(func() {
 				// desire the app
 				resp, err := desireApp(guid, `["route-1"]`, 2)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
 				// wait for intances to come up
 				Eventually(runningIndexPoller(componentMaker.Addresses.TPSListener, guid)).Should(ConsistOf(0, 1))
@@ -160,8 +160,8 @@ var _ = Describe("AppRunner", func() {
 
 			It("stops the application", func() {
 				resp, err := stopApp(guid)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
 				poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "route-1")
 				Eventually(poller).Should(BeEmpty())
@@ -173,7 +173,7 @@ var _ = Describe("AppRunner", func() {
 		killIndex := func(guid string, index int) (*http.Response, error) {
 			killURL := urljoiner.Join("http://"+componentMaker.Addresses.NsyncListener, "v1", "apps", guid, "index", strconv.Itoa(index))
 			request, err := http.NewRequest("DELETE", killURL, nil)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			return http.DefaultClient.Do(request)
 		}
@@ -184,8 +184,8 @@ var _ = Describe("AppRunner", func() {
 			BeforeEach(func() {
 				// desire the app
 				resp, err := desireApp(guid, `["route-1"]`, 2)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
 				// wait for intances to come up
 				Eventually(runningIndexPoller(componentMaker.Addresses.TPSListener, guid)).Should(ConsistOf(0, 1))
@@ -193,8 +193,8 @@ var _ = Describe("AppRunner", func() {
 
 			It("stops the app on the desired index, and then eventually starts it back up", func() {
 				resp, err := killIndex(guid, 0)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(resp.StatusCode).Should(Equal(http.StatusAccepted))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
 				// wait for stop to take effect
 				Eventually(runningIndexPoller(componentMaker.Addresses.TPSListener, guid)).Should(ConsistOf(1))

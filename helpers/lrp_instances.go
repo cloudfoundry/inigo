@@ -44,15 +44,15 @@ func GetLRPInstances(tpsAddr string, guid string) []cc_messages.LRPInstance {
 		rata.Params{"guid": guid},
 		nil,
 	)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	response, err := http.DefaultClient.Do(getLRPs)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	defer response.Body.Close()
 
 	var instances []cc_messages.LRPInstance
 	err = json.NewDecoder(response.Body).Decode(&instances)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	return instances
 }

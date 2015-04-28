@@ -84,7 +84,7 @@ type ComponentMaker struct {
 
 func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
 	host, port, err := net.SplitHostPort(maker.Addresses.NATS)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "gnatsd",
@@ -125,16 +125,16 @@ func (maker ComponentMaker) Etcd(argv ...string) ifrit.Runner {
 		),
 		Cleanup: func() {
 			err := os.RemoveAll(dataDir)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 		},
 	})
 }
 
 func (maker ComponentMaker) Consul(argv ...string) ifrit.Runner {
 	_, port, err := net.SplitHostPort(maker.Addresses.Consul)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	httpPort, err := strconv.Atoi(port)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	startingPort := httpPort - consuladapter.PortOffsetHTTP
 
@@ -173,7 +173,7 @@ func (maker ComponentMaker) GardenLinux(argv ...string) *gardenrunner.Runner {
 
 func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
 	tmpDir, err := ioutil.TempDir(os.TempDir(), "executor")
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	cachePath := path.Join(tmpDir, "cache")
 
@@ -206,9 +206,9 @@ func (maker ComponentMaker) Rep(argv ...string) *ginkgomon.Runner {
 
 func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 	host, portString, err := net.SplitHostPort(maker.Addresses.Rep)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	port, err := strconv.Atoi(portString)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	name := "rep-" + strconv.Itoa(n)
 
@@ -321,7 +321,7 @@ func (maker ComponentMaker) TPSListener(argv ...string) ifrit.Runner {
 func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 	address := maker.Addresses.NsyncListener
 	port, err := strconv.Atoi(strings.Split(address, ":")[1])
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "nsync-listener",
@@ -341,7 +341,7 @@ func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 
 func (maker ComponentMaker) FileServer(argv ...string) (ifrit.Runner, string) {
 	servedFilesDir, err := ioutil.TempDir("", "file-server-files")
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "file-server",
@@ -358,23 +358,23 @@ func (maker ComponentMaker) FileServer(argv ...string) (ifrit.Runner, string) {
 		),
 		Cleanup: func() {
 			err := os.RemoveAll(servedFilesDir)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 		},
 	}), servedFilesDir
 }
 
 func (maker ComponentMaker) Router() ifrit.Runner {
 	_, routerPort, err := net.SplitHostPort(maker.Addresses.Router)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	routerPortInt, err := strconv.Atoi(routerPort)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	natsHost, natsPort, err := net.SplitHostPort(maker.Addresses.NATS)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	natsPortInt, err := strconv.Atoi(natsPort)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	routerConfig := &gorouterconfig.Config{
 		Port: uint16(routerPortInt),
@@ -398,12 +398,12 @@ func (maker ComponentMaker) Router() ifrit.Runner {
 	}
 
 	configFile, err := ioutil.TempFile(os.TempDir(), "router-config")
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	defer configFile.Close()
 
 	err = candiedyaml.NewEncoder(configFile).Encode(routerConfig)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "router",
@@ -416,7 +416,7 @@ func (maker ComponentMaker) Router() ifrit.Runner {
 		),
 		Cleanup: func() {
 			err := os.Remove(configFile.Name())
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 		},
 	})
 }
@@ -432,7 +432,7 @@ func (maker ComponentMaker) Stager(argv ...string) ifrit.Runner {
 func (maker ComponentMaker) StagerN(portOffset int, argv ...string) ifrit.Runner {
 	address := maker.Addresses.Stager
 	port, err := strconv.Atoi(strings.Split(address, ":")[1])
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "stager",
@@ -499,7 +499,7 @@ func (maker ComponentMaker) appendLifecycleArgs(args []string) []string {
 }
 
 func (maker ComponentMaker) DefaultStack() string {
-	Ω(maker.PreloadedStackPathMap).ShouldNot(BeEmpty())
+	Expect(maker.PreloadedStackPathMap).NotTo(BeEmpty())
 
 	var defaultStack string
 	for stack, _ := range maker.PreloadedStackPathMap {
@@ -514,7 +514,7 @@ func (maker ComponentMaker) NATSClient() diegonats.NATSClient {
 	client := diegonats.NewClient()
 
 	_, err := client.Connect([]string{"nats://" + maker.Addresses.NATS})
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	return client
 }

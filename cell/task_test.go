@@ -96,7 +96,7 @@ var _ = Describe("Task", func() {
 
 			JustBeforeEach(func() {
 				err := receptorClient.CreateTask(taskRequest)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 			})
 
 			Context("when there is a matching rootfs", func() {
@@ -151,16 +151,16 @@ var _ = Describe("Task", func() {
 					Eventually(inigo_announcement_server.Announcements).Should(ContainElement(taskGuid))
 
 					err := receptorClient.CancelTask(taskGuid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("marks the task as complete, failed and cancelled", func() {
 					taskAfterCancel, err := receptorClient.GetTask(taskGuid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
-					Ω(taskAfterCancel.State).Should(Equal(receptor.TaskStateCompleted))
-					Ω(taskAfterCancel.Failed).Should(BeTrue())
-					Ω(taskAfterCancel.FailureReason).Should(Equal("task was cancelled"))
+					Expect(taskAfterCancel.State).To(Equal(receptor.TaskStateCompleted))
+					Expect(taskAfterCancel.Failed).To(BeTrue())
+					Expect(taskAfterCancel.FailureReason).To(Equal("task was cancelled"))
 				})
 
 				It("cleans up the task's container before the task completes on its own", func() {
@@ -196,12 +196,12 @@ var _ = Describe("Task", func() {
 								var err error
 
 								completedTask, err = receptorClient.GetTask(taskGuid)
-								Ω(err).ShouldNot(HaveOccurred())
+								Expect(err).NotTo(HaveOccurred())
 
 								return completedTask.State
 							}).Should(Equal(receptor.TaskStateCompleted))
 
-							Ω(completedTask.Failed).To(BeTrue())
+							Expect(completedTask.Failed).To(BeTrue())
 						})
 					})
 				})
@@ -235,7 +235,7 @@ exit 0
 
 			JustBeforeEach(func() {
 				err := receptorClient.CreateTask(taskCreateRequest)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 			})
 
 			Context("default networking", func() {
@@ -297,7 +297,7 @@ exit 0
 						Args: []string{inigo_announcement_server.AnnounceURL(taskGuid)},
 					},
 				))
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 			})
 
 			Context("and then an auctioneer come up", func() {
@@ -337,7 +337,7 @@ exit 0
 						Args: []string{inigo_announcement_server.AnnounceURL(taskGuid)},
 					},
 				))
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("should be marked as failed after the expire duration", func() {
@@ -346,15 +346,15 @@ exit 0
 					var err error
 
 					completedTask, err = receptorClient.GetTask(taskGuid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					return completedTask.State
 				}).Should(Equal(receptor.TaskStateCompleted))
 
-				Ω(completedTask.Failed).Should(BeTrue())
-				Ω(completedTask.FailureReason).Should(ContainSubstring("not started within time limit"))
+				Expect(completedTask.Failed).To(BeTrue())
+				Expect(completedTask.FailureReason).To(ContainSubstring("not started within time limit"))
 
-				Ω(inigo_announcement_server.Announcements()).Should(BeEmpty())
+				Expect(inigo_announcement_server.Announcements()).To(BeEmpty())
 			})
 		})
 	})
@@ -366,10 +366,10 @@ func pollTaskStatus(taskGuid string, result string) {
 		var err error
 
 		completedTask, err = receptorClient.GetTask(taskGuid)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		return completedTask.State
 	}).Should(Equal(receptor.TaskStateCompleted))
 
-	Ω(completedTask.Result).Should(Equal(result))
+	Expect(completedTask.Result).To(Equal(result))
 }

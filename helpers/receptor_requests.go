@@ -39,7 +39,7 @@ var defaultMonitor = &models.RunAction{
 
 func UpsertInigoDomain(receptorClient receptor.Client) {
 	err := receptorClient.UpsertDomain(defaultDomain, 0)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 }
 
 func DefaultLRPCreateRequest(processGuid, logGuid string, numInstances int) receptor.DesiredLRPCreateRequest {

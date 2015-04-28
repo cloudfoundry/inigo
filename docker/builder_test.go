@@ -37,7 +37,7 @@ var _ = Describe("Building", func() {
 			GinkgoWriter,
 			GinkgoWriter,
 		)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		return session
 	}
@@ -82,7 +82,7 @@ var _ = Describe("Building", func() {
 		cacheDockerImage = true
 
 		outputMetadataDir, err = ioutil.TempDir("", "building-result")
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		outputMetadataJSONFilename = path.Join(outputMetadataDir, "result.json")
 
@@ -126,7 +126,7 @@ var _ = Describe("Building", func() {
 
 	buildDockerImageURL := func() string {
 		parts, err := url.Parse(fakeDockerRegistry.URL())
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 		return fmt.Sprintf("docker://%s/some-repo", parts.Host)
 	}
 
@@ -139,7 +139,7 @@ var _ = Describe("Building", func() {
 				dockerImageURL = buildDockerImageURL()
 
 				parts, err := url.Parse(fakeDockerRegistry.URL())
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 				dockerRegistryAddresses = parts.Host
 
 				setupFakeDockerRegistry()
@@ -177,7 +177,7 @@ var _ = Describe("Building", func() {
 					cmd := exec.Command("/usr/bin/killall", "docker")
 					cmd.Env = os.Environ()
 					err := cmd.Run()
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).NotTo(HaveOccurred())
 
 					os.Remove("/var/run/docker.sock")
 				})

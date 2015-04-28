@@ -66,12 +66,12 @@ func HelloWorldInstancePoller(routerAddr, host string) func() []string {
 			}
 			if status == http.StatusNotFound {
 				//Ignore 404s as they are coming from the router, but make sure...
-				Ω(body).Should(MatchRegexp(`Requested route \('.*'\) does not exist`), "Got a 404, but it wasn't from the router!")
+				Expect(body).To(MatchRegexp(`Requested route \('.*'\) does not exist`), "Got a 404, but it wasn't from the router!")
 				continue
 			}
 			if status == http.StatusBadGateway {
 				//Ignore 502s as they are coming from the router, but make sure...
-				Ω(body).Should(ContainSubstring("Registered endpoint failed to handle the request"), "Got a 502, but it wasn't from the router!")
+				Expect(body).To(ContainSubstring("Registered endpoint failed to handle the request"), "Got a 502, but it wasn't from the router!")
 				continue
 			}
 			respondingIndicesHash[string(body)] = true

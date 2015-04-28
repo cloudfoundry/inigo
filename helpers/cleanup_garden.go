@@ -11,7 +11,7 @@ import (
 
 func CleanupGarden(gardenClient garden.Client) []error {
 	containers, err := gardenClient.Containers(nil)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	fmt.Fprintf(ginkgo.GinkgoWriter, "cleaning up %d Garden containers", len(containers))
 
