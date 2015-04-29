@@ -41,6 +41,8 @@ var _ = Describe("SSH", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(string(output)).To(ContainSubstring("USER=vcap"))
+		Expect(string(output)).To(ContainSubstring("TEST=foobar"))
+		Expect(string(output)).To(ContainSubstring(fmt.Sprintf("INSTANCE_INDEX=%d", index)))
 	}
 
 	var (
@@ -85,6 +87,10 @@ var _ = Describe("SSH", func() {
 
 		sshRouteMessage := json.RawMessage(sshRoutePayload)
 
+		envVars := []receptor.EnvironmentVariable{
+			{Name: "TEST", Value: "foobar"},
+		}
+
 		lrp = receptor.DesiredLRPCreateRequest{
 			ProcessGuid: processGuid,
 			Domain:      "inigo",
@@ -107,6 +113,7 @@ var _ = Describe("SSH", func() {
 							"-address=0.0.0.0:3456",
 							"-hostKey=" + componentMaker.SSHConfig.HostKeyPem,
 							"-authorizedKey=" + componentMaker.SSHConfig.AuthorizedKey,
+							"-passDaemonEnv",
 						},
 					},
 					&models.RunAction{
@@ -130,6 +137,7 @@ var _ = Describe("SSH", func() {
 			Routes: receptor.RoutingInfo{
 				routes.DIEGO_SSH: &sshRouteMessage,
 			},
+			EnvironmentVariables: envVars,
 		}
 	})
 
@@ -217,6 +225,7 @@ var _ = Describe("SSH", func() {
 								"-address=0.0.0.0:3456",
 								"-hostKey=" + componentMaker.SSHConfig.HostKeyPem,
 								"-authorizedKey=" + componentMaker.SSHConfig.AuthorizedKey,
+								"-passDaemonEnv",
 							},
 						},
 						&models.RunAction{
