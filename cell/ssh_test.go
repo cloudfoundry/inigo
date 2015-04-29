@@ -113,7 +113,7 @@ var _ = Describe("SSH", func() {
 							"-address=0.0.0.0:3456",
 							"-hostKey=" + componentMaker.SSHConfig.HostKeyPem,
 							"-authorizedKey=" + componentMaker.SSHConfig.AuthorizedKey,
-							"-passDaemonEnv",
+							"-inheritDaemonEnv",
 						},
 					},
 					&models.RunAction{
@@ -225,7 +225,7 @@ var _ = Describe("SSH", func() {
 								"-address=0.0.0.0:3456",
 								"-hostKey=" + componentMaker.SSHConfig.HostKeyPem,
 								"-authorizedKey=" + componentMaker.SSHConfig.AuthorizedKey,
-								"-passDaemonEnv",
+								"-inheritDaemonEnv",
 							},
 						},
 						&models.RunAction{
