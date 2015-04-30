@@ -354,23 +354,6 @@ var _ = Describe("LRP", func() {
 			})
 		})
 
-		Context("Non-default preloaded rootfs is requested", func() {
-			BeforeEach(func() {
-				lrp = helpers.LRPCreateRequestWithRootFS(processGuid, "preloaded:lucid65")
-			})
-
-			It("runs", func() {
-				Eventually(func() []receptor.ActualLRPResponse {
-					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-					Expect(err).NotTo(HaveOccurred())
-					return lrps
-				}).Should(HaveLen(1))
-
-				poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)
-				Eventually(poller).Should(ConsistOf([]string{"0"}))
-			})
-		})
-
 		Context("Unsupported arbitrary rootfs is requested", func() {
 			BeforeEach(func() {
 				lrp = helpers.LRPCreateRequestWithRootFS(processGuid, "socker://hello")
@@ -391,7 +374,7 @@ var _ = Describe("LRP", func() {
 			})
 		})
 
-		Context("Supported arbitrary rootfs is requested", func() {
+		Context("Supported arbitrary rootfs scheme (viz., docker) is requested", func() {
 			BeforeEach(func() {
 				// docker is supported
 				lrp = helpers.DockerLRPCreateRequest(processGuid)

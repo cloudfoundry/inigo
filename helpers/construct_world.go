@@ -13,7 +13,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var PreloadedStacks = []string{"lucid64", "lucid65"}
+var PreloadedStacks = []string{"red-stack", "blue-stack"}
+var DefaultStack = PreloadedStacks[0]
+
 var addresses world.ComponentAddresses
 
 func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) world.ComponentMaker {

@@ -229,7 +229,7 @@ EOF
 							"app_bits_download_uri": "%s",
 							"build_artifacts_cache_upload_uri": "%s",
 							"droplet_upload_uri": "%s",
-							"stack": "lucid64",
+							"stack": "%s",
 							"buildpacks" : %s
 						}
 					}`,
@@ -240,6 +240,7 @@ EOF
 					fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "app.zip"),
 					buildArtifactsUploadUri,
 					dropletUploadUri,
+					helpers.DefaultStack,
 					buildpacksToUse,
 				))
 		})

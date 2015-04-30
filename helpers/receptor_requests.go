@@ -11,7 +11,7 @@ import (
 
 const defaultDomain = "inigo"
 
-var defaultPreloadedRootFS = "preloaded:" + PreloadedStacks[0]
+var defaultPreloadedRootFS = "preloaded:" + DefaultStack
 var SecondaryPreloadedRootFS = "preloaded:" + PreloadedStacks[1]
 
 const BogusPreloadedRootFS = "preloaded:bogus-rootfs"
