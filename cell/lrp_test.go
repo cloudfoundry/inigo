@@ -41,7 +41,6 @@ var _ = Describe("LRP", func() {
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
-			{"exec", componentMaker.Executor()},
 			{"rep", componentMaker.Rep()},
 			{"converger", componentMaker.Converger()},
 			{"auctioneer", componentMaker.Auctioneer()},
@@ -408,7 +407,6 @@ var _ = Describe("Crashing LRPs", func() {
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
-			{"exec", componentMaker.Executor()},
 			{"rep", componentMaker.Rep()},
 			{"converger", componentMaker.Converger(
 				"-convergeRepeatInterval", "1s",

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"net/http"
 	"os"
 	"os/exec"
 	"path"
@@ -14,8 +13,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/cloudfoundry-incubator/consuladapter"
-	"github.com/cloudfoundry-incubator/executor"
-	executorclient "github.com/cloudfoundry-incubator/executor/http/client"
 	"github.com/cloudfoundry-incubator/garden"
 	gardenrunner "github.com/cloudfoundry-incubator/garden-linux/integration/runner"
 	gardenclient "github.com/cloudfoundry-incubator/garden/client"
@@ -53,7 +50,6 @@ type ComponentAddresses struct {
 	Etcd                string
 	EtcdPeer            string
 	Consul              string
-	Executor            string
 	Rep                 string
 	FakeCC              string
 	FileServer          string
@@ -171,35 +167,6 @@ func (maker ComponentMaker) GardenLinux(argv ...string) *gardenrunner.Runner {
 	)
 }
 
-func (maker ComponentMaker) Executor(argv ...string) *ginkgomon.Runner {
-	tmpDir, err := ioutil.TempDir(os.TempDir(), "executor")
-	Expect(err).NotTo(HaveOccurred())
-
-	cachePath := path.Join(tmpDir, "cache")
-
-	return ginkgomon.New(ginkgomon.Config{
-		Name:          "executor",
-		AnsiColorCode: "91m",
-		StartCheck:    `"executor.started"`,
-		// executor may destroy containers on start, which can take a bit
-		StartCheckTimeout: 30 * time.Second,
-		Command: exec.Command(
-			maker.Artifacts.Executables["exec"],
-			append([]string{
-				"-listenAddr", maker.Addresses.Executor,
-				"-gardenNetwork", "tcp",
-				"-gardenAddr", maker.Addresses.GardenLinux,
-				"-containerMaxCpuShares", "1024",
-				"-cachePath", cachePath,
-				"-tempDir", tmpDir,
-			}, argv...)...,
-		),
-		Cleanup: func() {
-			os.RemoveAll(tmpDir)
-		},
-	})
-}
-
 func (maker ComponentMaker) Rep(argv ...string) *ginkgomon.Runner {
 	return maker.RepN(0, argv...)
 }
@@ -212,6 +179,11 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 
 	name := "rep-" + strconv.Itoa(n)
 
+	tmpDir, err := ioutil.TempDir(os.TempDir(), "executor")
+	Expect(err).NotTo(HaveOccurred())
+
+	cachePath := path.Join(tmpDir, "cache")
+
 	args := append(
 		[]string{
 			"-sessionName", name,
@@ -219,7 +191,6 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 			"-etcdCluster", "http://" + maker.Addresses.Etcd,
 			"-listenAddr", fmt.Sprintf("%s:%d", host, offsetPort(port, n)),
 			"-cellID", "the-cell-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()) + "-" + strconv.Itoa(n),
-			"-executorURL", "http://" + maker.Addresses.Executor,
 			"-pollingInterval", "1s",
 			"-evacuationPollingInterval", "1s",
 			"-evacuationTimeout", "1s",
@@ -227,6 +198,11 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 			"-lockRetryInterval", "1s",
 			"-consulCluster", maker.ConsulCluster(),
 			"-receptorTaskHandlerURL", "http://" + maker.Addresses.ReceptorTaskHandler,
+			"-gardenNetwork", "tcp",
+			"-gardenAddr", maker.Addresses.GardenLinux,
+			"-containerMaxCpuShares", "1024",
+			"-cachePath", cachePath,
+			"-tempDir", tmpDir,
 		},
 		argv...,
 	)
@@ -242,6 +218,9 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 		// bit to start, so account for it
 		StartCheckTimeout: 30 * time.Second,
 		Command:           exec.Command(maker.Artifacts.Executables["rep"], args...),
+		Cleanup: func() {
+			os.RemoveAll(tmpDir)
+		},
 	})
 }
 
@@ -521,10 +500,6 @@ func (maker ComponentMaker) NATSClient() diegonats.NATSClient {
 
 func (maker ComponentMaker) GardenClient() garden.Client {
 	return gardenclient.New(gardenconnection.New("tcp", maker.Addresses.GardenLinux))
-}
-
-func (maker ComponentMaker) ExecutorClient() executor.Client {
-	return executorclient.New(http.DefaultClient, http.DefaultClient, "http://"+maker.Addresses.Executor)
 }
 
 func (maker ComponentMaker) ReceptorClient() receptor.Client {

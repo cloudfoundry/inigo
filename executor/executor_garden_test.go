@@ -8,19 +8,19 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strconv"
-	"syscall"
 	"time"
 
 	"github.com/cloudfoundry-incubator/executor"
+	executorinit "github.com/cloudfoundry-incubator/executor/initializer"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	uuid "github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
-	"github.com/onsi/gomega/gexec"
+	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
+	"github.com/tedsuo/ifrit/grouper"
 
 	"github.com/cloudfoundry-incubator/garden"
 )
@@ -32,7 +32,7 @@ var _ = Describe("Executor/Garden", func() {
 	var (
 		executorClient       executor.Client
 		process              ifrit.Process
-		runner               *ginkgomon.Runner
+		runner               ifrit.Runner
 		gardenCapacity       garden.Capacity
 		exportNetworkEnvVars bool
 		cachePath            string
@@ -47,15 +47,18 @@ var _ = Describe("Executor/Garden", func() {
 	JustBeforeEach(func() {
 		var err error
 
-		runner = componentMaker.Executor(
-			"-pruneInterval", pruningInterval.String(),
-			"-healthyMonitoringInterval", "1s",
-			"-unhealthyMonitoringInterval", "100ms",
-			"-exportNetworkEnvVars="+strconv.FormatBool(exportNetworkEnvVars),
-			"-cachePath", cachePath,
-		)
-
-		executorClient = componentMaker.ExecutorClient()
+		config := executorinit.DefaultConfiguration
+		config.GardenNetwork = "tcp"
+		config.GardenAddr = componentMaker.Addresses.GardenLinux
+		config.RegistryPruningInterval = pruningInterval
+		config.HealthyMonitoringInterval = time.Second
+		config.UnhealthyMonitoringInterval = 100 * time.Millisecond
+		config.ExportNetworkEnvVars = exportNetworkEnvVars
+		config.CachePath = cachePath
+		logger := lagertest.NewTestLogger("test")
+		var executorMembers grouper.Members
+		executorClient, executorMembers = executorinit.Initialize(logger, config)
+		runner = grouper.NewParallel(os.Kill, executorMembers)
 
 		gardenCapacity, err = gardenClient.Capacity()
 		Expect(err).NotTo(HaveOccurred())
@@ -126,7 +129,6 @@ var _ = Describe("Executor/Garden", func() {
 		})
 
 		JustBeforeEach(func() {
-			runner.StartCheck = ""
 			process = ginkgomon.Invoke(runner)
 		})
 
@@ -234,7 +236,7 @@ var _ = Describe("Executor/Garden", func() {
 
 				It("should return an error", func() {
 					Expect(pingErr).To(HaveOccurred())
-					Expect(pingErr.Error()).To(ContainSubstring("status: 502"))
+					Expect(pingErr.Error()).To(ContainSubstring("connection refused"))
 				})
 			})
 		})
@@ -448,30 +450,6 @@ var _ = Describe("Executor/Garden", func() {
 						container := getContainer(guid)
 						Expect(container.RunResult.Failed).To(BeFalse())
 						Expect(container.RunResult.FailureReason).To(BeEmpty())
-					})
-
-					Context("when listening for events", func() {
-						It("emits a completed container event on completion", func() {
-							var event executor.Event
-							Eventually(containerEventPoller(eventSource, &event), 5).Should(Equal(executor.EventTypeContainerComplete))
-
-							completeEvent := event.(executor.ContainerCompleteEvent)
-							Expect(completeEvent.Container().State).To(Equal(executor.StateCompleted))
-							Expect(completeEvent.Container().RunResult.Failed).To(BeFalse())
-						})
-
-						Describe("shutting down", func() {
-							It("exits and ends the event stream", func() {
-								process.Signal(os.Interrupt)
-
-								Eventually(func() error {
-									_, err := eventSource.Next()
-									return err
-								}).Should(Equal(io.EOF))
-
-								Eventually(process.Wait(), 5).Should(Receive(BeNil()))
-							})
-						})
 					})
 
 					Context("when created without a monitor action", func() {
@@ -880,20 +858,6 @@ var _ = Describe("Executor/Garden", func() {
 			})
 		})
 
-		Describe("when the executor receives the TERM signal", func() {
-			It("exits successfully", func() {
-				process.Signal(syscall.SIGTERM)
-				Eventually(runner, 2).Should(gexec.Exit())
-			})
-		})
-
-		Describe("when the executor receives the INT signal", func() {
-			It("exits successfully", func() {
-				process.Signal(syscall.SIGINT)
-				Eventually(runner, 2).Should(gexec.Exit())
-			})
-		})
-
 		Describe("listing containers", func() {
 			Context("with no containers", func() {
 				It("returns an empty set of containers", func() {
@@ -1020,36 +984,6 @@ var _ = Describe("Executor/Garden", func() {
 						Expect(string(containerResponse)).To(Equal(".."))
 					})
 				})
-			})
-		})
-	})
-
-	Describe("when Garden is unavailable", func() {
-		JustBeforeEach(func() {
-			ginkgomon.Interrupt(gardenProcess)
-
-			runner.StartCheck = ""
-			process = ginkgomon.Invoke(runner)
-		})
-
-		Context("and gardenserver starts up later", func() {
-			JustBeforeEach(func() {
-				gardenProcess = ginkgomon.Invoke(componentMaker.GardenLinux())
-			})
-
-			It("should connect", func() {
-				Eventually(runner.Buffer(), 5*time.Second).Should(gbytes.Say("started"))
-			})
-		})
-
-		Context("and never starts", func() {
-			AfterEach(func() {
-				gardenProcess = ginkgomon.Invoke(componentMaker.GardenLinux())
-			})
-
-			It("should not exit and continue waiting for a connection", func() {
-				Consistently(runner.Buffer()).ShouldNot(gbytes.Say("started"))
-				Expect(runner).NotTo(gexec.Exit())
 			})
 		})
 	})

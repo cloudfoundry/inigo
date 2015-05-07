@@ -65,31 +65,23 @@ var _ = Describe("Evacuation", func() {
 
 		cellARepRunner = componentMaker.RepN(0,
 			"-cellID", cellAID,
-			"-executorURL", "http://"+cellAExecutorAddr,
 			"-listenAddr", cellARepAddr,
 			"-evacuationTimeout", "30s",
+			"-containerOwnerName", cellAID+"-executor",
 		)
 
 		cellBRepRunner = componentMaker.RepN(1,
 			"-cellID", cellBID,
-			"-executorURL", "http://"+cellBExecutorAddr,
 			"-listenAddr", cellBRepAddr,
 			"-evacuationTimeout", "30s",
+			"-containerOwnerName", cellBID+"-executor",
 		)
 
 		cellA = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"executor", componentMaker.Executor(
-				"-containerOwnerName", cellAID+"-executor",
-				"-listenAddr", cellAExecutorAddr,
-			)},
 			{"rep", cellARepRunner},
 		}))
 
 		cellB = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"executor", componentMaker.Executor(
-				"-containerOwnerName", cellBID+"-executor",
-				"-listenAddr", cellBExecutorAddr,
-			)},
 			{"rep", cellBRepRunner},
 		}))
 

@@ -2,374 +2,356 @@ package cell_test
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"path/filepath"
+	"time"
 
-	executor_api "github.com/cloudfoundry-incubator/executor"
-	"github.com/cloudfoundry-incubator/inigo/helpers"
-	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
-	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/runtime-schema/diego_errors"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
+
+	"github.com/cloudfoundry-incubator/inigo/helpers"
+	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
+	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/ghttp"
 )
 
-var _ = Describe("Task", func() {
+var _ = Describe("Tasks", func() {
 	var (
-		auctioneerProcess ifrit.Process
-		cellProcess       ifrit.Process
-		convergerProcess  ifrit.Process
+		cellProcess ifrit.Process
 	)
 
+	var fileServerStaticDir string
+
 	BeforeEach(func() {
-		auctioneerProcess = nil
-		cellProcess = nil
-		convergerProcess = nil
+		var fileServerRunner ifrit.Runner
+
+		fileServerRunner, fileServerStaticDir = componentMaker.FileServer()
+
+		cellGroup := grouper.Members{
+			{"file-server", fileServerRunner},
+			{"rep", componentMaker.Rep("-memoryMB", "1024")},
+			{"auctioneer", componentMaker.Auctioneer()},
+			{"converger", componentMaker.Converger()},
+		}
+		cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, cellGroup))
+
+		Eventually(receptorClient.Cells).Should(HaveLen(1))
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(
-			auctioneerProcess,
-			cellProcess,
-			convergerProcess,
-		)
+		helpers.StopProcesses(cellProcess)
 	})
 
-	Context("when an exec, rep, and auctioneer are running", func() {
-		var executorClient executor_api.Client
+	Describe("Running a task", func() {
+		var guid string
 
 		BeforeEach(func() {
-			cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-				{"exec", componentMaker.Executor("-memoryMB", "1024")},
-				{"rep", componentMaker.Rep()},
-			}))
-
-			auctioneerProcess = ginkgomon.Invoke(componentMaker.Auctioneer())
-
-			executorClient = componentMaker.ExecutorClient()
+			guid = helpers.GenerateGuid()
 		})
 
-		Context("and a standard Task is desired", func() {
-			var taskGuid string
-			var taskSleepSeconds int
-
-			var taskRequest receptor.TaskCreateRequest
-
-			BeforeEach(func() {
-				taskSleepSeconds = 10
-				taskGuid = helpers.GenerateGuid()
-
-				taskRequest = helpers.TaskCreateRequestWithMemory(
-					taskGuid,
-					&models.RunAction{
-						Path: "sh",
-						Args: []string{
-							"-c",
-							// sleep a bit so that we can make assertions around behavior as it's running
-							fmt.Sprintf("curl %s; sleep %d", inigo_announcement_server.AnnounceURL(taskGuid), taskSleepSeconds),
-						},
+		It("runs the command with the provided environment", func() {
+			err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+				guid,
+				&models.RunAction{
+					Path: "sh",
+					Args: []string{"-c", `[ "$FOO" = NEW-BAR -a "$BAZ" = WIBBLE ]`},
+					Env: []models.EnvironmentVariable{
+						{"FOO", "OLD-BAR"},
+						{"BAZ", "WIBBLE"},
+						{"FOO", "NEW-BAR"},
 					},
-					512,
-				)
-			})
+				},
+			))
+			Expect(err).NotTo(HaveOccurred())
 
-			theFailureReason := func() string {
-				taskAfterCancel, err := receptorClient.GetTask(taskGuid)
-				if err != nil {
-					return ""
-				}
+			var task receptor.TaskResponse
 
-				if taskAfterCancel.State != receptor.TaskStateCompleted {
-					return ""
-				}
+			Eventually(func() interface{} {
+				var err error
 
-				if taskAfterCancel.Failed != true {
-					return ""
-				}
-
-				return taskAfterCancel.FailureReason
-			}
-
-			JustBeforeEach(func() {
-				err := receptorClient.CreateTask(taskRequest)
+				task, err = receptorClient.GetTask(guid)
 				Expect(err).NotTo(HaveOccurred())
-			})
 
-			Context("when there is a matching rootfs", func() {
-				It("eventually runs the Task", func() {
-					Eventually(inigo_announcement_server.Announcements).Should(ContainElement(taskGuid))
-				})
-			})
+				return task.State
+			}).Should(Equal(receptor.TaskStateCompleted))
 
-			Context("when there is no matching rootfs", func() {
-				BeforeEach(func() {
-					taskRequest = helpers.TaskCreateRequestWithRootFS(
-						taskGuid,
-						helpers.BogusPreloadedRootFS,
+			Expect(task.Failed).To(BeFalse())
+		})
+
+		It("runs the command with the provided working directory", func() {
+			err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+				guid,
+				&models.RunAction{
+					Path: "sh",
+					Args: []string{"-c", `[ $PWD = /tmp ]`},
+					Dir:  "/tmp",
+				},
+			))
+			Expect(err).NotTo(HaveOccurred())
+
+			var task receptor.TaskResponse
+
+			Eventually(func() interface{} {
+				var err error
+
+				task, err = receptorClient.GetTask(guid)
+				Expect(err).NotTo(HaveOccurred())
+
+				return task.State
+			}).Should(Equal(receptor.TaskStateCompleted))
+
+			Expect(task.Failed).To(BeFalse())
+		})
+
+		Context("when the command exceeds its memory limit", func() {
+			It("should fail the Task", func() {
+				err := receptorClient.CreateTask(helpers.TaskCreateRequestWithMemoryAndDisk(
+					guid,
+					models.Serial(
 						&models.RunAction{
-							Path: "true",
+							Path: "curl",
+							Args: []string{inigo_announcement_server.AnnounceURL("before-memory-overdose")},
 						},
-					)
-				})
-
-				It("marks the task as complete, failed and cancelled", func() {
-					Eventually(theFailureReason).Should(Equal(diego_errors.CELL_MISMATCH_MESSAGE))
-				})
-			})
-
-			Context("when there is not enough resources", func() {
-				BeforeEach(func() {
-					taskRequest = helpers.TaskCreateRequestWithMemory(
-						taskGuid,
 						&models.RunAction{
 							Path: "sh",
-							Args: []string{
-								"-c",
-								// sleep a bit so that we can make assertions around behavior as it's running
-								fmt.Sprintf("curl %s; sleep %d", inigo_announcement_server.AnnounceURL(taskGuid), taskSleepSeconds),
-							},
+							Args: []string{"-c", "yes $(yes)"},
 						},
-						2048,
-					)
-				})
-
-				It("marks the task as complete, failed and cancelled", func() {
-					Eventually(theFailureReason).Should(Equal(diego_errors.INSUFFICIENT_RESOURCES_MESSAGE))
-				})
-			})
-
-			Context("and then the task is cancelled", func() {
-				BeforeEach(func() {
-					taskSleepSeconds = 9999 // ensure task never completes on its own
-				})
-
-				JustBeforeEach(func() {
-					Eventually(inigo_announcement_server.Announcements).Should(ContainElement(taskGuid))
-
-					err := receptorClient.CancelTask(taskGuid)
-					Expect(err).NotTo(HaveOccurred())
-				})
-
-				It("marks the task as complete, failed and cancelled", func() {
-					taskAfterCancel, err := receptorClient.GetTask(taskGuid)
-					Expect(err).NotTo(HaveOccurred())
-
-					Expect(taskAfterCancel.State).To(Equal(receptor.TaskStateCompleted))
-					Expect(taskAfterCancel.Failed).To(BeTrue())
-					Expect(taskAfterCancel.FailureReason).To(Equal("task was cancelled"))
-				})
-
-				It("cleans up the task's container before the task completes on its own", func() {
-					Eventually(func() error {
-						_, err := executorClient.GetContainer(taskGuid)
-						return err
-					}).Should(Equal(executor_api.ErrContainerNotFound))
-				})
-			})
-
-			Context("when a converger is running", func() {
-				BeforeEach(func() {
-					convergerProcess = ginkgomon.Invoke(componentMaker.Converger(
-						"-convergeRepeatInterval", "1s",
-						"-kickPendingTaskDuration", "1s",
-					))
-				})
-
-				Context("after the task starts", func() {
-					JustBeforeEach(func() {
-						Eventually(inigo_announcement_server.Announcements).Should(ContainElement(taskGuid))
-					})
-
-					Context("when the cellProcess disappears", func() {
-						JustBeforeEach(func() {
-							helpers.StopProcesses(cellProcess)
-						})
-
-						It("eventually marks the task as failed", func() {
-							// time is primarily influenced by rep's heartbeat interval
-							var completedTask receptor.TaskResponse
-							Eventually(func() interface{} {
-								var err error
-
-								completedTask, err = receptorClient.GetTask(taskGuid)
-								Expect(err).NotTo(HaveOccurred())
-
-								return completedTask.State
-							}).Should(Equal(receptor.TaskStateCompleted))
-
-							Expect(completedTask.Failed).To(BeTrue())
-						})
-					})
-				})
-			})
-		})
-
-		Context("Egress Rules", func() {
-			var (
-				taskGuid          string
-				taskCreateRequest receptor.TaskCreateRequest
-			)
-
-			BeforeEach(func() {
-				taskGuid = helpers.GenerateGuid()
-				taskCreateRequest = helpers.TaskCreateRequest(
-					taskGuid,
-					&models.RunAction{
-						Path: "sh",
-						Args: []string{
-							"-c",
-							`
-curl -s --connect-timeout 5 http://www.example.com -o /dev/null
-echo $? >> /tmp/result
-exit 0
-					`,
+						&models.RunAction{
+							Path: "curl",
+							Args: []string{inigo_announcement_server.AnnounceURL("after-memory-overdose")},
 						},
-					},
-				)
-				taskCreateRequest.ResultFile = "/tmp/result"
-			})
-
-			JustBeforeEach(func() {
-				err := receptorClient.CreateTask(taskCreateRequest)
-				Expect(err).NotTo(HaveOccurred())
-			})
-
-			Context("default networking", func() {
-				It("rejects outbound tcp traffic", func() {
-					// Failed to connect to host
-					pollTaskStatus(taskGuid, "28\n")
-				})
-			})
-
-			Context("with appropriate security group setting", func() {
-				BeforeEach(func() {
-					taskCreateRequest.EgressRules = []models.SecurityGroupRule{
-						{
-							Protocol:     models.TCPProtocol,
-							Destinations: []string{"9.0.0.0-89.255.255.255", "90.0.0.0-94.0.0.0"},
-							Ports:        []uint16{80, 443},
-						},
-						{
-							Protocol:     models.UDPProtocol,
-							Destinations: []string{"0.0.0.0/0"},
-							PortRange: &models.PortRange{
-								Start: 53,
-								End:   53,
-							},
-						},
-					}
-				})
-
-				It("allows outbound tcp traffic", func() {
-					pollTaskStatus(taskGuid, "0\n")
-				})
-			})
-		})
-	})
-
-	Context("when an auctioneer is not running", func() {
-		BeforeEach(func() {
-			convergerProcess = ginkgomon.Invoke(componentMaker.Converger(
-				"-convergeRepeatInterval", "1s",
-				"-kickPendingTaskDuration", "1s",
-			))
-
-			cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-				{"exec", componentMaker.Executor()},
-				{"rep", componentMaker.Rep()},
-			}))
-		})
-
-		Context("and a task is desired", func() {
-			var taskGuid string
-
-			BeforeEach(func() {
-				taskGuid = helpers.GenerateGuid()
-
-				err := receptorClient.CreateTask(helpers.TaskCreateRequest(
-					taskGuid,
-					&models.RunAction{
-						Path: "curl",
-						Args: []string{inigo_announcement_server.AnnounceURL(taskGuid)},
-					},
+					),
+					10,
+					1024,
 				))
 				Expect(err).NotTo(HaveOccurred())
-			})
 
-			Context("and then an auctioneer come up", func() {
-				BeforeEach(func() {
-					auctioneerProcess = ginkgomon.Invoke(componentMaker.Auctioneer())
-				})
+				Eventually(inigo_announcement_server.Announcements).Should(ContainElement("before-memory-overdose"))
 
-				AfterEach(func() {
-					helpers.StopProcesses(cellProcess)
-				})
-
-				It("eventually runs the Task", func() {
-					Eventually(inigo_announcement_server.Announcements).Should(ContainElement(taskGuid))
-				})
-			})
-		})
-	})
-
-	Context("when a very impatient converger is running", func() {
-		BeforeEach(func() {
-			convergerProcess = ginkgomon.Invoke(componentMaker.Converger(
-				"-convergeRepeatInterval", "1s",
-				"-expirePendingTaskDuration", "1s",
-			))
-		})
-
-		Context("and a task is desired", func() {
-			var taskGuid string
-
-			BeforeEach(func() {
-				taskGuid = helpers.GenerateGuid()
-
-				err := receptorClient.CreateTask(helpers.TaskCreateRequest(
-					taskGuid,
-					&models.RunAction{
-						Path: "curl",
-						Args: []string{inigo_announcement_server.AnnounceURL(taskGuid)},
-					},
-				))
-				Expect(err).NotTo(HaveOccurred())
-			})
-
-			It("should be marked as failed after the expire duration", func() {
-				var completedTask receptor.TaskResponse
+				var task receptor.TaskResponse
 				Eventually(func() interface{} {
 					var err error
 
-					completedTask, err = receptorClient.GetTask(taskGuid)
+					task, err = receptorClient.GetTask(guid)
 					Expect(err).NotTo(HaveOccurred())
 
-					return completedTask.State
+					return task.State
 				}).Should(Equal(receptor.TaskStateCompleted))
 
-				Expect(completedTask.Failed).To(BeTrue())
-				Expect(completedTask.FailureReason).To(ContainSubstring("not started within time limit"))
+				Expect(task.Failed).To(BeTrue())
+				Expect(task.FailureReason).To(ContainSubstring("out of memory"))
 
-				Expect(inigo_announcement_server.Announcements()).To(BeEmpty())
+				Expect(inigo_announcement_server.Announcements()).NotTo(ContainElement("after-memory-overdose"))
+			})
+		})
+
+		Context("when the command exceeds its file descriptor limit", func() {
+			It("should fail the Task", func() {
+				nofile := uint64(10)
+
+				err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+					guid,
+					models.Serial(
+						&models.RunAction{
+							Path: "sh",
+							Args: []string{"-c", `
+set -e
+
+# must start after fd 2
+exec 3<>file1
+exec 4<>file2
+exec 5<>file3
+exec 6<>file4
+exec 7<>file5
+exec 8<>file6
+exec 9<>file7
+exec 10<>file8
+exec 11<>file9
+exec 12<>file10
+exec 13<>file11
+
+echo should have died by now
+`},
+							ResourceLimits: models.ResourceLimits{
+								Nofile: &nofile,
+							},
+						},
+					),
+				))
+				Expect(err).NotTo(HaveOccurred())
+
+				var task receptor.TaskResponse
+				Eventually(func() interface{} {
+					var err error
+
+					task, err = receptorClient.GetTask(guid)
+					Expect(err).NotTo(HaveOccurred())
+
+					return task.State
+				}).Should(Equal(receptor.TaskStateCompleted))
+
+				Expect(task.Failed).To(BeTrue())
+
+				// when sh can't open another file the exec exits 2
+				Expect(task.FailureReason).To(ContainSubstring("status 2"))
+			})
+		})
+
+		Context("when the command times out", func() {
+			It("should fail the Task", func() {
+				err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+					guid,
+					models.Serial(
+						models.Timeout(
+							&models.RunAction{
+								Path: "sleep",
+								Args: []string{"1"},
+							},
+							500*time.Millisecond,
+						),
+					),
+				))
+				Expect(err).NotTo(HaveOccurred())
+
+				var task receptor.TaskResponse
+				Eventually(func() interface{} {
+					var err error
+
+					task, err = receptorClient.GetTask(guid)
+					Expect(err).NotTo(HaveOccurred())
+
+					return task.State
+				}).Should(Equal(receptor.TaskStateCompleted))
+
+				Expect(task.Failed).To(BeTrue())
+				Expect(task.FailureReason).To(ContainSubstring("exceeded 500ms timeout"))
 			})
 		})
 	})
+	Describe("Running a downloaded file", func() {
+		var guid string
+
+		BeforeEach(func() {
+			guid = helpers.GenerateGuid()
+
+			test_helper.CreateTarGZArchive(filepath.Join(fileServerStaticDir, "announce.tar.gz"), []test_helper.ArchiveFile{
+				{
+					Name: "announce",
+					Body: fmt.Sprintf("#!/bin/sh\n\ncurl %s", inigo_announcement_server.AnnounceURL(guid)),
+					Mode: 0755,
+				},
+			})
+		})
+
+		It("downloads the file", func() {
+			err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+				guid,
+				models.Serial(
+					&models.DownloadAction{
+						From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "announce.tar.gz"),
+						To:   ".",
+					},
+					&models.RunAction{
+						Path: "./announce",
+					},
+				),
+			))
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
+		})
+	})
+
+	Describe("Uploading from the container", func() {
+		var guid string
+
+		var server *httptest.Server
+		var uploadAddr string
+
+		var gotRequest chan struct{}
+
+		BeforeEach(func() {
+			guid = helpers.GenerateGuid()
+
+			gotRequest = make(chan struct{})
+
+			server, uploadAddr = helpers.Callback(componentMaker.ExternalAddress, ghttp.CombineHandlers(
+				ghttp.VerifyRequest("POST", "/thingy"),
+				func(w http.ResponseWriter, r *http.Request) {
+					contents, err := ioutil.ReadAll(r.Body)
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(string(contents)).To(Equal("tasty thingy\n"))
+
+					close(gotRequest)
+				},
+			))
+		})
+
+		AfterEach(func() {
+			server.Close()
+		})
+
+		It("uploads the specified files", func() {
+			err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+				guid,
+				models.Serial(
+					&models.RunAction{
+						Path: "sh",
+						Args: []string{"-c", "echo tasty thingy > thingy"},
+					},
+					&models.UploadAction{
+						From: "thingy",
+						To:   fmt.Sprintf("http://%s/thingy", uploadAddr),
+					},
+					&models.RunAction{
+						Path: "curl",
+						Args: []string{inigo_announcement_server.AnnounceURL(guid)},
+					},
+				),
+			))
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(gotRequest).Should(BeClosed())
+
+			Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
+		})
+	})
+
+	Describe("Fetching results", func() {
+		It("should fetch the contents of the requested file and provide the content in the completed Task", func() {
+			guid := helpers.GenerateGuid()
+
+			taskRequest := helpers.TaskCreateRequest(
+				guid,
+				&models.RunAction{
+					Path: "sh",
+					Args: []string{"-c", "echo tasty thingy > thingy"},
+				},
+			)
+			taskRequest.ResultFile = "thingy"
+			err := receptorClient.CreateTask(taskRequest)
+			Expect(err).NotTo(HaveOccurred())
+
+			var task receptor.TaskResponse
+			Eventually(func() interface{} {
+				var err error
+
+				task, err = receptorClient.GetTask(guid)
+				Expect(err).NotTo(HaveOccurred())
+
+				return task.State
+			}).Should(Equal(receptor.TaskStateCompleted))
+
+			Expect(task.Result).To(Equal("tasty thingy\n"))
+		})
+	})
 })
-
-func pollTaskStatus(taskGuid string, result string) {
-	var completedTask receptor.TaskResponse
-	Eventually(func() interface{} {
-		var err error
-
-		completedTask, err = receptorClient.GetTask(taskGuid)
-		Expect(err).NotTo(HaveOccurred())
-
-		return completedTask.State
-	}).Should(Equal(receptor.TaskStateCompleted))
-
-	Expect(completedTask.Result).To(Equal(result))
-}

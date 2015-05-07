@@ -19,8 +19,7 @@ var _ = Describe("Privileges", func() {
 
 	BeforeEach(func() {
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"exec", componentMaker.Executor("-allowPrivileged")},
-			{"rep", componentMaker.Rep()},
+			{"rep", componentMaker.Rep("-allowPrivileged")},
 			{"converger", componentMaker.Converger()},
 			{"auctioneer", componentMaker.Auctioneer()},
 

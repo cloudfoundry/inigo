@@ -22,7 +22,6 @@ var _ = Describe("Convergence to desired state", func() {
 		runtime ifrit.Process
 
 		auctioneer ifrit.Process
-		executor   ifrit.Process
 		rep        ifrit.Process
 		converger  ifrit.Process
 
@@ -60,7 +59,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 	AfterEach(func() {
 		By("Stopping all the processes")
-		helpers.StopProcesses(auctioneer, executor, rep, converger, runtime)
+		helpers.StopProcesses(auctioneer, rep, converger, runtime)
 	})
 
 	Describe("Executor fault tolerance", func() {
@@ -68,9 +67,8 @@ var _ = Describe("Convergence to desired state", func() {
 			auctioneer = ginkgomon.Invoke(componentMaker.Auctioneer())
 		})
 
-		Context("when an executor, rep, and converger are running", func() {
+		Context("when an rep, and converger are running", func() {
 			BeforeEach(func() {
-				executor = ginkgomon.Invoke(componentMaker.Executor())
 				rep = ginkgomon.Invoke(componentMaker.Rep())
 				converger = ginkgomon.Invoke(componentMaker.Converger(
 					"-convergeRepeatInterval", "1s",
@@ -78,30 +76,39 @@ var _ = Describe("Convergence to desired state", func() {
 			})
 
 			Context("and an LRP is desired", func() {
+				var initialInstanceGuids []string
+
 				BeforeEach(func() {
 					err := receptorClient.CreateDesiredLRP(helpers.DefaultLRPCreateRequest(processGuid, appId, 2))
 					Expect(err).NotTo(HaveOccurred())
 
 					Eventually(runningLRPsPoller).Should(HaveLen(2))
 					Eventually(helloWorldInstancePoller).Should(Equal([]string{"0", "1"}))
+					initialActuals := runningLRPsPoller()
+					initialInstanceGuids = []string{initialActuals[0].InstanceGuid, initialActuals[1].InstanceGuid}
 				})
 
-				Context("and the LRP goes away because its executor dies", func() {
+				Context("and the LRP goes away because its rep dies", func() {
 					BeforeEach(func() {
-						executor.Signal(syscall.SIGKILL)
+						rep.Signal(syscall.SIGKILL)
 
 						Eventually(runningLRPsPoller).Should(BeEmpty())
 						Eventually(helloWorldInstancePoller).Should(BeEmpty())
 					})
 
-					Context("once the executor comes back", func() {
+					Context("once the rep comes back", func() {
 						BeforeEach(func() {
-							executor = ginkgomon.Invoke(componentMaker.Executor())
+							rep = ginkgomon.Invoke(componentMaker.Rep())
 						})
 
 						It("eventually brings the long-running process up", func() {
 							Eventually(runningLRPsPoller).Should(HaveLen(2))
 							Eventually(helloWorldInstancePoller).Should(Equal([]string{"0", "1"}))
+
+							currentActuals := runningLRPsPoller()
+							instanceGuids := []string{currentActuals[0].InstanceGuid, currentActuals[1].InstanceGuid}
+							Expect(instanceGuids).NotTo(ContainElement(initialInstanceGuids[0]))
+							Expect(instanceGuids).NotTo(ContainElement(initialInstanceGuids[1]))
 						})
 					})
 				})
@@ -173,7 +180,7 @@ var _ = Describe("Convergence to desired state", func() {
 			})
 		})
 
-		Context("when a converger is running without a rep and executor", func() {
+		Context("when a converger is running without a rep", func() {
 			BeforeEach(func() {
 				converger = ginkgomon.Invoke(componentMaker.Converger(
 					"-convergeRepeatInterval", "1s",
@@ -189,9 +196,8 @@ var _ = Describe("Convergence to desired state", func() {
 					Consistently(helloWorldInstancePoller).Should(BeEmpty())
 				})
 
-				Context("and then a rep and executor come up", func() {
+				Context("and then a rep come up", func() {
 					BeforeEach(func() {
-						executor = ginkgomon.Invoke(componentMaker.Executor())
 						rep = ginkgomon.Invoke(componentMaker.Rep())
 					})
 
@@ -211,9 +217,8 @@ var _ = Describe("Convergence to desired state", func() {
 			))
 		})
 
-		Context("when an executor and rep are running with no auctioneer", func() {
+		Context("when a rep is running with no auctioneer", func() {
 			BeforeEach(func() {
-				executor = ginkgomon.Invoke(componentMaker.Executor())
 				rep = ginkgomon.Invoke(componentMaker.Rep())
 			})
 
@@ -239,7 +244,7 @@ var _ = Describe("Convergence to desired state", func() {
 			})
 		})
 
-		Context("when an auctioneer is running with no executor or rep", func() {
+		Context("when an auctioneer is running with no rep", func() {
 			BeforeEach(func() {
 				auctioneer = ginkgomon.Invoke(componentMaker.Auctioneer())
 			})
@@ -253,9 +258,8 @@ var _ = Describe("Convergence to desired state", func() {
 					Consistently(helloWorldInstancePoller).Should(BeEmpty())
 				})
 
-				Context("and the executor and rep come up", func() {
+				Context("and the rep come up", func() {
 					BeforeEach(func() {
-						executor = ginkgomon.Invoke(componentMaker.Executor())
 						rep = ginkgomon.Invoke(componentMaker.Rep())
 					})
 

@@ -1,11 +1,16 @@
 package executor_test
 
 import (
+	"os"
+
 	"github.com/cloudfoundry-incubator/executor"
+	executorinit "github.com/cloudfoundry-incubator/executor/initializer"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/nu7hatch/gouuid"
+	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
+	"github.com/tedsuo/ifrit/grouper"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,7 +18,8 @@ import (
 
 var _ = Describe("Privileged Containers", func() {
 	var process ifrit.Process
-	var runner *ginkgomon.Runner
+	var runner ifrit.Runner
+	var allowPrivileged bool
 
 	Context("when trying to run a container with a privileged run action", func() {
 		var runResult executor.ContainerRunResult
@@ -32,7 +38,13 @@ var _ = Describe("Privileged Containers", func() {
 				},
 			}
 
-			executorClient := componentMaker.ExecutorClient()
+			config := executorinit.DefaultConfiguration
+			config.GardenNetwork = "tcp"
+			config.GardenAddr = componentMaker.Addresses.GardenLinux
+			config.AllowPrivileged = allowPrivileged
+			logger := lagertest.NewTestLogger("test")
+			executorClient, executorMembers := executorinit.Initialize(logger, config)
+			runner = grouper.NewParallel(os.Kill, executorMembers)
 
 			_, err = executorClient.AllocateContainers([]executor.Container{container})
 			Expect(err).NotTo(HaveOccurred())
@@ -53,7 +65,10 @@ var _ = Describe("Privileged Containers", func() {
 
 		Context("when allowPrivileged is set", func() {
 			BeforeEach(func() {
-				runner = componentMaker.Executor("-allowPrivileged", "true")
+				allowPrivileged = true
+			})
+
+			JustBeforeEach(func() {
 				process = ginkgomon.Invoke(runner)
 			})
 
@@ -68,7 +83,10 @@ var _ = Describe("Privileged Containers", func() {
 
 		Context("when allowPrivileged is not set", func() {
 			BeforeEach(func() {
-				runner = componentMaker.Executor()
+				allowPrivileged = false
+			})
+
+			JustBeforeEach(func() {
 				process = ginkgomon.Invoke(runner)
 			})
 

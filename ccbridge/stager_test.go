@@ -90,8 +90,7 @@ EOF
 		fakeCC = componentMaker.FakeCC()
 
 		cell = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"exec", componentMaker.Executor("-memoryMB=1024")},
-			{"rep", componentMaker.Rep()},
+			{"rep", componentMaker.Rep("-memoryMB=1024")},
 		}))
 
 		brain = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
