@@ -86,7 +86,7 @@ func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
 		Name:              "gnatsd",
 		AnsiColorCode:     "30m",
 		StartCheck:        "gnatsd is ready",
-		StartCheckTimeout: 5 * time.Second,
+		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
 			"gnatsd",
 			append([]string{
@@ -105,7 +105,7 @@ func (maker ComponentMaker) Etcd(argv ...string) ifrit.Runner {
 		Name:              "etcd",
 		AnsiColorCode:     "31m",
 		StartCheck:        "etcdserver: published",
-		StartCheckTimeout: 5 * time.Second,
+		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
 			"etcd",
 			append([]string{
@@ -249,7 +249,7 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 		Name:              "auctioneer",
 		AnsiColorCode:     "94m",
 		StartCheck:        `"auctioneer.started"`,
-		StartCheckTimeout: 5 * time.Second,
+		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["auctioneer"],
 			append([]string{
@@ -268,7 +268,7 @@ func (maker ComponentMaker) RouteEmitter(argv ...string) ifrit.Runner {
 		Name:              "route-emitter",
 		AnsiColorCode:     "95m",
 		StartCheck:        `"route-emitter.started"`,
-		StartCheckTimeout: 5 * time.Second,
+		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["route-emitter"],
 			append([]string{
@@ -286,7 +286,7 @@ func (maker ComponentMaker) TPSListener(argv ...string) ifrit.Runner {
 		Name:              "tps-listener",
 		AnsiColorCode:     "96m",
 		StartCheck:        `"tps-listener.started"`,
-		StartCheckTimeout: 5 * time.Second,
+		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["tps-listener"],
 			append([]string{
@@ -306,7 +306,7 @@ func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 		Name:              "nsync-listener",
 		AnsiColorCode:     "97m",
 		StartCheck:        `"nsync.listener.started"`,
-		StartCheckTimeout: 5 * time.Second,
+		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["nsync-listener"],
 			append(maker.appendLifecycleArgs([]string{
@@ -326,7 +326,7 @@ func (maker ComponentMaker) FileServer(argv ...string) (ifrit.Runner, string) {
 		Name:              "file-server",
 		AnsiColorCode:     "90m",
 		StartCheck:        `"file-server.ready"`,
-		StartCheckTimeout: 5 * time.Second,
+		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["file-server"],
 			append([]string{
@@ -388,7 +388,7 @@ func (maker ComponentMaker) Router() ifrit.Runner {
 		Name:              "router",
 		AnsiColorCode:     "32m",
 		StartCheck:        "router.started",
-		StartCheckTimeout: 5 * time.Second, // it waits 1 second before listening. yep.
+		StartCheckTimeout: 10 * time.Second, // it waits 1 second before listening. yep.
 		Command: exec.Command(
 			maker.Artifacts.Executables["router"],
 			"-c", configFile.Name(),
@@ -417,7 +417,7 @@ func (maker ComponentMaker) StagerN(portOffset int, argv ...string) ifrit.Runner
 		Name:              "stager",
 		AnsiColorCode:     "94m",
 		StartCheck:        "Listening for staging requests!",
-		StartCheckTimeout: 5 * time.Second,
+		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["stager"],
 			append(maker.appendLifecycleArgs([]string{
@@ -438,7 +438,7 @@ func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
 		Name:              "receptor",
 		AnsiColorCode:     "37m",
 		StartCheck:        "started",
-		StartCheckTimeout: 5 * time.Second,
+		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["receptor"],
 			append([]string{
@@ -457,7 +457,7 @@ func (maker ComponentMaker) SSHProxy(argv ...string) ifrit.Runner {
 		Name:              "ssh-proxy",
 		AnsiColorCode:     "95m",
 		StartCheck:        "started",
-		StartCheckTimeout: 5 * time.Second,
+		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["ssh-proxy"],
 			append([]string{
