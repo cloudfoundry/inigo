@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
@@ -24,6 +25,7 @@ import (
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
 
+	"github.com/cloudfoundry-incubator/receptor/task_handler"
 	"github.com/cloudfoundry-incubator/runtime-schema/cc_messages"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -485,12 +487,29 @@ EOF
 
 		Context("when posting a staging response fails repeatedly", func() {
 			var converger ifrit.Process
+			const convergeRepeatInterval = time.Second
+
+			// Choose expireCompletedTaskDurationFactor so that the calculation below
+			// never does any integer rounding, and so there is enough of a difference
+			// in magnitude between the convergeRepeatInterval and the
+			// expireCompletedTaskDuration.
+			const expireCompletedTaskDurationFactor = 7
+			// Choose kickPendingTaskDurationFactor so that:
+			//  a) kickPendingTaskDuration < expireCompletedTaskDuration - convergeRepeatInterval
+			//  b) 2*kickPendingTaskDuration > expireCompletedTaskDuration + convergeRepeatInterval
+			// so that we're very confident that only one kick will happen before the task is
+			// expired.
+			const kickPendingTaskDurationFactor = 5 // ((y - 1) + (y+1)/2) / 2
+			// given the above, task resolution should only be attempted twice:
+			//  a) once immediately when the task completes
+			//  b) once during convergence when the task is kicked but before it is expired
+			const expectedResolutionAttempts = 2
 
 			BeforeEach(func() {
 				converger = ginkgomon.Invoke(componentMaker.Converger(
-					"-convergeRepeatInterval", "1s",
-					"-kickPendingTaskDuration", "4s",
-					"-expireCompletedTaskDuration", "6s",
+					"-convergeRepeatInterval", convergeRepeatInterval.String(),
+					"-expireCompletedTaskDuration", (expireCompletedTaskDurationFactor * convergeRepeatInterval).String(),
+					"-kickPendingTaskDuration", (kickPendingTaskDurationFactor * convergeRepeatInterval).String(),
 				))
 			})
 
@@ -506,11 +525,10 @@ EOF
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
-				NUM_ATTEMPTS := 2
-				NUM_RETRIES := 3
+				numExpectedStagingResponses := task_handler.MAX_RETRIES * expectedResolutionAttempts
 
-				Eventually(fakeCC.StagingResponses).Should(HaveLen(NUM_ATTEMPTS * NUM_RETRIES))
-				Consistently(fakeCC.StagingResponses).Should(HaveLen(NUM_ATTEMPTS * NUM_RETRIES))
+				Eventually(fakeCC.StagingResponses).Should(HaveLen(numExpectedStagingResponses))
+				Consistently(fakeCC.StagingResponses).Should(HaveLen(numExpectedStagingResponses))
 			})
 		})
 	})
