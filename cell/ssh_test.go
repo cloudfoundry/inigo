@@ -210,6 +210,48 @@ var _ = Describe("SSH", func() {
 			})
 		})
 
+		FContext("when a lrp has no cf route and no monitor", func() {
+			BeforeEach(func() {
+				lrp.StartTimeout = 2
+
+				lrp.Action = &models.ParallelAction{
+					Actions: []models.Action{
+						&models.RunAction{
+							Path: "/tmp/sshd",
+							Args: []string{
+								"-address=0.0.0.0:3456",
+								"-hostKey=" + componentMaker.SSHConfig.HostKeyPem,
+								"-authorizedKey=" + componentMaker.SSHConfig.AuthorizedKey,
+								"-inheritDaemonEnv",
+								"&",
+							},
+						},
+						&models.RunAction{
+							Path: "/tmp/lifecycle/launcher",
+							Args: append(
+								[]string{"app"},
+								`echo starting; sleep 1; echo done; exit 0`,
+							),
+						},
+					},
+				}
+
+				lrp.Monitor = nil
+			})
+
+			It("Restarts the LRP", func() {
+
+				desiredLRPs, _ := receptorClient.DesiredLRPs()
+
+				actualLRP, err := receptorClient.ActualLRPByProcessGuidAndIndex(processGuid, 0)
+				Expect(err).NotTo(HaveOccurred())
+
+				Eventually(func() int {
+					return actualLRP.CrashCount
+				}).Should(Equal(2))
+			})
+		})
+
 		Context("when a bare-bones docker image is used as the root filesystem", func() {
 			BeforeEach(func() {
 				lrp.StartTimeout = 120
