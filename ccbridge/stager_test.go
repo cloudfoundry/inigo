@@ -489,27 +489,21 @@ EOF
 			var converger ifrit.Process
 			const convergeRepeatInterval = time.Second
 
-			// Choose expireCompletedTaskDurationFactor so that the calculation below
-			// never does any integer rounding, and so there is enough of a difference
-			// in magnitude between the convergeRepeatInterval and the
-			// expireCompletedTaskDuration.
-			const expireCompletedTaskDurationFactor = 7
-			// Choose kickPendingTaskDurationFactor so that:
-			//  a) kickPendingTaskDuration < expireCompletedTaskDuration - convergeRepeatInterval
-			//  b) 2*kickPendingTaskDuration > expireCompletedTaskDuration + convergeRepeatInterval
-			// so that we're very confident that only one kick will happen before the task is
-			// expired.
-			const kickPendingTaskDurationFactor = 5 // ((y - 1) + (y+1)/2) / 2
-			// given the above, task resolution should only be attempted twice:
-			//  a) once immediately when the task completes
-			//  b) once during convergence when the task is kicked but before it is expired
+			// Choose duration factors so that:
+			//  a) the resolving task will be rescheduled for completion before being expired
+			//  b) the above will only happen once before the task is expired
+			// Thus, the total number of expected resolution attempts is 2:
+			//  a) once immediately after the task completes
+			//  b) once as a result of convergence
+			const expireFactor = 11
+			const kickFactor = 7
 			const expectedResolutionAttempts = 2
 
 			BeforeEach(func() {
 				converger = ginkgomon.Invoke(componentMaker.Converger(
 					"-convergeRepeatInterval", convergeRepeatInterval.String(),
-					"-expireCompletedTaskDuration", (expireCompletedTaskDurationFactor * convergeRepeatInterval).String(),
-					"-kickPendingTaskDuration", (kickPendingTaskDurationFactor * convergeRepeatInterval).String(),
+					"-expireCompletedTaskDuration", (expireFactor * convergeRepeatInterval).String(),
+					"-kickPendingTaskDuration", (kickFactor * convergeRepeatInterval).String(),
 				))
 			})
 

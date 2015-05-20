@@ -203,6 +203,7 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 			"-containerMaxCpuShares", "1024",
 			"-cachePath", cachePath,
 			"-tempDir", tmpDir,
+			"-logLevel", "debug",
 		},
 		argv...,
 	)
@@ -239,6 +240,7 @@ func (maker ComponentMaker) Converger(argv ...string) ifrit.Runner {
 				"-lockRetryInterval", "1s",
 				"-consulCluster", maker.ConsulCluster(),
 				"-receptorTaskHandlerURL", "http://" + maker.Addresses.ReceptorTaskHandler,
+				"-logLevel", "debug",
 			}, argv...)...,
 		),
 	})
@@ -258,6 +260,7 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 				"-lockRetryInterval", "1s",
 				"-consulCluster", maker.ConsulCluster(),
 				"-receptorTaskHandlerURL", "http://" + maker.Addresses.ReceptorTaskHandler,
+				"-logLevel", "debug",
 			}, argv...)...,
 		),
 	})
@@ -276,6 +279,7 @@ func (maker ComponentMaker) RouteEmitter(argv ...string) ifrit.Runner {
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 				"-lockRetryInterval", "1s",
 				"-consulCluster", maker.ConsulCluster(),
+				"-logLevel", "debug",
 			}, argv...)...,
 		),
 	})
@@ -292,6 +296,7 @@ func (maker ComponentMaker) TPSListener(argv ...string) ifrit.Runner {
 			append([]string{
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 				"-listenAddr", maker.Addresses.TPSListener,
+				"-logLevel", "debug",
 			}, argv...)...,
 		),
 	})
@@ -313,6 +318,7 @@ func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 				"-nsyncURL", fmt.Sprintf("http://127.0.0.1:%d", port),
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,
+				"-logLevel", "debug",
 			}), argv...)...,
 		),
 	})
@@ -333,6 +339,7 @@ func (maker ComponentMaker) FileServer(argv ...string) (ifrit.Runner, string) {
 				"-address", maker.Addresses.FileServer,
 				"-ccJobPollingInterval", "100ms",
 				"-staticDirectory", servedFilesDir,
+				"-logLevel", "debug",
 			}, argv...)...,
 		),
 		Cleanup: func() {
@@ -428,6 +435,7 @@ func (maker ComponentMaker) StagerN(portOffset int, argv ...string) ifrit.Runner
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 				"-stagerURL", fmt.Sprintf("http://127.0.0.1:%d", offsetPort(port, portOffset)),
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,
+				"-logLevel", "debug",
 			}), argv...)...,
 		),
 	})
@@ -446,6 +454,7 @@ func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
 				"-taskHandlerAddress", maker.Addresses.ReceptorTaskHandler,
 				"-etcdCluster", maker.EtcdCluster(),
 				"-consulCluster", maker.ConsulCluster(),
+				"-logLevel", "debug",
 			}, argv...)...,
 		),
 	})
@@ -464,6 +473,7 @@ func (maker ComponentMaker) SSHProxy(argv ...string) ifrit.Runner {
 				"-address", maker.Addresses.SSHProxy,
 				"-hostKey", maker.SSHConfig.HostKeyPem,
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
+				"-logLevel", "debug",
 			}, argv...)...,
 		),
 	})

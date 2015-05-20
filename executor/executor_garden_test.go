@@ -57,7 +57,8 @@ var _ = Describe("Executor/Garden", func() {
 		config.CachePath = cachePath
 		logger := lagertest.NewTestLogger("test")
 		var executorMembers grouper.Members
-		executorClient, executorMembers = executorinit.Initialize(logger, config)
+		executorClient, executorMembers, err = executorinit.Initialize(logger, config)
+		Expect(err).NotTo(HaveOccurred())
 		runner = grouper.NewParallel(os.Kill, executorMembers)
 
 		gardenCapacity, err = gardenClient.Capacity()

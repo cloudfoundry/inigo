@@ -43,7 +43,9 @@ var _ = Describe("Privileged Containers", func() {
 			config.GardenAddr = componentMaker.Addresses.GardenLinux
 			config.AllowPrivileged = allowPrivileged
 			logger := lagertest.NewTestLogger("test")
-			executorClient, executorMembers := executorinit.Initialize(logger, config)
+
+			executorClient, executorMembers, err := executorinit.Initialize(logger, config)
+			Expect(err).NotTo(HaveOccurred())
 			runner = grouper.NewParallel(os.Kill, executorMembers)
 
 			_, err = executorClient.AllocateContainers([]executor.Container{container})
