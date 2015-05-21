@@ -162,7 +162,7 @@ var _ = Describe("Task Lifecycle", func() {
 				BeforeEach(func() {
 					convergerProcess = ginkgomon.Invoke(componentMaker.Converger(
 						"-convergeRepeatInterval", "1s",
-						"-kickPendingTaskDuration", "1s",
+						"-kickTaskDuration", "1s",
 					))
 				})
 
@@ -262,7 +262,7 @@ exit 0
 		BeforeEach(func() {
 			convergerProcess = ginkgomon.Invoke(componentMaker.Converger(
 				"-convergeRepeatInterval", "1s",
-				"-kickPendingTaskDuration", "1s",
+				"-kickTaskDuration", "1s",
 			))
 
 			cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{

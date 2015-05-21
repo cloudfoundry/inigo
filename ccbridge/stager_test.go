@@ -503,7 +503,7 @@ EOF
 				converger = ginkgomon.Invoke(componentMaker.Converger(
 					"-convergeRepeatInterval", convergeRepeatInterval.String(),
 					"-expireCompletedTaskDuration", (expireFactor * convergeRepeatInterval).String(),
-					"-kickPendingTaskDuration", (kickFactor * convergeRepeatInterval).String(),
+					"-kickTaskDuration", (kickFactor * convergeRepeatInterval).String(),
 				))
 			})
 
