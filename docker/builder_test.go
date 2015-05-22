@@ -26,6 +26,10 @@ var _ = Describe("Building", func() {
 		insecureDockerRegistries   string
 		dockerDaemonExecutablePath string
 		cacheDockerImage           bool
+		dockerLoginServer          string
+		dockerUser                 string
+		dockerPassword             string
+		dockerEmail                string
 		outputMetadataDir          string
 		outputMetadataJSONFilename string
 		fakeDockerRegistry         *ghttp.Server
@@ -80,6 +84,10 @@ var _ = Describe("Building", func() {
 		insecureDockerRegistries = ""
 		dockerDaemonExecutablePath = "/usr/bin/docker"
 		cacheDockerImage = true
+		dockerLoginServer = ""
+		dockerUser = ""
+		dockerPassword = ""
+		dockerEmail = ""
 
 		outputMetadataDir, err = ioutil.TempDir("", "building-result")
 		Expect(err).NotTo(HaveOccurred())
@@ -117,6 +125,18 @@ var _ = Describe("Building", func() {
 		}
 		if cacheDockerImage {
 			args = append(args, "-cacheDockerImage")
+		}
+		if len(dockerLoginServer) > 0 {
+			args = append(args, "-dockerLoginServer", dockerLoginServer)
+		}
+		if len(dockerUser) > 0 {
+			args = append(args, "-dockerUser", dockerUser)
+		}
+		if len(dockerPassword) > 0 {
+			args = append(args, "-dockerPassword", dockerPassword)
+		}
+		if len(dockerEmail) > 0 {
+			args = append(args, "-dockerEmail", dockerEmail)
 		}
 
 		builderCmd = exec.Command(builderPath, args...)
@@ -185,9 +205,8 @@ var _ = Describe("Building", func() {
 				It("processes the signal and exits", func() {
 					Eventually(session).Should(gexec.Exit(2))
 				})
-
 			})
-		})
 
+		})
 	})
 })
