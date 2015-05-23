@@ -435,6 +435,7 @@ var _ = Describe("Executor/Garden", func() {
 
 						process, err := gardenContainer.Run(garden.ProcessSpec{
 							Path: "env",
+							User: "vcap",
 						}, garden.ProcessIO{
 							Stdout: output,
 						})
@@ -813,6 +814,7 @@ var _ = Describe("Executor/Garden", func() {
 					process, err := container.Run(garden.ProcessSpec{
 						Path: "sh",
 						Args: []string{"-c", "mkdir some; echo hello > some/path"},
+						User: "vcap",
 					}, garden.ProcessIO{})
 					Expect(err).NotTo(HaveOccurred())
 					Expect(process.Wait()).To(Equal(0))
