@@ -66,6 +66,10 @@ var _ = Describe("Executor/Garden", func() {
 	})
 
 	AfterEach(func() {
+		if executorClient != nil {
+			executorClient.Cleanup()
+		}
+
 		if process != nil {
 			ginkgomon.Kill(process)
 		}
