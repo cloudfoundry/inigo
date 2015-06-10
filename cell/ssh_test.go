@@ -104,7 +104,7 @@ var _ = Describe("SSH", func() {
 					},
 				},
 			},
-			Action: &models.ParallelAction{
+			Action: &models.CodependentAction{
 				Actions: []models.Action{
 					&models.RunAction{
 						Path: "/tmp/sshd",
@@ -216,7 +216,7 @@ var _ = Describe("SSH", func() {
 				lrp.RootFS = "docker:///busybox"
 
 				// busybox nc requires -p but ubuntu's won't allow it
-				lrp.Action = &models.ParallelAction{
+				lrp.Action = &models.CodependentAction{
 					Actions: []models.Action{
 						&models.RunAction{
 							Path: "/tmp/sshd",
