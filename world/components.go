@@ -461,7 +461,6 @@ func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
 }
 
 func (maker ComponentMaker) SSHProxy(argv ...string) ifrit.Runner {
-
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "ssh-proxy",
 		AnsiColorCode:     "95m",
@@ -474,6 +473,7 @@ func (maker ComponentMaker) SSHProxy(argv ...string) ifrit.Runner {
 				"-hostKey", maker.SSHConfig.HostKeyPem,
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 				"-logLevel", "debug",
+				"-enableDiegoAuth",
 			}, argv...)...,
 		),
 	})
