@@ -3,6 +3,7 @@ package helpers
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/diego-ssh/keys"
@@ -17,6 +18,8 @@ var PreloadedStacks = []string{"red-stack", "blue-stack"}
 var DefaultStack = PreloadedStacks[0]
 
 var addresses world.ComponentAddresses
+
+const assetsPath = "../../../cloudfoundry/storeadapter/assets/"
 
 func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) world.ComponentMaker {
 	gardenBinPath := os.Getenv("GARDEN_BINPATH")
@@ -68,6 +71,24 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		PrivateKeyPem: userKeyPair.PEMEncodedPrivateKey(),
 		AuthorizedKey: userKeyPair.AuthorizedKey(),
 	}
+	serverCert, err := filepath.Abs(assetsPath + "server.crt")
+	Expect(err).NotTo(HaveOccurred())
+	serverKey, err := filepath.Abs(assetsPath + "server.key")
+	Expect(err).NotTo(HaveOccurred())
+	clientCrt, err := filepath.Abs(assetsPath + "client.crt")
+	Expect(err).NotTo(HaveOccurred())
+	clientKey, err := filepath.Abs(assetsPath + "client.key")
+	Expect(err).NotTo(HaveOccurred())
+	caCert, err := filepath.Abs(assetsPath + "ca.crt")
+	Expect(err).NotTo(HaveOccurred())
+
+	sslConfig := world.SSLConfig{
+		ServerCert: serverCert,
+		ServerKey:  serverKey,
+		ClientCert: clientCrt,
+		ClientKey:  clientKey,
+		CACert:     caCert,
+	}
 
 	return world.ComponentMaker{
 		Artifacts: builtArtifacts,
@@ -80,5 +101,6 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		GardenBinPath:   gardenBinPath,
 		GardenGraphPath: gardenGraphPath,
 		SSHConfig:       sshKeys,
+		SSL:             sslConfig,
 	}
 }

@@ -45,6 +45,14 @@ type SSHKeys struct {
 	AuthorizedKey string
 }
 
+type SSLConfig struct {
+	ServerCert string
+	ServerKey  string
+	ClientCert string
+	ClientKey  string
+	CACert     string
+}
+
 type ComponentAddresses struct {
 	NATS                string
 	Etcd                string
@@ -76,6 +84,7 @@ type ComponentMaker struct {
 	GardenGraphPath string
 
 	SSHConfig SSHKeys
+	SSL       SSLConfig
 }
 
 func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
@@ -111,12 +120,15 @@ func (maker ComponentMaker) Etcd(argv ...string) ifrit.Runner {
 			append([]string{
 				"--name", nodeName,
 				"--data-dir", dataDir,
-				"--listen-client-urls", "http://" + maker.Addresses.Etcd,
+				"--listen-client-urls", "https://" + maker.Addresses.Etcd,
 				"--listen-peer-urls", "http://" + maker.Addresses.EtcdPeer,
 				"--initial-cluster", nodeName + "=" + "http://" + maker.Addresses.EtcdPeer,
 				"--initial-advertise-peer-urls", "http://" + maker.Addresses.EtcdPeer,
 				"--initial-cluster-state", "new",
-				"--advertise-client-urls", "http://" + maker.Addresses.Etcd,
+				"--advertise-client-urls", "https://" + maker.Addresses.Etcd,
+				"--cert-file", maker.SSL.ServerCert,
+				"--key-file", maker.SSL.ServerKey,
+				"--ca-file", maker.SSL.CACert,
 			}, argv...)...,
 		),
 		Cleanup: func() {
@@ -188,7 +200,7 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 		[]string{
 			"-sessionName", name,
 			"-rootFSProvider", "docker",
-			"-etcdCluster", "http://" + maker.Addresses.Etcd,
+			"-etcdCluster", "https://" + maker.Addresses.Etcd,
 			"-listenAddr", fmt.Sprintf("%s:%d", host, offsetPort(port, n)),
 			"-cellID", "the-cell-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()) + "-" + strconv.Itoa(n),
 			"-pollingInterval", "1s",
@@ -204,6 +216,9 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 			"-cachePath", cachePath,
 			"-tempDir", tmpDir,
 			"-logLevel", "debug",
+			"-certFile", maker.SSL.ClientCert,
+			"-keyFile", maker.SSL.ClientKey,
+			"-caFile", maker.SSL.CACert,
 		},
 		argv...,
 	)
@@ -241,6 +256,9 @@ func (maker ComponentMaker) Converger(argv ...string) ifrit.Runner {
 				"-consulCluster", maker.ConsulCluster(),
 				"-receptorTaskHandlerURL", "http://" + maker.Addresses.ReceptorTaskHandler,
 				"-logLevel", "debug",
+				"-certFile", maker.SSL.ClientCert,
+				"-keyFile", maker.SSL.ClientKey,
+				"-caFile", maker.SSL.CACert,
 			}, argv...)...,
 		),
 	})
@@ -261,6 +279,9 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 				"-consulCluster", maker.ConsulCluster(),
 				"-receptorTaskHandlerURL", "http://" + maker.Addresses.ReceptorTaskHandler,
 				"-logLevel", "debug",
+				"-certFile", maker.SSL.ClientCert,
+				"-keyFile", maker.SSL.ClientKey,
+				"-caFile", maker.SSL.CACert,
 			}, argv...)...,
 		),
 	})
@@ -455,6 +476,9 @@ func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
 				"-etcdCluster", maker.EtcdCluster(),
 				"-consulCluster", maker.ConsulCluster(),
 				"-logLevel", "debug",
+				"-certFile", maker.SSL.ClientCert,
+				"-keyFile", maker.SSL.ClientKey,
+				"-caFile", maker.SSL.CACert,
 			}, argv...)...,
 		),
 	})
@@ -521,7 +545,7 @@ func (maker ComponentMaker) ConsulCluster() string {
 }
 
 func (maker ComponentMaker) EtcdCluster() string {
-	return "http://" + maker.Addresses.Etcd
+	return "https://" + maker.Addresses.Etcd
 }
 
 // offsetPort retuns a new port offest by a given number in such a way
