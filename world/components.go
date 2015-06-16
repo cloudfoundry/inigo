@@ -466,7 +466,7 @@ func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "receptor",
 		AnsiColorCode:     "37m",
-		StartCheck:        "started",
+		StartCheck:        "receptor.started",
 		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["receptor"],
@@ -488,7 +488,7 @@ func (maker ComponentMaker) SSHProxy(argv ...string) ifrit.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "ssh-proxy",
 		AnsiColorCode:     "95m",
-		StartCheck:        "started",
+		StartCheck:        "ssh-proxy.started",
 		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["ssh-proxy"],
