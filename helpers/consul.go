@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cloudfoundry-incubator/consuladapter"
+	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
 	. "github.com/onsi/gomega"
 )
 
@@ -16,9 +16,9 @@ func ConsulWaitUntilReady() {
 	httpPort, err := strconv.Atoi(port)
 	Expect(err).NotTo(HaveOccurred())
 
-	startingPort := httpPort - consuladapter.PortOffsetHTTP
+	startingPort := httpPort - consulrunner.PortOffsetHTTP
 
-	cr := consuladapter.NewClusterRunner(startingPort, 1, "http")
+	cr := consulrunner.NewClusterRunner(startingPort, 1, "http")
 
 	client := cr.NewClient()
 	catalog := client.Catalog()

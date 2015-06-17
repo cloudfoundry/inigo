@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
-	"github.com/cloudfoundry-incubator/consuladapter"
+	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
 	"github.com/cloudfoundry-incubator/garden"
 	gardenrunner "github.com/cloudfoundry-incubator/garden-linux/integration/runner"
 	gardenclient "github.com/cloudfoundry-incubator/garden/client"
@@ -144,9 +144,9 @@ func (maker ComponentMaker) Consul(argv ...string) ifrit.Runner {
 	httpPort, err := strconv.Atoi(port)
 	Expect(err).NotTo(HaveOccurred())
 
-	startingPort := httpPort - consuladapter.PortOffsetHTTP
+	startingPort := httpPort - consulrunner.PortOffsetHTTP
 
-	clusterRunner := consuladapter.NewClusterRunner(startingPort, 1, "http")
+	clusterRunner := consulrunner.NewClusterRunner(startingPort, 1, "http")
 	return ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
 		done := make(chan struct{})
 		go func() {
