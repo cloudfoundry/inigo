@@ -499,6 +499,7 @@ var _ = Describe("Executor/Garden", func() {
 							Context("when monitoring persistently fails", func() {
 								BeforeEach(func() {
 									container.Monitor = &models.RunAction{
+										User: "vcap",
 										Path: "false",
 									}
 								})
@@ -512,6 +513,7 @@ var _ = Describe("Executor/Garden", func() {
 							Context("when monitoring succeeds and then fails", func() {
 								BeforeEach(func() {
 									container.Monitor = &models.RunAction{
+										User: "vcap",
 										Path: "sh",
 										Args: []string{
 											"-c",
@@ -557,6 +559,7 @@ var _ = Describe("Executor/Garden", func() {
 						Context("when the action fails", func() {
 							BeforeEach(func() {
 								container.Action = &models.RunAction{
+									User: "vcap",
 									Path: "false",
 								}
 							})
@@ -591,6 +594,7 @@ var _ = Describe("Executor/Garden", func() {
 					Context("when running fails", func() {
 						BeforeEach(func() {
 							container.Action = &models.RunAction{
+								User: "vcap",
 								Path: "false",
 							}
 						})
@@ -947,6 +951,7 @@ var _ = Describe("Executor/Garden", func() {
 						},
 
 						Action: &models.RunAction{
+							User: "vcap",
 							Path: "sh",
 							Args: []string{"-c", "echo -n .$CF_INSTANCE_ADDR. | nc -l 8080"},
 						},

@@ -41,7 +41,7 @@ var _ = Describe("Privileges", func() {
 				&models.RunAction{
 					Path: "sh",
 					// always run as root; tests change task-level privileged
-					Privileged: true,
+					User: "root",
 					Args: []string{
 						"-c",
 						// writing to /proc/sysrq-trigger requires full privileges;

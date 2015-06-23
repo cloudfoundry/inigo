@@ -29,11 +29,13 @@ var defaultSetupFunc = func() models.Action {
 	}
 }
 var defaultAction = &models.RunAction{
+	User: "vcap",
 	Path: "bash",
 	Args: []string{"server.sh"},
 	Env:  []models.EnvironmentVariable{{"PORT", "8080"}},
 }
 var defaultMonitor = &models.RunAction{
+	User: "vcap",
 	Path: "true",
 }
 
@@ -87,6 +89,7 @@ func DockerLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateRequest
 		Ports:  defaultPorts,
 
 		Action: &models.RunAction{
+			User: "vcap",
 			Path: "/myapp/dockerapp",
 			Env:  []models.EnvironmentVariable{{"PORT", "8080"}},
 		},
@@ -101,7 +104,7 @@ func CrashingLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateReque
 		RootFS:      defaultPreloadedRootFS,
 		Instances:   1,
 
-		Action: &models.RunAction{Path: "false"},
+		Action: &models.RunAction{User: "vcap", Path: "false"},
 	}
 }
 
@@ -118,6 +121,7 @@ func LightweightLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateRe
 		Ports: defaultPorts,
 
 		Action: &models.RunAction{
+			User: "vcap",
 			Path: "sh",
 			Args: []string{
 				"-c",
@@ -125,6 +129,7 @@ func LightweightLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateRe
 			},
 		},
 		Monitor: &models.RunAction{
+			User: "vcap",
 			Path: "sh",
 			Args: []string{"-c", "echo all good"},
 		},
@@ -144,7 +149,7 @@ func PrivilegedLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateReq
 		Action: &models.RunAction{
 			Path: "bash",
 			// always run as root; tests change task-level privileged
-			Privileged: true,
+			User: "root",
 			Args: []string{
 				"-c",
 				`

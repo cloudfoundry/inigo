@@ -89,6 +89,7 @@ var _ = Describe("LRP", func() {
 				lrp.StartTimeout = 5
 
 				lrp.Monitor = &models.RunAction{
+					User: "vcap",
 					Path: "false",
 				}
 			})
@@ -114,6 +115,7 @@ var _ = Describe("LRP", func() {
 				lrp.Routes = cfroutes.CFRoutes{{Port: 8080, Hostnames: []string{"lrp-route-8080"}}}.RoutingInfo()
 
 				lrp.Action = &models.RunAction{
+					User: "vcap",
 					Path: "bash",
 					Args: []string{"server.sh"},
 					Env:  []models.EnvironmentVariable{{"PORT", "8080 9080"}},

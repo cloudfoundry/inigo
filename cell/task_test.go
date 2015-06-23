@@ -61,6 +61,7 @@ var _ = Describe("Tasks", func() {
 			err := receptorClient.CreateTask(helpers.TaskCreateRequest(
 				guid,
 				&models.RunAction{
+					User: "vcap",
 					Path: "sh",
 					Args: []string{"-c", `[ "$FOO" = NEW-BAR -a "$BAZ" = WIBBLE ]`},
 					Env: []models.EnvironmentVariable{
@@ -90,6 +91,7 @@ var _ = Describe("Tasks", func() {
 			err := receptorClient.CreateTask(helpers.TaskCreateRequest(
 				guid,
 				&models.RunAction{
+					User: "vcap",
 					Path: "sh",
 					Args: []string{"-c", `[ $PWD = /tmp ]`},
 					Dir:  "/tmp",
@@ -117,14 +119,17 @@ var _ = Describe("Tasks", func() {
 					guid,
 					models.Serial(
 						&models.RunAction{
+							User: "vcap",
 							Path: "curl",
 							Args: []string{inigo_announcement_server.AnnounceURL("before-memory-overdose")},
 						},
 						&models.RunAction{
+							User: "vcap",
 							Path: "sh",
 							Args: []string{"-c", "yes $(yes)"},
 						},
 						&models.RunAction{
+							User: "vcap",
 							Path: "curl",
 							Args: []string{inigo_announcement_server.AnnounceURL("after-memory-overdose")},
 						},
@@ -161,6 +166,7 @@ var _ = Describe("Tasks", func() {
 					guid,
 					models.Serial(
 						&models.RunAction{
+							User: "vcap",
 							Path: "sh",
 							Args: []string{"-c", `
 set -e
@@ -212,6 +218,7 @@ echo should have died by now
 					models.Serial(
 						models.Timeout(
 							&models.RunAction{
+								User: "vcap",
 								Path: "sleep",
 								Args: []string{"1"},
 							},
@@ -260,6 +267,7 @@ echo should have died by now
 						To:   ".",
 					},
 					&models.RunAction{
+						User: "vcap",
 						Path: "./announce",
 					},
 				),
@@ -305,6 +313,7 @@ echo should have died by now
 				guid,
 				models.Serial(
 					&models.RunAction{
+						User: "vcap",
 						Path: "sh",
 						Args: []string{"-c", "echo tasty thingy > thingy"},
 					},
@@ -313,6 +322,7 @@ echo should have died by now
 						To:   fmt.Sprintf("http://%s/thingy", uploadAddr),
 					},
 					&models.RunAction{
+						User: "vcap",
 						Path: "curl",
 						Args: []string{inigo_announcement_server.AnnounceURL(guid)},
 					},
@@ -333,6 +343,7 @@ echo should have died by now
 			taskRequest := helpers.TaskCreateRequest(
 				guid,
 				&models.RunAction{
+					User: "vcap",
 					Path: "sh",
 					Args: []string{"-c", "echo tasty thingy > thingy"},
 				},

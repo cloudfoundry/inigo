@@ -60,6 +60,7 @@ var _ = Describe("Task Lifecycle", func() {
 				taskRequest = helpers.TaskCreateRequestWithMemory(
 					taskGuid,
 					&models.RunAction{
+						User: "vcap",
 						Path: "sh",
 						Args: []string{
 							"-c",
@@ -105,6 +106,7 @@ var _ = Describe("Task Lifecycle", func() {
 						taskGuid,
 						helpers.BogusPreloadedRootFS,
 						&models.RunAction{
+							User: "vcap",
 							Path: "true",
 						},
 					)
@@ -120,6 +122,7 @@ var _ = Describe("Task Lifecycle", func() {
 					taskRequest = helpers.TaskCreateRequestWithMemory(
 						taskGuid,
 						&models.RunAction{
+							User: "vcap",
 							Path: "sh",
 							Args: []string{
 								"-c",
@@ -206,6 +209,7 @@ var _ = Describe("Task Lifecycle", func() {
 				taskCreateRequest = helpers.TaskCreateRequest(
 					taskGuid,
 					&models.RunAction{
+						User: "vcap",
 						Path: "sh",
 						Args: []string{
 							"-c",
@@ -279,6 +283,7 @@ exit 0
 				err := receptorClient.CreateTask(helpers.TaskCreateRequest(
 					taskGuid,
 					&models.RunAction{
+						User: "vcap",
 						Path: "curl",
 						Args: []string{inigo_announcement_server.AnnounceURL(taskGuid)},
 					},
@@ -319,6 +324,7 @@ exit 0
 				err := receptorClient.CreateTask(helpers.TaskCreateRequest(
 					taskGuid,
 					&models.RunAction{
+						User: "vcap",
 						Path: "curl",
 						Args: []string{inigo_announcement_server.AnnounceURL(taskGuid)},
 					},

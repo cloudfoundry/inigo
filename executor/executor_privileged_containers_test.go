@@ -32,9 +32,9 @@ var _ = Describe("Privileged Containers", func() {
 			container := executor.Container{
 				Guid: containerGuid,
 				Action: &models.RunAction{
-					Path:       "sh",
-					Args:       []string{"-c", `[ "$(id -u)" -eq "0" ]`},
-					Privileged: true,
+					Path: "sh",
+					Args: []string{"-c", `[ "$(id -u)" -eq "0" ]`},
+					User: "root",
 				},
 			}
 

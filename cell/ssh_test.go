@@ -107,6 +107,7 @@ var _ = Describe("SSH", func() {
 			Action: &models.CodependentAction{
 				Actions: []models.Action{
 					&models.RunAction{
+						User: "vcap",
 						Path: "/tmp/sshd",
 						Args: []string{
 							"-address=0.0.0.0:3456",
@@ -116,6 +117,7 @@ var _ = Describe("SSH", func() {
 						},
 					},
 					&models.RunAction{
+						User: "vcap",
 						Path: "sh",
 						Args: []string{
 							"-c",
@@ -125,6 +127,7 @@ var _ = Describe("SSH", func() {
 				},
 			},
 			Monitor: &models.RunAction{
+				User: "vcap",
 				Path: "nc",
 				Args: []string{"-z", "127.0.0.1", "3456"},
 			},
@@ -219,6 +222,7 @@ var _ = Describe("SSH", func() {
 				lrp.Action = &models.CodependentAction{
 					Actions: []models.Action{
 						&models.RunAction{
+							User: "vcap",
 							Path: "/tmp/sshd",
 							Args: []string{
 								"-address=0.0.0.0:3456",
@@ -228,6 +232,7 @@ var _ = Describe("SSH", func() {
 							},
 						},
 						&models.RunAction{
+							User: "vcap",
 							Path: "sh",
 							Args: []string{
 								"-c",
@@ -239,6 +244,7 @@ var _ = Describe("SSH", func() {
 
 				// busybox nc doesn't support -z
 				lrp.Monitor = &models.RunAction{
+					User: "vcap",
 					Path: "sh",
 					Args: []string{
 						"-c",
