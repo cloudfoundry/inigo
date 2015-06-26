@@ -59,6 +59,7 @@ var _ = BeforeEach(func() {
 		{"etcd", componentMaker.Etcd()},
 		{"nats", componentMaker.NATS()},
 		{"consul", componentMaker.Consul()},
+		{"bbs", componentMaker.BBS()},
 		{"receptor", componentMaker.Receptor()},
 		{"garden-linux", componentMaker.GardenLinux("-denyNetworks=0.0.0.0/0", "-allowHostAccess=true")},
 	}))
@@ -116,6 +117,9 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["stager"], err = gexec.BuildIn(os.Getenv("STAGER_GOPATH"), "github.com/cloudfoundry-incubator/stager/cmd/stager", "-race")
+	Expect(err).NotTo(HaveOccurred())
+
+	builtExecutables["bbs"], err = gexec.BuildIn(os.Getenv("BBS_GOPATH"), "github.com/cloudfoundry-incubator/bbs/cmd/bbs", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["receptor"], err = gexec.BuildIn(os.Getenv("RECEPTOR_GOPATH"), "github.com/cloudfoundry-incubator/receptor/cmd/receptor", "-race")

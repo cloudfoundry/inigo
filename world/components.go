@@ -58,6 +58,7 @@ type ComponentAddresses struct {
 	Etcd                string
 	EtcdPeer            string
 	Consul              string
+	BBS                 string
 	Rep                 string
 	FakeCC              string
 	FileServer          string
@@ -177,6 +178,26 @@ func (maker ComponentMaker) GardenLinux(argv ...string) *gardenrunner.Runner {
 		maker.GardenGraphPath,
 		argv...,
 	)
+}
+
+func (maker ComponentMaker) BBS(argv ...string) ifrit.Runner {
+	return ginkgomon.New(ginkgomon.Config{
+		Name:              "bbs",
+		AnsiColorCode:     "33m",
+		StartCheck:        "bbs.started",
+		StartCheckTimeout: 10 * time.Second,
+		Command: exec.Command(
+			maker.Artifacts.Executables["bbs"],
+			append([]string{
+				"-address", maker.Addresses.BBS,
+				"-etcdCluster", maker.EtcdCluster(),
+				"-etcdCertFile", maker.SSL.ClientCert,
+				"-etcdKeyFile", maker.SSL.ClientKey,
+				"-etcdCaFile", maker.SSL.CACert,
+				"-logLevel", "debug",
+			}, argv...)...,
+		),
+	})
 }
 
 func (maker ComponentMaker) Rep(argv ...string) *ginkgomon.Runner {
@@ -472,6 +493,7 @@ func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
 			maker.Artifacts.Executables["receptor"],
 			append([]string{
 				"-address", maker.Addresses.Receptor,
+				"-bbsAddress", fmt.Sprintf("http://%s", maker.Addresses.BBS),
 				"-taskHandlerAddress", maker.Addresses.ReceptorTaskHandler,
 				"-etcdCluster", maker.EtcdCluster(),
 				"-consulCluster", maker.ConsulCluster(),

@@ -96,6 +96,7 @@ EOF
 		}))
 
 		brain = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+			{"bbs", componentMaker.BBS()},
 			{"receptor", componentMaker.Receptor()},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"file-server", fileServer},

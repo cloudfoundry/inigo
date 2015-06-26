@@ -66,6 +66,7 @@ var _ = Describe("AppRunner", func() {
 		fileServer, fileServerStaticDir := componentMaker.FileServer()
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+			{"bbs", componentMaker.BBS()},
 			{"receptor", componentMaker.Receptor()},
 			{"rep", componentMaker.Rep()},
 			{"auctioneer", componentMaker.Auctioneer()},
