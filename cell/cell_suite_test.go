@@ -160,10 +160,10 @@ func BuildLifecycles() world.BuiltLifecycles {
 	builderPath, err := gexec.BuildIn(os.Getenv("BUILDPACK_APP_LIFECYCLE_GOPATH"), "github.com/cloudfoundry-incubator/buildpack_app_lifecycle/builder", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	healthcheckPath, err := gexec.BuildIn(os.Getenv("BUILDPACK_APP_LIFECYCLE_GOPATH"), "github.com/cloudfoundry-incubator/buildpack_app_lifecycle/healthcheck", "-race")
+	launcherPath, err := gexec.BuildIn(os.Getenv("BUILDPACK_APP_LIFECYCLE_GOPATH"), "github.com/cloudfoundry-incubator/buildpack_app_lifecycle/launcher", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	launcherPath, err := gexec.BuildIn(os.Getenv("BUILDPACK_APP_LIFECYCLE_GOPATH"), "github.com/cloudfoundry-incubator/buildpack_app_lifecycle/launcher", "-race")
+	healthcheckPath, err := gexec.Build("github.com/cloudfoundry-incubator/healthcheck/cmd/healthcheck", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	lifecycleDir, err := ioutil.TempDir("", "lifecycle-dir")
