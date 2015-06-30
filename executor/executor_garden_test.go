@@ -293,6 +293,7 @@ var _ = Describe("Executor/Garden", func() {
 
 					Action: &models.RunAction{
 						Path: "true",
+						User: "vcap",
 						Env: []models.EnvironmentVariable{
 							{Name: "RUN_ENV1", Value: "run_val1"},
 							{Name: "RUN_ENV2", Value: "run_val2"},
@@ -348,7 +349,6 @@ var _ = Describe("Executor/Garden", func() {
 						DiskMB:     int(gardenCapacity.DiskInBytes/1024/1024) - 256,
 						Containers: int(gardenCapacity.MaxContainers) - 1,
 					}))
-
 				})
 			})
 
@@ -364,7 +364,6 @@ var _ = Describe("Executor/Garden", func() {
 			})
 
 			Context("when the guid is already taken", func() {
-
 				JustBeforeEach(func() {
 					Expect(allocErr).NotTo(HaveOccurred())
 					allocationErrorMap, allocErr = executorClient.AllocateContainers([]executor.Container{container})
@@ -462,6 +461,7 @@ var _ = Describe("Executor/Garden", func() {
 						BeforeEach(func() {
 							container.Action = &models.RunAction{
 								Path: "sh",
+								User: "vcap",
 								Args: []string{"-c", "while true; do sleep 1; done"},
 							}
 						})
@@ -478,6 +478,7 @@ var _ = Describe("Executor/Garden", func() {
 								BeforeEach(func() {
 									container.Monitor = &models.RunAction{
 										Path: "true",
+										User: "vcap",
 									}
 								})
 
@@ -539,6 +540,7 @@ var _ = Describe("Executor/Garden", func() {
 							BeforeEach(func() {
 								container.Action = &models.RunAction{
 									Path: "true",
+									User: "vcap",
 								}
 							})
 
@@ -549,6 +551,7 @@ var _ = Describe("Executor/Garden", func() {
 							BeforeEach(func() {
 								container.Action = &models.RunAction{
 									Path: "sh",
+									User: "vcap",
 									Args: []string{"-c", "while true; do sleep 1; done"},
 								}
 							})
@@ -568,6 +571,7 @@ var _ = Describe("Executor/Garden", func() {
 								BeforeEach(func() {
 									container.Monitor = &models.RunAction{
 										Path: "true",
+										User: "vcap",
 									}
 								})
 
@@ -694,6 +698,7 @@ var _ = Describe("Executor/Garden", func() {
 
 					Action: &models.RunAction{
 						Path: "sh",
+						User: "vcap",
 						Args: []string{"-c", "while true; do sleep 1; done"},
 					},
 				})
@@ -808,6 +813,7 @@ var _ = Describe("Executor/Garden", func() {
 					guid = allocNewContainer(executor.Container{
 						Action: &models.RunAction{
 							Path: "sh",
+							User: "vcap",
 							Args: []string{
 								"-c", `while true; do	sleep 1; done`,
 							},
