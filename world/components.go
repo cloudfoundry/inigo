@@ -222,6 +222,7 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 			"-sessionName", name,
 			"-rootFSProvider", "docker",
 			"-etcdCluster", "https://" + maker.Addresses.Etcd,
+			"-bbsAddress", fmt.Sprintf("http://%s", maker.Addresses.BBS),
 			"-listenAddr", fmt.Sprintf("%s:%d", host, offsetPort(port, n)),
 			"-cellID", "the-cell-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()) + "-" + strconv.Itoa(n),
 			"-pollingInterval", "1s",
