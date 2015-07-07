@@ -136,6 +136,7 @@ var _ = Describe("Evacuation", func() {
 		}).Should(Equal(0))
 
 		By("still being routable after the evacuated rep has exited")
+		Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 		Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 	})
 })
