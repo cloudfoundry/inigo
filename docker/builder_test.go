@@ -114,27 +114,35 @@ var _ = Describe("Building", func() {
 		if len(dockerImageURL) > 0 {
 			args = append(args, "-dockerImageURL", dockerImageURL)
 		}
+
 		if len(dockerRef) > 0 {
 			args = append(args, "-dockerRef", dockerRef)
 		}
+
 		if len(dockerRegistryAddresses) > 0 {
 			args = append(args, "-dockerRegistryAddresses", dockerRegistryAddresses)
 		}
+
 		if len(insecureDockerRegistries) > 0 {
 			args = append(args, "-insecureDockerRegistries", insecureDockerRegistries)
 		}
+
 		if cacheDockerImage {
 			args = append(args, "-cacheDockerImage")
 		}
+
 		if len(dockerLoginServer) > 0 {
 			args = append(args, "-dockerLoginServer", dockerLoginServer)
 		}
+
 		if len(dockerUser) > 0 {
 			args = append(args, "-dockerUser", dockerUser)
 		}
+
 		if len(dockerPassword) > 0 {
 			args = append(args, "-dockerPassword", dockerPassword)
 		}
+
 		if len(dockerEmail) > 0 {
 			args = append(args, "-dockerEmail", dockerEmail)
 		}
@@ -151,7 +159,6 @@ var _ = Describe("Building", func() {
 	}
 
 	Context("when running the main", func() {
-
 		Context("when signalled", func() {
 			var session *gexec.Session
 
@@ -177,10 +184,13 @@ var _ = Describe("Building", func() {
 				)
 			})
 
+			JustBeforeEach(func() {
+				session = setupBuilder()
+				Eventually(session.Out, 30).Should(gbytes.Say("Staging process started ..."))
+			})
+
 			Context("and builder is interrupted", func() {
 				JustBeforeEach(func() {
-					session = setupBuilder()
-					Eventually(session.Out).Should(gbytes.Say("Staging process started ..."))
 					session.Interrupt()
 				})
 
@@ -191,9 +201,6 @@ var _ = Describe("Building", func() {
 
 			Context("and docker is killed", func() {
 				JustBeforeEach(func() {
-					session = setupBuilder()
-					Eventually(session.Out).Should(gbytes.Say("Staging process started ..."))
-
 					cmd := exec.Command("/usr/bin/killall", "docker")
 					cmd.Env = os.Environ()
 					err := cmd.Run()
@@ -206,7 +213,6 @@ var _ = Describe("Building", func() {
 					Eventually(session).Should(gexec.Exit(2))
 				})
 			})
-
 		})
 	})
 })
