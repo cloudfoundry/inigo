@@ -477,8 +477,8 @@ var _ = Describe("Executor/Garden", func() {
 							Context("when monitoring succeeds", func() {
 								BeforeEach(func() {
 									container.Monitor = &models.RunAction{
-										User: "vcap",
 										Path: "true",
+										User: "vcap",
 									}
 								})
 
@@ -570,8 +570,8 @@ var _ = Describe("Executor/Garden", func() {
 							Context("even if the monitoring succeeds", func() {
 								BeforeEach(func() {
 									container.Monitor = &models.RunAction{
-										User: "vcap",
 										Path: "true",
+										User: "vcap",
 									}
 								})
 
