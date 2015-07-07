@@ -28,12 +28,14 @@ var defaultSetupFunc = func() models.Action {
 		To:   ".",
 	}
 }
+
 var defaultAction = &models.RunAction{
 	User: "vcap",
 	Path: "bash",
 	Args: []string{"server.sh"},
 	Env:  []models.EnvironmentVariable{{"PORT", "8080"}},
 }
+
 var defaultMonitor = &models.RunAction{
 	User: "vcap",
 	Path: "true",

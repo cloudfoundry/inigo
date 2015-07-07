@@ -135,7 +135,8 @@ var _ = Describe("Evacuation", func() {
 			return evacutaingRepRunner.ExitCode()
 		}).Should(Equal(0))
 
-		By("still being routable after the evacuated rep has exited")
+		By("running immediately after the rep exits and is eventually routable")
+		Expect(helpers.LRPStatePoller(receptorClient, processGuid, nil)()).To(Equal(receptor.ActualLRPStateRunning))
 		Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 		Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 	})
