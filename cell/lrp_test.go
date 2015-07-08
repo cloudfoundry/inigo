@@ -1,6 +1,7 @@
 package cell_test
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -47,7 +48,7 @@ var _ = Describe("LRP", func() {
 			{"route-emitter", componentMaker.RouteEmitter()},
 		}))
 
-		archiveFiles = fixtures.HelloWorldIndexLRP()
+		archiveFiles = fixtures.GoServerApp()
 	})
 
 	JustBeforeEach(func() {
@@ -66,6 +67,15 @@ var _ = Describe("LRP", func() {
 
 		BeforeEach(func() {
 			lrp = helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
+			lrp.Setup = &models.DownloadAction{
+				From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+				To:   "/tmp",
+			}
+			lrp.Action = &models.RunAction{
+				User: "vcap",
+				Path: "/tmp/go-server",
+				Env:  []models.EnvironmentVariable{{"PORT", "8080"}},
+			}
 		})
 
 		JustBeforeEach(func() {
@@ -116,8 +126,7 @@ var _ = Describe("LRP", func() {
 
 				lrp.Action = &models.RunAction{
 					User: "vcap",
-					Path: "bash",
-					Args: []string{"server.sh"},
+					Path: "/tmp/go-server",
 					Env:  []models.EnvironmentVariable{{"PORT", "8080 9080"}},
 				}
 			})
@@ -282,6 +291,17 @@ var _ = Describe("LRP", func() {
 		Context("Egress Rules", func() {
 			BeforeEach(func() {
 				archiveFiles = fixtures.CurlLRP()
+				lrp.Action = &models.RunAction{
+					User: "vcap",
+					Path: "bash",
+					Args: []string{"server.sh"},
+					Env:  []models.EnvironmentVariable{{"PORT", "8080"}},
+				}
+
+				lrp.Setup = &models.DownloadAction{
+					From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+					To:   ".",
+				}
 			})
 
 			Context("default networking", func() {
@@ -416,7 +436,6 @@ var _ = Describe("Crashing LRPs", func() {
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 		}))
-
 	})
 
 	AfterEach(func() {

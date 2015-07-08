@@ -9,6 +9,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -87,7 +88,7 @@ var _ = Describe("Evacuation", func() {
 
 		test_helper.CreateZipArchive(
 			filepath.Join(fileServerStaticDir, "lrp.zip"),
-			fixtures.HelloWorldIndexLRP(),
+			fixtures.GoServerApp(),
 		)
 	})
 
@@ -98,6 +99,15 @@ var _ = Describe("Evacuation", func() {
 	It("handles evacuation", func() {
 		By("desiring an LRP")
 		lrp := helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
+		lrp.Setup = &models.DownloadAction{
+			From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+			To:   "/tmp",
+		}
+		lrp.Action = &models.RunAction{
+			User: "vcap",
+			Path: "/tmp/go-server",
+			Env:  []models.EnvironmentVariable{{"PORT", "8080"}},
+		}
 
 		err := receptorClient.CreateDesiredLRP(lrp)
 		Expect(err).NotTo(HaveOccurred())

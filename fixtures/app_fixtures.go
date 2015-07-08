@@ -1,6 +1,30 @@
 package fixtures
 
-import archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
+import (
+	"io/ioutil"
+
+	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gexec"
+	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
+)
+
+func GoServerApp() []archive_helper.ArchiveFile {
+	serverPath, err := gexec.Build("github.com/cloudfoundry-incubator/inigo/fixtures/go-server")
+	Expect(err).NotTo(HaveOccurred())
+
+	contents, err := ioutil.ReadFile(serverPath)
+	Expect(err).NotTo(HaveOccurred())
+	return []archive_helper.ArchiveFile{
+		{
+			Name: "go-server",
+			Body: string(contents),
+		}, {
+			Name: "staging_info.yml",
+			Body: `detected_buildpack: Doesn't Matter
+start_command: go-server`,
+		},
+	}
+}
 
 func HelloWorldIndexApp() []archive_helper.ArchiveFile {
 	return []archive_helper.ArchiveFile{
