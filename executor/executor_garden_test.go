@@ -923,10 +923,7 @@ var _ = Describe("Executor/Garden", func() {
 							Expect(executorClient.ListContainers(executor.Tags{
 								"some-tag":  "some-value",
 								"bogus-tag": "bogus-value",
-							})).To(
-
-								BeEmpty())
-
+							})).To(BeEmpty())
 						})
 					})
 
@@ -934,10 +931,7 @@ var _ = Describe("Executor/Garden", func() {
 						It("does not include the allocated container", func() {
 							Expect(executorClient.ListContainers(executor.Tags{
 								"some-tag": "bogus-value",
-							})).To(
-
-								BeEmpty())
-
+							})).To(BeEmpty())
 						})
 					})
 				})
