@@ -26,6 +26,7 @@ var defaultSetupFunc = func() models.Action {
 	return &models.DownloadAction{
 		From: fmt.Sprintf("http://%s/v1/static/%s", addresses.FileServer, "lrp.zip"),
 		To:   ".",
+		User: "vcap",
 	}
 }
 

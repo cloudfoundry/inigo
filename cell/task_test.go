@@ -265,6 +265,7 @@ echo should have died by now
 					&models.DownloadAction{
 						From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "announce.tar.gz"),
 						To:   ".",
+						User: "vcap",
 					},
 					&models.RunAction{
 						User: "vcap",
@@ -320,6 +321,7 @@ echo should have died by now
 					&models.UploadAction{
 						From: "thingy",
 						To:   fmt.Sprintf("http://%s/thingy", uploadAddr),
+						User: "vcap",
 					},
 					&models.RunAction{
 						User: "vcap",

@@ -101,6 +101,7 @@ var _ = Describe("SSH", func() {
 						From:     fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "sshd.tgz"),
 						To:       "/tmp",
 						CacheKey: "sshd",
+						User:     "vcap",
 					},
 				},
 			},

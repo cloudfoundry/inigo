@@ -70,6 +70,7 @@ var _ = Describe("LRP", func() {
 			lrp.Setup = &models.DownloadAction{
 				From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
 				To:   "/tmp",
+				User: "vcap",
 			}
 			lrp.Action = &models.RunAction{
 				User: "vcap",
@@ -301,6 +302,7 @@ var _ = Describe("LRP", func() {
 				lrp.Setup = &models.DownloadAction{
 					From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
 					To:   ".",
+					User: "vcap",
 				}
 			})
 
