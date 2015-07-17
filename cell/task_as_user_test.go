@@ -28,7 +28,7 @@ var _ = Describe("Tasks as specific user", func() {
 
 		cellGroup := grouper.Members{
 			{"file-server", fileServerRunner},
-			{"rep", componentMaker.Rep("-memoryMB", "1024", "-allowPrivileged")},
+			{"rep", componentMaker.Rep("-memoryMB", "1024")},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"converger", componentMaker.Converger()},
 		}
@@ -51,18 +51,11 @@ var _ = Describe("Tasks as specific user", func() {
 		It("runs the command as a specific user", func() {
 			taskRequest := helpers.TaskCreateRequest(
 				guid,
-				models.Serial(
-					&models.RunAction{
-						User: "root",
-						Path: "useradd",
-						Args: []string{"-m", "testuser"},
-					},
-					&models.RunAction{
-						User: "testuser",
-						Path: "sh",
-						Args: []string{"-c", `[ $(whoami) = testuser ]`},
-					},
-				),
+				&models.RunAction{
+					User: "testuser",
+					Path: "sh",
+					Args: []string{"-c", `[ $(whoami) = testuser ]`},
+				},
 			)
 			taskRequest.Privileged = true
 			err := receptorClient.CreateTask(taskRequest)
