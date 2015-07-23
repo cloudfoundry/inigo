@@ -833,7 +833,7 @@ var _ = Describe("Executor/Garden", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(process.Wait()).To(Equal(0))
 
-					stream, streamErr = executorClient.GetFiles(guid, "some/path")
+					stream, streamErr = executorClient.GetFiles(guid, "/home/vcap/some/path")
 				})
 
 				It("does not error", func() {

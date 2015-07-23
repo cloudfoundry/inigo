@@ -350,7 +350,7 @@ echo should have died by now
 					Args: []string{"-c", "echo tasty thingy > thingy"},
 				},
 			)
-			taskRequest.ResultFile = "thingy"
+			taskRequest.ResultFile = "/home/vcap/thingy"
 			err := receptorClient.CreateTask(taskRequest)
 			Expect(err).NotTo(HaveOccurred())
 
