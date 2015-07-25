@@ -295,6 +295,7 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 		Command: exec.Command(
 			maker.Artifacts.Executables["auctioneer"],
 			append([]string{
+				"-bbsAddress", fmt.Sprintf("http://%s", maker.Addresses.BBS),
 				"-etcdCluster", maker.EtcdCluster(),
 				"-listenAddr", maker.Addresses.Auctioneer,
 				"-lockRetryInterval", "1s",
