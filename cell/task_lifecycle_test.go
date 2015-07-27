@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/diego_errors"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -238,11 +238,11 @@ exit 0
 
 			Context("with appropriate security group setting", func() {
 				BeforeEach(func() {
-					taskCreateRequest.EgressRules = []models.SecurityGroupRule{
+					taskCreateRequest.EgressRules = []*models.SecurityGroupRule{
 						{
 							Protocol:     models.TCPProtocol,
 							Destinations: []string{"9.0.0.0-89.255.255.255", "90.0.0.0-94.0.0.0"},
-							Ports:        []uint16{80, 443},
+							Ports:        []uint32{80, 443},
 						},
 						{
 							Protocol:     models.UDPProtocol,

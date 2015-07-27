@@ -14,10 +14,10 @@ import (
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
@@ -64,7 +64,7 @@ var _ = Describe("Tasks", func() {
 					User: "vcap",
 					Path: "sh",
 					Args: []string{"-c", `[ "$FOO" = NEW-BAR -a "$BAZ" = WIBBLE ]`},
-					Env: []models.EnvironmentVariable{
+					Env: []*models.EnvironmentVariable{
 						{"FOO", "OLD-BAR"},
 						{"BAZ", "WIBBLE"},
 						{"FOO", "NEW-BAR"},
@@ -186,8 +186,8 @@ exec 13<>file11
 
 echo should have died by now
 `},
-							ResourceLimits: models.ResourceLimits{
-								Nofile: &nofile,
+							ResourceLimits: &models.ResourceLimits{
+								Nofile: nofile,
 							},
 						},
 					),

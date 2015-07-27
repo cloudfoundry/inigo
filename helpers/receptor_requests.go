@@ -3,9 +3,10 @@ package helpers
 import (
 	"fmt"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	. "github.com/onsi/gomega"
 )
 
@@ -22,22 +23,22 @@ const DefaultHost = "lrp-route"
 var defaultRoutes = cfroutes.CFRoutes{{Hostnames: []string{DefaultHost}, Port: 8080}}.RoutingInfo()
 var defaultPorts = []uint16{8080}
 
-var defaultSetupFunc = func() models.Action {
-	return &models.DownloadAction{
+var defaultSetupFunc = func() oldmodels.Action {
+	return &oldmodels.DownloadAction{
 		From: fmt.Sprintf("http://%s/v1/static/%s", addresses.FileServer, "lrp.zip"),
 		To:   ".",
 		User: "vcap",
 	}
 }
 
-var defaultAction = &models.RunAction{
+var defaultAction = &oldmodels.RunAction{
 	User: "vcap",
 	Path: "bash",
 	Args: []string{"server.sh"},
-	Env:  []models.EnvironmentVariable{{"PORT", "8080"}},
+	Env:  []oldmodels.EnvironmentVariable{{"PORT", "8080"}},
 }
 
-var defaultMonitor = &models.RunAction{
+var defaultMonitor = &oldmodels.RunAction{
 	User: "vcap",
 	Path: "true",
 }
@@ -91,10 +92,10 @@ func DockerLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateRequest
 		Routes: defaultRoutes,
 		Ports:  defaultPorts,
 
-		Action: &models.RunAction{
+		Action: &oldmodels.RunAction{
 			User: "vcap",
 			Path: "/myapp/dockerapp",
-			Env:  []models.EnvironmentVariable{{"PORT", "8080"}},
+			Env:  []oldmodels.EnvironmentVariable{{"PORT", "8080"}},
 		},
 		Monitor: defaultMonitor,
 	}
@@ -107,7 +108,7 @@ func CrashingLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateReque
 		RootFS:      defaultPreloadedRootFS,
 		Instances:   1,
 
-		Action: &models.RunAction{User: "vcap", Path: "false"},
+		Action: &oldmodels.RunAction{User: "vcap", Path: "false"},
 	}
 }
 
@@ -177,29 +178,29 @@ func PrivilegedLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateReq
 	}
 }
 
-func TaskCreateRequest(taskGuid string, action models.Action) receptor.TaskCreateRequest {
+func TaskCreateRequest(taskGuid string, action models.ActionInterface) receptor.TaskCreateRequest {
 	return taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, 0, 0)
 }
 
-func TaskCreateRequestWithMemory(taskGuid string, action models.Action, memoryMB int) receptor.TaskCreateRequest {
+func TaskCreateRequestWithMemory(taskGuid string, action models.ActionInterface, memoryMB int) receptor.TaskCreateRequest {
 	return taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, memoryMB, 0)
 }
 
-func TaskCreateRequestWithRootFS(taskGuid, rootfs string, action models.Action) receptor.TaskCreateRequest {
+func TaskCreateRequestWithRootFS(taskGuid, rootfs string, action models.ActionInterface) receptor.TaskCreateRequest {
 	return taskCreateRequest(taskGuid, rootfs, action, 0, 0)
 }
 
-func TaskCreateRequestWithMemoryAndDisk(taskGuid string, action models.Action, memoryMB, diskMB int) receptor.TaskCreateRequest {
+func TaskCreateRequestWithMemoryAndDisk(taskGuid string, action models.ActionInterface, memoryMB, diskMB int) receptor.TaskCreateRequest {
 	return taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, memoryMB, diskMB)
 }
 
-func taskCreateRequest(taskGuid, rootFS string, action models.Action, memoryMB, diskMB int) receptor.TaskCreateRequest {
+func taskCreateRequest(taskGuid, rootFS string, action models.ActionInterface, memoryMB, diskMB int) receptor.TaskCreateRequest {
 	return receptor.TaskCreateRequest{
 		TaskGuid: taskGuid,
 		Domain:   defaultDomain,
 		RootFS:   rootFS,
 		MemoryMB: memoryMB,
 		DiskMB:   diskMB,
-		Action:   action,
+		Action:   models.WrapAction(action),
 	}
 }
