@@ -190,6 +190,7 @@ func (maker ComponentMaker) BBS(argv ...string) ifrit.Runner {
 			maker.Artifacts.Executables["bbs"],
 			append([]string{
 				"-address", maker.Addresses.BBS,
+				"-auctioneerAddress", "http://" + maker.Addresses.Auctioneer,
 				"-etcdCluster", maker.EtcdCluster(),
 				"-etcdCertFile", maker.SSL.ClientCert,
 				"-etcdKeyFile", maker.SSL.ClientKey,
