@@ -3,9 +3,9 @@ package executor_test
 import (
 	"os"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/executor"
 	executorinit "github.com/cloudfoundry-incubator/executor/initializer"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/nu7hatch/gouuid"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
@@ -31,11 +31,11 @@ var _ = Describe("Privileged Containers", func() {
 
 			container := executor.Container{
 				Guid: containerGuid,
-				Action: &models.RunAction{
+				Action: models.WrapAction(&models.RunAction{
 					Path: "sh",
 					Args: []string{"-c", `[ "$(id -u)" -eq "0" ]`},
 					User: "root",
-				},
+				}),
 			}
 
 			config := executorinit.DefaultConfiguration
