@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/executor"
 	executorinit "github.com/cloudfoundry-incubator/executor/initializer"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	uuid "github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -291,14 +291,14 @@ var _ = Describe("Executor/Garden", func() {
 						{Name: "ENV2", Value: "val2"},
 					},
 
-					Action: &models.RunAction{
+					Action: models.WrapAction(&models.RunAction{
 						Path: "true",
 						User: "vcap",
-						Env: []models.EnvironmentVariable{
+						Env: []*models.EnvironmentVariable{
 							{Name: "RUN_ENV1", Value: "run_val1"},
 							{Name: "RUN_ENV2", Value: "run_val2"},
 						},
-					},
+					}),
 				}
 			})
 
@@ -459,11 +459,11 @@ var _ = Describe("Executor/Garden", func() {
 
 					Context("when created without a monitor action", func() {
 						BeforeEach(func() {
-							container.Action = &models.RunAction{
+							container.Action = models.WrapAction(&models.RunAction{
 								Path: "sh",
 								User: "vcap",
 								Args: []string{"-c", "while true; do sleep 1; done"},
-							}
+							})
 						})
 
 						It("reports the state as 'running'", func() {
@@ -476,10 +476,10 @@ var _ = Describe("Executor/Garden", func() {
 						itFailsOnlyIfMonitoringSucceedsAndThenFails := func() {
 							Context("when monitoring succeeds", func() {
 								BeforeEach(func() {
-									container.Monitor = &models.RunAction{
+									container.Monitor = models.WrapAction(&models.RunAction{
 										User: "vcap",
 										Path: "true",
-									}
+									})
 								})
 
 								It("emits a running container event", func() {
@@ -499,10 +499,10 @@ var _ = Describe("Executor/Garden", func() {
 
 							Context("when monitoring persistently fails", func() {
 								BeforeEach(func() {
-									container.Monitor = &models.RunAction{
+									container.Monitor = models.WrapAction(&models.RunAction{
 										User: "vcap",
 										Path: "false",
-									}
+									})
 								})
 
 								It("reports the state as 'created'", func() {
@@ -513,7 +513,7 @@ var _ = Describe("Executor/Garden", func() {
 
 							Context("when monitoring succeeds and then fails", func() {
 								BeforeEach(func() {
-									container.Monitor = &models.RunAction{
+									container.Monitor = models.WrapAction(&models.RunAction{
 										User: "vcap",
 										Path: "sh",
 										Args: []string{
@@ -526,7 +526,7 @@ var _ = Describe("Executor/Garden", func() {
 													fi
 												`,
 										},
-									}
+									})
 								})
 
 								It("reports the container as 'running' and then as 'completed'", func() {
@@ -538,10 +538,10 @@ var _ = Describe("Executor/Garden", func() {
 
 						Context("when the action succeeds and exits immediately (daemonization)", func() {
 							BeforeEach(func() {
-								container.Action = &models.RunAction{
+								container.Action = models.WrapAction(&models.RunAction{
 									Path: "true",
 									User: "vcap",
-								}
+								})
 							})
 
 							itFailsOnlyIfMonitoringSucceedsAndThenFails()
@@ -549,11 +549,11 @@ var _ = Describe("Executor/Garden", func() {
 
 						Context("while the action does not stop running", func() {
 							BeforeEach(func() {
-								container.Action = &models.RunAction{
+								container.Action = models.WrapAction(&models.RunAction{
 									Path: "sh",
 									User: "vcap",
 									Args: []string{"-c", "while true; do sleep 1; done"},
-								}
+								})
 							})
 
 							itFailsOnlyIfMonitoringSucceedsAndThenFails()
@@ -561,18 +561,18 @@ var _ = Describe("Executor/Garden", func() {
 
 						Context("when the action fails", func() {
 							BeforeEach(func() {
-								container.Action = &models.RunAction{
+								container.Action = models.WrapAction(&models.RunAction{
 									User: "vcap",
 									Path: "false",
-								}
+								})
 							})
 
 							Context("even if the monitoring succeeds", func() {
 								BeforeEach(func() {
-									container.Monitor = &models.RunAction{
+									container.Monitor = models.WrapAction(&models.RunAction{
 										User: "vcap",
 										Path: "true",
-									}
+									})
 								})
 
 								It("stops the container", func() {
@@ -597,10 +597,10 @@ var _ = Describe("Executor/Garden", func() {
 
 					Context("when running fails", func() {
 						BeforeEach(func() {
-							container.Action = &models.RunAction{
+							container.Action = models.WrapAction(&models.RunAction{
 								User: "vcap",
 								Path: "false",
-							}
+							})
 						})
 
 						It("saves the failed result and reason", func() {
@@ -696,11 +696,11 @@ var _ = Describe("Executor/Garden", func() {
 					MemoryMB: 64,
 					DiskMB:   64,
 
-					Action: &models.RunAction{
+					Action: models.WrapAction(&models.RunAction{
 						Path: "sh",
 						User: "vcap",
 						Args: []string{"-c", "while true; do sleep 1; done"},
-					},
+					}),
 				})
 
 				err := executorClient.RunContainer(guid)
@@ -811,13 +811,13 @@ var _ = Describe("Executor/Garden", func() {
 
 				JustBeforeEach(func() {
 					guid = allocNewContainer(executor.Container{
-						Action: &models.RunAction{
+						Action: models.WrapAction(&models.RunAction{
 							Path: "sh",
 							User: "vcap",
 							Args: []string{
 								"-c", `while true; do	sleep 1; done`,
 							},
-						},
+						}),
 					})
 
 					err := executorClient.RunContainer(guid)
@@ -950,11 +950,11 @@ var _ = Describe("Executor/Garden", func() {
 							{ContainerPort: 8080},
 						},
 
-						Action: &models.RunAction{
+						Action: models.WrapAction(&models.RunAction{
 							User: "vcap",
 							Path: "sh",
 							Args: []string{"-c", "echo -n .$CF_INSTANCE_ADDR. | nc -l 8080"},
-						},
+						}),
 					})
 
 					err := executorClient.RunContainer(guid)

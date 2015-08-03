@@ -187,7 +187,7 @@ exec 13<>file11
 echo should have died by now
 `},
 							ResourceLimits: &models.ResourceLimits{
-								Nofile: nofile,
+								Nofile: &nofile,
 							},
 						},
 					),
