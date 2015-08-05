@@ -120,7 +120,7 @@ func (f *FakeCC) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"/staging/droplets/.*/upload":          f.handleDropletUploadRequest,
 		"/staging/buildpack_cache/.*/upload":   f.handleBuildArtifactsCacheUploadRequest,
 		"/staging/buildpack_cache/.*/download": f.handleBuildArtifactsCacheDownloadRequest,
-		"/internal/staging/.*/completed":       f.newHandleStagingRequest(),
+		"/v3/internal/staging/.*/completed":    f.newHandleStagingRequest(),
 	}
 
 	for pattern, handler := range endpoints {
@@ -206,7 +206,7 @@ func (f *FakeCC) handleBuildArtifactsCacheDownloadRequest(w http.ResponseWriter,
 
 func (f *FakeCC) newHandleStagingRequest() http.HandlerFunc {
 	return ghttp.CombineHandlers(
-		ghttp.VerifyRequest("POST", MatchRegexp("/internal/staging/(.*)/completed")),
+		ghttp.VerifyRequest("POST", MatchRegexp("/v3/internal/staging/(.*)/completed")),
 		ghttp.VerifyBasicAuth(CC_USERNAME, CC_PASSWORD),
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var msg cc_messages.StagingResponseForCC
@@ -215,7 +215,7 @@ func (f *FakeCC) newHandleStagingRequest() http.HandlerFunc {
 			r.Body.Close()
 			f.lock.Lock()
 			defer f.lock.Unlock()
-			guid := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/internal/staging/"), "/completed")
+			guid := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v3/internal/staging/"), "/completed")
 			f.stagingGuids = append(f.stagingGuids, guid)
 			f.stagingResponses = append(f.stagingResponses, msg)
 		}),
