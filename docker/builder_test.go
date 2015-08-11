@@ -3,6 +3,7 @@ package docker_test
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -22,7 +23,9 @@ var _ = Describe("Building", func() {
 		builderCmd                 *exec.Cmd
 		dockerRef                  string
 		dockerImageURL             string
-		dockerRegistryAddresses    string
+		dockerRegistryHost         string
+		dockerRegistryPort         string
+		dockerRegistryIPs          string
 		insecureDockerRegistries   string
 		dockerDaemonExecutablePath string
 		cacheDockerImage           bool
@@ -80,7 +83,9 @@ var _ = Describe("Building", func() {
 
 		dockerRef = ""
 		dockerImageURL = ""
-		dockerRegistryAddresses = ""
+		dockerRegistryHost = ""
+		dockerRegistryPort = ""
+		dockerRegistryIPs = ""
 		insecureDockerRegistries = ""
 		dockerDaemonExecutablePath = "/usr/bin/docker"
 		cacheDockerImage = true
@@ -97,16 +102,6 @@ var _ = Describe("Building", func() {
 		fakeDockerRegistry = ghttp.NewServer()
 	})
 
-	dockerPidExists := func() bool {
-		_, err := os.Stat("/var/run/docker.pid")
-		return err == nil
-	}
-
-	AfterEach(func() {
-		Eventually(dockerPidExists).Should(BeFalse())
-		os.RemoveAll(outputMetadataDir)
-	})
-
 	JustBeforeEach(func() {
 		args := []string{"-dockerDaemonExecutablePath", dockerDaemonExecutablePath,
 			"-outputMetadataJSONFilename", outputMetadataJSONFilename}
@@ -114,35 +109,33 @@ var _ = Describe("Building", func() {
 		if len(dockerImageURL) > 0 {
 			args = append(args, "-dockerImageURL", dockerImageURL)
 		}
-
 		if len(dockerRef) > 0 {
 			args = append(args, "-dockerRef", dockerRef)
 		}
-
-		if len(dockerRegistryAddresses) > 0 {
-			args = append(args, "-dockerRegistryAddresses", dockerRegistryAddresses)
+		if len(dockerRegistryHost) > 0 {
+			args = append(args, "-dockerRegistryHost", dockerRegistryHost)
 		}
-
+		if len(dockerRegistryPort) > 0 {
+			args = append(args, "-dockerRegistryPort", dockerRegistryPort)
+		}
+		if len(dockerRegistryIPs) > 0 {
+			args = append(args, "-dockerRegistryIPs", dockerRegistryIPs)
+		}
 		if len(insecureDockerRegistries) > 0 {
 			args = append(args, "-insecureDockerRegistries", insecureDockerRegistries)
 		}
-
 		if cacheDockerImage {
 			args = append(args, "-cacheDockerImage")
 		}
-
 		if len(dockerLoginServer) > 0 {
 			args = append(args, "-dockerLoginServer", dockerLoginServer)
 		}
-
 		if len(dockerUser) > 0 {
 			args = append(args, "-dockerUser", dockerUser)
 		}
-
 		if len(dockerPassword) > 0 {
 			args = append(args, "-dockerPassword", dockerPassword)
 		}
-
 		if len(dockerEmail) > 0 {
 			args = append(args, "-dockerEmail", dockerEmail)
 		}
@@ -158,37 +151,52 @@ var _ = Describe("Building", func() {
 		return fmt.Sprintf("docker://%s/some-repo", parts.Host)
 	}
 
+	dockerPidExists := func() bool {
+		_, err := os.Stat("/var/run/docker.pid")
+		return err == nil
+	}
+
 	Context("when running the main", func() {
+		var session *gexec.Session
+
+		BeforeEach(func() {
+			dockerImageURL = buildDockerImageURL()
+
+			dockerRegistryHost = "docker-registry.service.cf.internal"
+			dockerRegistryPort = "8080"
+
+			parts, err := url.Parse(fakeDockerRegistry.URL())
+			Expect(err).NotTo(HaveOccurred())
+			ip, _, err := net.SplitHostPort(parts.Host)
+			Expect(err).NotTo(HaveOccurred())
+			dockerRegistryIPs = ip
+
+			setupFakeDockerRegistry()
+			fakeDockerRegistry.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/v1/images/id-1/json"),
+					http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+						w.Header().Add("X-Docker-Size", "789")
+						w.Write([]byte(`{"id":"layer-1","parent":"parent-1","Config":{"Cmd":["-bazbot","-foobar"],"Entrypoint":["/dockerapp","-t"],"WorkingDir":"/workdir"}}`))
+
+						// give the tests time to send signals, while the builder is "working"
+						time.Sleep(2 * time.Second)
+					}),
+				),
+			)
+		})
+
+		JustBeforeEach(func() {
+			session = setupBuilder()
+			Eventually(session.Out, 30).Should(gbytes.Say("Staging process started ..."))
+		})
+
+		AfterEach(func() {
+			Eventually(dockerPidExists).Should(BeFalse())
+			os.RemoveAll(outputMetadataDir)
+		})
+
 		Context("when signalled", func() {
-			var session *gexec.Session
-
-			BeforeEach(func() {
-				dockerImageURL = buildDockerImageURL()
-
-				parts, err := url.Parse(fakeDockerRegistry.URL())
-				Expect(err).NotTo(HaveOccurred())
-				dockerRegistryAddresses = parts.Host
-
-				setupFakeDockerRegistry()
-				fakeDockerRegistry.AppendHandlers(
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", "/v1/images/id-1/json"),
-						http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-							w.Header().Add("X-Docker-Size", "789")
-							w.Write([]byte(`{"id":"layer-1","parent":"parent-1","Config":{"Cmd":["-bazbot","-foobar"],"Entrypoint":["/dockerapp","-t"],"WorkingDir":"/workdir"}}`))
-
-							// give the tests time to send signals, while the builder is "working"
-							time.Sleep(2 * time.Second)
-						}),
-					),
-				)
-			})
-
-			JustBeforeEach(func() {
-				session = setupBuilder()
-				Eventually(session.Out, 30).Should(gbytes.Say("Staging process started ..."))
-			})
-
 			Context("and builder is interrupted", func() {
 				JustBeforeEach(func() {
 					session.Interrupt()
@@ -212,6 +220,20 @@ var _ = Describe("Building", func() {
 				It("processes the signal and exits", func() {
 					Eventually(session).Should(gexec.Exit(2))
 				})
+			})
+		})
+
+		Context("when started", func() {
+			AfterEach(func() {
+				session.Interrupt()
+				Eventually(session).Should(gexec.Exit(2))
+			})
+
+			It("creates /etc/hosts entry", func() {
+				hostsContent, err := ioutil.ReadFile("/etc/hosts")
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(hostsContent).To(ContainSubstring("%s %s\n", dockerRegistryIPs, dockerRegistryHost))
 			})
 		})
 	})
