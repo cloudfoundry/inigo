@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cloudfoundry-incubator/bbs/db/etcd"
 	"github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
@@ -25,7 +26,6 @@ import (
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
 
-	"github.com/cloudfoundry-incubator/receptor/task_handler"
 	"github.com/cloudfoundry-incubator/runtime-schema/cc_messages"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -521,7 +521,7 @@ EOF
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
-				numExpectedStagingResponses := task_handler.MAX_RETRIES * expectedResolutionAttempts
+				numExpectedStagingResponses := etcd.MAX_CB_RETRIES * expectedResolutionAttempts
 
 				Eventually(fakeCC.StagingResponses).Should(HaveLen(numExpectedStagingResponses))
 				Consistently(fakeCC.StagingResponses).Should(HaveLen(numExpectedStagingResponses))
