@@ -62,6 +62,7 @@ type ComponentAddresses struct {
 	Rep                 string
 	FakeCC              string
 	FileServer          string
+	CCUploader          string
 	Router              string
 	TPSListener         string
 	GardenLinux         string
@@ -183,7 +184,7 @@ func (maker ComponentMaker) GardenLinux(argv ...string) *gardenrunner.Runner {
 func (maker ComponentMaker) BBS(argv ...string) ifrit.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "bbs",
-		AnsiColorCode:     "33m",
+		AnsiColorCode:     "32m",
 		StartCheck:        "bbs.started",
 		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
@@ -252,7 +253,7 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 
 	return ginkgomon.New(ginkgomon.Config{
 		Name:          name,
-		AnsiColorCode: "92m",
+		AnsiColorCode: "33m",
 		StartCheck:    `"` + name + `.started"`,
 		// rep is not started until it can ping an executor; executor can take a
 		// bit to start, so account for it
@@ -267,7 +268,7 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 func (maker ComponentMaker) Converger(argv ...string) ifrit.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "converger",
-		AnsiColorCode:     "93m",
+		AnsiColorCode:     "34m",
 		StartCheck:        `"converger.started"`,
 		StartCheckTimeout: 15 * time.Second,
 
@@ -291,7 +292,7 @@ func (maker ComponentMaker) Converger(argv ...string) ifrit.Runner {
 func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "auctioneer",
-		AnsiColorCode:     "94m",
+		AnsiColorCode:     "35m",
 		StartCheck:        `"auctioneer.started"`,
 		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
@@ -315,7 +316,7 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 func (maker ComponentMaker) RouteEmitter(argv ...string) ifrit.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "route-emitter",
-		AnsiColorCode:     "95m",
+		AnsiColorCode:     "36m",
 		StartCheck:        `"route-emitter.started"`,
 		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
@@ -334,7 +335,7 @@ func (maker ComponentMaker) RouteEmitter(argv ...string) ifrit.Runner {
 func (maker ComponentMaker) TPSListener(argv ...string) ifrit.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "tps-listener",
-		AnsiColorCode:     "96m",
+		AnsiColorCode:     "37m",
 		StartCheck:        `"tps-listener.started"`,
 		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
@@ -355,7 +356,7 @@ func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "nsync-listener",
-		AnsiColorCode:     "97m",
+		AnsiColorCode:     "90m",
 		StartCheck:        `"nsync.listener.started"`,
 		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
@@ -370,20 +371,36 @@ func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 	})
 }
 
+func (maker ComponentMaker) CCUploader(argv ...string) ifrit.Runner {
+	return ginkgomon.New(ginkgomon.Config{
+		Name:              "cc-uploader",
+		AnsiColorCode:     "91m",
+		StartCheck:        `"cc-uploader.ready"`,
+		StartCheckTimeout: 10 * time.Second,
+		Command: exec.Command(
+			maker.Artifacts.Executables["cc-uploader"],
+			append([]string{
+				"-address", maker.Addresses.CCUploader,
+				"-ccJobPollingInterval", "100ms",
+				"-logLevel", "debug",
+			}, argv...)...,
+		),
+	})
+}
+
 func (maker ComponentMaker) FileServer(argv ...string) (ifrit.Runner, string) {
 	servedFilesDir, err := ioutil.TempDir("", "file-server-files")
 	Expect(err).NotTo(HaveOccurred())
 
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "file-server",
-		AnsiColorCode:     "90m",
+		AnsiColorCode:     "92m",
 		StartCheck:        `"file-server.ready"`,
 		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["file-server"],
 			append([]string{
 				"-address", maker.Addresses.FileServer,
-				"-ccJobPollingInterval", "100ms",
 				"-staticDirectory", servedFilesDir,
 				"-logLevel", "debug",
 			}, argv...)...,
@@ -439,7 +456,7 @@ func (maker ComponentMaker) Router() ifrit.Runner {
 
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "router",
-		AnsiColorCode:     "32m",
+		AnsiColorCode:     "93m",
 		StartCheck:        "router.started",
 		StartCheckTimeout: 10 * time.Second, // it waits 1 second before listening. yep.
 		Command: exec.Command(
@@ -481,6 +498,7 @@ func (maker ComponentMaker) StagerN(portOffset int, argv ...string) ifrit.Runner
 				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
 				"-stagerURL", fmt.Sprintf("http://127.0.0.1:%d", offsetPort(port, portOffset)),
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,
+				"-ccUploaderURL", "http://" + maker.Addresses.CCUploader,
 				"-logLevel", "debug",
 			}), argv...)...,
 		),
@@ -490,7 +508,7 @@ func (maker ComponentMaker) StagerN(portOffset int, argv ...string) ifrit.Runner
 func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "receptor",
-		AnsiColorCode:     "37m",
+		AnsiColorCode:     "95m",
 		StartCheck:        "receptor.started",
 		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
@@ -513,7 +531,7 @@ func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
 func (maker ComponentMaker) SSHProxy(argv ...string) ifrit.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "ssh-proxy",
-		AnsiColorCode:     "95m",
+		AnsiColorCode:     "96m",
 		StartCheck:        "ssh-proxy.started",
 		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(

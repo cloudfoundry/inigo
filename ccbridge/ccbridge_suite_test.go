@@ -124,6 +124,9 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	builtExecutables["nsync-bulker"], err = gexec.BuildIn(os.Getenv("NSYNC_GOPATH"), "github.com/cloudfoundry-incubator/nsync/cmd/nsync-bulker", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
+	builtExecutables["cc-uploader"], err = gexec.BuildIn(os.Getenv("CC_UPLOADER_GOPATH"), "github.com/cloudfoundry-incubator/cc-uploader/cmd/cc-uploader", "-race")
+	Expect(err).NotTo(HaveOccurred())
+
 	builtExecutables["file-server"], err = gexec.BuildIn(os.Getenv("FILE_SERVER_GOPATH"), "github.com/cloudfoundry-incubator/file-server/cmd/file-server", "-race")
 	Expect(err).NotTo(HaveOccurred())
 

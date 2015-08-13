@@ -106,6 +106,7 @@ EOF
 			{"cc", fakeCC},
 			{"stager", componentMaker.Stager()},
 			{"nsync-listener", componentMaker.NsyncListener()},
+			{"cc-uploader", componentMaker.CCUploader()},
 		}))
 
 		u, err := url.Parse(fakeCC.Address())
