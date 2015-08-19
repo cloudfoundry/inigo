@@ -254,7 +254,7 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:          name,
 		AnsiColorCode: "33m",
-		StartCheck:    `"` + name + `.started"`,
+		StartCheck:    `"` + name + `.services-bbs.presence.succeeded-setting-presence"`,
 		// rep is not started until it can ping an executor; executor can take a
 		// bit to start, so account for it
 		StartCheckTimeout: 30 * time.Second,
