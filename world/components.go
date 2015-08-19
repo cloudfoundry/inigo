@@ -276,6 +276,7 @@ func (maker ComponentMaker) Converger(argv ...string) ifrit.Runner {
 			maker.Artifacts.Executables["converger"],
 			append([]string{
 				"-etcdCluster", maker.EtcdCluster(),
+				"-bbsAddress", fmt.Sprintf("http://%s", maker.Addresses.BBS),
 				"-lockTTL", "10s",
 				"-lockRetryInterval", "1s",
 				"-consulCluster", maker.ConsulCluster(),
