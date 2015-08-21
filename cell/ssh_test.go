@@ -40,7 +40,7 @@ var _ = Describe("SSH", func() {
 		output, err := session.Output("/usr/bin/env")
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(string(output)).To(ContainSubstring("USER=vcap"))
+		Expect(string(output)).To(ContainSubstring("USER=root"))
 		Expect(string(output)).To(ContainSubstring("TEST=foobar"))
 		Expect(string(output)).To(ContainSubstring(fmt.Sprintf("INSTANCE_INDEX=%d", index)))
 	}
@@ -101,14 +101,14 @@ var _ = Describe("SSH", func() {
 						From:     fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "sshd.tgz"),
 						To:       "/tmp",
 						CacheKey: "sshd",
-						User:     "vcap",
+						User:     "root",
 					},
 				},
 			},
 			Action: &models.CodependentAction{
 				Actions: []models.Action{
 					&models.RunAction{
-						User: "vcap",
+						User: "root",
 						Path: "/tmp/sshd",
 						Args: []string{
 							"-address=0.0.0.0:3456",
@@ -118,7 +118,7 @@ var _ = Describe("SSH", func() {
 						},
 					},
 					&models.RunAction{
-						User: "vcap",
+						User: "root",
 						Path: "sh",
 						Args: []string{
 							"-c",
@@ -128,7 +128,7 @@ var _ = Describe("SSH", func() {
 				},
 			},
 			Monitor: &models.RunAction{
-				User: "vcap",
+				User: "root",
 				Path: "nc",
 				Args: []string{"-z", "127.0.0.1", "3456"},
 			},
@@ -223,7 +223,7 @@ var _ = Describe("SSH", func() {
 				lrp.Action = &models.CodependentAction{
 					Actions: []models.Action{
 						&models.RunAction{
-							User: "vcap",
+							User: "root",
 							Path: "/tmp/sshd",
 							Args: []string{
 								"-address=0.0.0.0:3456",
@@ -233,7 +233,7 @@ var _ = Describe("SSH", func() {
 							},
 						},
 						&models.RunAction{
-							User: "vcap",
+							User: "root",
 							Path: "sh",
 							Args: []string{
 								"-c",
@@ -245,7 +245,7 @@ var _ = Describe("SSH", func() {
 
 				// busybox nc doesn't support -z
 				lrp.Monitor = &models.RunAction{
-					User: "vcap",
+					User: "root",
 					Path: "sh",
 					Args: []string{
 						"-c",
@@ -316,7 +316,7 @@ var _ = Describe("SSH", func() {
 
 		BeforeEach(func() {
 			clientConfig = &ssh.ClientConfig{
-				User: "vcap",
+				User: "root",
 				Auth: []ssh.AuthMethod{ssh.Password("some-password")},
 			}
 		})
