@@ -199,21 +199,6 @@ EOF
 				filepath.Join(fileServerStaticDir, buildpack_zip),
 				adminBuildpackFiles,
 			)
-
-			var bustedAdminBuildpackFiles = []zip_helper.ArchiveFile{
-				{
-					Name: "bin/detect",
-					Body: `#!/bin/sh
-				exit 1
-				`},
-				{Name: "bin/compile", Body: `#!/bin/sh`},
-				{Name: "bin/release", Body: `#!/bin/sh`},
-			}
-
-			zip_helper.CreateZipArchive(
-				filepath.Join(fileServerStaticDir, busted_buildpack_zip),
-				bustedAdminBuildpackFiles,
-			)
 		})
 
 		JustBeforeEach(func() {
@@ -398,6 +383,19 @@ EOF
 
 			Context("when no detected buildpack present", func() {
 				BeforeEach(func() {
+					bustedAdminBuildpackFiles = []zip_helper.ArchiveFile{
+						{
+							Name: "bin/detect",
+							Body: `#!/bin/sh
+										exit 1
+						`},
+						{Name: "bin/compile", Body: `#!/bin/sh`},
+						{Name: "bin/release", Body: `#!/bin/sh`},
+					}
+					zip_helper.CreateZipArchive(
+						filepath.Join(fileServerStaticDir, busted_buildpack_zip),
+						bustedAdminBuildpackFiles,
+					)
 					buildpacksToUse, _ = createBuildpack("busted-test-buildpack", "busted-test-buildpack-key", busted_buildpack_zip)
 				})
 
@@ -410,7 +408,79 @@ EOF
 					Expect(fakeCC.StagingResponses()[0]).To(Equal(
 						cc_messages.StagingResponseForCC{
 							Error: &cc_messages.StagingError{
-								Id:      cc_messages.STAGING_ERROR,
+								Id:      cc_messages.BUILDPACK_DETECT_FAILED,
+								Message: "staging failed",
+							},
+						}))
+
+					Expect(fakeCC.StagingGuids()[0]).To(Equal(stagingGuid))
+				})
+			})
+
+			Context("when buildpack fails to compile", func() {
+				BeforeEach(func() {
+					bustedAdminBuildpackFiles = []zip_helper.ArchiveFile{
+						{Name: "bin/detect", Body: `#!/bin/sh`},
+						{Name: "bin/compile",
+							Body: `#!/bin/sh
+										exit 1
+						`},
+						{Name: "bin/release", Body: `#!/bin/sh`},
+					}
+
+					zip_helper.CreateZipArchive(
+						filepath.Join(fileServerStaticDir, busted_buildpack_zip),
+						bustedAdminBuildpackFiles,
+					)
+
+					buildpacksToUse, _ = createBuildpack("busted-test-buildpack", "busted-test-buildpack-key", busted_buildpack_zip)
+				})
+
+				It("responds with the error", func() {
+					resp, err := stageApplication(stagingGuid, string(stagingMessage))
+					Expect(err).NotTo(HaveOccurred())
+					Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
+
+					Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
+					Expect(fakeCC.StagingResponses()[0]).To(Equal(
+						cc_messages.StagingResponseForCC{
+							Error: &cc_messages.StagingError{
+								Id:      cc_messages.BUILDPACK_COMPILE_FAILED,
+								Message: "staging failed",
+							},
+						}))
+
+					Expect(fakeCC.StagingGuids()[0]).To(Equal(stagingGuid))
+				})
+			})
+
+			Context("when the buildpack fails to release", func() {
+				BeforeEach(func() {
+					bustedAdminBuildpackFiles = []zip_helper.ArchiveFile{
+						{Name: "bin/detect", Body: `#!/bin/sh`},
+						{Name: "bin/compile", Body: `#!/bin/sh`},
+						{Name: "bin/release",
+							Body: `#!/bin/sh
+										exit 1
+						`},
+					}
+					zip_helper.CreateZipArchive(
+						filepath.Join(fileServerStaticDir, busted_buildpack_zip),
+						bustedAdminBuildpackFiles,
+					)
+					buildpacksToUse, _ = createBuildpack("busted-test-buildpack", "busted-test-buildpack-key", busted_buildpack_zip)
+				})
+
+				It("responds with the error", func() {
+					resp, err := stageApplication(stagingGuid, string(stagingMessage))
+					Expect(err).NotTo(HaveOccurred())
+					Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
+
+					Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
+					Expect(fakeCC.StagingResponses()[0]).To(Equal(
+						cc_messages.StagingResponseForCC{
+							Error: &cc_messages.StagingError{
+								Id:      cc_messages.BUILDPACK_RELEASE_FAILED,
 								Message: "staging failed",
 							},
 						}))
