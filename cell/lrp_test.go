@@ -8,12 +8,12 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 	"github.com/cloudfoundry-incubator/runtime-schema/diego_errors"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -67,16 +67,16 @@ var _ = Describe("LRP", func() {
 
 		BeforeEach(func() {
 			lrp = helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
-			lrp.Setup = &models.DownloadAction{
+			lrp.Setup = models.WrapAction(&models.DownloadAction{
 				From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
 				To:   "/tmp",
 				User: "vcap",
-			}
-			lrp.Action = &models.RunAction{
+			})
+			lrp.Action = models.WrapAction(&models.RunAction{
 				User: "vcap",
 				Path: "/tmp/go-server",
-				Env:  []models.EnvironmentVariable{{"PORT", "8080"}},
-			}
+				Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
+			})
 		})
 
 		JustBeforeEach(func() {
@@ -99,10 +99,10 @@ var _ = Describe("LRP", func() {
 			BeforeEach(func() {
 				lrp.StartTimeout = 5
 
-				lrp.Monitor = &models.RunAction{
+				lrp.Monitor = models.WrapAction(&models.RunAction{
 					User: "vcap",
 					Path: "false",
-				}
+				})
 			})
 
 			It("eventually marks the LRP as crashed", func() {
@@ -125,11 +125,11 @@ var _ = Describe("LRP", func() {
 				lrp.Ports = []uint16{8080, 9080}
 				lrp.Routes = cfroutes.CFRoutes{{Port: 8080, Hostnames: []string{"lrp-route-8080"}}}.RoutingInfo()
 
-				lrp.Action = &models.RunAction{
+				lrp.Action = models.WrapAction(&models.RunAction{
 					User: "vcap",
 					Path: "/tmp/go-server",
-					Env:  []models.EnvironmentVariable{{"PORT", "8080 9080"}},
-				}
+					Env:  []*models.EnvironmentVariable{{"PORT", "8080 9080"}},
+				})
 			})
 
 			It("can not access container ports without routes", func() {
@@ -292,18 +292,18 @@ var _ = Describe("LRP", func() {
 		Context("Egress Rules", func() {
 			BeforeEach(func() {
 				archiveFiles = fixtures.CurlLRP()
-				lrp.Action = &models.RunAction{
+				lrp.Action = models.WrapAction(&models.RunAction{
 					User: "vcap",
 					Path: "bash",
 					Args: []string{"server.sh"},
-					Env:  []models.EnvironmentVariable{{"PORT", "8080"}},
-				}
+					Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
+				})
 
-				lrp.Setup = &models.DownloadAction{
+				lrp.Setup = models.WrapAction(&models.DownloadAction{
 					From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
 					To:   ".",
 					User: "vcap",
-				}
+				})
 			})
 
 			Context("default networking", func() {
@@ -324,11 +324,11 @@ var _ = Describe("LRP", func() {
 
 			Context("with appropriate security group setting", func() {
 				BeforeEach(func() {
-					lrp.EgressRules = []models.SecurityGroupRule{
+					lrp.EgressRules = []*models.SecurityGroupRule{
 						{
 							Protocol:     models.TCPProtocol,
 							Destinations: []string{"9.0.0.0-89.255.255.255", "90.0.0.0-94.0.0.0"},
-							Ports:        []uint16{80},
+							Ports:        []uint32{80},
 						},
 						{
 							Protocol:     models.UDPProtocol,

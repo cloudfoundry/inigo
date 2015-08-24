@@ -6,7 +6,6 @@ import (
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
-	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	. "github.com/onsi/gomega"
 )
 
@@ -23,25 +22,25 @@ const DefaultHost = "lrp-route"
 var defaultRoutes = cfroutes.CFRoutes{{Hostnames: []string{DefaultHost}, Port: 8080}}.RoutingInfo()
 var defaultPorts = []uint16{8080}
 
-var defaultSetupFunc = func() oldmodels.Action {
-	return &oldmodels.DownloadAction{
+var defaultSetupFunc = func() *models.Action {
+	return models.WrapAction(&models.DownloadAction{
 		From: fmt.Sprintf("http://%s/v1/static/%s", addresses.FileServer, "lrp.zip"),
 		To:   ".",
 		User: "vcap",
-	}
+	})
 }
 
-var defaultAction = &oldmodels.RunAction{
+var defaultAction = models.WrapAction(&models.RunAction{
 	User: "vcap",
 	Path: "bash",
 	Args: []string{"server.sh"},
-	Env:  []oldmodels.EnvironmentVariable{{"PORT", "8080"}},
-}
+	Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
+})
 
-var defaultMonitor = &oldmodels.RunAction{
+var defaultMonitor = models.WrapAction(&models.RunAction{
 	User: "vcap",
 	Path: "true",
-}
+})
 
 func UpsertInigoDomain(receptorClient receptor.Client) {
 	err := receptorClient.UpsertDomain(defaultDomain, 0)
@@ -92,11 +91,11 @@ func DockerLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateRequest
 		Routes: defaultRoutes,
 		Ports:  defaultPorts,
 
-		Action: &oldmodels.RunAction{
+		Action: models.WrapAction(&models.RunAction{
 			User: "vcap",
 			Path: "/myapp/dockerapp",
-			Env:  []oldmodels.EnvironmentVariable{{"PORT", "8080"}},
-		},
+			Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
+		}),
 		Monitor: defaultMonitor,
 	}
 }
@@ -108,7 +107,7 @@ func CrashingLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateReque
 		RootFS:      defaultPreloadedRootFS,
 		Instances:   1,
 
-		Action: &oldmodels.RunAction{User: "vcap", Path: "false"},
+		Action: models.WrapAction(&models.RunAction{User: "vcap", Path: "false"}),
 	}
 }
 
@@ -124,19 +123,19 @@ func LightweightLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateRe
 
 		Ports: defaultPorts,
 
-		Action: &models.RunAction{
+		Action: models.WrapAction(&models.RunAction{
 			User: "vcap",
 			Path: "sh",
 			Args: []string{
 				"-c",
 				"while true; do sleep 1; done",
 			},
-		},
-		Monitor: &models.RunAction{
+		}),
+		Monitor: models.WrapAction(&models.RunAction{
 			User: "vcap",
 			Path: "sh",
 			Args: []string{"-c", "echo all good"},
-		},
+		}),
 	}
 }
 
@@ -150,7 +149,7 @@ func PrivilegedLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateReq
 		Routes: defaultRoutes,
 		Ports:  defaultPorts,
 
-		Action: &models.RunAction{
+		Action: models.WrapAction(&models.RunAction{
 			Path: "bash",
 			// always run as root; tests change task-level privileged
 			User: "root",
@@ -174,7 +173,7 @@ func PrivilegedLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateReq
 						done
 						`,
 			},
-		},
+		}),
 	}
 }
 

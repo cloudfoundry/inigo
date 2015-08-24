@@ -7,11 +7,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	ssh_helpers "github.com/cloudfoundry-incubator/diego-ssh/helpers"
 	"github.com/cloudfoundry-incubator/diego-ssh/routes"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/pivotal-golang/archiver/compressor"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -94,44 +94,40 @@ var _ = Describe("SSH", func() {
 			ProcessGuid: processGuid,
 			Domain:      "inigo",
 			Instances:   2,
-			Setup: &models.SerialAction{
-				Actions: []models.Action{
-					&models.DownloadAction{
-						Artifact: "sshd",
-						From:     fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "sshd.tgz"),
-						To:       "/tmp",
-						CacheKey: "sshd",
-						User:     "root",
+			Setup: models.WrapAction(models.Serial(
+				&models.DownloadAction{
+					Artifact: "sshd",
+					From:     fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "sshd.tgz"),
+					To:       "/tmp",
+					CacheKey: "sshd",
+					User:     "root",
+				},
+			)),
+			Action: models.WrapAction(models.Codependent(
+				&models.RunAction{
+					User: "root",
+					Path: "/tmp/sshd",
+					Args: []string{
+						"-address=0.0.0.0:3456",
+						"-hostKey=" + componentMaker.SSHConfig.HostKeyPem,
+						"-authorizedKey=" + componentMaker.SSHConfig.AuthorizedKey,
+						"-inheritDaemonEnv",
 					},
 				},
-			},
-			Action: &models.CodependentAction{
-				Actions: []models.Action{
-					&models.RunAction{
-						User: "root",
-						Path: "/tmp/sshd",
-						Args: []string{
-							"-address=0.0.0.0:3456",
-							"-hostKey=" + componentMaker.SSHConfig.HostKeyPem,
-							"-authorizedKey=" + componentMaker.SSHConfig.AuthorizedKey,
-							"-inheritDaemonEnv",
-						},
-					},
-					&models.RunAction{
-						User: "root",
-						Path: "sh",
-						Args: []string{
-							"-c",
-							`while true; do echo "sup dawg" | nc -l 127.0.0.1 9999; done`,
-						},
+				&models.RunAction{
+					User: "root",
+					Path: "sh",
+					Args: []string{
+						"-c",
+						`while true; do echo "sup dawg" | nc -l 127.0.0.1 9999; done`,
 					},
 				},
-			},
-			Monitor: &models.RunAction{
+			)),
+			Monitor: models.WrapAction(&models.RunAction{
 				User: "root",
 				Path: "nc",
 				Args: []string{"-z", "127.0.0.1", "3456"},
-			},
+			}),
 			StartTimeout: 60,
 			RootFS:       "preloaded:" + helpers.PreloadedStacks[0],
 			MemoryMB:     128,
@@ -220,38 +216,36 @@ var _ = Describe("SSH", func() {
 				lrp.RootFS = "docker:///busybox"
 
 				// busybox nc requires -p but ubuntu's won't allow it
-				lrp.Action = &models.CodependentAction{
-					Actions: []models.Action{
-						&models.RunAction{
-							User: "root",
-							Path: "/tmp/sshd",
-							Args: []string{
-								"-address=0.0.0.0:3456",
-								"-hostKey=" + componentMaker.SSHConfig.HostKeyPem,
-								"-authorizedKey=" + componentMaker.SSHConfig.AuthorizedKey,
-								"-inheritDaemonEnv",
-							},
-						},
-						&models.RunAction{
-							User: "root",
-							Path: "sh",
-							Args: []string{
-								"-c",
-								`while true; do echo "sup dawg" | nc -l 127.0.0.1 -p 9999; done`,
-							},
+				lrp.Action = models.WrapAction(models.Codependent(
+					&models.RunAction{
+						User: "root",
+						Path: "/tmp/sshd",
+						Args: []string{
+							"-address=0.0.0.0:3456",
+							"-hostKey=" + componentMaker.SSHConfig.HostKeyPem,
+							"-authorizedKey=" + componentMaker.SSHConfig.AuthorizedKey,
+							"-inheritDaemonEnv",
 						},
 					},
-				}
+					&models.RunAction{
+						User: "root",
+						Path: "sh",
+						Args: []string{
+							"-c",
+							`while true; do echo "sup dawg" | nc -l 127.0.0.1 -p 9999; done`,
+						},
+					},
+				))
 
 				// busybox nc doesn't support -z
-				lrp.Monitor = &models.RunAction{
+				lrp.Monitor = models.WrapAction(&models.RunAction{
 					User: "root",
 					Path: "sh",
 					Args: []string{
 						"-c",
 						"echo -n '' | telnet localhost 3456 >/dev/null 2>&1 && true",
 					},
-				}
+				})
 			})
 
 			It("can ssh to appropriate app instance container", func() {
