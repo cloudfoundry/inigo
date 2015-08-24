@@ -55,6 +55,7 @@ var _ = Describe("Stager", func() {
 
 	var buildArtifactsUploadUri string
 	var dropletUploadUri string
+	var bustedAdminBuildpackFiles []zip_helper.ArchiveFile
 
 	var adminBuildpackFiles = []zip_helper.ArchiveFile{
 		{
