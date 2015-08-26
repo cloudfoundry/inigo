@@ -54,24 +54,23 @@ type SSLConfig struct {
 }
 
 type ComponentAddresses struct {
-	NATS                string
-	Etcd                string
-	EtcdPeer            string
-	Consul              string
-	BBS                 string
-	Rep                 string
-	FakeCC              string
-	FileServer          string
-	CCUploader          string
-	Router              string
-	TPSListener         string
-	GardenLinux         string
-	Receptor            string
-	ReceptorTaskHandler string
-	Stager              string
-	NsyncListener       string
-	Auctioneer          string
-	SSHProxy            string
+	NATS          string
+	Etcd          string
+	EtcdPeer      string
+	Consul        string
+	BBS           string
+	Rep           string
+	FakeCC        string
+	FileServer    string
+	CCUploader    string
+	Router        string
+	TPSListener   string
+	GardenLinux   string
+	Receptor      string
+	Stager        string
+	NsyncListener string
+	Auctioneer    string
+	SSHProxy      string
 }
 
 type ComponentMaker struct {
@@ -234,7 +233,6 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 			"-lockTTL", "10s",
 			"-lockRetryInterval", "1s",
 			"-consulCluster", maker.ConsulCluster(),
-			"-receptorTaskHandlerURL", "http://" + maker.Addresses.ReceptorTaskHandler,
 			"-gardenNetwork", "tcp",
 			"-gardenAddr", maker.Addresses.GardenLinux,
 			"-containerMaxCpuShares", "1024",
@@ -280,7 +278,6 @@ func (maker ComponentMaker) Converger(argv ...string) ifrit.Runner {
 				"-lockTTL", "10s",
 				"-lockRetryInterval", "1s",
 				"-consulCluster", maker.ConsulCluster(),
-				"-receptorTaskHandlerURL", "http://" + maker.Addresses.ReceptorTaskHandler,
 				"-logLevel", "debug",
 				"-etcdCertFile", maker.SSL.ClientCert,
 				"-etcdKeyFile", maker.SSL.ClientKey,
@@ -304,7 +301,6 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 				"-listenAddr", maker.Addresses.Auctioneer,
 				"-lockRetryInterval", "1s",
 				"-consulCluster", maker.ConsulCluster(),
-				"-receptorTaskHandlerURL", "http://" + maker.Addresses.ReceptorTaskHandler,
 				"-logLevel", "debug",
 				"-etcdCertFile", maker.SSL.ClientCert,
 				"-etcdKeyFile", maker.SSL.ClientKey,
@@ -517,7 +513,6 @@ func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
 			append([]string{
 				"-address", maker.Addresses.Receptor,
 				"-bbsAddress", fmt.Sprintf("http://%s", maker.Addresses.BBS),
-				"-taskHandlerAddress", maker.Addresses.ReceptorTaskHandler,
 				"-etcdCluster", maker.EtcdCluster(),
 				"-consulCluster", maker.ConsulCluster(),
 				"-logLevel", "debug",
