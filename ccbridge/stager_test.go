@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudfoundry-incubator/bbs/db/etcd"
+	"github.com/cloudfoundry-incubator/bbs/taskworkpool"
 	"github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
@@ -592,7 +592,7 @@ EOF
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
-				numExpectedStagingResponses := etcd.MAX_CB_RETRIES * expectedResolutionAttempts
+				numExpectedStagingResponses := taskworkpool.MAX_CB_RETRIES * expectedResolutionAttempts
 
 				Eventually(fakeCC.StagingResponses).Should(HaveLen(numExpectedStagingResponses))
 				Consistently(fakeCC.StagingResponses).Should(HaveLen(numExpectedStagingResponses))
