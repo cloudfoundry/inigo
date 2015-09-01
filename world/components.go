@@ -492,7 +492,7 @@ func (maker ComponentMaker) StagerN(portOffset int, argv ...string) ifrit.Runner
 				"-ccUsername", fake_cc.CC_USERNAME,
 				"-ccPassword", fake_cc.CC_PASSWORD,
 				"-dockerStagingStack", maker.DefaultStack(),
-				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
+				"-bbsAddress", "http://" + maker.Addresses.BBS,
 				"-stagerURL", fmt.Sprintf("http://127.0.0.1:%d", offsetPort(port, portOffset)),
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,
 				"-ccUploaderURL", "http://" + maker.Addresses.CCUploader,
