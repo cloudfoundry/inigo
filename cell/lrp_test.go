@@ -123,7 +123,7 @@ var _ = Describe("LRP", func() {
 		Describe("updating routes", func() {
 			BeforeEach(func() {
 				lrp.Ports = []uint16{8080, 9080}
-				lrp.Routes = cfroutes.CFRoutes{{Port: 8080, Hostnames: []string{"lrp-route-8080"}}}.RoutingInfo()
+				lrp.Routes = cfroutes.LegacyCFRoutes{{Port: 8080, Hostnames: []string{"lrp-route-8080"}}}.LegacyRoutingInfo()
 
 				lrp.Action = models.WrapAction(&models.RunAction{
 					User: "vcap",
@@ -145,17 +145,17 @@ var _ = Describe("LRP", func() {
 					logger.Info("just-before-each", lager.Data{
 						"processGuid": processGuid,
 						"updateRequest": receptor.DesiredLRPUpdateRequest{
-							Routes: cfroutes.CFRoutes{
+							Routes: cfroutes.LegacyCFRoutes{
 								{Port: 8080, Hostnames: []string{"lrp-route-8080"}},
 								{Port: 9080, Hostnames: []string{"lrp-route-9080"}},
-							}.RoutingInfo(),
+							}.LegacyRoutingInfo(),
 						},
 					})
 					err := receptorClient.UpdateDesiredLRP(processGuid, receptor.DesiredLRPUpdateRequest{
-						Routes: cfroutes.CFRoutes{
+						Routes: cfroutes.LegacyCFRoutes{
 							{Port: 8080, Hostnames: []string{"lrp-route-8080"}},
 							{Port: 9080, Hostnames: []string{"lrp-route-9080"}},
-						}.RoutingInfo(),
+						}.LegacyRoutingInfo(),
 					})
 					logger.Info("after-update-desired", lager.Data{
 						"error": err,
