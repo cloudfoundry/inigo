@@ -189,7 +189,8 @@ func (maker ComponentMaker) BBS(argv ...string) ifrit.Runner {
 		Command: exec.Command(
 			maker.Artifacts.Executables["bbs"],
 			append([]string{
-				"-address", maker.Addresses.BBS,
+				"-listenAddress", maker.Addresses.BBS,
+				"-advertiseURL", "http://" + maker.Addresses.BBS,
 				"-auctioneerAddress", "http://" + maker.Addresses.Auctioneer,
 				"-consulCluster", maker.ConsulCluster(),
 				"-etcdCluster", maker.EtcdCluster(),
