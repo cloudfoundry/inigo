@@ -321,7 +321,7 @@ func (maker ComponentMaker) RouteEmitter(argv ...string) ifrit.Runner {
 			maker.Artifacts.Executables["route-emitter"],
 			append([]string{
 				"-natsAddresses", maker.Addresses.NATS,
-				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
+				"-bbsAddress", fmt.Sprintf("http://%s", maker.Addresses.BBS),
 				"-lockRetryInterval", "1s",
 				"-consulCluster", maker.ConsulCluster(),
 				"-logLevel", "debug",
