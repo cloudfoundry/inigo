@@ -338,7 +338,7 @@ func (maker ComponentMaker) TPSListener(argv ...string) ifrit.Runner {
 		Command: exec.Command(
 			maker.Artifacts.Executables["tps-listener"],
 			append([]string{
-				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
+				"-bbsAddress", fmt.Sprintf("http://%s", maker.Addresses.BBS),
 				"-listenAddr", maker.Addresses.TPSListener,
 				"-logLevel", "debug",
 			}, argv...)...,
