@@ -19,7 +19,7 @@ const dockerRootFS = "docker:///cloudfoundry/diego-docker-app#latest"
 
 const DefaultHost = "lrp-route"
 
-var defaultRoutes = cfroutes.CFRoutes{{Hostnames: []string{DefaultHost}, Port: 8080}}.RoutingInfo()
+var defaultRoutes = cfroutes.LegacyCFRoutes{{Hostnames: []string{DefaultHost}, Port: 8080}}.LegacyRoutingInfo()
 var defaultPorts = []uint16{8080}
 
 var defaultSetupFunc = func() *models.Action {
