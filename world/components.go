@@ -360,7 +360,7 @@ func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 		Command: exec.Command(
 			maker.Artifacts.Executables["nsync-listener"],
 			append(maker.appendLifecycleArgs([]string{
-				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
+				"-bbsAddress", fmt.Sprintf("http://%s", maker.Addresses.BBS),
 				"-nsyncURL", fmt.Sprintf("http://127.0.0.1:%d", port),
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,
 				"-logLevel", "debug",
