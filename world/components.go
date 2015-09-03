@@ -536,7 +536,7 @@ func (maker ComponentMaker) SSHProxy(argv ...string) ifrit.Runner {
 			append([]string{
 				"-address", maker.Addresses.SSHProxy,
 				"-hostKey", maker.SSHConfig.HostKeyPem,
-				"-diegoAPIURL", "http://" + maker.Addresses.Receptor,
+				"-bbsAddress", "http://" + maker.Addresses.BBS,
 				"-logLevel", "debug",
 				"-enableDiegoAuth",
 			}, argv...)...,
