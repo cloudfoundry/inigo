@@ -84,10 +84,11 @@ var _ = Describe("Executor/Garden", func() {
 		return id.String()
 	}
 
-	allocNewContainer := func(request executor.Container) string {
-		request.Guid = generateGuid()
+	allocNewContainer := func(container executor.Container) string {
+		container.Guid = generateGuid()
 
-		_, err := executorClient.AllocateContainers([]executor.Container{request})
+		request := executor.NewAllocationRequest(container.Guid, &container.Resource, container.Tags)
+		_, err := executorClient.AllocateContainers([]executor.AllocationRequest{request})
 		Expect(err).NotTo(HaveOccurred())
 
 		return request.Guid
@@ -270,40 +271,22 @@ var _ = Describe("Executor/Garden", func() {
 
 		Describe("allocating a container", func() {
 			var (
-				container executor.Container
+				allocationRequest executor.AllocationRequest
 
 				guid string
 
-				allocationErrorMap map[string]string
+				allocationFailures []executor.AllocationFailure
 				allocErr           error
 			)
 
 			BeforeEach(func() {
 				guid = generateGuid()
-
-				container = executor.Container{
-					Guid: guid,
-
-					Tags: executor.Tags{"some-tag": "some-value"},
-
-					Env: []executor.EnvironmentVariable{
-						{Name: "ENV1", Value: "val1"},
-						{Name: "ENV2", Value: "val2"},
-					},
-
-					Action: models.WrapAction(&models.RunAction{
-						Path: "true",
-						User: "vcap",
-						Env: []*models.EnvironmentVariable{
-							{Name: "RUN_ENV1", Value: "run_val1"},
-							{Name: "RUN_ENV2", Value: "run_val2"},
-						},
-					}),
-				}
+				tags := executor.Tags{"some-tag": "some-value"}
+				allocationRequest = executor.NewAllocationRequest(guid, &executor.Resource{}, tags)
 			})
 
 			JustBeforeEach(func() {
-				allocationErrorMap, allocErr = executorClient.AllocateContainers([]executor.Container{container})
+				allocationFailures, allocErr = executorClient.AllocateContainers([]executor.AllocationRequest{allocationRequest})
 			})
 
 			It("does not return an error", func() {
@@ -311,7 +294,7 @@ var _ = Describe("Executor/Garden", func() {
 			})
 
 			It("returns an empty error map", func() {
-				Expect(allocationErrorMap).To(BeEmpty())
+				Expect(allocationFailures).To(BeEmpty())
 			})
 
 			It("shows up in the container list", func() {
@@ -331,8 +314,8 @@ var _ = Describe("Executor/Garden", func() {
 
 			Context("when allocated with memory and disk limits", func() {
 				BeforeEach(func() {
-					container.MemoryMB = 256
-					container.DiskMB = 256
+					allocationRequest.Resource.MemoryMB = 256
+					allocationRequest.Resource.DiskMB = 256
 				})
 
 				It("returns the limits on the container", func() {
@@ -352,55 +335,67 @@ var _ = Describe("Executor/Garden", func() {
 				})
 			})
 
-			Context("when the requested CPU weight is > 100", func() {
-				BeforeEach(func() {
-					container.CPUWeight = 101
-				})
-
-				It("returns an error", func() {
-					Expect(allocErr).NotTo(HaveOccurred())
-					Expect(allocationErrorMap[container.Guid]).To(Equal(executor.ErrLimitsInvalid.Error()))
-				})
-			})
-
 			Context("when the guid is already taken", func() {
 				JustBeforeEach(func() {
 					Expect(allocErr).NotTo(HaveOccurred())
-					allocationErrorMap, allocErr = executorClient.AllocateContainers([]executor.Container{container})
+					allocationFailures, allocErr = executorClient.AllocateContainers([]executor.AllocationRequest{allocationRequest})
 				})
 
 				It("returns an error", func() {
 					Expect(allocErr).NotTo(HaveOccurred())
-					Expect(allocationErrorMap[container.Guid]).To(Equal(executor.ErrContainerGuidNotAvailable.Error()))
+					Expect(allocationFailures).To(HaveLen(1))
+					Expect(allocationFailures[0].Error()).To(Equal(executor.ErrContainerGuidNotAvailable.Error()))
 				})
 			})
 
 			Context("when a guid is not specified", func() {
 				BeforeEach(func() {
-					container.Guid = ""
+					allocationRequest.Guid = ""
 				})
 
 				It("returns an error", func() {
 					Expect(allocErr).NotTo(HaveOccurred())
-					Expect(allocationErrorMap[container.Guid]).To(Equal(executor.ErrGuidNotSpecified.Error()))
+					Expect(allocationFailures).To(HaveLen(1))
+					Expect(allocationFailures[0].Error()).To(Equal(executor.ErrGuidNotSpecified.Error()))
 				})
 			})
 
 			Context("when there is no room", func() {
 				BeforeEach(func() {
-					container.MemoryMB = 999999999999999
-					container.DiskMB = 999999999999999
+					allocationRequest.Resource.MemoryMB = 999999999999999
+					allocationRequest.Resource.DiskMB = 999999999999999
 				})
 
 				It("returns an error", func() {
 					Expect(allocErr).NotTo(HaveOccurred())
-					Expect(allocationErrorMap[container.Guid]).To(Equal(executor.ErrInsufficientResourcesAvailable.Error()))
+					Expect(allocationFailures).To(HaveLen(1))
+					Expect(allocationFailures[0].Error()).To(Equal(executor.ErrInsufficientResourcesAvailable.Error()))
 				})
 			})
 
 			Describe("running it", func() {
 				var runErr error
+				var runReq executor.RunRequest
+				var runInfo executor.RunInfo
 				var eventSource executor.EventSource
+
+				BeforeEach(func() {
+					runInfo = executor.RunInfo{
+						Env: []executor.EnvironmentVariable{
+							{Name: "ENV1", Value: "val1"},
+							{Name: "ENV2", Value: "val2"},
+						},
+
+						Action: models.WrapAction(&models.RunAction{
+							Path: "true",
+							User: "vcap",
+							Env: []*models.EnvironmentVariable{
+								{Name: "RUN_ENV1", Value: "run_val1"},
+								{Name: "RUN_ENV2", Value: "run_val2"},
+							},
+						}),
+					}
+				})
 
 				JustBeforeEach(func() {
 					var err error
@@ -408,7 +403,8 @@ var _ = Describe("Executor/Garden", func() {
 					eventSource, err = executorClient.SubscribeToEvents()
 					Expect(err).NotTo(HaveOccurred())
 
-					runErr = executorClient.RunContainer(guid)
+					runReq = executor.NewRunRequest(guid, &runInfo, executor.Tags{})
+					runErr = executorClient.RunContainer(&runReq)
 				})
 
 				AfterEach(func() {
@@ -459,7 +455,7 @@ var _ = Describe("Executor/Garden", func() {
 
 					Context("when created without a monitor action", func() {
 						BeforeEach(func() {
-							container.Action = models.WrapAction(&models.RunAction{
+							runInfo.Action = models.WrapAction(&models.RunAction{
 								Path: "sh",
 								User: "vcap",
 								Args: []string{"-c", "while true; do sleep 1; done"},
@@ -476,7 +472,7 @@ var _ = Describe("Executor/Garden", func() {
 						itFailsOnlyIfMonitoringSucceedsAndThenFails := func() {
 							Context("when monitoring succeeds", func() {
 								BeforeEach(func() {
-									container.Monitor = models.WrapAction(&models.RunAction{
+									runInfo.Monitor = models.WrapAction(&models.RunAction{
 										User: "vcap",
 										Path: "true",
 									})
@@ -499,7 +495,7 @@ var _ = Describe("Executor/Garden", func() {
 
 							Context("when monitoring persistently fails", func() {
 								BeforeEach(func() {
-									container.Monitor = models.WrapAction(&models.RunAction{
+									runInfo.Monitor = models.WrapAction(&models.RunAction{
 										User: "vcap",
 										Path: "false",
 									})
@@ -513,7 +509,7 @@ var _ = Describe("Executor/Garden", func() {
 
 							Context("when monitoring succeeds and then fails", func() {
 								BeforeEach(func() {
-									container.Monitor = models.WrapAction(&models.RunAction{
+									runInfo.Monitor = models.WrapAction(&models.RunAction{
 										User: "vcap",
 										Path: "sh",
 										Args: []string{
@@ -538,7 +534,7 @@ var _ = Describe("Executor/Garden", func() {
 
 						Context("when the action succeeds and exits immediately (daemonization)", func() {
 							BeforeEach(func() {
-								container.Action = models.WrapAction(&models.RunAction{
+								runInfo.Action = models.WrapAction(&models.RunAction{
 									Path: "true",
 									User: "vcap",
 								})
@@ -549,7 +545,7 @@ var _ = Describe("Executor/Garden", func() {
 
 						Context("while the action does not stop running", func() {
 							BeforeEach(func() {
-								container.Action = models.WrapAction(&models.RunAction{
+								runInfo.Action = models.WrapAction(&models.RunAction{
 									Path: "sh",
 									User: "vcap",
 									Args: []string{"-c", "while true; do sleep 1; done"},
@@ -561,7 +557,7 @@ var _ = Describe("Executor/Garden", func() {
 
 						Context("when the action fails", func() {
 							BeforeEach(func() {
-								container.Action = models.WrapAction(&models.RunAction{
+								runInfo.Action = models.WrapAction(&models.RunAction{
 									User: "vcap",
 									Path: "false",
 								})
@@ -569,7 +565,7 @@ var _ = Describe("Executor/Garden", func() {
 
 							Context("even if the monitoring succeeds", func() {
 								BeforeEach(func() {
-									container.Monitor = models.WrapAction(&models.RunAction{
+									runInfo.Monitor = models.WrapAction(&models.RunAction{
 										User: "vcap",
 										Path: "true",
 									})
@@ -597,7 +593,7 @@ var _ = Describe("Executor/Garden", func() {
 
 					Context("when running fails", func() {
 						BeforeEach(func() {
-							container.Action = models.WrapAction(&models.RunAction{
+							runInfo.Action = models.WrapAction(&models.RunAction{
 								User: "vcap",
 								Path: "false",
 							})
@@ -627,7 +623,7 @@ var _ = Describe("Executor/Garden", func() {
 
 				Context("when the container cannot be created", func() {
 					BeforeEach(func() {
-						container.RootFSPath = "gopher://example.com"
+						allocationRequest.RootFSPath = "gopher://example.com"
 					})
 
 					It("does not immediately return an error", func() {
@@ -649,7 +645,8 @@ var _ = Describe("Executor/Garden", func() {
 
 		Describe("running a bogus guid", func() {
 			It("returns an error", func() {
-				err := executorClient.RunContainer("bogus")
+				runReq := executor.NewRunRequest("bogus", &executor.RunInfo{}, executor.Tags{})
+				err := executorClient.RunContainer(&runReq)
 				Expect(err).To(Equal(executor.ErrContainerNotFound))
 			})
 		})
@@ -659,8 +656,10 @@ var _ = Describe("Executor/Garden", func() {
 
 			JustBeforeEach(func() {
 				guid = allocNewContainer(executor.Container{
-					MemoryMB: 1024,
-					DiskMB:   1024,
+					Resource: executor.Resource{
+						MemoryMB: 1024,
+						DiskMB:   1024,
+					},
 				})
 			})
 
@@ -693,17 +692,21 @@ var _ = Describe("Executor/Garden", func() {
 
 			JustBeforeEach(func() {
 				guid = allocNewContainer(executor.Container{
-					MemoryMB: 64,
-					DiskMB:   64,
+					Resource: executor.Resource{
+						MemoryMB: 64,
+						DiskMB:   64,
+					},
+				})
 
+				runRequest := executor.NewRunRequest(guid, &executor.RunInfo{
 					Action: models.WrapAction(&models.RunAction{
 						Path: "sh",
 						User: "vcap",
 						Args: []string{"-c", "while true; do sleep 1; done"},
 					}),
-				})
+				}, executor.Tags{})
 
-				err := executorClient.RunContainer(guid)
+				err := executorClient.RunContainer(&runRequest)
 				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(containerStatePoller(guid)).Should(Equal(executor.StateRunning))
@@ -794,8 +797,10 @@ var _ = Describe("Executor/Garden", func() {
 			Context("when the container hasn't been initialized", func() {
 				JustBeforeEach(func() {
 					guid = allocNewContainer(executor.Container{
-						MemoryMB: 1024,
-						DiskMB:   1024,
+						Resource: executor.Resource{
+							MemoryMB: 1024,
+							DiskMB:   1024,
+						},
 					})
 
 					stream, streamErr = executorClient.GetFiles(guid, "some/path")
@@ -810,7 +815,9 @@ var _ = Describe("Executor/Garden", func() {
 				var container garden.Container
 
 				JustBeforeEach(func() {
-					guid = allocNewContainer(executor.Container{
+					guid = allocNewContainer(executor.Container{})
+
+					runRequest := executor.NewRunRequest(guid, &executor.RunInfo{
 						Action: models.WrapAction(&models.RunAction{
 							Path: "sh",
 							User: "vcap",
@@ -818,9 +825,9 @@ var _ = Describe("Executor/Garden", func() {
 								"-c", `while true; do	sleep 1; done`,
 							},
 						}),
-					})
+					}, executor.Tags{})
 
-					err := executorClient.RunContainer(guid)
+					err := executorClient.RunContainer(&runRequest)
 					Expect(err).NotTo(HaveOccurred())
 
 					container = findGardenContainer(guid)
@@ -854,12 +861,13 @@ var _ = Describe("Executor/Garden", func() {
 
 		Describe("pruning the registry", func() {
 			It("continously prunes the registry", func() {
-				_, err := executorClient.AllocateContainers([]executor.Container{
+				_, err := executorClient.AllocateContainers([]executor.AllocationRequest{
 					{
 						Guid: "some-handle",
-
-						MemoryMB: 1024,
-						DiskMB:   1024,
+						Resource: executor.Resource{
+							MemoryMB: 1024,
+							DiskMB:   1024,
+						},
 					},
 				})
 				Expect(err).NotTo(HaveOccurred())
@@ -945,7 +953,8 @@ var _ = Describe("Executor/Garden", func() {
 				var externalAddr string
 
 				JustBeforeEach(func() {
-					guid = allocNewContainer(executor.Container{
+					guid = allocNewContainer(executor.Container{})
+					runRequest := executor.NewRunRequest(guid, &executor.RunInfo{
 						Ports: []executor.PortMapping{
 							{ContainerPort: 8080},
 						},
@@ -955,9 +964,9 @@ var _ = Describe("Executor/Garden", func() {
 							Path: "sh",
 							Args: []string{"-c", "echo -n .$CF_INSTANCE_ADDR. | nc -l 8080"},
 						}),
-					})
+					}, executor.Tags{})
 
-					err := executorClient.RunContainer(guid)
+					err := executorClient.RunContainer(&runRequest)
 					Expect(err).NotTo(HaveOccurred())
 
 					Eventually(containerStatePoller(guid)).Should(Equal(executor.StateRunning))
