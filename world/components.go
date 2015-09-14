@@ -85,7 +85,8 @@ type ComponentMaker struct {
 	GardenGraphPath string
 
 	SSHConfig SSHKeys
-	SSL       SSLConfig
+	EtcdSSL   SSLConfig
+	BbsSSL    SSLConfig
 }
 
 func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
@@ -127,9 +128,9 @@ func (maker ComponentMaker) Etcd(argv ...string) ifrit.Runner {
 				"--initial-advertise-peer-urls", "http://" + maker.Addresses.EtcdPeer,
 				"--initial-cluster-state", "new",
 				"--advertise-client-urls", "https://" + maker.Addresses.Etcd,
-				"--cert-file", maker.SSL.ServerCert,
-				"--key-file", maker.SSL.ServerKey,
-				"--ca-file", maker.SSL.CACert,
+				"--cert-file", maker.EtcdSSL.ServerCert,
+				"--key-file", maker.EtcdSSL.ServerKey,
+				"--ca-file", maker.EtcdSSL.CACert,
 			}, argv...)...,
 		),
 		Cleanup: func() {
@@ -190,16 +191,20 @@ func (maker ComponentMaker) BBS(argv ...string) ifrit.Runner {
 			maker.Artifacts.Executables["bbs"],
 			append([]string{
 				"-activeKeyLabel=" + "secure-key-1",
-				"-advertiseURL", "http://" + maker.Addresses.BBS,
+				"-advertiseURL", maker.BBSURL(),
 				"-auctioneerAddress", "http://" + maker.Addresses.Auctioneer,
 				"-consulCluster", maker.ConsulCluster(),
 				"-encryptionKey=" + "secure-key-1:secure-passphrase",
-				"-etcdCaFile", maker.SSL.CACert,
-				"-etcdCertFile", maker.SSL.ClientCert,
+				"-etcdCaFile", maker.EtcdSSL.CACert,
+				"-etcdCertFile", maker.EtcdSSL.ClientCert,
 				"-etcdCluster", maker.EtcdCluster(),
-				"-etcdKeyFile", maker.SSL.ClientKey,
+				"-etcdKeyFile", maker.EtcdSSL.ClientKey,
 				"-listenAddress", maker.Addresses.BBS,
 				"-logLevel", "debug",
+				"-requireSSL",
+				"-certFile", maker.BbsSSL.ServerCert,
+				"-keyFile", maker.BbsSSL.ServerKey,
+				"-caFile", maker.BbsSSL.CACert,
 			}, argv...)...,
 		),
 	})
@@ -226,7 +231,7 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 		[]string{
 			"-sessionName", name,
 			"-rootFSProvider", "docker",
-			"-bbsAddress", fmt.Sprintf("http://%s", maker.Addresses.BBS),
+			"-bbsAddress", maker.BBSURL(),
 			"-listenAddr", fmt.Sprintf("%s:%d", host, offsetPort(port, n)),
 			"-cellID", "the-cell-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()) + "-" + strconv.Itoa(n),
 			"-pollingInterval", "1s",
@@ -241,6 +246,9 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 			"-cachePath", cachePath,
 			"-tempDir", tmpDir,
 			"-logLevel", "debug",
+			"-bbsClientCert", maker.BbsSSL.ClientCert,
+			"-bbsClientKey", maker.BbsSSL.ClientKey,
+			"-bbsCACert", maker.BbsSSL.CACert,
 		},
 		argv...,
 	)
@@ -272,11 +280,14 @@ func (maker ComponentMaker) Converger(argv ...string) ifrit.Runner {
 		Command: exec.Command(
 			maker.Artifacts.Executables["converger"],
 			append([]string{
-				"-bbsAddress", fmt.Sprintf("http://%s", maker.Addresses.BBS),
+				"-bbsAddress", maker.BBSURL(),
 				"-lockTTL", "10s",
 				"-lockRetryInterval", "1s",
 				"-consulCluster", maker.ConsulCluster(),
 				"-logLevel", "debug",
+				"-bbsClientCert", maker.BbsSSL.ClientCert,
+				"-bbsClientKey", maker.BbsSSL.ClientKey,
+				"-bbsCACert", maker.BbsSSL.CACert,
 			}, argv...)...,
 		),
 	})
@@ -291,11 +302,14 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 		Command: exec.Command(
 			maker.Artifacts.Executables["auctioneer"],
 			append([]string{
-				"-bbsAddress", fmt.Sprintf("http://%s", maker.Addresses.BBS),
+				"-bbsAddress", maker.BBSURL(),
 				"-listenAddr", maker.Addresses.Auctioneer,
 				"-lockRetryInterval", "1s",
 				"-consulCluster", maker.ConsulCluster(),
 				"-logLevel", "debug",
+				"-bbsClientCert", maker.BbsSSL.ClientCert,
+				"-bbsClientKey", maker.BbsSSL.ClientKey,
+				"-bbsCACert", maker.BbsSSL.CACert,
 			}, argv...)...,
 		),
 	})
@@ -311,10 +325,13 @@ func (maker ComponentMaker) RouteEmitter(argv ...string) ifrit.Runner {
 			maker.Artifacts.Executables["route-emitter"],
 			append([]string{
 				"-natsAddresses", maker.Addresses.NATS,
-				"-bbsAddress", fmt.Sprintf("http://%s", maker.Addresses.BBS),
+				"-bbsAddress", maker.BBSURL(),
 				"-lockRetryInterval", "1s",
 				"-consulCluster", maker.ConsulCluster(),
 				"-logLevel", "debug",
+				"-bbsClientCert", maker.BbsSSL.ClientCert,
+				"-bbsClientKey", maker.BbsSSL.ClientKey,
+				"-bbsCACert", maker.BbsSSL.CACert,
 			}, argv...)...,
 		),
 	})
@@ -329,9 +346,12 @@ func (maker ComponentMaker) TPSListener(argv ...string) ifrit.Runner {
 		Command: exec.Command(
 			maker.Artifacts.Executables["tps-listener"],
 			append([]string{
-				"-bbsAddress", fmt.Sprintf("http://%s", maker.Addresses.BBS),
+				"-bbsAddress", maker.BBSURL(),
 				"-listenAddr", maker.Addresses.TPSListener,
 				"-logLevel", "debug",
+				"-bbsClientCert", maker.BbsSSL.ClientCert,
+				"-bbsClientKey", maker.BbsSSL.ClientKey,
+				"-bbsCACert", maker.BbsSSL.CACert,
 			}, argv...)...,
 		),
 	})
@@ -350,10 +370,13 @@ func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 		Command: exec.Command(
 			maker.Artifacts.Executables["nsync-listener"],
 			append(maker.appendLifecycleArgs([]string{
-				"-bbsAddress", fmt.Sprintf("http://%s", maker.Addresses.BBS),
+				"-bbsAddress", maker.BBSURL(),
 				"-nsyncURL", fmt.Sprintf("http://127.0.0.1:%d", port),
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,
 				"-logLevel", "debug",
+				"-bbsClientCert", maker.BbsSSL.ClientCert,
+				"-bbsClientKey", maker.BbsSSL.ClientKey,
+				"-bbsCACert", maker.BbsSSL.CACert,
 			}), argv...)...,
 		),
 	})
@@ -483,11 +506,14 @@ func (maker ComponentMaker) StagerN(portOffset int, argv ...string) ifrit.Runner
 				"-ccUsername", fake_cc.CC_USERNAME,
 				"-ccPassword", fake_cc.CC_PASSWORD,
 				"-dockerStagingStack", maker.DefaultStack(),
-				"-bbsAddress", "http://" + maker.Addresses.BBS,
+				"-bbsAddress", maker.BBSURL(),
 				"-stagerURL", fmt.Sprintf("http://127.0.0.1:%d", offsetPort(port, portOffset)),
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,
 				"-ccUploaderURL", "http://" + maker.Addresses.CCUploader,
 				"-logLevel", "debug",
+				"-bbsClientCert", maker.BbsSSL.ClientCert,
+				"-bbsClientKey", maker.BbsSSL.ClientKey,
+				"-bbsCACert", maker.BbsSSL.CACert,
 			}), argv...)...,
 		),
 	})
@@ -503,9 +529,12 @@ func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
 			maker.Artifacts.Executables["receptor"],
 			append([]string{
 				"-address", maker.Addresses.Receptor,
-				"-bbsAddress", fmt.Sprintf("http://%s", maker.Addresses.BBS),
 				"-consulCluster", maker.ConsulCluster(),
 				"-logLevel", "debug",
+				"-bbsAddress", maker.BBSURL(),
+				"-bbsClientCert", maker.BbsSSL.ClientCert,
+				"-bbsClientKey", maker.BbsSSL.ClientKey,
+				"-bbsCACert", maker.BbsSSL.CACert,
 			}, argv...)...,
 		),
 	})
@@ -522,9 +551,12 @@ func (maker ComponentMaker) SSHProxy(argv ...string) ifrit.Runner {
 			append([]string{
 				"-address", maker.Addresses.SSHProxy,
 				"-hostKey", maker.SSHConfig.HostKeyPem,
-				"-bbsAddress", "http://" + maker.Addresses.BBS,
+				"-bbsAddress", maker.BBSURL(),
 				"-logLevel", "debug",
 				"-enableDiegoAuth",
+				"-bbsClientCert", maker.BbsSSL.ClientCert,
+				"-bbsClientKey", maker.BbsSSL.ClientKey,
+				"-bbsCACert", maker.BbsSSL.CACert,
 			}, argv...)...,
 		),
 	})
@@ -579,4 +611,8 @@ func (maker ComponentMaker) EtcdCluster() string {
 // that it does not interfere with the ginkgo parallel node offest in the base port.
 func offsetPort(basePort, offset int) int {
 	return basePort + (10 * offset)
+}
+
+func (maker ComponentMaker) BBSURL() string {
+	return "https://" + maker.Addresses.BBS
 }

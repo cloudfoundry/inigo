@@ -102,6 +102,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		GardenBinPath:   gardenBinPath,
 		GardenGraphPath: gardenGraphPath,
 		SSHConfig:       sshKeys,
-		SSL:             sslConfig,
+		EtcdSSL:         sslConfig,
+		BbsSSL:          sslConfig,
 	}
 }
