@@ -224,7 +224,6 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 		[]string{
 			"-sessionName", name,
 			"-rootFSProvider", "docker",
-			"-etcdCluster", "https://" + maker.Addresses.Etcd,
 			"-bbsAddress", fmt.Sprintf("http://%s", maker.Addresses.BBS),
 			"-listenAddr", fmt.Sprintf("%s:%d", host, offsetPort(port, n)),
 			"-cellID", "the-cell-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()) + "-" + strconv.Itoa(n),
@@ -240,9 +239,6 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 			"-cachePath", cachePath,
 			"-tempDir", tmpDir,
 			"-logLevel", "debug",
-			"-etcdCertFile", maker.SSL.ClientCert,
-			"-etcdKeyFile", maker.SSL.ClientKey,
-			"-etcdCaFile", maker.SSL.CACert,
 		},
 		argv...,
 	)
@@ -253,7 +249,7 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:          name,
 		AnsiColorCode: "33m",
-		StartCheck:    `"` + name + `.services-bbs.presence.succeeded-setting-presence"`,
+		StartCheck:    `"` + name + `.presence.succeeded-setting-presence"`,
 		// rep is not started until it can ping an executor; executor can take a
 		// bit to start, so account for it
 		StartCheckTimeout: 30 * time.Second,
@@ -274,15 +270,11 @@ func (maker ComponentMaker) Converger(argv ...string) ifrit.Runner {
 		Command: exec.Command(
 			maker.Artifacts.Executables["converger"],
 			append([]string{
-				"-etcdCluster", maker.EtcdCluster(),
 				"-bbsAddress", fmt.Sprintf("http://%s", maker.Addresses.BBS),
 				"-lockTTL", "10s",
 				"-lockRetryInterval", "1s",
 				"-consulCluster", maker.ConsulCluster(),
 				"-logLevel", "debug",
-				"-etcdCertFile", maker.SSL.ClientCert,
-				"-etcdKeyFile", maker.SSL.ClientKey,
-				"-etcdCaFile", maker.SSL.CACert,
 			}, argv...)...,
 		),
 	})
@@ -298,14 +290,10 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 			maker.Artifacts.Executables["auctioneer"],
 			append([]string{
 				"-bbsAddress", fmt.Sprintf("http://%s", maker.Addresses.BBS),
-				"-etcdCluster", maker.EtcdCluster(),
 				"-listenAddr", maker.Addresses.Auctioneer,
 				"-lockRetryInterval", "1s",
 				"-consulCluster", maker.ConsulCluster(),
 				"-logLevel", "debug",
-				"-etcdCertFile", maker.SSL.ClientCert,
-				"-etcdKeyFile", maker.SSL.ClientKey,
-				"-etcdCaFile", maker.SSL.CACert,
 			}, argv...)...,
 		),
 	})
@@ -514,12 +502,8 @@ func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
 			append([]string{
 				"-address", maker.Addresses.Receptor,
 				"-bbsAddress", fmt.Sprintf("http://%s", maker.Addresses.BBS),
-				"-etcdCluster", maker.EtcdCluster(),
 				"-consulCluster", maker.ConsulCluster(),
 				"-logLevel", "debug",
-				"-etcdCertFile", maker.SSL.ClientCert,
-				"-etcdKeyFile", maker.SSL.ClientKey,
-				"-etcdCaFile", maker.SSL.CACert,
 			}, argv...)...,
 		),
 	})
