@@ -7,7 +7,6 @@ import (
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
-	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/diego_errors"
 
 	. "github.com/onsi/ginkgo"
@@ -51,13 +50,13 @@ var _ = Describe("Task Lifecycle", func() {
 			var taskGuid string
 			var taskSleepSeconds int
 
-			var taskRequest receptor.TaskCreateRequest
+			var taskToCreate *models.Task
 
 			BeforeEach(func() {
 				taskSleepSeconds = 10
 				taskGuid = helpers.GenerateGuid()
 
-				taskRequest = helpers.TaskCreateRequestWithMemory(
+				taskToCreate = helpers.TaskCreateRequestWithMemory(
 					taskGuid,
 					&models.RunAction{
 						User: "vcap",
@@ -73,12 +72,12 @@ var _ = Describe("Task Lifecycle", func() {
 			})
 
 			theFailureReason := func() string {
-				taskAfterCancel, err := receptorClient.GetTask(taskGuid)
+				taskAfterCancel, err := bbsClient.TaskByGuid(taskGuid)
 				if err != nil {
 					return ""
 				}
 
-				if taskAfterCancel.State != receptor.TaskStateCompleted {
+				if taskAfterCancel.State != models.Task_Completed {
 					return ""
 				}
 
@@ -90,7 +89,7 @@ var _ = Describe("Task Lifecycle", func() {
 			}
 
 			JustBeforeEach(func() {
-				err := receptorClient.CreateTask(taskRequest)
+				err := bbsClient.DesireTask(taskToCreate.TaskGuid, taskToCreate.Domain, taskToCreate.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -102,7 +101,7 @@ var _ = Describe("Task Lifecycle", func() {
 
 			Context("when there is no matching rootfs", func() {
 				BeforeEach(func() {
-					taskRequest = helpers.TaskCreateRequestWithRootFS(
+					taskToCreate = helpers.TaskCreateRequestWithRootFS(
 						taskGuid,
 						helpers.BogusPreloadedRootFS,
 						&models.RunAction{
@@ -119,7 +118,7 @@ var _ = Describe("Task Lifecycle", func() {
 
 			Context("when there is not enough resources", func() {
 				BeforeEach(func() {
-					taskRequest = helpers.TaskCreateRequestWithMemory(
+					taskToCreate = helpers.TaskCreateRequestWithMemory(
 						taskGuid,
 						&models.RunAction{
 							User: "vcap",
@@ -147,15 +146,15 @@ var _ = Describe("Task Lifecycle", func() {
 				JustBeforeEach(func() {
 					Eventually(inigo_announcement_server.Announcements).Should(ContainElement(taskGuid))
 
-					err := receptorClient.CancelTask(taskGuid)
+					err := bbsClient.CancelTask(taskGuid)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("marks the task as complete, failed and cancelled", func() {
-					taskAfterCancel, err := receptorClient.GetTask(taskGuid)
+					taskAfterCancel, err := bbsClient.TaskByGuid(taskGuid)
 					Expect(err).NotTo(HaveOccurred())
 
-					Expect(taskAfterCancel.State).To(Equal(receptor.TaskStateCompleted))
+					Expect(taskAfterCancel.State).To(Equal(models.Task_Completed))
 					Expect(taskAfterCancel.Failed).To(BeTrue())
 					Expect(taskAfterCancel.FailureReason).To(Equal("task was cancelled"))
 				})
@@ -181,15 +180,15 @@ var _ = Describe("Task Lifecycle", func() {
 
 						It("eventually marks the task as failed", func() {
 							// time is primarily influenced by rep's heartbeat interval
-							var completedTask receptor.TaskResponse
+							var completedTask *models.Task
 							Eventually(func() interface{} {
 								var err error
 
-								completedTask, err = receptorClient.GetTask(taskGuid)
+								completedTask, err = bbsClient.TaskByGuid(taskGuid)
 								Expect(err).NotTo(HaveOccurred())
 
 								return completedTask.State
-							}).Should(Equal(receptor.TaskStateCompleted))
+							}).Should(Equal(models.Task_Completed))
 
 							Expect(completedTask.Failed).To(BeTrue())
 						})
@@ -200,13 +199,13 @@ var _ = Describe("Task Lifecycle", func() {
 
 		Context("Egress Rules", func() {
 			var (
-				taskGuid          string
-				taskCreateRequest receptor.TaskCreateRequest
+				taskGuid     string
+				taskToCreate *models.Task
 			)
 
 			BeforeEach(func() {
 				taskGuid = helpers.GenerateGuid()
-				taskCreateRequest = helpers.TaskCreateRequest(
+				taskToCreate = helpers.TaskCreateRequest(
 					taskGuid,
 					&models.RunAction{
 						User: "vcap",
@@ -221,11 +220,11 @@ exit 0
 						},
 					},
 				)
-				taskCreateRequest.ResultFile = "/tmp/result"
+				taskToCreate.ResultFile = "/tmp/result"
 			})
 
 			JustBeforeEach(func() {
-				err := receptorClient.CreateTask(taskCreateRequest)
+				err := bbsClient.DesireTask(taskToCreate.TaskGuid, taskToCreate.Domain, taskToCreate.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -238,7 +237,7 @@ exit 0
 
 			Context("with appropriate security group setting", func() {
 				BeforeEach(func() {
-					taskCreateRequest.EgressRules = []*models.SecurityGroupRule{
+					taskToCreate.EgressRules = []*models.SecurityGroupRule{
 						{
 							Protocol:     models.TCPProtocol,
 							Destinations: []string{"9.0.0.0-89.255.255.255", "90.0.0.0-94.0.0.0"},
@@ -280,14 +279,15 @@ exit 0
 			BeforeEach(func() {
 				taskGuid = helpers.GenerateGuid()
 
-				err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+				taskToDesire := helpers.TaskCreateRequest(
 					taskGuid,
 					&models.RunAction{
 						User: "vcap",
 						Path: "curl",
 						Args: []string{inigo_announcement_server.AnnounceURL(taskGuid)},
 					},
-				))
+				)
+				err := bbsClient.DesireTask(taskToDesire.TaskGuid, taskToDesire.Domain, taskToDesire.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -321,27 +321,29 @@ exit 0
 			BeforeEach(func() {
 				taskGuid = helpers.GenerateGuid()
 
-				err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+				taskToDesire := helpers.TaskCreateRequest(
 					taskGuid,
 					&models.RunAction{
 						User: "vcap",
 						Path: "curl",
 						Args: []string{inigo_announcement_server.AnnounceURL(taskGuid)},
 					},
-				))
+				)
+
+				err := bbsClient.DesireTask(taskToDesire.TaskGuid, taskToDesire.Domain, taskToDesire.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("should be marked as failed after the expire duration", func() {
-				var completedTask receptor.TaskResponse
+				var completedTask *models.Task
 				Eventually(func() interface{} {
 					var err error
 
-					completedTask, err = receptorClient.GetTask(taskGuid)
+					completedTask, err = bbsClient.TaskByGuid(taskGuid)
 					Expect(err).NotTo(HaveOccurred())
 
 					return completedTask.State
-				}).Should(Equal(receptor.TaskStateCompleted))
+				}).Should(Equal(models.Task_Completed))
 
 				Expect(completedTask.Failed).To(BeTrue())
 				Expect(completedTask.FailureReason).To(ContainSubstring("not started within time limit"))
@@ -353,15 +355,15 @@ exit 0
 })
 
 func pollTaskStatus(taskGuid string, result string) {
-	var completedTask receptor.TaskResponse
+	var completedTask *models.Task
 	Eventually(func() interface{} {
 		var err error
 
-		completedTask, err = receptorClient.GetTask(taskGuid)
+		completedTask, err = bbsClient.TaskByGuid(taskGuid)
 		Expect(err).NotTo(HaveOccurred())
 
 		return completedTask.State
-	}).Should(Equal(receptor.TaskStateCompleted))
+	}).Should(Equal(models.Task_Completed))
 
 	Expect(completedTask.Result).To(Equal(result))
 }

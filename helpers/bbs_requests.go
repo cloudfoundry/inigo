@@ -1,11 +1,11 @@
 package helpers
 
 import (
+	"encoding/json"
 	"fmt"
 
+	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/bbs/models"
-	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 	. "github.com/onsi/gomega"
 )
 
@@ -19,8 +19,10 @@ const dockerRootFS = "docker:///cloudfoundry/diego-docker-app#latest"
 
 const DefaultHost = "lrp-route"
 
-var defaultRoutes = cfroutes.LegacyCFRoutes{{Hostnames: []string{DefaultHost}, Port: 8080}}.LegacyRoutingInfo()
-var defaultPorts = []uint16{8080}
+var defaultRoutesJSON = json.RawMessage(`{"lrp-route":"8080"}`)
+var defaultRoutes = models.Routes{"default-routes": &defaultRoutesJSON}
+
+var defaultPorts = []uint32{8080}
 
 var defaultSetupFunc = func() *models.Action {
 	return models.WrapAction(&models.DownloadAction{
@@ -42,21 +44,21 @@ var defaultMonitor = models.WrapAction(&models.RunAction{
 	Path: "true",
 })
 
-func UpsertInigoDomain(receptorClient receptor.Client) {
-	err := receptorClient.UpsertDomain(defaultDomain, 0)
+func UpsertInigoDomain(bbsClient bbs.Client) {
+	err := bbsClient.UpsertDomain(defaultDomain, 0)
 	Expect(err).NotTo(HaveOccurred())
 }
 
-func DefaultLRPCreateRequest(processGuid, logGuid string, numInstances int) receptor.DesiredLRPCreateRequest {
-	return receptor.DesiredLRPCreateRequest{
+func DefaultLRPCreateRequest(processGuid, logGuid string, numInstances int) *models.DesiredLRP {
+	return &models.DesiredLRP{
 		ProcessGuid: processGuid,
 		Domain:      defaultDomain,
-		RootFS:      defaultPreloadedRootFS,
-		Instances:   numInstances,
+		RootFs:      defaultPreloadedRootFS,
+		Instances:   int32(numInstances),
 
 		LogGuid: logGuid,
 
-		Routes: defaultRoutes,
+		Routes: &defaultRoutes,
 		Ports:  defaultPorts,
 
 		Setup:   defaultSetupFunc(),
@@ -65,14 +67,14 @@ func DefaultLRPCreateRequest(processGuid, logGuid string, numInstances int) rece
 	}
 }
 
-func LRPCreateRequestWithRootFS(processGuid, rootfs string) receptor.DesiredLRPCreateRequest {
-	return receptor.DesiredLRPCreateRequest{
+func LRPCreateRequestWithRootFS(processGuid, rootfs string) *models.DesiredLRP {
+	return &models.DesiredLRP{
 		ProcessGuid: processGuid,
 		Domain:      defaultDomain,
-		RootFS:      rootfs,
+		RootFs:      rootfs,
 		Instances:   1,
 
-		Routes: defaultRoutes,
+		Routes: &defaultRoutes,
 		Ports:  defaultPorts,
 
 		Setup:   defaultSetupFunc(),
@@ -81,14 +83,14 @@ func LRPCreateRequestWithRootFS(processGuid, rootfs string) receptor.DesiredLRPC
 	}
 }
 
-func DockerLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateRequest {
-	return receptor.DesiredLRPCreateRequest{
+func DockerLRPCreateRequest(processGuid string) *models.DesiredLRP {
+	return &models.DesiredLRP{
 		ProcessGuid: processGuid,
 		Domain:      defaultDomain,
-		RootFS:      dockerRootFS,
+		RootFs:      dockerRootFS,
 		Instances:   1,
 
-		Routes: defaultRoutes,
+		Routes: &defaultRoutes,
 		Ports:  defaultPorts,
 
 		Action: models.WrapAction(&models.RunAction{
@@ -100,26 +102,26 @@ func DockerLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateRequest
 	}
 }
 
-func CrashingLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateRequest {
-	return receptor.DesiredLRPCreateRequest{
+func CrashingLRPCreateRequest(processGuid string) *models.DesiredLRP {
+	return &models.DesiredLRP{
 		ProcessGuid: processGuid,
 		Domain:      defaultDomain,
-		RootFS:      defaultPreloadedRootFS,
+		RootFs:      defaultPreloadedRootFS,
 		Instances:   1,
 
 		Action: models.WrapAction(&models.RunAction{User: "vcap", Path: "false"}),
 	}
 }
 
-func LightweightLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateRequest {
-	return receptor.DesiredLRPCreateRequest{
+func LightweightLRPCreateRequest(processGuid string) *models.DesiredLRP {
+	return &models.DesiredLRP{
 		ProcessGuid: processGuid,
 		Domain:      defaultDomain,
-		RootFS:      defaultPreloadedRootFS,
+		RootFs:      defaultPreloadedRootFS,
 		Instances:   1,
 
-		MemoryMB: 128,
-		DiskMB:   1024,
+		MemoryMb: 128,
+		DiskMb:   1024,
 
 		Ports: defaultPorts,
 
@@ -139,14 +141,14 @@ func LightweightLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateRe
 	}
 }
 
-func PrivilegedLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateRequest {
-	return receptor.DesiredLRPCreateRequest{
+func PrivilegedLRPCreateRequest(processGuid string) *models.DesiredLRP {
+	return &models.DesiredLRP{
 		ProcessGuid: processGuid,
 		Domain:      defaultDomain,
-		RootFS:      defaultPreloadedRootFS,
+		RootFs:      defaultPreloadedRootFS,
 		Instances:   1,
 
-		Routes: defaultRoutes,
+		Routes: &defaultRoutes,
 		Ports:  defaultPorts,
 
 		Action: models.WrapAction(&models.RunAction{
@@ -177,29 +179,32 @@ func PrivilegedLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateReq
 	}
 }
 
-func TaskCreateRequest(taskGuid string, action models.ActionInterface) receptor.TaskCreateRequest {
+func TaskCreateRequest(taskGuid string, action models.ActionInterface) *models.Task {
 	return taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, 0, 0)
 }
 
-func TaskCreateRequestWithMemory(taskGuid string, action models.ActionInterface, memoryMB int) receptor.TaskCreateRequest {
+func TaskCreateRequestWithMemory(taskGuid string, action models.ActionInterface, memoryMB int) *models.Task {
 	return taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, memoryMB, 0)
 }
 
-func TaskCreateRequestWithRootFS(taskGuid, rootfs string, action models.ActionInterface) receptor.TaskCreateRequest {
+func TaskCreateRequestWithRootFS(taskGuid, rootfs string, action models.ActionInterface) *models.Task {
 	return taskCreateRequest(taskGuid, rootfs, action, 0, 0)
 }
 
-func TaskCreateRequestWithMemoryAndDisk(taskGuid string, action models.ActionInterface, memoryMB, diskMB int) receptor.TaskCreateRequest {
+func TaskCreateRequestWithMemoryAndDisk(taskGuid string, action models.ActionInterface, memoryMB, diskMB int) *models.Task {
 	return taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, memoryMB, diskMB)
 }
 
-func taskCreateRequest(taskGuid, rootFS string, action models.ActionInterface, memoryMB, diskMB int) receptor.TaskCreateRequest {
-	return receptor.TaskCreateRequest{
+func taskCreateRequest(taskGuid, rootFS string, action models.ActionInterface, memoryMB, diskMB int) *models.Task {
+	return &models.Task{
 		TaskGuid: taskGuid,
 		Domain:   defaultDomain,
-		RootFS:   rootFS,
-		MemoryMB: memoryMB,
-		DiskMB:   diskMB,
-		Action:   models.WrapAction(action),
+
+		TaskDefinition: &models.TaskDefinition{
+			RootFs:   rootFS,
+			MemoryMb: int32(memoryMB),
+			DiskMb:   int32(diskMB),
+			Action:   models.WrapAction(action),
+		},
 	}
 }

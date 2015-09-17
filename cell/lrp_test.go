@@ -1,6 +1,7 @@
 package cell_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,8 +12,6 @@ import (
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
-	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 	"github.com/cloudfoundry-incubator/runtime-schema/diego_errors"
 	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/pivotal-golang/lager"
@@ -63,7 +62,7 @@ var _ = Describe("LRP", func() {
 	})
 
 	Describe("desiring", func() {
-		var lrp receptor.DesiredLRPCreateRequest
+		var lrp *models.DesiredLRP
 
 		BeforeEach(func() {
 			lrp = helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
@@ -80,18 +79,12 @@ var _ = Describe("LRP", func() {
 		})
 
 		JustBeforeEach(func() {
-			err := receptorClient.CreateDesiredLRP(lrp)
+			err := bbsClient.DesireLRP(lrp)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("eventually runs", func() {
-			Eventually(func() []receptor.ActualLRPResponse {
-				lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-				Expect(err).NotTo(HaveOccurred())
-
-				return lrps
-			}).Should(HaveLen(1))
-
+			Eventually(helpers.LRPStatePoller(bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 			Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 		})
 
@@ -106,24 +99,17 @@ var _ = Describe("LRP", func() {
 			})
 
 			It("eventually marks the LRP as crashed", func() {
-				Eventually(func() []receptor.ActualLRPResponse {
-					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-					Expect(err).NotTo(HaveOccurred())
-
-					return lrps
-				}).Should(HaveLen(1))
-
-				var actualLRP receptor.ActualLRPResponse
 				Eventually(
-					helpers.LRPStatePoller(receptorClient, processGuid, &actualLRP),
-				).Should(Equal(receptor.ActualLRPStateCrashed))
+					helpers.LRPStatePoller(bbsClient, processGuid, nil),
+				).Should(Equal(models.ActualLRPStateCrashed))
 			})
 		})
 
 		Describe("updating routes", func() {
 			BeforeEach(func() {
-				lrp.Ports = []uint16{8080, 9080}
-				lrp.Routes = cfroutes.LegacyCFRoutes{{Port: 8080, Hostnames: []string{"lrp-route-8080"}}}.LegacyRoutingInfo()
+				lrp.Ports = []uint32{8080, 9080}
+				routesJSON := json.RawMessage(`{"lrp-route-8080":"8080"}`)
+				lrp.Routes = &models.Routes{"routes": &routesJSON}
 
 				lrp.Action = models.WrapAction(&models.RunAction{
 					User: "vcap",
@@ -142,21 +128,19 @@ var _ = Describe("LRP", func() {
 				logger := lagertest.NewTestLogger("test")
 
 				JustBeforeEach(func() {
+					routesJSON := json.RawMessage(`{"lrp-route-8080":"8080", "lrp-route-9080":"9080"}`)
+					twoRoutes := &models.Routes{"routes": &routesJSON}
+
+					desiredUpdate := models.DesiredLRPUpdate{
+						Routes: twoRoutes,
+					}
+
 					logger.Info("just-before-each", lager.Data{
-						"processGuid": processGuid,
-						"updateRequest": receptor.DesiredLRPUpdateRequest{
-							Routes: cfroutes.LegacyCFRoutes{
-								{Port: 8080, Hostnames: []string{"lrp-route-8080"}},
-								{Port: 9080, Hostnames: []string{"lrp-route-9080"}},
-							}.LegacyRoutingInfo(),
-						},
-					})
-					err := receptorClient.UpdateDesiredLRP(processGuid, receptor.DesiredLRPUpdateRequest{
-						Routes: cfroutes.LegacyCFRoutes{
-							{Port: 8080, Hostnames: []string{"lrp-route-8080"}},
-							{Port: 9080, Hostnames: []string{"lrp-route-9080"}},
-						}.LegacyRoutingInfo(),
-					})
+						"processGuid":   processGuid,
+						"updateRequest": desiredUpdate})
+
+					err := bbsClient.UpdateDesiredLRP(processGuid, &desiredUpdate)
+
 					logger.Info("after-update-desired", lager.Data{
 						"error": err,
 					})
@@ -179,8 +163,8 @@ var _ = Describe("LRP", func() {
 			})
 
 			JustBeforeEach(func() {
-				Eventually(func() []receptor.ActualLRPResponse {
-					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+				Eventually(func() []*models.ActualLRPGroup {
+					lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
 					Expect(err).NotTo(HaveOccurred())
 
 					return lrps
@@ -188,14 +172,14 @@ var _ = Describe("LRP", func() {
 			})
 
 			Describe("changing the instances", func() {
-				var newInstances int
+				var newInstances int32
 
 				BeforeEach(func() {
 					newInstances = 0 // base value; overridden below
 				})
 
 				JustBeforeEach(func() {
-					err := receptorClient.UpdateDesiredLRP(processGuid, receptor.DesiredLRPUpdateRequest{
+					err := bbsClient.UpdateDesiredLRP(processGuid, &models.DesiredLRPUpdate{
 						Instances: &newInstances,
 					})
 					Expect(err).NotTo(HaveOccurred())
@@ -207,8 +191,8 @@ var _ = Describe("LRP", func() {
 					})
 
 					It("scales up to the correct number of instances", func() {
-						Eventually(func() []receptor.ActualLRPResponse {
-							lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+						Eventually(func() []*models.ActualLRPGroup {
+							lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
 							Expect(err).NotTo(HaveOccurred())
 
 							return lrps
@@ -224,8 +208,8 @@ var _ = Describe("LRP", func() {
 					})
 
 					It("scales down to the correct number of instances", func() {
-						Eventually(func() []receptor.ActualLRPResponse {
-							lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+						Eventually(func() []*models.ActualLRPGroup {
+							lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
 							Expect(err).NotTo(HaveOccurred())
 
 							return lrps
@@ -241,8 +225,8 @@ var _ = Describe("LRP", func() {
 					})
 
 					It("scales down to the correct number of instances", func() {
-						Eventually(func() []receptor.ActualLRPResponse {
-							lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+						Eventually(func() []*models.ActualLRPGroup {
+							lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
 							Expect(err).NotTo(HaveOccurred())
 
 							return lrps
@@ -252,14 +236,14 @@ var _ = Describe("LRP", func() {
 					})
 
 					It("can be scaled back up", func() {
-						newInstances := 1
-						err := receptorClient.UpdateDesiredLRP(processGuid, receptor.DesiredLRPUpdateRequest{
+						newInstances := int32(1)
+						err := bbsClient.UpdateDesiredLRP(processGuid, &models.DesiredLRPUpdate{
 							Instances: &newInstances,
 						})
 						Expect(err).NotTo(HaveOccurred())
 
-						Eventually(func() []receptor.ActualLRPResponse {
-							lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+						Eventually(func() []*models.ActualLRPGroup {
+							lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
 							Expect(err).NotTo(HaveOccurred())
 
 							return lrps
@@ -272,13 +256,13 @@ var _ = Describe("LRP", func() {
 
 			Describe("deleting it", func() {
 				JustBeforeEach(func() {
-					err := receptorClient.DeleteDesiredLRP(processGuid)
+					err := bbsClient.RemoveDesiredLRP(processGuid)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("stops all instances", func() {
-					Eventually(func() []receptor.ActualLRPResponse {
-						lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+					Eventually(func() []*models.ActualLRPGroup {
+						lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
 						Expect(err).NotTo(HaveOccurred())
 
 						return lrps
@@ -364,13 +348,14 @@ var _ = Describe("LRP", func() {
 
 			It("fails and sets a placement error", func() {
 				lrpFunc := func() string {
-					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
 					Expect(err).NotTo(HaveOccurred())
-					if len(lrps) == 0 {
+					if len(lrpGroups) == 0 {
 						return ""
 					}
+					lrp, _ := lrpGroups[0].Resolve()
 
-					return lrps[0].PlacementError
+					return lrp.PlacementError
 				}
 
 				Eventually(lrpFunc).Should(Equal(diego_errors.CELL_MISMATCH_MESSAGE))
@@ -384,13 +369,14 @@ var _ = Describe("LRP", func() {
 
 			It("fails and sets a placement error", func() {
 				lrpFunc := func() string {
-					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
 					Expect(err).NotTo(HaveOccurred())
-					if len(lrps) == 0 {
+					if len(lrpGroups) == 0 {
 						return ""
 					}
+					lrp, _ := lrpGroups[0].Resolve()
 
-					return lrps[0].PlacementError
+					return lrp.PlacementError
 				}
 
 				Eventually(lrpFunc).Should(Equal(diego_errors.CELL_MISMATCH_MESSAGE))
@@ -404,8 +390,8 @@ var _ = Describe("LRP", func() {
 			})
 
 			It("runs", func() {
-				Eventually(func() []receptor.ActualLRPResponse {
-					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+				Eventually(func() []*models.ActualLRPGroup {
+					lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
 					Expect(err).NotTo(HaveOccurred())
 					return lrps
 				}).Should(HaveLen(1))
@@ -449,17 +435,18 @@ var _ = Describe("Crashing LRPs", func() {
 			BeforeEach(func() {
 				lrp := helpers.CrashingLRPCreateRequest(processGuid)
 
-				err := receptorClient.CreateDesiredLRP(lrp)
+				err := bbsClient.DesireLRP(lrp)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("imediately restarts the app 3 times", func() {
-				crashCount := func() int {
-					actual, err := receptorClient.ActualLRPByProcessGuidAndIndex(processGuid, 0)
+				crashCount := func() int32 {
+					actualGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(processGuid, 0)
 					Expect(err).NotTo(HaveOccurred())
+					actual, _ := actualGroup.Resolve()
 					return actual.CrashCount
 				}
-				// the receptor immediately starts it 3 times
+				// the bbs immediately starts it 3 times
 				Eventually(crashCount).Should(Equal(3))
 				// then exponential backoff kicks in
 				Consistently(crashCount, 15*time.Second).Should(Equal(3))

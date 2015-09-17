@@ -11,18 +11,21 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/candiedyaml"
+	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
 	"github.com/cloudfoundry-incubator/garden"
 	gardenclient "github.com/cloudfoundry-incubator/garden/client"
 	gardenconnection "github.com/cloudfoundry-incubator/garden/client/connection"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/inigo/gardenrunner"
-	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/locket"
 	gorouterconfig "github.com/cloudfoundry/gorouter/config"
 	"github.com/cloudfoundry/gunk/diegonats"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-golang/clock"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"golang.org/x/crypto/ssh"
@@ -66,7 +69,6 @@ type ComponentAddresses struct {
 	Router        string
 	TPSListener   string
 	GardenLinux   string
-	Receptor      string
 	Stager        string
 	NsyncListener string
 	Auctioneer    string
@@ -519,27 +521,6 @@ func (maker ComponentMaker) StagerN(portOffset int, argv ...string) ifrit.Runner
 	})
 }
 
-func (maker ComponentMaker) Receptor(argv ...string) ifrit.Runner {
-	return ginkgomon.New(ginkgomon.Config{
-		Name:              "receptor",
-		AnsiColorCode:     "95m",
-		StartCheck:        "receptor.started",
-		StartCheckTimeout: 10 * time.Second,
-		Command: exec.Command(
-			maker.Artifacts.Executables["receptor"],
-			append([]string{
-				"-address", maker.Addresses.Receptor,
-				"-consulCluster", maker.ConsulCluster(),
-				"-logLevel", "debug",
-				"-bbsAddress", maker.BBSURL(),
-				"-bbsClientCert", maker.BbsSSL.ClientCert,
-				"-bbsClientKey", maker.BbsSSL.ClientKey,
-				"-bbsCACert", maker.BbsSSL.CACert,
-			}, argv...)...,
-		),
-	})
-}
-
 func (maker ComponentMaker) SSHProxy(argv ...string) ifrit.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "ssh-proxy",
@@ -595,8 +576,23 @@ func (maker ComponentMaker) GardenClient() garden.Client {
 	return gardenclient.New(gardenconnection.New("tcp", maker.Addresses.GardenLinux))
 }
 
-func (maker ComponentMaker) ReceptorClient() receptor.Client {
-	return receptor.NewClient("http://" + maker.Addresses.Receptor)
+func (maker ComponentMaker) BBSClient() bbs.Client {
+	return bbs.NewClient(maker.BBSURL())
+}
+
+func (maker ComponentMaker) LocketClient() locket.Client {
+	client, err := consuladapter.NewClient(maker.ConsulCluster())
+	Expect(err).NotTo(HaveOccurred())
+
+	sessionMgr := consuladapter.NewSessionManager(client)
+	consulSession, err := consuladapter.NewSession("inigo", 10*time.Second, client, sessionMgr)
+	Expect(err).NotTo(HaveOccurred())
+
+	return locket.NewClient(consulSession, clock.NewClock(), nil)
+}
+
+func (maker ComponentMaker) BBSURL() string {
+	return "http://" + maker.Addresses.BBS
 }
 
 func (maker ComponentMaker) ConsulCluster() string {

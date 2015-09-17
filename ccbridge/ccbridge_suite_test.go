@@ -21,15 +21,13 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	"github.com/cloudfoundry-incubator/inigo/world"
-	"github.com/cloudfoundry-incubator/receptor"
 )
 
 var (
 	componentMaker world.ComponentMaker
 
-	plumbing       ifrit.Process
-	receptorClient receptor.Client
-	gardenClient   garden.Client
+	plumbing     ifrit.Process
+	gardenClient garden.Client
 )
 
 var _ = SynchronizedBeforeSuite(func() []byte {
@@ -63,7 +61,6 @@ var _ = BeforeEach(func() {
 	helpers.ConsulWaitUntilReady()
 
 	gardenClient = componentMaker.GardenClient()
-	receptorClient = componentMaker.ReceptorClient()
 
 	inigo_announcement_server.Start(componentMaker.ExternalAddress)
 })
@@ -113,9 +110,6 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["bbs"], err = gexec.BuildIn(os.Getenv("BBS_GOPATH"), "github.com/cloudfoundry-incubator/bbs/cmd/bbs", "-race")
-	Expect(err).NotTo(HaveOccurred())
-
-	builtExecutables["receptor"], err = gexec.BuildIn(os.Getenv("RECEPTOR_GOPATH"), "github.com/cloudfoundry-incubator/receptor/cmd/receptor", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["nsync-listener"], err = gexec.BuildIn(os.Getenv("NSYNC_GOPATH"), "github.com/cloudfoundry-incubator/nsync/cmd/nsync-listener", "-race")

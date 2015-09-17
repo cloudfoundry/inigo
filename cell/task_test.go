@@ -17,7 +17,6 @@ import (
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
-	"github.com/cloudfoundry-incubator/receptor"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
@@ -43,7 +42,7 @@ var _ = Describe("Tasks", func() {
 		}
 		cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, cellGroup))
 
-		Eventually(receptorClient.Cells).Should(HaveLen(1))
+		Eventually(locketClient.Cells()).Should(HaveLen(1))
 	})
 
 	AfterEach(func() {
@@ -58,7 +57,7 @@ var _ = Describe("Tasks", func() {
 		})
 
 		It("runs the command with the provided environment", func() {
-			err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+			expectedTask := helpers.TaskCreateRequest(
 				guid,
 				&models.RunAction{
 					User: "vcap",
@@ -70,25 +69,26 @@ var _ = Describe("Tasks", func() {
 						{"FOO", "NEW-BAR"},
 					},
 				},
-			))
+			)
+			err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 
-			var task receptor.TaskResponse
+			var task *models.Task
 
 			Eventually(func() interface{} {
 				var err error
 
-				task, err = receptorClient.GetTask(guid)
+				task, err = bbsClient.TaskByGuid(guid)
 				Expect(err).NotTo(HaveOccurred())
 
 				return task.State
-			}).Should(Equal(receptor.TaskStateCompleted))
+			}).Should(Equal(models.Task_Completed))
 
 			Expect(task.Failed).To(BeFalse())
 		})
 
 		It("runs the command with the provided working directory", func() {
-			err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+			expectedTask := helpers.TaskCreateRequest(
 				guid,
 				&models.RunAction{
 					User: "vcap",
@@ -96,26 +96,28 @@ var _ = Describe("Tasks", func() {
 					Args: []string{"-c", `[ $PWD = /tmp ]`},
 					Dir:  "/tmp",
 				},
-			))
+			)
+			err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+
 			Expect(err).NotTo(HaveOccurred())
 
-			var task receptor.TaskResponse
+			var task *models.Task
 
 			Eventually(func() interface{} {
 				var err error
 
-				task, err = receptorClient.GetTask(guid)
+				task, err = bbsClient.TaskByGuid(guid)
 				Expect(err).NotTo(HaveOccurred())
 
 				return task.State
-			}).Should(Equal(receptor.TaskStateCompleted))
+			}).Should(Equal(models.Task_Completed))
 
 			Expect(task.Failed).To(BeFalse())
 		})
 
 		Context("when the command exceeds its memory limit", func() {
 			It("should fail the Task", func() {
-				err := receptorClient.CreateTask(helpers.TaskCreateRequestWithMemoryAndDisk(
+				expectedTask := helpers.TaskCreateRequestWithMemoryAndDisk(
 					guid,
 					models.Serial(
 						&models.RunAction{
@@ -136,20 +138,23 @@ var _ = Describe("Tasks", func() {
 					),
 					10,
 					1024,
-				))
+				)
+
+				err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+
 				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(inigo_announcement_server.Announcements).Should(ContainElement("before-memory-overdose"))
 
-				var task receptor.TaskResponse
+				var task *models.Task
 				Eventually(func() interface{} {
 					var err error
 
-					task, err = receptorClient.GetTask(guid)
+					task, err = bbsClient.TaskByGuid(guid)
 					Expect(err).NotTo(HaveOccurred())
 
 					return task.State
-				}).Should(Equal(receptor.TaskStateCompleted))
+				}).Should(Equal(models.Task_Completed))
 
 				Expect(task.Failed).To(BeTrue())
 				Expect(task.FailureReason).To(ContainSubstring("out of memory"))
@@ -162,7 +167,7 @@ var _ = Describe("Tasks", func() {
 			It("should fail the Task", func() {
 				nofile := uint64(10)
 
-				err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+				expectedTask := helpers.TaskCreateRequest(
 					guid,
 					models.Serial(
 						&models.RunAction{
@@ -191,18 +196,20 @@ echo should have died by now
 							},
 						},
 					),
-				))
+				)
+
+				err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 
-				var task receptor.TaskResponse
+				var task *models.Task
 				Eventually(func() interface{} {
 					var err error
 
-					task, err = receptorClient.GetTask(guid)
+					task, err = bbsClient.TaskByGuid(guid)
 					Expect(err).NotTo(HaveOccurred())
 
 					return task.State
-				}).Should(Equal(receptor.TaskStateCompleted))
+				}).Should(Equal(models.Task_Completed))
 
 				Expect(task.Failed).To(BeTrue())
 
@@ -213,7 +220,7 @@ echo should have died by now
 
 		Context("when the command times out", func() {
 			It("should fail the Task", func() {
-				err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+				expectedTask := helpers.TaskCreateRequest(
 					guid,
 					models.Serial(
 						models.Timeout(
@@ -225,18 +232,21 @@ echo should have died by now
 							500*time.Millisecond,
 						),
 					),
-				))
+				)
+
+				err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+
 				Expect(err).NotTo(HaveOccurred())
 
-				var task receptor.TaskResponse
+				var task *models.Task
 				Eventually(func() interface{} {
 					var err error
 
-					task, err = receptorClient.GetTask(guid)
+					task, err = bbsClient.TaskByGuid(guid)
 					Expect(err).NotTo(HaveOccurred())
 
 					return task.State
-				}).Should(Equal(receptor.TaskStateCompleted))
+				}).Should(Equal(models.Task_Completed))
 
 				Expect(task.Failed).To(BeTrue())
 				Expect(task.FailureReason).To(ContainSubstring("exceeded 500ms timeout"))
@@ -259,7 +269,7 @@ echo should have died by now
 		})
 
 		It("downloads the file", func() {
-			err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+			expectedTask := helpers.TaskCreateRequest(
 				guid,
 				models.Serial(
 					&models.DownloadAction{
@@ -272,9 +282,11 @@ echo should have died by now
 						Path: "./announce",
 					},
 				),
-			))
-			Expect(err).NotTo(HaveOccurred())
+			)
 
+			err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+
+			Expect(err).NotTo(HaveOccurred())
 			Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
 		})
 	})
@@ -310,7 +322,7 @@ echo should have died by now
 		})
 
 		It("uploads the specified files", func() {
-			err := receptorClient.CreateTask(helpers.TaskCreateRequest(
+			expectedTask := helpers.TaskCreateRequest(
 				guid,
 				models.Serial(
 					&models.RunAction{
@@ -329,7 +341,9 @@ echo should have died by now
 						Args: []string{inigo_announcement_server.AnnounceURL(guid)},
 					},
 				),
-			))
+			)
+
+			err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(gotRequest).Should(BeClosed())
@@ -342,7 +356,7 @@ echo should have died by now
 		It("should fetch the contents of the requested file and provide the content in the completed Task", func() {
 			guid := helpers.GenerateGuid()
 
-			taskRequest := helpers.TaskCreateRequest(
+			expectedTask := helpers.TaskCreateRequest(
 				guid,
 				&models.RunAction{
 					User: "vcap",
@@ -350,19 +364,20 @@ echo should have died by now
 					Args: []string{"-c", "echo tasty thingy > thingy"},
 				},
 			)
-			taskRequest.ResultFile = "/home/vcap/thingy"
-			err := receptorClient.CreateTask(taskRequest)
+			expectedTask.ResultFile = "/home/vcap/thingy"
+
+			err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 
-			var task receptor.TaskResponse
+			var task *models.Task
 			Eventually(func() interface{} {
 				var err error
 
-				task, err = receptorClient.GetTask(guid)
+				task, err = bbsClient.TaskByGuid(guid)
 				Expect(err).NotTo(HaveOccurred())
 
 				return task.State
-			}).Should(Equal(receptor.TaskStateCompleted))
+			}).Should(Equal(models.Task_Completed))
 
 			Expect(task.Result).To(Equal("tasty thingy\n"))
 		})

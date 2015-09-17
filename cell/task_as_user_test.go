@@ -9,7 +9,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
-	"github.com/cloudfoundry-incubator/receptor"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -34,7 +33,7 @@ var _ = Describe("Tasks as specific user", func() {
 		}
 		cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, cellGroup))
 
-		Eventually(receptorClient.Cells).Should(HaveLen(1))
+		Eventually(locketClient.Cells()).Should(HaveLen(1))
 	})
 
 	AfterEach(func() {
@@ -49,7 +48,7 @@ var _ = Describe("Tasks as specific user", func() {
 		})
 
 		It("runs the command as a specific user", func() {
-			taskRequest := helpers.TaskCreateRequest(
+			expectedTask := helpers.TaskCreateRequest(
 				guid,
 				&models.RunAction{
 					User: "testuser",
@@ -57,20 +56,20 @@ var _ = Describe("Tasks as specific user", func() {
 					Args: []string{"-c", `[ $(whoami) = testuser ]`},
 				},
 			)
-			taskRequest.Privileged = true
-			err := receptorClient.CreateTask(taskRequest)
+			expectedTask.Privileged = true
+			err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 
-			var task receptor.TaskResponse
+			var task *models.Task
 
 			Eventually(func() interface{} {
 				var err error
 
-				task, err = receptorClient.GetTask(guid)
+				task, err = bbsClient.TaskByGuid(guid)
 				Expect(err).NotTo(HaveOccurred())
 
 				return task.State
-			}).Should(Equal(receptor.TaskStateCompleted))
+			}).Should(Equal(models.Task_Completed))
 			Expect(task.Failed).To(BeFalse())
 		})
 	})
