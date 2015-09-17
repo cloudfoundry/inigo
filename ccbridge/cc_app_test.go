@@ -67,7 +67,6 @@ var _ = Describe("AppRunner", func() {
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"bbs", componentMaker.BBS()},
-			{"receptor", componentMaker.Receptor()},
 			{"rep", componentMaker.Rep()},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"route-emitter", componentMaker.RouteEmitter()},

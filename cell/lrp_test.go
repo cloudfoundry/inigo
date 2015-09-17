@@ -63,7 +63,7 @@ var _ = Describe("LRP", func() {
 	})
 
 	Describe("desiring", func() {
-		var lrp receptor.DesiredLRPCreateRequest
+		var lrp *models.DesiredLRP
 
 		BeforeEach(func() {
 			lrp = helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
@@ -80,18 +80,12 @@ var _ = Describe("LRP", func() {
 		})
 
 		JustBeforeEach(func() {
-			err := receptorClient.CreateDesiredLRP(lrp)
+			err := bbsClient.DesireLRP(lrp)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("eventually runs", func() {
-			Eventually(func() []receptor.ActualLRPResponse {
-				lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-				Expect(err).NotTo(HaveOccurred())
-
-				return lrps
-			}).Should(HaveLen(1))
-
+			Eventually(helpers.LRPStatePoller(bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 			Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 		})
 
@@ -106,16 +100,8 @@ var _ = Describe("LRP", func() {
 			})
 
 			It("eventually marks the LRP as crashed", func() {
-				Eventually(func() []receptor.ActualLRPResponse {
-					lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
-					Expect(err).NotTo(HaveOccurred())
-
-					return lrps
-				}).Should(HaveLen(1))
-
-				var actualLRP receptor.ActualLRPResponse
 				Eventually(
-					helpers.LRPStatePoller(receptorClient, processGuid, &actualLRP),
+					helpers.LRPStatePoller(receptorClient, processGuid, nil),
 				).Should(Equal(receptor.ActualLRPStateCrashed))
 			})
 		})
@@ -142,20 +128,18 @@ var _ = Describe("LRP", func() {
 				logger := lagertest.NewTestLogger("test")
 
 				JustBeforeEach(func() {
-					logger.Info("just-before-each", lager.Data{
-						"processGuid": processGuid,
-						"updateRequest": receptor.DesiredLRPUpdateRequest{
-							Routes: cfroutes.LegacyCFRoutes{
-								{Port: 8080, Hostnames: []string{"lrp-route-8080"}},
-								{Port: 9080, Hostnames: []string{"lrp-route-9080"}},
-							}.LegacyRoutingInfo(),
-						},
-					})
-					err := receptorClient.UpdateDesiredLRP(processGuid, receptor.DesiredLRPUpdateRequest{
+					desiredUpdate := models.DesiredLRPUpdate{
 						Routes: cfroutes.LegacyCFRoutes{
 							{Port: 8080, Hostnames: []string{"lrp-route-8080"}},
 							{Port: 9080, Hostnames: []string{"lrp-route-9080"}},
 						}.LegacyRoutingInfo(),
+					},
+
+						logger.Info("just-before-each", lager.Data{
+							"processGuid":   processGuid,
+							"updateRequest": desiredUpdate})
+
+							err := BBSClient.UpdateDesiredLRP(processGuid, desiredUpdate) 
 					})
 					logger.Info("after-update-desired", lager.Data{
 						"error": err,

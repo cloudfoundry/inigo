@@ -11,7 +11,6 @@ import (
 	ssh_helpers "github.com/cloudfoundry-incubator/diego-ssh/helpers"
 	"github.com/cloudfoundry-incubator/diego-ssh/routes"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
-	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/pivotal-golang/archiver/compressor"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -52,7 +51,7 @@ var _ = Describe("SSH", func() {
 		runtime ifrit.Process
 		address string
 
-		lrp receptor.DesiredLRPCreateRequest
+		lrp models.DesiredLRP
 	)
 
 	BeforeEach(func() {
@@ -86,11 +85,11 @@ var _ = Describe("SSH", func() {
 
 		sshRouteMessage := json.RawMessage(sshRoutePayload)
 
-		envVars := []receptor.EnvironmentVariable{
+		envVars := []models.EnvironmentVariable{
 			{Name: "TEST", Value: "foobar"},
 		}
 
-		lrp = receptor.DesiredLRPCreateRequest{
+		lrp = models.DesiredLRP{
 			ProcessGuid: processGuid,
 			Domain:      "inigo",
 			Instances:   2,
@@ -133,7 +132,7 @@ var _ = Describe("SSH", func() {
 			MemoryMB:     128,
 			DiskMB:       128,
 			Ports:        []uint16{3456},
-			Routes: receptor.RoutingInfo{
+			Routes: models.RoutingInfo{
 				routes.DIEGO_SSH: &sshRouteMessage,
 			},
 			EnvironmentVariables: envVars,
@@ -144,22 +143,22 @@ var _ = Describe("SSH", func() {
 		logger := lagertest.NewTestLogger("test")
 		logger.Info("desired-ssh-lrp", lager.Data{"lrp": lrp})
 
-		err := receptorClient.CreateDesiredLRP(lrp)
+		err := bbsClient.DesireLRP(&lrp)
 		Expect(err).NotTo(HaveOccurred())
 
-		Eventually(func() []receptor.ActualLRPResponse {
-			lrps, err := receptorClient.ActualLRPsByProcessGuid(processGuid)
+		Eventually(func() []*models.ActualLRPGroup {
+			lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
 			Expect(err).NotTo(HaveOccurred())
 			return lrps
 		}).Should(HaveLen(2))
 
 		Eventually(
-			helpers.LRPInstanceStatePoller(receptorClient, processGuid, 0, nil),
-		).Should(Equal(receptor.ActualLRPStateRunning))
+			helpers.LRPInstanceStatePoller(bbsClient, processGuid, 0, nil),
+		).Should(Equal(bbs.ActualLRPStateRunning))
 
 		Eventually(
-			helpers.LRPInstanceStatePoller(receptorClient, processGuid, 1, nil),
-		).Should(Equal(receptor.ActualLRPStateRunning))
+			helpers.LRPInstanceStatePoller(bbsClient, processGuid, 1, nil),
+		).Should(Equal(bbs.ActualLRPStateRunning))
 	})
 
 	AfterEach(func() {
@@ -202,8 +201,8 @@ var _ = Describe("SSH", func() {
 
 			It("returns an error", func() {
 				Eventually(
-					helpers.LRPInstanceStatePoller(receptorClient, processGuid, 0, nil),
-				).Should(Equal(receptor.ActualLRPStateRunning))
+					helpers.LRPInstanceStatePoller(bbsClient, processGuid, 0, nil),
+				).Should(Equal(models.ActualLRPStateRunning))
 
 				_, err := ssh.Dial("tcp", address, clientConfig)
 				Expect(err).To(HaveOccurred())

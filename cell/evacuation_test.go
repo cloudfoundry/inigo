@@ -9,7 +9,6 @@ import (
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
-	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -110,15 +109,18 @@ var _ = Describe("Evacuation", func() {
 			Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
 		})
 
-		err := receptorClient.CreateDesiredLRP(lrp)
+		err := BBSClient.DesireLRP(lrp)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("running an actual LRP instance")
-		Eventually(helpers.LRPStatePoller(receptorClient, processGuid, nil)).Should(Equal(receptor.ActualLRPStateRunning))
+		Eventually(helpers.LRPStatePoller(bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 		Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 
-		actualLRP, err := receptorClient.ActualLRPByProcessGuidAndIndex(processGuid, 0)
+		actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(processGuid, 0)
 		Expect(err).NotTo(HaveOccurred())
+
+		actualLRP, ok := actualLRPGroup.Resolve()
+		Expect(ok).To(BeTrue())
 
 		var evacuatingRepAddr string
 		var evacutaingRepRunner *ginkgomon.Runner
@@ -147,7 +149,7 @@ var _ = Describe("Evacuation", func() {
 		}).Should(Equal(0))
 
 		By("running immediately after the rep exits and is eventually routable")
-		Expect(helpers.LRPStatePoller(receptorClient, processGuid, nil)()).To(Equal(receptor.ActualLRPStateRunning))
+		Expect(helpers.LRPStatePoller(bbsClient, processGuid, nil)()).To(Equal(models.ActualLRPStateRunning))
 		Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 		Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 	})

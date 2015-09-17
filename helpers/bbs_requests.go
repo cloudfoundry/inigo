@@ -3,8 +3,8 @@ package helpers
 import (
 	"fmt"
 
+	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/bbs/models"
-	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 	. "github.com/onsi/gomega"
 )
@@ -42,13 +42,13 @@ var defaultMonitor = models.WrapAction(&models.RunAction{
 	Path: "true",
 })
 
-func UpsertInigoDomain(receptorClient receptor.Client) {
-	err := receptorClient.UpsertDomain(defaultDomain, 0)
+func UpsertInigoDomain(bbsClient bbs.Client) {
+	err := bbsClient.UpsertDomain(defaultDomain, 0)
 	Expect(err).NotTo(HaveOccurred())
 }
 
-func DefaultLRPCreateRequest(processGuid, logGuid string, numInstances int) receptor.DesiredLRPCreateRequest {
-	return receptor.DesiredLRPCreateRequest{
+func DefaultLRPCreateRequest(processGuid, logGuid string, numInstances int) *models.DesiredLRP {
+	return &models.DesiredLRP{
 		ProcessGuid: processGuid,
 		Domain:      defaultDomain,
 		RootFS:      defaultPreloadedRootFS,
@@ -65,8 +65,8 @@ func DefaultLRPCreateRequest(processGuid, logGuid string, numInstances int) rece
 	}
 }
 
-func LRPCreateRequestWithRootFS(processGuid, rootfs string) receptor.DesiredLRPCreateRequest {
-	return receptor.DesiredLRPCreateRequest{
+func LRPCreateRequestWithRootFS(processGuid, rootfs string) *models.DesiredLRP {
+	return &models.DesiredLRP{
 		ProcessGuid: processGuid,
 		Domain:      defaultDomain,
 		RootFS:      rootfs,
@@ -81,8 +81,8 @@ func LRPCreateRequestWithRootFS(processGuid, rootfs string) receptor.DesiredLRPC
 	}
 }
 
-func DockerLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateRequest {
-	return receptor.DesiredLRPCreateRequest{
+func DockerLRPCreateRequest(processGuid string) *models.DesiredLRP {
+	return &models.DesiredLRP{
 		ProcessGuid: processGuid,
 		Domain:      defaultDomain,
 		RootFS:      dockerRootFS,
@@ -100,8 +100,8 @@ func DockerLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateRequest
 	}
 }
 
-func CrashingLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateRequest {
-	return receptor.DesiredLRPCreateRequest{
+func CrashingLRPCreateRequest(processGuid string) *models.DesiredLRP {
+	return &models.DesiredLRP{
 		ProcessGuid: processGuid,
 		Domain:      defaultDomain,
 		RootFS:      defaultPreloadedRootFS,
@@ -111,8 +111,8 @@ func CrashingLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateReque
 	}
 }
 
-func LightweightLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateRequest {
-	return receptor.DesiredLRPCreateRequest{
+func LightweightLRPCreateRequest(processGuid string) *models.DesiredLRP {
+	return &models.DesiredLRP{
 		ProcessGuid: processGuid,
 		Domain:      defaultDomain,
 		RootFS:      defaultPreloadedRootFS,
@@ -139,8 +139,8 @@ func LightweightLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateRe
 	}
 }
 
-func PrivilegedLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateRequest {
-	return receptor.DesiredLRPCreateRequest{
+func PrivilegedLRPCreateRequest(processGuid string) *models.DesiredLRP {
+	return &models.DesiredLRP{
 		ProcessGuid: processGuid,
 		Domain:      defaultDomain,
 		RootFS:      defaultPreloadedRootFS,
@@ -177,24 +177,24 @@ func PrivilegedLRPCreateRequest(processGuid string) receptor.DesiredLRPCreateReq
 	}
 }
 
-func TaskCreateRequest(taskGuid string, action models.ActionInterface) receptor.TaskCreateRequest {
+func TaskCreateRequest(taskGuid string, action models.ActionInterface) *models.Task {
 	return taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, 0, 0)
 }
 
-func TaskCreateRequestWithMemory(taskGuid string, action models.ActionInterface, memoryMB int) receptor.TaskCreateRequest {
+func TaskCreateRequestWithMemory(taskGuid string, action models.ActionInterface, memoryMB int) *models.Task {
 	return taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, memoryMB, 0)
 }
 
-func TaskCreateRequestWithRootFS(taskGuid, rootfs string, action models.ActionInterface) receptor.TaskCreateRequest {
+func TaskCreateRequestWithRootFS(taskGuid, rootfs string, action models.ActionInterface) *models.Task {
 	return taskCreateRequest(taskGuid, rootfs, action, 0, 0)
 }
 
-func TaskCreateRequestWithMemoryAndDisk(taskGuid string, action models.ActionInterface, memoryMB, diskMB int) receptor.TaskCreateRequest {
+func TaskCreateRequestWithMemoryAndDisk(taskGuid string, action models.ActionInterface, memoryMB, diskMB int) *models.Task {
 	return taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, memoryMB, diskMB)
 }
 
-func taskCreateRequest(taskGuid, rootFS string, action models.ActionInterface, memoryMB, diskMB int) receptor.TaskCreateRequest {
-	return receptor.TaskCreateRequest{
+func taskCreateRequest(taskGuid, rootFS string, action models.ActionInterface, memoryMB, diskMB int) *models.Task {
+	return &models.Task{
 		TaskGuid: taskGuid,
 		Domain:   defaultDomain,
 		RootFS:   rootFS,

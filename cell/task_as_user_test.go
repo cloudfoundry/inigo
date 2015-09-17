@@ -34,7 +34,7 @@ var _ = Describe("Tasks as specific user", func() {
 		}
 		cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, cellGroup))
 
-		Eventually(receptorClient.Cells).Should(HaveLen(1))
+		Eventually(consulClient.Cells).Should(HaveLen(1))
 	})
 
 	AfterEach(func() {

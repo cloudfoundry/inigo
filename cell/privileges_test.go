@@ -6,7 +6,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
-	"github.com/cloudfoundry-incubator/receptor"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
@@ -33,7 +32,7 @@ var _ = Describe("Privileges", func() {
 	})
 
 	Context("when a task that tries to do privileged things is requested", func() {
-		var taskRequest receptor.TaskCreateRequest
+		var taskRequest models.TaskDefinition
 
 		BeforeEach(func() {
 			taskRequest = helpers.TaskCreateRequest(
@@ -53,7 +52,7 @@ var _ = Describe("Privileges", func() {
 		})
 
 		JustBeforeEach(func() {
-			err := receptorClient.CreateTask(taskRequest)
+			err := bbsClient.DesireTask(taskRequest.TaskGuid, taskRequest.Domain, taskRequest.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -63,8 +62,8 @@ var _ = Describe("Privileges", func() {
 			})
 
 			It("succeeds", func() {
-				var task receptor.TaskResponse
-				Eventually(helpers.TaskStatePoller(receptorClient, taskRequest.TaskGuid, &task)).Should(Equal(receptor.TaskStateCompleted))
+				var task models.Task
+				Eventually(helpers.TaskStatePoller(bbsClient, taskRequest.TaskGuid, &task)).Should(Equal(models.Task_Completed))
 				Expect(task.Failed).To(BeFalse())
 			})
 		})
@@ -75,22 +74,22 @@ var _ = Describe("Privileges", func() {
 			})
 
 			It("fails", func() {
-				var task receptor.TaskResponse
-				Eventually(helpers.TaskStatePoller(receptorClient, taskRequest.TaskGuid, &task)).Should(Equal(receptor.TaskStateCompleted))
+				var task models.Task
+				Eventually(helpers.TaskStatePoller(receptorClient, taskRequest.TaskGuid, &task)).Should(Equal(models.Task_Completed))
 				Expect(task.Failed).To(BeTrue())
 			})
 		})
 	})
 
 	Context("when a LRP that tries to do privileged things is requested", func() {
-		var lrpRequest receptor.DesiredLRPCreateRequest
+		var lrpRequest *models.DesiredLRP
 
 		BeforeEach(func() {
 			lrpRequest = helpers.PrivilegedLRPCreateRequest(helpers.GenerateGuid())
 		})
 
 		JustBeforeEach(func() {
-			err := receptorClient.CreateDesiredLRP(lrpRequest)
+			err := bbsClient.DesireLRP(lrpRequest)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
