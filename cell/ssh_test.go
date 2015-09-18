@@ -213,7 +213,7 @@ var _ = Describe("SSH", func() {
 		Context("when a bare-bones docker image is used as the root filesystem", func() {
 			BeforeEach(func() {
 				lrp.StartTimeout = 120
-				lrp.RootFS = "docker:///busybox"
+				lrp.RootFS = "docker:///cloudfoundry/diego-docker-app"
 
 				// busybox nc requires -p but ubuntu's won't allow it
 				lrp.Action = models.WrapAction(models.Codependent(
