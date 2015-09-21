@@ -1,11 +1,11 @@
 package helpers
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/bbs/models"
+	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 	. "github.com/onsi/gomega"
 )
 
@@ -19,8 +19,7 @@ const dockerRootFS = "docker:///cloudfoundry/diego-docker-app#latest"
 
 const DefaultHost = "lrp-route"
 
-var defaultRoutesJSON = json.RawMessage(`{"lrp-route":"8080"}`)
-var defaultRoutes = models.Routes{"default-routes": &defaultRoutesJSON}
+var defaultRoutes = cfroutes.CFRoutes{{Hostnames: []string{DefaultHost}, Port: 8080}}.RoutingInfo()
 
 var defaultPorts = []uint32{8080}
 
@@ -58,7 +57,7 @@ func DefaultLRPCreateRequest(processGuid, logGuid string, numInstances int) *mod
 
 		LogGuid: logGuid,
 
-		Routes: &defaultRoutes,
+		Routes: defaultRoutes,
 		Ports:  defaultPorts,
 
 		Setup:   defaultSetupFunc(),
@@ -74,7 +73,7 @@ func LRPCreateRequestWithRootFS(processGuid, rootfs string) *models.DesiredLRP {
 		RootFs:      rootfs,
 		Instances:   1,
 
-		Routes: &defaultRoutes,
+		Routes: defaultRoutes,
 		Ports:  defaultPorts,
 
 		Setup:   defaultSetupFunc(),
@@ -90,7 +89,7 @@ func DockerLRPCreateRequest(processGuid string) *models.DesiredLRP {
 		RootFs:      dockerRootFS,
 		Instances:   1,
 
-		Routes: &defaultRoutes,
+		Routes: defaultRoutes,
 		Ports:  defaultPorts,
 
 		Action: models.WrapAction(&models.RunAction{
@@ -148,7 +147,7 @@ func PrivilegedLRPCreateRequest(processGuid string) *models.DesiredLRP {
 		RootFs:      defaultPreloadedRootFS,
 		Instances:   1,
 
-		Routes: &defaultRoutes,
+		Routes: defaultRoutes,
 		Ports:  defaultPorts,
 
 		Action: models.WrapAction(&models.RunAction{

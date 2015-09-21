@@ -119,8 +119,8 @@ var _ = Describe("Evacuation", func() {
 		actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(processGuid, 0)
 		Expect(err).NotTo(HaveOccurred())
 
-		actualLRP, ok := actualLRPGroup.Resolve()
-		Expect(ok).To(BeTrue())
+		actualLRP, isEvacuating := actualLRPGroup.Resolve()
+		Expect(isEvacuating).To(BeFalse())
 
 		var evacuatingRepAddr string
 		var evacutaingRepRunner *ginkgomon.Runner

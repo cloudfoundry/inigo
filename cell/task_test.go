@@ -42,7 +42,10 @@ var _ = Describe("Tasks", func() {
 		}
 		cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, cellGroup))
 
-		Eventually(locketClient.Cells()).Should(HaveLen(1))
+		cellList, err := locketClient.Cells()
+		Expect(err).ToNot(HaveOccurred())
+
+		Eventually(cellList).Should(HaveLen(1))
 	})
 
 	AfterEach(func() {

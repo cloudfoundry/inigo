@@ -1,7 +1,6 @@
 package cell_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
+	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 	"github.com/cloudfoundry-incubator/runtime-schema/diego_errors"
 	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/pivotal-golang/lager"
@@ -108,8 +108,8 @@ var _ = Describe("LRP", func() {
 		Describe("updating routes", func() {
 			BeforeEach(func() {
 				lrp.Ports = []uint32{8080, 9080}
-				routesJSON := json.RawMessage(`{"lrp-route-8080":"8080"}`)
-				lrp.Routes = &models.Routes{"routes": &routesJSON}
+
+				lrp.Routes = cfroutes.CFRoutes{{Hostnames: []string{"lrp-route-8080"}, Port: 8080}}.RoutingInfo()
 
 				lrp.Action = models.WrapAction(&models.RunAction{
 					User: "vcap",
@@ -128,11 +128,11 @@ var _ = Describe("LRP", func() {
 				logger := lagertest.NewTestLogger("test")
 
 				JustBeforeEach(func() {
-					routesJSON := json.RawMessage(`{"lrp-route-8080":"8080", "lrp-route-9080":"9080"}`)
-					twoRoutes := &models.Routes{"routes": &routesJSON}
-
 					desiredUpdate := models.DesiredLRPUpdate{
-						Routes: twoRoutes,
+						Routes: cfroutes.CFRoutes{
+							{Hostnames: []string{"lrp-route-8080"}, Port: 8080},
+							{Hostnames: []string{"lrp-route-9080"}, Port: 9080},
+						}.RoutingInfo(),
 					}
 
 					logger.Info("just-before-each", lager.Data{
@@ -169,6 +169,7 @@ var _ = Describe("LRP", func() {
 
 					return lrps
 				}).Should(HaveLen(2))
+				Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0", "1"}))
 			})
 
 			Describe("changing the instances", func() {
@@ -447,11 +448,11 @@ var _ = Describe("Crashing LRPs", func() {
 					return actual.CrashCount
 				}
 				// the bbs immediately starts it 3 times
-				Eventually(crashCount).Should(Equal(3))
+				Eventually(crashCount).Should(BeEquivalentTo(3))
 				// then exponential backoff kicks in
-				Consistently(crashCount, 15*time.Second).Should(Equal(3))
+				Consistently(crashCount, 15*time.Second).Should(BeEquivalentTo(3))
 				// eventually we cross the first backoff threshold (30 seconds)
-				Eventually(crashCount, 30*time.Second).Should(Equal(4))
+				Eventually(crashCount, 30*time.Second).Should(BeEquivalentTo(4))
 			})
 		})
 	})

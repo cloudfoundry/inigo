@@ -577,7 +577,14 @@ func (maker ComponentMaker) GardenClient() garden.Client {
 }
 
 func (maker ComponentMaker) BBSClient() bbs.Client {
-	return bbs.NewClient(maker.BBSURL())
+	client, err := bbs.NewSecureClient(
+		maker.BBSURL(),
+		maker.BbsSSL.CACert,
+		maker.BbsSSL.ClientCert,
+		maker.BbsSSL.ClientKey,
+	)
+	Expect(err).NotTo(HaveOccurred())
+	return client
 }
 
 func (maker ComponentMaker) LocketClient() locket.Client {
@@ -592,7 +599,7 @@ func (maker ComponentMaker) LocketClient() locket.Client {
 }
 
 func (maker ComponentMaker) BBSURL() string {
-	return "http://" + maker.Addresses.BBS
+	return "https://" + maker.Addresses.BBS
 }
 
 func (maker ComponentMaker) ConsulCluster() string {
@@ -607,8 +614,4 @@ func (maker ComponentMaker) EtcdCluster() string {
 // that it does not interfere with the ginkgo parallel node offest in the base port.
 func offsetPort(basePort, offset int) int {
 	return basePort + (10 * offset)
-}
-
-func (maker ComponentMaker) BBSURL() string {
-	return "https://" + maker.Addresses.BBS
 }
