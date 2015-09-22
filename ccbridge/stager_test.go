@@ -258,9 +258,8 @@ EOF
 
 						Expect(fakeCC.StagingResponses()[0]).To(Equal(
 							cc_messages.StagingResponseForCC{
-								ExecutionMetadata:    "{\"start_command\":\"the-start-command\"}",
-								DetectedStartCommand: map[string]string{"web": "the-start-command"},
-								LifecycleData:        &lifecycleData,
+								ExecutionMetadata: "{\"process_types\":{\"web\":\"the-start-command\"}}",
+								LifecycleData:     &lifecycleData,
 							}))
 
 						Expect(fakeCC.StagingGuids()[0]).To(Equal(stagingGuid))
