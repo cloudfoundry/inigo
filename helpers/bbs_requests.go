@@ -57,7 +57,7 @@ func DefaultLRPCreateRequest(processGuid, logGuid string, numInstances int) *mod
 
 		LogGuid: logGuid,
 
-		Routes: defaultRoutes,
+		Routes: &defaultRoutes,
 		Ports:  defaultPorts,
 
 		Setup:   defaultSetupFunc(),
@@ -73,7 +73,7 @@ func LRPCreateRequestWithRootFS(processGuid, rootfs string) *models.DesiredLRP {
 		RootFs:      rootfs,
 		Instances:   1,
 
-		Routes: defaultRoutes,
+		Routes: &defaultRoutes,
 		Ports:  defaultPorts,
 
 		Setup:   defaultSetupFunc(),
@@ -89,7 +89,7 @@ func DockerLRPCreateRequest(processGuid string) *models.DesiredLRP {
 		RootFs:      dockerRootFS,
 		Instances:   1,
 
-		Routes: defaultRoutes,
+		Routes: &defaultRoutes,
 		Ports:  defaultPorts,
 
 		Action: models.WrapAction(&models.RunAction{
@@ -147,7 +147,7 @@ func PrivilegedLRPCreateRequest(processGuid string) *models.DesiredLRP {
 		RootFs:      defaultPreloadedRootFS,
 		Instances:   1,
 
-		Routes: defaultRoutes,
+		Routes: &defaultRoutes,
 		Ports:  defaultPorts,
 
 		Action: models.WrapAction(&models.RunAction{

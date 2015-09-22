@@ -108,8 +108,8 @@ var _ = Describe("LRP", func() {
 		Describe("updating routes", func() {
 			BeforeEach(func() {
 				lrp.Ports = []uint32{8080, 9080}
-
-				lrp.Routes = cfroutes.CFRoutes{{Hostnames: []string{"lrp-route-8080"}, Port: 8080}}.RoutingInfo()
+				routes := cfroutes.CFRoutes{{Hostnames: []string{"lrp-route-8080"}, Port: 8080}}.RoutingInfo()
+				lrp.Routes = &routes
 
 				lrp.Action = models.WrapAction(&models.RunAction{
 					User: "vcap",
@@ -128,11 +128,13 @@ var _ = Describe("LRP", func() {
 				logger := lagertest.NewTestLogger("test")
 
 				JustBeforeEach(func() {
-					desiredUpdate := models.DesiredLRPUpdate{
-						Routes: cfroutes.CFRoutes{
+					routes := cfroutes.CFRoutes{
 							{Hostnames: []string{"lrp-route-8080"}, Port: 8080},
 							{Hostnames: []string{"lrp-route-9080"}, Port: 9080},
-						}.RoutingInfo(),
+						}.RoutingInfo()
+
+					desiredUpdate := models.DesiredLRPUpdate{
+						Routes: &routes,
 					}
 
 					logger.Info("just-before-each", lager.Data{
