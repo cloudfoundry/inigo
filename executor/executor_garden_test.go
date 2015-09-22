@@ -17,6 +17,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -57,7 +58,7 @@ var _ = Describe("Executor/Garden", func() {
 		config.CachePath = cachePath
 		logger := lagertest.NewTestLogger("test")
 		var executorMembers grouper.Members
-		executorClient, executorMembers, err = executorinit.Initialize(logger, config)
+		executorClient, executorMembers, err = executorinit.Initialize(logger, config, clock.NewClock())
 		Expect(err).NotTo(HaveOccurred())
 		runner = grouper.NewParallel(os.Kill, executorMembers)
 
