@@ -24,13 +24,14 @@ import (
 
 var _ = Describe("AppRunner", func() {
 	var appId string
+	var routes string
 
 	var (
 		runtime ifrit.Process
 		bridge  ifrit.Process
 	)
 
-	desireApp := func(guid string, routes string, instances int) (*http.Response, error) {
+	desireApp := func(guid string, route_info string, instances int) (*http.Response, error) {
 		desireMessage := fmt.Sprintf(
 			`
 						{
@@ -42,7 +43,7 @@ var _ = Describe("AppRunner", func() {
 							"disk_mb": 1024,
 							"file_descriptors": 16384,
 							"environment":[{"name":"VCAP_APPLICATION", "value":"{}"}],
-							"routes": `+routes+`,
+							"routing_info": `+route_info+`,
 							"log_guid": "%s"
 						}
 						`,
@@ -62,6 +63,7 @@ var _ = Describe("AppRunner", func() {
 
 	BeforeEach(func() {
 		appId = helpers.GenerateGuid()
+		routes = `{"http_routes": [{"hostname":"route-1"}]}`
 
 		fileServer, fileServerStaticDir := componentMaker.FileServer()
 
@@ -101,7 +103,8 @@ var _ = Describe("AppRunner", func() {
 		Context("when the running message contains a start_command", func() {
 			It("runs the app on the executor, registers routes, and shows that they are running via the tps", func() {
 				// desire the app
-				resp, err := desireApp(guid, `["route-1", "route-2"]`, 2)
+				routes = `{"http_routes": [{"hostname":"route-1"}, {"hostname":"route-2"}]}`
+				resp, err := desireApp(guid, routes, 2)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
@@ -121,7 +124,7 @@ var _ = Describe("AppRunner", func() {
 		Context("when the start message does not include a start_command", func() {
 			It("runs the app, registers a route, and shows running via tps", func() {
 				// desire the app
-				resp, err := desireApp(guid, `["route-1"]`, 1)
+				resp, err := desireApp(guid, routes, 1)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
@@ -149,7 +152,7 @@ var _ = Describe("AppRunner", func() {
 
 			BeforeEach(func() {
 				// desire the app
-				resp, err := desireApp(guid, `["route-1"]`, 2)
+				resp, err := desireApp(guid, routes, 2)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
@@ -182,7 +185,7 @@ var _ = Describe("AppRunner", func() {
 
 			BeforeEach(func() {
 				// desire the app
-				resp, err := desireApp(guid, `["route-1"]`, 2)
+				resp, err := desireApp(guid, routes, 2)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
