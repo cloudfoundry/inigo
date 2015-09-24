@@ -245,23 +245,22 @@ EOF
 						Expect(err).NotTo(HaveOccurred())
 						Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
+						result := fmt.Sprintf(`
+						{
+								"process_types": {"web": "the-start-command"},
+								"lifecycle_type": "buildpack",
+								"lifecycle_metadata": {
+									"buildpack_key": "%s",
+									"detected_buildpack": "My Buildpack"
+								},
+								"execution_metadata": ""
+						}
+						`, buildpackKey)
+
 						//wait for staging to complete
 						Eventually(fakeCC.StagingResponses).Should(HaveLen(1))
-						buildpackResponse := cc_messages.BuildpackStagingResponse{
-							BuildpackKey:      buildpackKey,
-							DetectedBuildpack: "My Buildpack",
-						}
-						lifecycleDataJSON, err := json.Marshal(buildpackResponse)
-						Expect(err).NotTo(HaveOccurred())
-
-						lifecycleData := json.RawMessage(lifecycleDataJSON)
-
-						Expect(fakeCC.StagingResponses()[0]).To(Equal(
-							cc_messages.StagingResponseForCC{
-								ExecutionMetadata: "{\"process_types\":{\"web\":\"the-start-command\"}}",
-								LifecycleData:     &lifecycleData,
-							}))
-
+						Expect(string(*fakeCC.StagingResponses()[0].Result)).To(MatchJSON(result))
+						Expect(fakeCC.StagingResponses()[0].Error).To(BeNil())
 						Expect(fakeCC.StagingGuids()[0]).To(Equal(stagingGuid))
 
 						// Assert that the build artifacts cache was downloaded
