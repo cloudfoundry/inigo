@@ -582,6 +582,7 @@ func (maker ComponentMaker) BBSClient() bbs.Client {
 		maker.BbsSSL.CACert,
 		maker.BbsSSL.ClientCert,
 		maker.BbsSSL.ClientKey,
+		0, 0,
 	)
 	Expect(err).NotTo(HaveOccurred())
 	return client
