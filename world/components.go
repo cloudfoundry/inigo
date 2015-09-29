@@ -20,7 +20,6 @@ import (
 	gardenconnection "github.com/cloudfoundry-incubator/garden/client/connection"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/inigo/gardenrunner"
-	"github.com/cloudfoundry-incubator/locket"
 	gorouterconfig "github.com/cloudfoundry/gorouter/config"
 	"github.com/cloudfoundry/gunk/diegonats"
 	"github.com/onsi/ginkgo"
@@ -261,7 +260,7 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:          name,
 		AnsiColorCode: "33m",
-		StartCheck:    `"` + name + `.presence.succeeded-setting-presence"`,
+		StartCheck:    `"` + name + `.started"`,
 		// rep is not started until it can ping an executor; executor can take a
 		// bit to start, so account for it
 		StartCheckTimeout: 30 * time.Second,
@@ -588,7 +587,7 @@ func (maker ComponentMaker) BBSClient() bbs.Client {
 	return client
 }
 
-func (maker ComponentMaker) LocketClient() locket.Client {
+func (maker ComponentMaker) BBSServiceClient() bbs.ServiceClient {
 	client, err := consuladapter.NewClient(maker.ConsulCluster())
 	Expect(err).NotTo(HaveOccurred())
 
@@ -596,7 +595,7 @@ func (maker ComponentMaker) LocketClient() locket.Client {
 	consulSession, err := consuladapter.NewSession("inigo", 10*time.Second, client, sessionMgr)
 	Expect(err).NotTo(HaveOccurred())
 
-	return locket.NewClient(consulSession, clock.NewClock(), nil)
+	return bbs.NewServiceClient(consulSession, clock.NewClock())
 }
 
 func (maker ComponentMaker) BBSURL() string {

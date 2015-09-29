@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/ginkgoreporter"
 	"github.com/pivotal-golang/localip"
 	"github.com/tedsuo/ifrit"
@@ -22,18 +23,18 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	"github.com/cloudfoundry-incubator/inigo/world"
-	"github.com/cloudfoundry-incubator/locket"
 	"github.com/cloudfoundry/gunk/diegonats"
 )
 
 var (
 	componentMaker world.ComponentMaker
 
-	plumbing     ifrit.Process
-	natsClient   diegonats.NATSClient
-	gardenClient garden.Client
-	bbsClient    bbs.Client
-	locketClient locket.Client
+	plumbing         ifrit.Process
+	natsClient       diegonats.NATSClient
+	gardenClient     garden.Client
+	bbsClient        bbs.Client
+	bbsServiceClient bbs.ServiceClient
+	logger           lager.Logger
 )
 
 var _ = SynchronizedBeforeSuite(func() []byte {
@@ -73,9 +74,12 @@ var _ = BeforeEach(func() {
 	gardenClient = componentMaker.GardenClient()
 	natsClient = componentMaker.NATSClient()
 	bbsClient = componentMaker.BBSClient()
-	locketClient = componentMaker.LocketClient()
+	bbsServiceClient = componentMaker.BBSServiceClient()
 
 	inigo_announcement_server.Start(componentMaker.ExternalAddress)
+
+	logger = lager.NewLogger("test")
+	logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 })
 
 var _ = AfterEach(func() {

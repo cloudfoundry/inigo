@@ -89,7 +89,8 @@ var _ = Describe("Executor/Garden", func() {
 		container.Guid = generateGuid()
 
 		request := executor.NewAllocationRequest(container.Guid, &container.Resource, container.Tags)
-		_, err := executorClient.AllocateContainers([]executor.AllocationRequest{request})
+		failures, err := executorClient.AllocateContainers([]executor.AllocationRequest{request})
+		Expect(failures).To(BeEmpty())
 		Expect(err).NotTo(HaveOccurred())
 
 		return request.Guid
