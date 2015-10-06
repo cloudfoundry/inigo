@@ -12,7 +12,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
-	"github.com/cloudfoundry-incubator/runtime-schema/diego_errors"
+	"github.com/cloudfoundry-incubator/stager/diego_errors"
 	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -129,9 +129,9 @@ var _ = Describe("LRP", func() {
 
 				JustBeforeEach(func() {
 					routes := cfroutes.CFRoutes{
-							{Hostnames: []string{"lrp-route-8080"}, Port: 8080},
-							{Hostnames: []string{"lrp-route-9080"}, Port: 9080},
-						}.RoutingInfo()
+						{Hostnames: []string{"lrp-route-8080"}, Port: 8080},
+						{Hostnames: []string{"lrp-route-9080"}, Port: 9080},
+					}.RoutingInfo()
 
 					desiredUpdate := models.DesiredLRPUpdate{
 						Routes: &routes,

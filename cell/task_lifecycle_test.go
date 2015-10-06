@@ -7,7 +7,7 @@ import (
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
-	"github.com/cloudfoundry-incubator/runtime-schema/diego_errors"
+	"github.com/cloudfoundry-incubator/stager/diego_errors"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
