@@ -22,7 +22,6 @@ var _ = Describe("Building", func() {
 	var (
 		builderCmd                 *exec.Cmd
 		dockerRef                  string
-		dockerImageURL             string
 		dockerRegistryHost         string
 		dockerRegistryPort         string
 		dockerRegistryIPs          string
@@ -82,7 +81,6 @@ var _ = Describe("Building", func() {
 		var err error
 
 		dockerRef = ""
-		dockerImageURL = ""
 		dockerRegistryHost = ""
 		dockerRegistryPort = ""
 		dockerRegistryIPs = ""
@@ -106,9 +104,6 @@ var _ = Describe("Building", func() {
 		args := []string{"-dockerDaemonExecutablePath", dockerDaemonExecutablePath,
 			"-outputMetadataJSONFilename", outputMetadataJSONFilename}
 
-		if len(dockerImageURL) > 0 {
-			args = append(args, "-dockerImageURL", dockerImageURL)
-		}
 		if len(dockerRef) > 0 {
 			args = append(args, "-dockerRef", dockerRef)
 		}
@@ -145,10 +140,10 @@ var _ = Describe("Building", func() {
 		builderCmd.Env = os.Environ()
 	})
 
-	buildDockerImageURL := func() string {
+	buildDockerRef := func() string {
 		parts, err := url.Parse(fakeDockerRegistry.URL())
 		Expect(err).NotTo(HaveOccurred())
-		return fmt.Sprintf("docker://%s/some-repo", parts.Host)
+		return fmt.Sprintf("%s/some-repo", parts.Host)
 	}
 
 	dockerPidExists := func() bool {
@@ -160,7 +155,7 @@ var _ = Describe("Building", func() {
 		var session *gexec.Session
 
 		BeforeEach(func() {
-			dockerImageURL = buildDockerImageURL()
+			dockerRef = buildDockerRef()
 
 			dockerRegistryHost = "docker-registry.service.cf.internal"
 			dockerRegistryPort = "8080"
