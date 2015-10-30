@@ -7,7 +7,10 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/cloudfoundry-incubator/bbs/models"
@@ -1006,6 +1009,79 @@ var _ = Describe("Executor/Garden", func() {
 					It("echoes back an empty CF_INSTANCE_ADDR", func() {
 						Expect(string(containerResponse)).To(Equal(".."))
 					})
+				})
+			})
+
+			Context("when a container has egress rules", func() {
+
+				execContainerWithEgress := func(ipAddr string) string {
+					guid := generateGuid()
+
+					resource := executor.NewResource(10, 10, "")
+					allocReq := executor.NewAllocationRequest(guid, &resource, nil)
+					failures, err := executorClient.AllocateContainers([]executor.AllocationRequest{allocReq})
+					Expect(failures).To(BeEmpty())
+					Expect(err).NotTo(HaveOccurred())
+
+					runInfo := executor.RunInfo{
+						Action: models.WrapAction(&models.RunAction{
+							User: "vcap",
+							Path: "sh",
+							Args: []string{"-c", `while true; do echo "HI" ; sleep 1 ;  done`},
+						}),
+						EgressRules: []*models.SecurityGroupRule{
+							{
+								Protocol:     models.TCPProtocol,
+								Destinations: []string{ipAddr},
+								PortRange:    &models.PortRange{Start: 79, End: 445},
+							},
+						},
+					}
+					runReq := executor.NewRunRequest(guid, &runInfo, nil)
+					err = executorClient.RunContainer(&runReq)
+					Expect(err).NotTo(HaveOccurred())
+
+					return guid
+				}
+
+				iptableContains := func(addr string) bool {
+					out, err := exec.Command("iptables", "-L").CombinedOutput()
+					Expect(err).NotTo(HaveOccurred())
+					return strings.Contains(string(out), addr)
+				}
+
+				ipTest := func(ipAddr string, wg *sync.WaitGroup) {
+					wg.Add(1)
+					go func() {
+						defer GinkgoRecover()
+						defer wg.Done()
+						ipchecker := func() bool { return iptableContains(ipAddr) }
+						for i := 0; i < 100; i++ {
+							Expect(ipchecker()).To(Equal(false))
+
+							guid := execContainerWithEgress(ipAddr)
+							Eventually(containerStatePoller(guid)).Should(Equal(executor.StateRunning))
+							Eventually(ipchecker, 5, 1).Should(Equal(true))
+
+							err := executorClient.DeleteContainer(guid)
+							Expect(err).NotTo(HaveOccurred())
+							Eventually(ipchecker, 30, 1).Should(Equal(false))
+						}
+					}()
+				}
+
+				FIt("iptable rules exist only when container is runnning", func() {
+					wg := &sync.WaitGroup{}
+					ipTest("10.11.12.13", wg)
+					ipTest("10.11.12.14", wg)
+					ipTest("10.11.12.15", wg)
+					ipTest("10.11.12.16", wg)
+					ipTest("10.11.12.17", wg)
+					ipTest("10.11.12.18", wg)
+					ipTest("10.11.12.19", wg)
+					ipTest("10.11.12.20", wg)
+					wg.Wait()
+					Expect(true).To(BeTrue())
 				})
 			})
 		})
