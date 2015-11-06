@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
@@ -96,16 +95,6 @@ func (r *Runner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 		}
 	}
 
-	var hasFlag = func(ar []string, key string) bool {
-		for _, a := range ar {
-			if a == key {
-				return true
-			}
-		}
-
-		return false
-	}
-
 	gardenArgs := make([]string, len(r.argv))
 	copy(gardenArgs, r.argv)
 
@@ -123,14 +112,6 @@ func (r *Runner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	gardenArgs = appendDefaultFlag(gardenArgs, "--portPoolStart", strconv.Itoa(51000+(1000*ginkgo.GinkgoParallelNode())))
 	gardenArgs = appendDefaultFlag(gardenArgs, "--portPoolSize", "1000")
 	gardenArgs = appendDefaultFlag(gardenArgs, "--tag", strconv.Itoa(ginkgo.GinkgoParallelNode()))
-
-	btrfsIsSupported := strings.EqualFold(os.Getenv("BTRFS_SUPPORTED"), "true")
-	hasDisabledFlag := hasFlag(gardenArgs, "-disableQuotas=true")
-
-	if !btrfsIsSupported && !hasDisabledFlag {
-		// We should disabled quotas if BTRFS is not supported
-		gardenArgs = appendDefaultFlag(gardenArgs, "--disableQuotas", "")
-	}
 
 	gardenArgs = appendDefaultFlag(gardenArgs, "--debugAddr", fmt.Sprintf(":808%d", ginkgo.GinkgoParallelNode()))
 
@@ -151,32 +132,6 @@ func (r *Runner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 				// remove contents of subvolumes before deleting the subvolume
 				if err := os.RemoveAll(r.graphPath); err != nil {
 					logger.Error("remove graph", err)
-				}
-
-				if btrfsIsSupported {
-					// need to remove subvolumes before cleaning graphpath
-					subvolumesOutput, err := exec.Command("btrfs", "subvolume", "list", r.graphRoot).CombinedOutput()
-					logger.Debug(fmt.Sprintf("listing-subvolumes: %s", string(subvolumesOutput)))
-					if err != nil {
-						logger.Fatal("listing-subvolumes-error", err)
-					}
-					for _, line := range strings.Split(string(subvolumesOutput), "\n") {
-						fields := strings.Fields(line)
-						if len(fields) < 1 {
-							continue
-						}
-						subvolumeRelativePath := fields[len(fields)-1]
-						subvolumeAbsolutePath := filepath.Join(r.graphRoot, subvolumeRelativePath)
-						if strings.Contains(subvolumeAbsolutePath, r.graphPath) {
-							if b, err := exec.Command("btrfs", "subvolume", "delete", subvolumeAbsolutePath).CombinedOutput(); err != nil {
-								logger.Fatal(fmt.Sprintf("deleting-subvolume: %s", string(b)), err)
-							}
-						}
-					}
-
-					if err := os.RemoveAll(r.graphPath); err != nil {
-						logger.Error("remove graph again", err)
-					}
 				}
 
 				logger.Info("cleanup-tempdirs")
