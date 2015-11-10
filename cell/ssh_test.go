@@ -36,7 +36,7 @@ var _ = Describe("SSH", func() {
 		session, err := client.NewSession()
 		Expect(err).NotTo(HaveOccurred())
 
-		output, err := session.Output("/usr/bin/env")
+		output, err := session.Output("env")
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(string(output)).To(ContainSubstring("USER=root"))

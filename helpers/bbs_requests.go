@@ -94,7 +94,7 @@ func DockerLRPCreateRequest(processGuid string) *models.DesiredLRP {
 
 		Action: models.WrapAction(&models.RunAction{
 			User: "vcap",
-			Path: "/myapp/dockerapp",
+			Path: "dockerapp",
 			Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
 		}),
 		Monitor: defaultMonitor,
