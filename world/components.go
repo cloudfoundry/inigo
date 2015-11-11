@@ -372,7 +372,7 @@ func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
 			maker.Artifacts.Executables["nsync-listener"],
 			append(maker.appendLifecycleArgs([]string{
 				"-bbsAddress", maker.BBSURL(),
-				"-nsyncURL", fmt.Sprintf("http://127.0.0.1:%d", port),
+				"-listenAddress", fmt.Sprintf("127.0.0.1:%d", port),
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,
 				"-logLevel", "debug",
 				"-bbsClientCert", maker.BbsSSL.ClientCert,
@@ -508,7 +508,8 @@ func (maker ComponentMaker) StagerN(portOffset int, argv ...string) ifrit.Runner
 				"-ccPassword", fake_cc.CC_PASSWORD,
 				"-dockerStagingStack", maker.DefaultStack(),
 				"-bbsAddress", maker.BBSURL(),
-				"-stagerURL", fmt.Sprintf("http://127.0.0.1:%d", offsetPort(port, portOffset)),
+				"-listenAddress", fmt.Sprintf("127.0.0.1:%d", offsetPort(port, portOffset)),
+				"-stagingTaskCallbackURL", fmt.Sprintf("http://127.0.0.1:%d", offsetPort(port, portOffset)),
 				"-fileServerURL", "http://" + maker.Addresses.FileServer,
 				"-ccUploaderURL", "http://" + maker.Addresses.CCUploader,
 				"-logLevel", "debug",
