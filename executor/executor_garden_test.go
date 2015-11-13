@@ -37,9 +37,12 @@ var _ = Describe("Executor/Garden", func() {
 		gardenCapacity       garden.Capacity
 		exportNetworkEnvVars bool
 		cachePath            string
+		config               executorinit.Configuration
 	)
 
 	BeforeEach(func() {
+		config = executorinit.DefaultConfiguration
+
 		var err error
 		cachePath, err = ioutil.TempDir("", "executor-tmp")
 		Expect(err).NotTo(HaveOccurred())
@@ -48,7 +51,6 @@ var _ = Describe("Executor/Garden", func() {
 	JustBeforeEach(func() {
 		var err error
 
-		config := executorinit.DefaultConfiguration
 		config.GardenNetwork = "tcp"
 		config.GardenAddr = componentMaker.Addresses.GardenLinux
 		config.RegistryPruningInterval = pruningInterval
@@ -217,6 +219,41 @@ var _ = Describe("Executor/Garden", func() {
 	Describe("when started", func() {
 		JustBeforeEach(func() {
 			process = ginkgomon.Invoke(runner)
+		})
+
+		Describe("Checking garden's health", func() {
+			Context("container creation succeeds", func() {
+				It("reports healthy", func() {
+					Expect(executorClient.Healthy()).Should(BeTrue())
+				})
+			})
+
+			Context("container creation starts fails", func() {
+				BeforeEach(func() {
+					config.RootfsForGardenHealthcheck = "/bad/path"
+					config.GardenHealthCheckInterval = 5 * time.Millisecond
+				})
+
+				It("reports unhealthy", func() {
+					Eventually(executorClient.Healthy).Should(BeFalse())
+				})
+			})
+
+			Context("garden fails then resolves the problem", func() {
+				BeforeEach(func() {
+					config.GardenHealthCheckInterval = 5 * time.Millisecond
+				})
+
+				It("reports correctly", func() {
+					Expect(executorClient.Healthy()).Should(BeTrue())
+
+					ginkgomon.Interrupt(gardenProcess)
+					Eventually(executorClient.Healthy).Should(BeFalse())
+
+					gardenProcess = ginkgomon.Invoke(componentMaker.GardenLinux())
+					Eventually(executorClient.Healthy).Should(BeTrue())
+				})
+			})
 		})
 
 		Describe("pinging the server", func() {
