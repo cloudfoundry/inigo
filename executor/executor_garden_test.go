@@ -11,13 +11,16 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/bbs/models"
+	"github.com/cloudfoundry-incubator/cf-test-helpers/generator"
 	"github.com/cloudfoundry-incubator/executor"
+	"github.com/cloudfoundry-incubator/executor/gardenhealth"
 	executorinit "github.com/cloudfoundry-incubator/executor/initializer"
 	uuid "github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/pivotal-golang/clock"
+	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -28,8 +31,6 @@ import (
 
 var _ = Describe("Executor/Garden", func() {
 	const pruningInterval = 500 * time.Millisecond
-	const ownerName = "executor"
-
 	var (
 		executorClient       executor.Client
 		process              ifrit.Process
@@ -38,6 +39,8 @@ var _ = Describe("Executor/Garden", func() {
 		exportNetworkEnvVars bool
 		cachePath            string
 		config               executorinit.Configuration
+		logger               lager.Logger
+		ownerName            string
 	)
 
 	BeforeEach(func() {
@@ -46,6 +49,8 @@ var _ = Describe("Executor/Garden", func() {
 		var err error
 		cachePath, err = ioutil.TempDir("", "executor-tmp")
 		Expect(err).NotTo(HaveOccurred())
+
+		ownerName = "executor" + generator.RandomName()
 	})
 
 	JustBeforeEach(func() {
@@ -57,8 +62,12 @@ var _ = Describe("Executor/Garden", func() {
 		config.HealthyMonitoringInterval = time.Second
 		config.UnhealthyMonitoringInterval = 100 * time.Millisecond
 		config.ExportNetworkEnvVars = exportNetworkEnvVars
+		config.ContainerOwnerName = ownerName
 		config.CachePath = cachePath
-		logger := lagertest.NewTestLogger("test")
+		config.GardenHealthcheckProcessPath = "/bin/sh"
+		config.GardenHealthcheckProcessArgs = []string{"-c", "echo", "checking health"}
+		config.GardenHealthcheckProcessUser = "vcap"
+		logger = lagertest.NewTestLogger("test")
 		var executorMembers grouper.Members
 		executorClient, executorMembers, err = executorinit.Initialize(logger, config, clock.NewClock())
 		Expect(err).NotTo(HaveOccurred())
@@ -133,7 +142,18 @@ var _ = Describe("Executor/Garden", func() {
 		return container
 	}
 
-	Describe("starting up", func() {
+	removeHealthcheckContainers := func(containers []executor.Container) []executor.Container {
+		newContainers := []executor.Container{}
+		for i := range containers {
+			if !containers[i].HasTags(executor.Tags{gardenhealth.HealthcheckTag: gardenhealth.HealthcheckTagValue}) {
+				newContainers = append(newContainers, containers[i])
+			}
+		}
+
+		return newContainers
+	}
+
+	Describe("Starting up", func() {
 		BeforeEach(func() {
 			os.RemoveAll(cachePath)
 		})
@@ -216,7 +236,22 @@ var _ = Describe("Executor/Garden", func() {
 		})
 	})
 
-	Describe("when started", func() {
+	Describe("Failing start up", func() {
+		BeforeEach(func() {
+			config.GardenHealthcheckRootFS = "/bad/path"
+			config.GardenHealthcheckInterval = 5 * time.Millisecond
+			config.GardenHealthcheckCommandRetryPause = 5 * time.Millisecond
+		})
+
+		It("shuts down the executor", func() {
+			process = ifrit.Background(runner)
+			processExit := process.Wait()
+
+			Eventually(processExit).Should(Receive(HaveOccurred()))
+		})
+	})
+
+	Describe("Running", func() {
 		JustBeforeEach(func() {
 			process = ginkgomon.Invoke(runner)
 		})
@@ -228,20 +263,9 @@ var _ = Describe("Executor/Garden", func() {
 				})
 			})
 
-			Context("container creation starts fails", func() {
-				BeforeEach(func() {
-					config.RootfsForGardenHealthcheck = "/bad/path"
-					config.GardenHealthCheckInterval = 5 * time.Millisecond
-				})
-
-				It("reports unhealthy", func() {
-					Eventually(executorClient.Healthy).Should(BeFalse())
-				})
-			})
-
 			Context("garden fails then resolves the problem", func() {
 				BeforeEach(func() {
-					config.GardenHealthCheckInterval = 5 * time.Millisecond
+					config.GardenHealthcheckInterval = 5 * time.Millisecond
 				})
 
 				It("reports correctly", func() {
@@ -339,6 +363,8 @@ var _ = Describe("Executor/Garden", func() {
 			It("shows up in the container list", func() {
 				containers, err := executorClient.ListContainers(nil)
 				Expect(err).NotTo(HaveOccurred())
+				containers = removeHealthcheckContainers(containers)
+
 				Expect(containers).To(HaveLen(1))
 
 				Expect(containers[0].State).To(Equal(executor.StateReserved))
@@ -360,6 +386,8 @@ var _ = Describe("Executor/Garden", func() {
 				It("returns the limits on the container", func() {
 					containers, err := executorClient.ListContainers(nil)
 					Expect(err).NotTo(HaveOccurred())
+					containers = removeHealthcheckContainers(containers)
+
 					Expect(containers).To(HaveLen(1))
 					Expect(containers[0].MemoryMB).To(Equal(256))
 					Expect(containers[0].DiskMB).To(Equal(256))
@@ -719,6 +747,8 @@ var _ = Describe("Executor/Garden", func() {
 				It("shows up in the container list in reserved state", func() {
 					containers, err := executorClient.ListContainers(nil)
 					Expect(err).NotTo(HaveOccurred())
+					containers = removeHealthcheckContainers(containers)
+
 					Expect(containers).To(HaveLen(1))
 					Expect(containers[0].Guid).To(Equal(guid))
 					Expect(containers[0].State).To(Equal(executor.StateReserved))
@@ -791,6 +821,8 @@ var _ = Describe("Executor/Garden", func() {
 				It("shows up in the container list in running state", func() {
 					containers, err := executorClient.ListContainers(nil)
 					Expect(err).NotTo(HaveOccurred())
+					containers = removeHealthcheckContainers(containers)
+
 					Expect(containers).To(HaveLen(1))
 					Expect(containers[0].Guid).To(Equal(guid))
 					Expect(containers[0].State).To(Equal(executor.StateRunning))
@@ -911,11 +943,15 @@ var _ = Describe("Executor/Garden", func() {
 				})
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(executorClient.ListContainers(nil)).To(HaveLen(1))
+				containers, err := executorClient.ListContainers(nil)
+				Expect(err).NotTo(HaveOccurred())
+				containers = removeHealthcheckContainers(containers)
+				Expect(containers).To(HaveLen(1))
 
 				Eventually(func() interface{} {
 					containers, err := executorClient.ListContainers(nil)
 					Expect(err).NotTo(HaveOccurred())
+					containers = removeHealthcheckContainers(containers)
 
 					return containers
 				}, pruningInterval*3).Should(BeEmpty())
@@ -925,7 +961,10 @@ var _ = Describe("Executor/Garden", func() {
 		Describe("listing containers", func() {
 			Context("with no containers", func() {
 				It("returns an empty set of containers", func() {
-					Expect(executorClient.ListContainers(nil)).To(BeEmpty())
+					containers, err := executorClient.ListContainers(nil)
+					Expect(err).NotTo(HaveOccurred())
+					containers = removeHealthcheckContainers(containers)
+					Expect(containers).To(BeEmpty())
 				})
 			})
 
@@ -944,6 +983,7 @@ var _ = Describe("Executor/Garden", func() {
 					It("includes the allocated container", func() {
 						containers, err := executorClient.ListContainers(nil)
 						Expect(err).NotTo(HaveOccurred())
+						containers = removeHealthcheckContainers(containers)
 						Expect(containers).To(HaveLen(1))
 						Expect(containers[0].Guid).To(Equal(guid))
 					})

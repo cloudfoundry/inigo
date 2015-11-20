@@ -250,6 +250,9 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 			"-bbsClientCert", maker.BbsSSL.ClientCert,
 			"-bbsClientKey", maker.BbsSSL.ClientKey,
 			"-bbsCACert", maker.BbsSSL.CACert,
+			"-gardenHealthcheckProcessPath", "/bin/sh",
+			"-gardenHealthcheckProcessArgs", "-c,echo,foo",
+			"-gardenHealthcheckProcessUser", "vcap",
 		},
 		argv...,
 	)
@@ -261,9 +264,9 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 		Name:          name,
 		AnsiColorCode: "33m",
 		StartCheck:    `"` + name + `.started"`,
-		// rep is not started until it can ping an executor; executor can take a
-		// bit to start, so account for it
-		StartCheckTimeout: 30 * time.Second,
+		// rep is not started until it can ping an executor and run a healthcheck
+		// container on garden; this can take a bit to start, so account for it
+		StartCheckTimeout: 2 * time.Minute,
 		Command:           exec.Command(maker.Artifacts.Executables["rep"], args...),
 		Cleanup: func() {
 			os.RemoveAll(tmpDir)
