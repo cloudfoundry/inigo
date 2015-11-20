@@ -12,7 +12,6 @@ import (
 	"github.com/pivotal-golang/localip"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
-	"github.com/tedsuo/ifrit/grouper"
 
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
@@ -46,10 +45,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 })
 
 var _ = BeforeEach(func() {
-	gardenProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-		{"garden-linux", componentMaker.GardenLinux()},
-	}))
-
+	gardenProcess = ginkgomon.Invoke(componentMaker.GardenLinux())
 	gardenClient = componentMaker.GardenClient()
 })
 
