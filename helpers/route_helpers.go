@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strings"
 
 	. "github.com/onsi/gomega"
 )
@@ -31,12 +32,12 @@ func ResponseCodeFromHostPoller(routerAddr string, host string) func() (int, err
 	}
 }
 
-func ResponseBodyAndStatusCodeFromHost(routerAddr string, host string) ([]byte, int, error) {
+func ResponseBodyAndStatusCodeFromHost(routerAddr string, host string, pathElements ...string) ([]byte, int, error) {
 	request := &http.Request{
 		URL: &url.URL{
 			Scheme: "http",
 			Host:   routerAddr,
-			Path:   "/",
+			Path:   "/" + strings.Join(pathElements, "/"),
 		},
 
 		Host: host,
