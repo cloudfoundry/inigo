@@ -300,7 +300,7 @@ var _ = Describe("Executor/Garden", func() {
 			})
 
 			It("shows up in the container list", func() {
-				containers, err := executorClient.ListContainers(nil)
+				containers, err := executorClient.ListContainers()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(containers).To(HaveLen(1))
 
@@ -311,7 +311,6 @@ var _ = Describe("Executor/Garden", func() {
 				Expect(containers[0].Tags).To(Equal(executor.Tags{"some-tag": "some-value"}))
 				Expect(containers[0].State).To(Equal(executor.StateReserved))
 				Expect(containers[0].AllocatedAt).To(BeNumerically("~", time.Now().UnixNano(), time.Second))
-
 			})
 
 			Context("when allocated with memory and disk limits", func() {
@@ -321,7 +320,7 @@ var _ = Describe("Executor/Garden", func() {
 				})
 
 				It("returns the limits on the container", func() {
-					containers, err := executorClient.ListContainers(nil)
+					containers, err := executorClient.ListContainers()
 					Expect(err).NotTo(HaveOccurred())
 					Expect(containers).To(HaveLen(1))
 					Expect(containers[0].MemoryMB).To(Equal(256))
@@ -680,7 +679,7 @@ var _ = Describe("Executor/Garden", func() {
 
 			Describe("listing containers", func() {
 				It("shows up in the container list in reserved state", func() {
-					containers, err := executorClient.ListContainers(nil)
+					containers, err := executorClient.ListContainers()
 					Expect(err).NotTo(HaveOccurred())
 					Expect(containers).To(HaveLen(1))
 					Expect(containers[0].Guid).To(Equal(guid))
@@ -752,7 +751,7 @@ var _ = Describe("Executor/Garden", func() {
 
 			Describe("listing containers", func() {
 				It("shows up in the container list in running state", func() {
-					containers, err := executorClient.ListContainers(nil)
+					containers, err := executorClient.ListContainers()
 					Expect(err).NotTo(HaveOccurred())
 					Expect(containers).To(HaveLen(1))
 					Expect(containers[0].Guid).To(Equal(guid))
@@ -874,10 +873,10 @@ var _ = Describe("Executor/Garden", func() {
 				})
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(executorClient.ListContainers(nil)).To(HaveLen(1))
+				Expect(executorClient.ListContainers()).To(HaveLen(1))
 
 				Eventually(func() interface{} {
-					containers, err := executorClient.ListContainers(nil)
+					containers, err := executorClient.ListContainers()
 					Expect(err).NotTo(HaveOccurred())
 
 					return containers
@@ -888,7 +887,7 @@ var _ = Describe("Executor/Garden", func() {
 		Describe("listing containers", func() {
 			Context("with no containers", func() {
 				It("returns an empty set of containers", func() {
-					Expect(executorClient.ListContainers(nil)).To(BeEmpty())
+					Expect(executorClient.ListContainers()).To(BeEmpty())
 				})
 			})
 
@@ -903,47 +902,11 @@ var _ = Describe("Executor/Garden", func() {
 					guid = allocNewContainer(container)
 				})
 
-				Context("without tags", func() {
-					It("includes the allocated container", func() {
-						containers, err := executorClient.ListContainers(nil)
-						Expect(err).NotTo(HaveOccurred())
-						Expect(containers).To(HaveLen(1))
-						Expect(containers[0].Guid).To(Equal(guid))
-					})
-				})
-
-				Context("with tags", func() {
-					BeforeEach(func() {
-						container.Tags = executor.Tags{
-							"some-tag": "some-value",
-						}
-					})
-
-					Describe("listing by matching tags", func() {
-						It("includes the allocated container", func() {
-							containers, err := executorClient.ListContainers(executor.Tags{
-								"some-tag": "some-value",
-							})
-							Expect(err).NotTo(HaveOccurred())
-							Expect(containers).To(HaveLen(1))
-							Expect(containers[0].Guid).To(Equal(guid))
-						})
-
-						It("filters by and-ing the requested tags", func() {
-							Expect(executorClient.ListContainers(executor.Tags{
-								"some-tag":  "some-value",
-								"bogus-tag": "bogus-value",
-							})).To(BeEmpty())
-						})
-					})
-
-					Describe("listing by non-matching tags", func() {
-						It("does not include the allocated container", func() {
-							Expect(executorClient.ListContainers(executor.Tags{
-								"some-tag": "bogus-value",
-							})).To(BeEmpty())
-						})
-					})
+				It("includes the allocated container", func() {
+					containers, err := executorClient.ListContainers()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(containers).To(HaveLen(1))
+					Expect(containers[0].Guid).To(Equal(guid))
 				})
 			})
 		})
