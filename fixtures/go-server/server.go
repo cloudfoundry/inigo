@@ -9,6 +9,7 @@ import (
 
 func main() {
 	http.HandleFunc("/", hello)
+	http.HandleFunc("/env", env)
 	fmt.Println("listening...")
 
 	ports := os.Getenv("PORT")
@@ -35,4 +36,10 @@ type VCAPApplication struct {
 
 func hello(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(res, "%s", os.Getenv("INSTANCE_INDEX"))
+}
+
+func env(res http.ResponseWriter, req *http.Request) {
+	for _, e := range os.Environ() {
+		fmt.Fprintf(res, "%s\n", e)
+	}
 }
