@@ -77,13 +77,8 @@ var _ = Describe("Evacuation", func() {
 			"-containerOwnerName", cellBID+"-executor",
 		)
 
-		cellA = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"rep", cellARepRunner},
-		}))
-
-		cellB = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"rep", cellBRepRunner},
-		}))
+		cellA = ginkgomon.Invoke(cellARepRunner)
+		cellB = ginkgomon.Invoke(cellBRepRunner)
 
 		test_helper.CreateZipArchive(
 			filepath.Join(fileServerStaticDir, "lrp.zip"),
