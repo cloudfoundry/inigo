@@ -13,7 +13,7 @@ Inigo runs against many components, all of which live in the [Diego BOSH
 Release](https://github.com/cloudfoundry-incubator/diego-release).
 
 To run Inigo, follow the instructions in Diego Release's
-[README](https://github.com/cloudfoundry-incubator/diego-release/blob/develop/README.md#running-integration-tests) section `Running Integration Tests`.
+[CONTRIBUTING doc](https://github.com/cloudfoundry-incubator/diego-release/blob/develop/CONTRIBUTING.md#running-integration-tests), section `Running Integration Tests`.
 
 
 #### The `inigo-ci` docker image
