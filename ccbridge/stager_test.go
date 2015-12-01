@@ -537,7 +537,7 @@ EOF
 				helpers.StopProcesses(cell)
 			})
 
-			It("returns a staging completed response with 'found no compatible cell' error", func() {
+			It("returns a staging completed response with 'unable to communicate to compatible cells' error", func() {
 				resp, err := stageApplication(stagingGuid, string(stagingMessage))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
@@ -546,8 +546,8 @@ EOF
 				Expect(fakeCC.StagingResponses()[0]).To(Equal(
 					cc_messages.StagingResponseForCC{
 						Error: &cc_messages.StagingError{
-							Id:      cc_messages.NO_COMPATIBLE_CELL,
-							Message: "found no compatible cell",
+							Id:      cc_messages.CELL_COMMUNICATION_ERROR,
+							Message: "unable to communicate to compatible cells",
 						},
 					}))
 
