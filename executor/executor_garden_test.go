@@ -842,8 +842,8 @@ var _ = Describe("Executor/Garden", func() {
 						// wait for the container to be present
 						findGardenContainer(guid)
 
-						// kill it
-						err := gardenClient.Destroy(guid)
+						// delete it
+						err := executorClient.DeleteContainer(guid)
 						Expect(err).NotTo(HaveOccurred())
 
 						Eventually(executorClient.RemainingResources).Should(Equal(executor.ExecutorResources{
@@ -852,6 +852,20 @@ var _ = Describe("Executor/Garden", func() {
 							Containers: int(gardenCapacity.MaxContainers),
 						}))
 					})
+				})
+			})
+
+			Describe("removing the container from garden", func() {
+				It("transistions the container into the completed state", func() {
+					findGardenContainer(guid)
+
+					// delete it
+					err := gardenClient.Destroy(guid)
+					Expect(err).NotTo(HaveOccurred())
+
+					Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
+					container := getContainer(guid)
+					Expect(container.RunResult.Failed).To(BeTrue())
 				})
 			})
 		})

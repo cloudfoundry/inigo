@@ -11,6 +11,7 @@ import (
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/inigo/fixtures"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
+	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/routing-info/cfroutes"
 	"github.com/cloudfoundry-incubator/stager/diego_errors"
 	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
@@ -412,8 +413,23 @@ var _ = Describe("Crashing LRPs", func() {
 		runtime     ifrit.Process
 	)
 
+	crashCount := func(guid string, index int) func() int32 {
+		return func() int32 {
+			actualGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(guid, index)
+			Expect(err).NotTo(HaveOccurred())
+			actual, _ := actualGroup.Resolve()
+			return actual.CrashCount
+		}
+	}
+
 	BeforeEach(func() {
-		fileServer, _ := componentMaker.FileServer()
+		fileServer, fileServerStaticDir := componentMaker.FileServer()
+
+		archiveFiles := fixtures.HelloWorldIndexLRP()
+		archive_helper.CreateZipArchive(
+			filepath.Join(fileServerStaticDir, "lrp.zip"),
+			archiveFiles,
+		)
 
 		processGuid = helpers.GenerateGuid()
 
@@ -443,18 +459,37 @@ var _ = Describe("Crashing LRPs", func() {
 			})
 
 			It("imediately restarts the app 3 times", func() {
-				crashCount := func() int32 {
-					actualGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(processGuid, 0)
-					Expect(err).NotTo(HaveOccurred())
-					actual, _ := actualGroup.Resolve()
-					return actual.CrashCount
-				}
 				// the bbs immediately starts it 3 times
-				Eventually(crashCount).Should(BeEquivalentTo(3))
+				Eventually(crashCount(processGuid, 0)).Should(BeEquivalentTo(3))
 				// then exponential backoff kicks in
-				Consistently(crashCount, 15*time.Second).Should(BeEquivalentTo(3))
+				Consistently(crashCount(processGuid, 0), 15*time.Second).Should(BeEquivalentTo(3))
 				// eventually we cross the first backoff threshold (30 seconds)
-				Eventually(crashCount, 30*time.Second).Should(BeEquivalentTo(4))
+				Eventually(crashCount(processGuid, 0), 30*time.Second).Should(BeEquivalentTo(4))
+			})
+		})
+	})
+
+	Describe("disappearing containrs", func() {
+		Context("when a container is deleted unexpectedly", func() {
+			BeforeEach(func() {
+				lrp := helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
+
+				err := bbsClient.DesireLRP(lrp)
+				Expect(err).NotTo(HaveOccurred())
+
+				Eventually(helpers.LRPStatePoller(bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+			})
+
+			It("crashes the instance and restarts it", func() {
+				group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(processGuid, 0)
+				Expect(err).NotTo(HaveOccurred())
+
+				handle := rep.LRPContainerGuid(group.Instance.GetProcessGuid(), group.Instance.GetInstanceGuid())
+				err = gardenClient.Destroy(handle)
+				Expect(err).NotTo(HaveOccurred())
+
+				Eventually(crashCount(processGuid, 0)).Should(BeEquivalentTo(1))
+				Eventually(helpers.LRPStatePoller(bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 			})
 		})
 	})
