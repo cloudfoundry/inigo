@@ -58,7 +58,8 @@ var _ = Describe("Executor/Garden", func() {
 
 		config.GardenNetwork = "tcp"
 		config.GardenAddr = componentMaker.Addresses.GardenLinux
-		config.RegistryPruningInterval = pruningInterval
+		config.ReservedExpirationTime = pruningInterval
+		config.ContainerReapInterval = pruningInterval
 		config.HealthyMonitoringInterval = time.Second
 		config.UnhealthyMonitoringInterval = 100 * time.Millisecond
 		config.ExportNetworkEnvVars = exportNetworkEnvVars
@@ -945,14 +946,12 @@ var _ = Describe("Executor/Garden", func() {
 
 		Describe("pruning the registry", func() {
 			It("continously prunes the registry", func() {
-				_, err := executorClient.AllocateContainers([]executor.AllocationRequest{
-					{
-						Guid: "some-handle",
-						Resource: executor.Resource{
-							MemoryMB: 1024,
-							DiskMB:   1024,
-						},
-					},
+				_, err := executorClient.AllocateContainers([]executor.AllocationRequest{{
+					Guid: "some-handle",
+					Resource: executor.Resource{
+						MemoryMB: 1024,
+						DiskMB:   1024,
+					}},
 				})
 				Expect(err).NotTo(HaveOccurred())
 
@@ -961,13 +960,12 @@ var _ = Describe("Executor/Garden", func() {
 				containers = removeHealthcheckContainers(containers)
 				Expect(containers).To(HaveLen(1))
 
-				Eventually(func() interface{} {
-					containers, err := executorClient.ListContainers()
+				Eventually(func() executor.State {
+					container, err := executorClient.GetContainer("some-handle")
 					Expect(err).NotTo(HaveOccurred())
-					containers = removeHealthcheckContainers(containers)
 
-					return containers
-				}, pruningInterval*3).Should(BeEmpty())
+					return container.State
+				}, pruningInterval*3).Should(Equal(executor.StateCompleted))
 			})
 		})
 
