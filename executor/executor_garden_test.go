@@ -80,7 +80,7 @@ var _ = Describe("Executor/Garden", func() {
 
 	AfterEach(func() {
 		if executorClient != nil {
-			executorClient.Cleanup()
+			executorClient.Cleanup(logger)
 		}
 
 		if process != nil {
@@ -101,7 +101,7 @@ var _ = Describe("Executor/Garden", func() {
 		container.Guid = generateGuid()
 
 		request := executor.NewAllocationRequest(container.Guid, &container.Resource, container.Tags)
-		failures, err := executorClient.AllocateContainers([]executor.AllocationRequest{request})
+		failures, err := executorClient.AllocateContainers(logger, []executor.AllocationRequest{request})
 		Expect(failures).To(BeEmpty())
 		Expect(err).NotTo(HaveOccurred())
 
@@ -109,7 +109,7 @@ var _ = Describe("Executor/Garden", func() {
 	}
 
 	getContainer := func(guid string) executor.Container {
-		container, err := executorClient.GetContainer(guid)
+		container, err := executorClient.GetContainer(logger, guid)
 		Expect(err).NotTo(HaveOccurred())
 
 		return container
@@ -260,7 +260,7 @@ var _ = Describe("Executor/Garden", func() {
 		Describe("Checking garden's health", func() {
 			Context("container creation succeeds", func() {
 				It("reports healthy", func() {
-					Expect(executorClient.Healthy()).Should(BeTrue())
+					Expect(executorClient.Healthy(logger)).Should(BeTrue())
 				})
 			})
 
@@ -270,13 +270,15 @@ var _ = Describe("Executor/Garden", func() {
 				})
 
 				It("reports correctly", func() {
-					Expect(executorClient.Healthy()).Should(BeTrue())
+					Expect(executorClient.Healthy(logger)).Should(BeTrue())
+
+					isHealthy := func() bool { return executorClient.Healthy(logger) }
 
 					ginkgomon.Interrupt(gardenProcess)
-					Eventually(executorClient.Healthy).Should(BeFalse())
+					Eventually(isHealthy).Should(BeFalse())
 
 					gardenProcess = ginkgomon.Invoke(componentMaker.GardenLinux())
-					Eventually(executorClient.Healthy).Should(BeTrue())
+					Eventually(isHealthy).Should(BeTrue())
 				})
 			})
 		})
@@ -286,7 +288,7 @@ var _ = Describe("Executor/Garden", func() {
 
 			Context("when Garden responds to ping", func() {
 				JustBeforeEach(func() {
-					pingErr = executorClient.Ping()
+					pingErr = executorClient.Ping(logger)
 				})
 
 				It("does not return an error", func() {
@@ -297,7 +299,7 @@ var _ = Describe("Executor/Garden", func() {
 			Context("when Garden returns an error", func() {
 				JustBeforeEach(func() {
 					ginkgomon.Interrupt(gardenProcess)
-					pingErr = executorClient.Ping()
+					pingErr = executorClient.Ping(logger)
 				})
 
 				AfterEach(func() {
@@ -316,7 +318,7 @@ var _ = Describe("Executor/Garden", func() {
 			var resourceErr error
 
 			JustBeforeEach(func() {
-				resources, resourceErr = executorClient.TotalResources()
+				resources, resourceErr = executorClient.TotalResources(logger)
 			})
 
 			It("not return an error", func() {
@@ -350,7 +352,7 @@ var _ = Describe("Executor/Garden", func() {
 			})
 
 			JustBeforeEach(func() {
-				allocationFailures, allocErr = executorClient.AllocateContainers([]executor.AllocationRequest{allocationRequest})
+				allocationFailures, allocErr = executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest})
 			})
 
 			It("does not return an error", func() {
@@ -362,7 +364,7 @@ var _ = Describe("Executor/Garden", func() {
 			})
 
 			It("shows up in the container list", func() {
-				containers, err := executorClient.ListContainers()
+				containers, err := executorClient.ListContainers(logger)
 				Expect(err).NotTo(HaveOccurred())
 				containers = removeHealthcheckContainers(containers)
 
@@ -384,7 +386,7 @@ var _ = Describe("Executor/Garden", func() {
 				})
 
 				It("returns the limits on the container", func() {
-					containers, err := executorClient.ListContainers()
+					containers, err := executorClient.ListContainers(logger)
 					Expect(err).NotTo(HaveOccurred())
 					containers = removeHealthcheckContainers(containers)
 
@@ -394,7 +396,7 @@ var _ = Describe("Executor/Garden", func() {
 				})
 
 				It("reduces the capacity by the amount reserved", func() {
-					Expect(executorClient.RemainingResources()).To(Equal(executor.ExecutorResources{
+					Expect(executorClient.RemainingResources(logger)).To(Equal(executor.ExecutorResources{
 						MemoryMB:   int(gardenCapacity.MemoryInBytes/1024/1024) - 256,
 						DiskMB:     int(gardenCapacity.DiskInBytes/1024/1024) - 256,
 						Containers: int(gardenCapacity.MaxContainers) - 1,
@@ -405,7 +407,7 @@ var _ = Describe("Executor/Garden", func() {
 			Context("when the guid is already taken", func() {
 				JustBeforeEach(func() {
 					Expect(allocErr).NotTo(HaveOccurred())
-					allocationFailures, allocErr = executorClient.AllocateContainers([]executor.AllocationRequest{allocationRequest})
+					allocationFailures, allocErr = executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest})
 				})
 
 				It("returns an error", func() {
@@ -467,11 +469,11 @@ var _ = Describe("Executor/Garden", func() {
 				JustBeforeEach(func() {
 					var err error
 
-					eventSource, err = executorClient.SubscribeToEvents()
+					eventSource, err = executorClient.SubscribeToEvents(logger)
 					Expect(err).NotTo(HaveOccurred())
 
 					runReq = executor.NewRunRequest(guid, &runInfo, executor.Tags{})
-					runErr = executorClient.RunContainer(&runReq)
+					runErr = executorClient.RunContainer(logger, &runReq)
 				})
 
 				AfterEach(func() {
@@ -652,7 +654,7 @@ var _ = Describe("Executor/Garden", func() {
 
 								Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
 
-								err := executorClient.DeleteContainer(guid)
+								err := executorClient.DeleteContainer(logger, guid)
 								Expect(err).NotTo(HaveOccurred())
 							}, 5)
 						})
@@ -713,7 +715,7 @@ var _ = Describe("Executor/Garden", func() {
 		Describe("running a bogus guid", func() {
 			It("returns an error", func() {
 				runReq := executor.NewRunRequest("bogus", &executor.RunInfo{}, executor.Tags{})
-				err := executorClient.RunContainer(&runReq)
+				err := executorClient.RunContainer(logger, &runReq)
 				Expect(err).To(Equal(executor.ErrContainerNotFound))
 			})
 		})
@@ -732,10 +734,10 @@ var _ = Describe("Executor/Garden", func() {
 
 			Describe("deleting it", func() {
 				It("makes the previously allocated resources available again", func() {
-					err := executorClient.DeleteContainer(guid)
+					err := executorClient.DeleteContainer(logger, guid)
 					Expect(err).NotTo(HaveOccurred())
 
-					Eventually(executorClient.RemainingResources).Should(Equal(executor.ExecutorResources{
+					Eventually(func() (executor.ExecutorResources, error) { return executorClient.RemainingResources(logger) }).Should(Equal(executor.ExecutorResources{
 						MemoryMB:   int(gardenCapacity.MemoryInBytes / 1024 / 1024),
 						DiskMB:     int(gardenCapacity.DiskInBytes / 1024 / 1024),
 						Containers: int(gardenCapacity.MaxContainers),
@@ -745,7 +747,7 @@ var _ = Describe("Executor/Garden", func() {
 
 			Describe("listing containers", func() {
 				It("shows up in the container list in reserved state", func() {
-					containers, err := executorClient.ListContainers()
+					containers, err := executorClient.ListContainers(logger)
 					Expect(err).NotTo(HaveOccurred())
 					containers = removeHealthcheckContainers(containers)
 
@@ -775,7 +777,7 @@ var _ = Describe("Executor/Garden", func() {
 					}),
 				}, executor.Tags{})
 
-				err := executorClient.RunContainer(&runRequest)
+				err := executorClient.RunContainer(logger, &runRequest)
 				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(containerStatePoller(guid)).Should(Equal(executor.StateRunning))
@@ -783,17 +785,17 @@ var _ = Describe("Executor/Garden", func() {
 
 			Describe("StopContainer", func() {
 				It("does not return an error", func() {
-					err := executorClient.StopContainer(guid)
+					err := executorClient.StopContainer(logger, guid)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("stops the container but does not delete it", func() {
-					err := executorClient.StopContainer(guid)
+					err := executorClient.StopContainer(logger, guid)
 					Expect(err).NotTo(HaveOccurred())
 
 					var container executor.Container
 					Eventually(func() executor.State {
-						container, err = executorClient.GetContainer(guid)
+						container, err = executorClient.GetContainer(logger, guid)
 						Expect(err).NotTo(HaveOccurred())
 						return container.State
 					}).Should(Equal(executor.StateCompleted))
@@ -807,7 +809,7 @@ var _ = Describe("Executor/Garden", func() {
 
 			Describe("DeleteContainer", func() {
 				It("deletes the container", func() {
-					err := executorClient.DeleteContainer(guid)
+					err := executorClient.DeleteContainer(logger, guid)
 					Expect(err).NotTo(HaveOccurred())
 
 					Eventually(func() error {
@@ -819,7 +821,7 @@ var _ = Describe("Executor/Garden", func() {
 
 			Describe("listing containers", func() {
 				It("shows up in the container list in running state", func() {
-					containers, err := executorClient.ListContainers()
+					containers, err := executorClient.ListContainers(logger)
 					Expect(err).NotTo(HaveOccurred())
 					containers = removeHealthcheckContainers(containers)
 
@@ -831,7 +833,7 @@ var _ = Describe("Executor/Garden", func() {
 
 			Describe("remaining resources", func() {
 				It("has the container's reservation subtracted", func() {
-					remaining, err := executorClient.RemainingResources()
+					remaining, err := executorClient.RemainingResources(logger)
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(remaining.MemoryMB).To(Equal(int(gardenCapacity.MemoryInBytes/1024/1024) - 64))
@@ -844,14 +846,15 @@ var _ = Describe("Executor/Garden", func() {
 						findGardenContainer(guid)
 
 						// delete it
-						err := executorClient.DeleteContainer(guid)
+						err := executorClient.DeleteContainer(logger, guid)
 						Expect(err).NotTo(HaveOccurred())
 
-						Eventually(executorClient.RemainingResources).Should(Equal(executor.ExecutorResources{
-							MemoryMB:   int(gardenCapacity.MemoryInBytes / 1024 / 1024),
-							DiskMB:     int(gardenCapacity.DiskInBytes / 1024 / 1024),
-							Containers: int(gardenCapacity.MaxContainers),
-						}))
+						Eventually(func() (executor.ExecutorResources, error) { return executorClient.RemainingResources(logger) }).Should(
+							Equal(executor.ExecutorResources{
+								MemoryMB:   int(gardenCapacity.MemoryInBytes / 1024 / 1024),
+								DiskMB:     int(gardenCapacity.DiskInBytes / 1024 / 1024),
+								Containers: int(gardenCapacity.MaxContainers),
+							}))
 					})
 				})
 			})
@@ -888,7 +891,7 @@ var _ = Describe("Executor/Garden", func() {
 						},
 					})
 
-					stream, streamErr = executorClient.GetFiles(guid, "some/path")
+					stream, streamErr = executorClient.GetFiles(logger, guid, "some/path")
 				})
 
 				It("returns an error", func() {
@@ -912,7 +915,7 @@ var _ = Describe("Executor/Garden", func() {
 						}),
 					}, executor.Tags{})
 
-					err := executorClient.RunContainer(&runRequest)
+					err := executorClient.RunContainer(logger, &runRequest)
 					Expect(err).NotTo(HaveOccurred())
 
 					container = findGardenContainer(guid)
@@ -925,7 +928,7 @@ var _ = Describe("Executor/Garden", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(process.Wait()).To(Equal(0))
 
-					stream, streamErr = executorClient.GetFiles(guid, "/home/vcap/some/path")
+					stream, streamErr = executorClient.GetFiles(logger, guid, "/home/vcap/some/path")
 				})
 
 				It("does not error", func() {
@@ -946,7 +949,7 @@ var _ = Describe("Executor/Garden", func() {
 
 		Describe("pruning the registry", func() {
 			It("continously prunes the registry", func() {
-				_, err := executorClient.AllocateContainers([]executor.AllocationRequest{{
+				_, err := executorClient.AllocateContainers(logger, []executor.AllocationRequest{{
 					Guid: "some-handle",
 					Resource: executor.Resource{
 						MemoryMB: 1024,
@@ -955,13 +958,13 @@ var _ = Describe("Executor/Garden", func() {
 				})
 				Expect(err).NotTo(HaveOccurred())
 
-				containers, err := executorClient.ListContainers()
+				containers, err := executorClient.ListContainers(logger)
 				Expect(err).NotTo(HaveOccurred())
 				containers = removeHealthcheckContainers(containers)
 				Expect(containers).To(HaveLen(1))
 
 				Eventually(func() executor.State {
-					container, err := executorClient.GetContainer("some-handle")
+					container, err := executorClient.GetContainer(logger, "some-handle")
 					Expect(err).NotTo(HaveOccurred())
 
 					return container.State
@@ -972,7 +975,7 @@ var _ = Describe("Executor/Garden", func() {
 		Describe("listing containers", func() {
 			Context("with no containers", func() {
 				It("returns an empty set of containers", func() {
-					containers, err := executorClient.ListContainers()
+					containers, err := executorClient.ListContainers(logger)
 					Expect(err).NotTo(HaveOccurred())
 					containers = removeHealthcheckContainers(containers)
 					Expect(containers).To(BeEmpty())
@@ -991,7 +994,7 @@ var _ = Describe("Executor/Garden", func() {
 				})
 
 				It("includes the allocated container", func() {
-					containers, err := executorClient.ListContainers()
+					containers, err := executorClient.ListContainers(logger)
 					Expect(err).NotTo(HaveOccurred())
 					containers = removeHealthcheckContainers(containers)
 					Expect(containers).To(HaveLen(1))
@@ -1020,7 +1023,7 @@ var _ = Describe("Executor/Garden", func() {
 						}),
 					}, executor.Tags{})
 
-					err := executorClient.RunContainer(&runRequest)
+					err := executorClient.RunContainer(logger, &runRequest)
 					Expect(err).NotTo(HaveOccurred())
 
 					Eventually(containerStatePoller(guid)).Should(Equal(executor.StateRunning))
