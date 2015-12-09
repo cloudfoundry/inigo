@@ -72,6 +72,7 @@ func (r *Runner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 
 	depotPath := filepath.Join(r.tmpdir, "containers")
 	snapshotsPath := filepath.Join(r.tmpdir, "snapshots")
+	stateDirPath := filepath.Join(r.tmpdir, "state")
 
 	if err := os.MkdirAll(depotPath, 0755); err != nil {
 		return err
@@ -114,6 +115,7 @@ func (r *Runner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	gardenArgs = appendDefaultFlag(gardenArgs, "--tag", strconv.Itoa(ginkgo.GinkgoParallelNode()))
 
 	gardenArgs = appendDefaultFlag(gardenArgs, "--debugAddr", fmt.Sprintf(":808%d", ginkgo.GinkgoParallelNode()))
+	gardenArgs = appendDefaultFlag(gardenArgs, "--stateDir", stateDirPath)
 
 	var signal os.Signal
 
