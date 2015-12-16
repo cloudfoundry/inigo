@@ -253,6 +253,7 @@ echo should have died by now
 			})
 		})
 	})
+
 	Describe("Running a downloaded file", func() {
 		var guid string
 
@@ -268,26 +269,55 @@ echo should have died by now
 			})
 		})
 
-		It("downloads the file", func() {
-			expectedTask := helpers.TaskCreateRequest(
-				guid,
-				models.Serial(
-					&models.DownloadAction{
-						From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "announce.tar.gz"),
-						To:   ".",
-						User: "vcap",
-					},
+		Context("with a download action", func() {
+			It("downloads the file", func() {
+				expectedTask := helpers.TaskCreateRequest(
+					guid,
+					models.Serial(
+						&models.DownloadAction{
+							From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "announce.tar.gz"),
+							To:   ".",
+							User: "vcap",
+						},
+						&models.RunAction{
+							User: "vcap",
+							Path: "./announce",
+						},
+					),
+				)
+
+				err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
+			})
+		})
+
+		Context("as a cached dependency", func() {
+			It("downloads and bind mounts the file", func() {
+				expectedTask := helpers.TaskCreateRequest(
+					guid,
 					&models.RunAction{
 						User: "vcap",
-						Path: "./announce",
+						Path: "./app/announce",
 					},
-				),
-			)
+				)
 
-			err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				expectedTask.CacheDependencies = []*models.CacheDependency{
+					{
+						Name:      "Announce Tar",
+						From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "announce.tar.gz"),
+						To:        "/home/vcap/app",
+						CacheKey:  "announce-tar",
+						LogSource: "announce-tar",
+					},
+				}
 
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
+				err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
+			})
 		})
 	})
 

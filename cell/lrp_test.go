@@ -67,6 +67,7 @@ var _ = Describe("LRP", func() {
 
 		BeforeEach(func() {
 			lrp = helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
+			lrp.Setup = nil
 			lrp.CacheDependencies = []*models.CacheDependency{{
 				From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
 				To:        "/tmp/diego/lrp",
@@ -117,7 +118,7 @@ var _ = Describe("LRP", func() {
 
 				lrp.Action = models.WrapAction(&models.RunAction{
 					User: "vcap",
-					Path: "/tmp/go-server",
+					Path: "/tmp/diego/lrp/go-server",
 					Env:  []*models.EnvironmentVariable{{"PORT", "8080 9080"}},
 				})
 			})
@@ -295,6 +296,8 @@ var _ = Describe("LRP", func() {
 					To:   ".",
 					User: "vcap",
 				})
+
+				lrp.CacheDependencies = nil
 			})
 
 			Context("default networking", func() {
