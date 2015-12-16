@@ -303,7 +303,7 @@ echo should have died by now
 					},
 				)
 
-				expectedTask.CacheDependencies = []*models.CacheDependency{
+				expectedTask.CachedDependencies = []*models.CachedDependency{
 					{
 						Name:      "Announce Tar",
 						From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "announce.tar.gz"),

@@ -68,7 +68,7 @@ var _ = Describe("LRP", func() {
 		BeforeEach(func() {
 			lrp = helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
 			lrp.Setup = nil
-			lrp.CacheDependencies = []*models.CacheDependency{{
+			lrp.CachedDependencies = []*models.CachedDependency{{
 				From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
 				To:        "/tmp/diego/lrp",
 				Name:      "lrp bits",
@@ -297,7 +297,7 @@ var _ = Describe("LRP", func() {
 					User: "vcap",
 				})
 
-				lrp.CacheDependencies = nil
+				lrp.CachedDependencies = nil
 			})
 
 			Context("default networking", func() {
