@@ -379,7 +379,7 @@ EOF
 				stageWith(cc_messages.CUSTOM_BUILDPACK, "git-buildpack", "buildpack/.git")
 			})
 
-			Context("when no detected buildpack present", func() {
+			Context("when no detected buildpack is present", func() {
 				BeforeEach(func() {
 					bustedAdminBuildpackFiles = []zip_helper.ArchiveFile{
 						{
