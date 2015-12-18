@@ -312,6 +312,7 @@ echo should have died by now
 						LogSource: "announce-tar",
 					},
 				}
+				expectedTask.LegacyDownloadUser = "vcap"
 
 				err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 

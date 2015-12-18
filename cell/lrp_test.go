@@ -75,6 +75,7 @@ var _ = Describe("LRP", func() {
 				CacheKey:  "lrp-cache-key",
 				LogSource: "APP",
 			}}
+			lrp.LegacyDownloadUser = "vcap"
 			lrp.Privileged = false
 			lrp.Action = models.WrapAction(&models.RunAction{
 				User: "vcap",
