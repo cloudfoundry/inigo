@@ -802,12 +802,8 @@ var _ = Describe("Executor/Garden", func() {
 
 					Expect(container.RunResult.Stopped).To(BeTrue())
 
-					gardenContainer, err := gardenClient.Lookup(guid)
+					_, err = gardenClient.Lookup(guid)
 					Expect(err).NotTo(HaveOccurred())
-
-					info, err := gardenContainer.Info()
-					Expect(err).NotTo(HaveOccurred())
-					Expect(info.State).To(Equal("stopped"))
 				})
 			})
 
