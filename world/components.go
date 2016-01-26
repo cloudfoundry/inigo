@@ -602,8 +602,7 @@ func (maker ComponentMaker) BBSServiceClient() bbs.ServiceClient {
 	client, err := consuladapter.NewClient(maker.ConsulCluster())
 	Expect(err).NotTo(HaveOccurred())
 
-	sessionMgr := consuladapter.NewSessionManager(client)
-	consulSession, err := consuladapter.NewSession("inigo", 10*time.Second, client, sessionMgr)
+	consulSession, err := consuladapter.NewSession("inigo", 10*time.Second, consuladapter.NewConsulClient(client))
 	Expect(err).NotTo(HaveOccurred())
 
 	return bbs.NewServiceClient(consulSession, clock.NewClock())
