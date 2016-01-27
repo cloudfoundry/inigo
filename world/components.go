@@ -314,6 +314,7 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 				"-bbsClientCert", maker.BbsSSL.ClientCert,
 				"-bbsClientKey", maker.BbsSSL.ClientKey,
 				"-bbsCACert", maker.BbsSSL.CACert,
+				"-startingContainerWeight", "0.33",
 			}, argv...)...,
 		),
 	})
