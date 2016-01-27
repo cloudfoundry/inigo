@@ -70,16 +70,15 @@ var _ = BeforeEach(func() {
 	}))
 
 	helpers.ConsulWaitUntilReady()
+	logger = lager.NewLogger("test")
+	logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 
 	gardenClient = componentMaker.GardenClient()
 	natsClient = componentMaker.NATSClient()
 	bbsClient = componentMaker.BBSClient()
-	bbsServiceClient = componentMaker.BBSServiceClient()
+	bbsServiceClient = componentMaker.BBSServiceClient(logger)
 
 	inigo_announcement_server.Start(componentMaker.ExternalAddress)
-
-	logger = lager.NewLogger("test")
-	logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 })
 
 var _ = AfterEach(func() {

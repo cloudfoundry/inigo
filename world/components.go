@@ -25,6 +25,7 @@ import (
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-golang/clock"
+	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"golang.org/x/crypto/ssh"
@@ -598,14 +599,11 @@ func (maker ComponentMaker) BBSClient() bbs.Client {
 	return client
 }
 
-func (maker ComponentMaker) BBSServiceClient() bbs.ServiceClient {
+func (maker ComponentMaker) BBSServiceClient(logger lager.Logger) bbs.ServiceClient {
 	client, err := consuladapter.NewClient(maker.ConsulCluster())
 	Expect(err).NotTo(HaveOccurred())
 
-	consulSession, err := consuladapter.NewSession("inigo", 10*time.Second, consuladapter.NewConsulClient(client))
-	Expect(err).NotTo(HaveOccurred())
-
-	return bbs.NewServiceClient(consulSession, clock.NewClock())
+	return bbs.NewServiceClient(logger, consuladapter.NewConsulClient(client), 10*time.Second, clock.NewClock())
 }
 
 func (maker ComponentMaker) BBSURL() string {
