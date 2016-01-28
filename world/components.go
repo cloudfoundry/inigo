@@ -603,7 +603,7 @@ func (maker ComponentMaker) BBSServiceClient(logger lager.Logger) bbs.ServiceCli
 	client, err := consuladapter.NewClient(maker.ConsulCluster())
 	Expect(err).NotTo(HaveOccurred())
 
-	return bbs.NewServiceClient(logger, consuladapter.NewConsulClient(client), 10*time.Second, clock.NewClock())
+	return bbs.NewServiceClient(consuladapter.NewConsulClient(client), clock.NewClock())
 }
 
 func (maker ComponentMaker) BBSURL() string {
