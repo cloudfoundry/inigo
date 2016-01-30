@@ -600,10 +600,10 @@ func (maker ComponentMaker) BBSClient() bbs.Client {
 }
 
 func (maker ComponentMaker) BBSServiceClient(logger lager.Logger) bbs.ServiceClient {
-	client, err := consuladapter.NewClient(maker.ConsulCluster())
+	client, err := consuladapter.NewClientFromUrl(maker.ConsulCluster())
 	Expect(err).NotTo(HaveOccurred())
 
-	return bbs.NewServiceClient(consuladapter.NewConsulClient(client), clock.NewClock())
+	return bbs.NewServiceClient(client, clock.NewClock())
 }
 
 func (maker ComponentMaker) BBSURL() string {
