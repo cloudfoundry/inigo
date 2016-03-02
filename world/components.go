@@ -20,6 +20,8 @@ import (
 	gardenconnection "github.com/cloudfoundry-incubator/garden/client/connection"
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/inigo/gardenrunner"
+	"github.com/cloudfoundry-incubator/volman"
+	volmanclient "github.com/cloudfoundry-incubator/volman/vollocal"
 	gorouterconfig "github.com/cloudfoundry/gorouter/config"
 	"github.com/cloudfoundry/gunk/diegonats"
 	"github.com/onsi/ginkgo"
@@ -616,6 +618,10 @@ func (maker ComponentMaker) ConsulCluster() string {
 
 func (maker ComponentMaker) EtcdCluster() string {
 	return "https://" + maker.Addresses.Etcd
+}
+
+func (maker ComponentMaker) VolmanClient(driverPath string) volman.Manager {
+	return volmanclient.NewLocalClient(driverPath)
 }
 
 // offsetPort retuns a new port offest by a given number in such a way
