@@ -1,13 +1,10 @@
 package volman_test
 
 import (
-	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/cloudfoundry-incubator/garden"
-	"github.com/cloudfoundry-incubator/volman"
-	"github.com/cloudfoundry-incubator/volman/vollocal"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -15,76 +12,108 @@ import (
 	"github.com/pivotal-golang/lager/lagertest"
 )
 
-var _ = Describe("Given garden and volman", func() {
+var _ = Describe("Given garden and a mounted volume", func() {
 
 	var (
-		volmanClient        volman.Manager
-		gardenContainerSpec garden.ContainerSpec
-		logger              lager.Logger
+		// volmanClient        volman.Manager
+		logger     lager.Logger
+		mountPoint string
 	)
 
 	BeforeEach(func() {
+
 		logger = lagertest.NewTestLogger("VolmanInigoTest")
-		volmanClient = vollocal.NewLocalClient(fakeDriverPath)
+
+		var err error
+		mountPointResponse, err := volmanClient.Mount(logger, "fakedriver", "someVolume", "someconfig")
+		Expect(err).NotTo(HaveOccurred())
+		mountPoint = mountPointResponse.Path
 	})
 
-	Context("and given a volman mounted volume", func() {
+	Context("and a container with a host origin bind-mount", func() {
 
-		var mountPoint string
+		var bindMount garden.BindMount
+		var container garden.Container
 
 		BeforeEach(func() {
-			var err error
 
-			mountPointResponse, err := volmanClient.Mount(logger, "fakedriver", "someVolume", "someconfig")
-			Expect(err).NotTo(HaveOccurred())
-			mountPoint = mountPointResponse.Path
-		})
-
-		It("then garden can create a container with a host origin bind-mount and use it", func() {
-			bindMount := garden.BindMount{
+			bindMount = garden.BindMount{
 				SrcPath: mountPoint,
 				DstPath: "/mnt/testmount",
 				Mode:    garden.BindMountModeRW,
 				Origin:  garden.BindMountOriginHost,
 			}
+		})
 
-			mounts := []garden.BindMount{}
-			mounts = append(mounts, bindMount)
-			gardenContainerSpec = garden.ContainerSpec{
-				Privileged: true,
-				BindMounts: mounts,
-			}
+		JustBeforeEach(func() {
+			container = createContainer(bindMount)
+		})
 
-			container, err := gardenClient.Create(gardenContainerSpec)
-			Expect(err).NotTo(HaveOccurred())
+		It("the container should be able to write to that volume", func() {
 
 			dir := "/mnt/testmount"
 			fileName := "bind-mount-test-file"
 			filePath := filepath.Join(dir, fileName)
 			createContainerTestFileIn(container, filePath)
 
-			// then it is available inside the container
-			out := gbytes.NewBuffer()
-			proc, err := container.Run(garden.ProcessSpec{
-				User: "root",
-				Path: "ls",
-				Args: []string{filePath},
-			}, garden.ProcessIO{
-				Stdout: io.MultiWriter(out, GinkgoWriter),
-				Stderr: GinkgoWriter,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(proc.Wait()).To(Equal(0))
-			out.Close()
+			expectContainerTestFileExists(container, filePath)
 
-			// and available outside of the container
-			files, err := filepath.Glob(mountPoint + "/*")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(len(files)).To(Equal(1))
-			Expect(files[0]).To(Equal(mountPoint + "/" + fileName))
+			// and expect it is available outside of the container
+			{
+				files, err := filepath.Glob(mountPoint + "/*")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(len(files)).To(Equal(1))
+				Expect(files[0]).To(Equal(mountPoint + "/" + fileName))
+			}
+		})
+
+		Context("and a second container with the same host origin bind-mount", func() {
+
+			var bindMount2 garden.BindMount
+			var container2 garden.Container
+
+			BeforeEach(func() {
+				bindMount2 = garden.BindMount{
+					SrcPath: mountPoint,
+					DstPath: "/mnt/testmount2",
+					Mode:    garden.BindMountModeRW,
+					Origin:  garden.BindMountOriginHost,
+				}
+			})
+
+			JustBeforeEach(func() {
+				container2 = createContainer(bindMount2)
+			})
+
+			It("the second container should be able to access data written by the first", func() {
+
+				dir := "/mnt/testmount"
+				fileName := "bind-mount-test-file"
+				filePath := filepath.Join(dir, fileName)
+				createContainerTestFileIn(container, filePath)
+				expectContainerTestFileExists(container, filePath)
+
+				dir = "/mnt/testmount2"
+				filePath = filepath.Join(dir, fileName)
+				expectContainerTestFileExists(container2, filePath)
+			})
 		})
 	})
 })
+
+func createContainer(bindMount garden.BindMount) garden.Container {
+	mounts := []garden.BindMount{}
+	mounts = append(mounts, bindMount)
+	gardenContainerSpec := garden.ContainerSpec{
+		Privileged: true,
+		BindMounts: mounts,
+	}
+
+	container, err := gardenClient.Create(gardenContainerSpec)
+	Expect(err).NotTo(HaveOccurred())
+
+	return container
+}
 
 func createContainerTestFileIn(container garden.Container, filePath string) {
 
@@ -104,4 +133,18 @@ func createContainerTestFileIn(container garden.Container, filePath string) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(process.Wait()).To(Equal(0))
 
+}
+
+func expectContainerTestFileExists(container garden.Container, filePath string) {
+	out := gbytes.NewBuffer()
+	defer out.Close()
+
+	proc, err := container.Run(garden.ProcessSpec{
+		Path: "ls",
+		Args: []string{filePath},
+		User: "root",
+	}, garden.ProcessIO{nil, out, out})
+	Expect(err).NotTo(HaveOccurred())
+	Expect(proc.Wait()).To(Equal(0))
+	Expect(out).To(gbytes.Say(filePath))
 }

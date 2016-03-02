@@ -11,7 +11,6 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/cloudfoundry-incubator/volman"
-	"github.com/cloudfoundry-incubator/volman/vollocal"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -27,9 +26,8 @@ var (
 	gardenProcess ifrit.Process
 	gardenClient  garden.Client
 
-	fakeDriverPath   string
-	volmanClient     volman.Manager
-	volmanDriverPath string
+	fakeDriverPath string
+	volmanClient   volman.Manager
 )
 
 var _ = SynchronizedBeforeSuite(func() []byte {
@@ -48,14 +46,16 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	localIP, err := localip.LocalIP()
 	Expect(err).NotTo(HaveOccurred())
 
-	fakeDriverPath = filepath.Dir(strings.Split(volmanDriverPath, ",")[0])
-	volmanClient = vollocal.NewLocalClient(fakeDriverPath)
 	componentMaker = helpers.MakeComponentMaker(builtArtifacts, localIP)
 })
 
 var _ = BeforeEach(func() {
 	gardenProcess = ginkgomon.Invoke(componentMaker.GardenLinux())
 	gardenClient = componentMaker.GardenClient()
+
+	fakeDriverPath := componentMaker.Artifacts.Executables["fake-driver"]
+	parentPath := filepath.Dir(strings.Split(fakeDriverPath, ",")[0])
+	volmanClient = componentMaker.VolmanClient(parentPath)
 })
 
 var _ = AfterEach(func() {
@@ -89,7 +89,6 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["fake-driver"], err = gexec.Build("github.com/cloudfoundry-incubator/volman/fakedriver", "-race")
-	volmanDriverPath = builtExecutables["fake-driver"]
 	Expect(err).NotTo(HaveOccurred())
 
 	return builtExecutables
