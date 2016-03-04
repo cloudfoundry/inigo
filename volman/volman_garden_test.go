@@ -12,7 +12,7 @@ import (
 	"github.com/pivotal-golang/lager/lagertest"
 )
 
-var _ = Describe("Given garden and a mounted volume", func() {
+var _ = Describe("Given garden, volman, fakedriver and a mounted volume", func() {
 
 	var (
 		// volmanClient        volman.Manager
@@ -22,7 +22,7 @@ var _ = Describe("Given garden and a mounted volume", func() {
 
 	BeforeEach(func() {
 
-		logger = lagertest.NewTestLogger("VolmanInigoTest")
+		logger = lagertest.NewTestLogger("VolmanGardenTests")
 
 		var err error
 		mountPointResponse, err := volmanClient.Mount(logger, "fakedriver", "someVolume", "someconfig")
@@ -63,7 +63,7 @@ var _ = Describe("Given garden and a mounted volume", func() {
 				files, err := filepath.Glob(mountPoint + "/*")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(files)).To(Equal(1))
-				Expect(files[0]).To(Equal(mountPoint + "/" + fileName))
+				Expect(files[0]).To(Equal(mountPoint + fileName))
 			}
 		})
 
