@@ -7,7 +7,7 @@ import (
 	"github.com/onsi/gomega"
 )
 
-var DEFAULT_EVENTUALLY_TIMEOUT = 1 * time.Minute
+var DEFAULT_EVENTUALLY_TIMEOUT = 3 * time.Minute
 var DEFAULT_CONSISTENTLY_DURATION = 5 * time.Second
 
 func RegisterDefaultTimeouts() {

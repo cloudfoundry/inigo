@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/cloudfoundry-incubator/bbs/models"
 	ssh_helpers "github.com/cloudfoundry-incubator/diego-ssh/helpers"
@@ -252,7 +253,7 @@ var _ = Describe("SSH", func() {
 				verifySSH(address, processGuid, 1)
 			})
 
-			It("supports local port fowarding", func() {
+			FIt("supports local port fowarding", func() {
 				clientConfig := &ssh.ClientConfig{
 					User: fmt.Sprintf("diego:%s/%d", processGuid, 0),
 					Auth: []ssh.AuthMethod{ssh.Password("")},
@@ -263,6 +264,8 @@ var _ = Describe("SSH", func() {
 
 				lconn, err := client.Dial("tcp", "localhost:9999")
 				Expect(err).NotTo(HaveOccurred())
+
+				time.Sleep(time.Second * 5)
 
 				reader := bufio.NewReader(lconn)
 				line, err := reader.ReadString('\n')
