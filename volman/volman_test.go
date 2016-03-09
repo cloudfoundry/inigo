@@ -11,42 +11,33 @@ var _ = Describe("Given volman and fakedriver", func() {
 	var volumeId string
 
 	BeforeEach(func() {
-
 		driverId = "fakedriver"
 		volumeId = "test-volume"
 	})
 
 	It("should mount a volumn", func() {
-
 		var err error
-		mountPointResponse, err := volmanClient.Mount(logger, driverId, volumeId, "someconfig")
+		someConfig := map[string]interface{}{"volume_id": "someID"}
+		mountPointResponse, err := volmanClient.Mount(logger, driverId, volumeId, someConfig)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(mountPointResponse.Path).NotTo(BeEmpty())
 	})
 
 	Context("and a mounted volman", func() {
-
-		var (
-			mountPoint string
-		)
+		var mountPoint string
 
 		BeforeEach(func() {
-
 			var err error
-			mountPointResponse, err := volmanClient.Mount(logger, driverId, volumeId, "someconfig")
+			someConfig := map[string]interface{}{"volume_id": "someID"}
+			mountPointResponse, err := volmanClient.Mount(logger, driverId, volumeId, someConfig)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(mountPointResponse.Path).NotTo(BeEmpty())
 			mountPoint = mountPointResponse.Path
-
 		})
 
 		It("should be able to unmount the volume", func() {
-
 			err := volmanClient.Unmount(logger, driverId, volumeId)
 			Expect(err).NotTo(HaveOccurred())
-
 		})
-
 	})
-
 })
