@@ -63,7 +63,6 @@ var _ = BeforeEach(func() {
 	fakeDriverPath := componentMaker.Artifacts.Executables["fake-driver"]
 	fakeDriverDir = filepath.Dir(strings.Split(fakeDriverPath, ",")[0])
 	volmanClient = componentMaker.VolmanClient(fakeDriverDir)
-
 	fakedriverProcess = ginkgomon.Invoke(componentMaker.VolmanDriver(logger, fakeDriverPath))
 })
 

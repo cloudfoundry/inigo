@@ -20,23 +20,12 @@ var _ = Describe("Given garden, volman, fakedriver", func() {
 		mountPoint string
 	)
 
-	Context("when given a mounted volume", func() {
-		BeforeEach(func() {
-
-			var err error
-			mountPointResponse, err := volmanClient.Mount(logger, "fakedriver", "someVolume", "someconfig")
-			Expect(err).NotTo(HaveOccurred())
-			mountPoint = mountPointResponse.Path
-		})
-	})
-
-	Context("and a container with a host origin bind-mount", func() {
+	Context("and a mounted volume", func() {
 
 		var bindMount garden.BindMount
 		var container garden.Container
 
 		BeforeEach(func() {
-
 			logger = lagertest.NewTestLogger("VolmanInigoTest")
 
 			var err error
