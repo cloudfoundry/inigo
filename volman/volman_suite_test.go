@@ -14,7 +14,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/ginkgoreporter"
+	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/pivotal-golang/localip"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -26,8 +28,11 @@ var (
 	gardenProcess ifrit.Process
 	gardenClient  garden.Client
 
-	fakeDriverPath string
-	volmanClient   volman.Manager
+	fakeDriverPath    string
+	volmanClient      volman.Manager
+	fakedriverProcess ifrit.Process
+
+	logger lager.Logger
 )
 
 var _ = SynchronizedBeforeSuite(func() []byte {
@@ -50,18 +55,22 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 })
 
 var _ = BeforeEach(func() {
+	logger = lagertest.NewTestLogger("Volman Inigo Tests")
+
 	gardenProcess = ginkgomon.Invoke(componentMaker.GardenLinux())
 	gardenClient = componentMaker.GardenClient()
 
 	fakeDriverPath := componentMaker.Artifacts.Executables["fake-driver"]
 	parentPath := filepath.Dir(strings.Split(fakeDriverPath, ",")[0])
 	volmanClient = componentMaker.VolmanClient(parentPath)
+
+	fakedriverProcess = ginkgomon.Invoke(componentMaker.VolmanDriver(logger, fakeDriverPath))
 })
 
 var _ = AfterEach(func() {
 	destroyContainerErrors := helpers.CleanupGarden(gardenClient)
 
-	helpers.StopProcesses(gardenProcess)
+	helpers.StopProcesses(gardenProcess, fakedriverProcess)
 
 	Expect(destroyContainerErrors).To(
 		BeEmpty(),
@@ -88,7 +97,7 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	builtExecutables["garden-linux"], err = gexec.BuildIn(os.Getenv("GARDEN_LINUX_GOPATH"), "github.com/cloudfoundry-incubator/garden-linux", "-race", "-a", "-tags", "daemon")
 	Expect(err).NotTo(HaveOccurred())
 
-	builtExecutables["fake-driver"], err = gexec.Build("github.com/cloudfoundry-incubator/volman/fakedriver", "-race")
+	builtExecutables["fake-driver"], err = gexec.Build("github.com/cloudfoundry-incubator/volman/fakedriver/cmd/fakedriver", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	return builtExecutables

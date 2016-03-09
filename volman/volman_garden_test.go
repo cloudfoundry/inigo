@@ -2,27 +2,24 @@ package volman_test
 
 import (
 	"os"
+
 	"path/filepath"
 
 	"github.com/cloudfoundry-incubator/garden"
+	"github.com/onsi/gomega/gbytes"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
-	"github.com/pivotal-golang/lager"
-	"github.com/pivotal-golang/lager/lagertest"
 )
 
 var _ = Describe("Given garden and a mounted volume", func() {
 
 	var (
 		// volmanClient        volman.Manager
-		logger     lager.Logger
 		mountPoint string
 	)
 
 	BeforeEach(func() {
-
-		logger = lagertest.NewTestLogger("VolmanInigoTest")
 
 		var err error
 		mountPointResponse, err := volmanClient.Mount(logger, "fakedriver", "someVolume", "someconfig")
