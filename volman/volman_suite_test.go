@@ -28,7 +28,7 @@ var (
 	gardenProcess ifrit.Process
 	gardenClient  garden.Client
 
-	fakeDriverPath    string
+	fakeDriverDir     string
 	volmanClient      volman.Manager
 	fakedriverProcess ifrit.Process
 
@@ -61,9 +61,8 @@ var _ = BeforeEach(func() {
 	gardenClient = componentMaker.GardenClient()
 
 	fakeDriverPath := componentMaker.Artifacts.Executables["fake-driver"]
-	parentPath := filepath.Dir(strings.Split(fakeDriverPath, ",")[0])
-	volmanClient = componentMaker.VolmanClient(parentPath)
-
+	fakeDriverDir = filepath.Dir(strings.Split(fakeDriverPath, ",")[0])
+	volmanClient = componentMaker.VolmanClient(fakeDriverDir)
 	fakedriverProcess = ginkgomon.Invoke(componentMaker.VolmanDriver(logger, fakeDriverPath))
 })
 

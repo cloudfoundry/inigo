@@ -12,87 +12,87 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Given garden and a mounted volume", func() {
+var _ = Describe("Given garden, volman, fakedriver", func() {
 
 	var (
 		// volmanClient        volman.Manager
 		mountPoint string
 	)
 
-	BeforeEach(func() {
-
-		var err error
-		mountPointResponse, err := volmanClient.Mount(logger, "fakedriver", "someVolume", "someconfig")
-		Expect(err).NotTo(HaveOccurred())
-		mountPoint = mountPointResponse.Path
-	})
-
-	Context("and a container with a host origin bind-mount", func() {
-
-		var bindMount garden.BindMount
-		var container garden.Container
+	Context("and a mounted volume", func() {
 
 		BeforeEach(func() {
-
-			bindMount = garden.BindMount{
-				SrcPath: mountPoint,
-				DstPath: "/mnt/testmount",
-				Mode:    garden.BindMountModeRW,
-				Origin:  garden.BindMountOriginHost,
-			}
+			someConfig := map[string]interface{}{"volume_id": "someID"}
+			mountPointResponse, err := volmanClient.Mount(logger, "fakedriver", "someVolume", someConfig)
+			Expect(err).NotTo(HaveOccurred())
+			mountPoint = mountPointResponse.Path
 		})
 
-		JustBeforeEach(func() {
-			container = createContainer(bindMount)
-		})
+		Context("when the container bind mounts with \"host origin\"", func() {
 
-		It("the container should be able to write to that volume", func() {
-
-			dir := "/mnt/testmount"
-			fileName := "bind-mount-test-file"
-			filePath := filepath.Join(dir, fileName)
-			createContainerTestFileIn(container, filePath)
-
-			expectContainerTestFileExists(container, filePath)
-
-			// and expect it is available outside of the container
-			{
-				files, err := filepath.Glob(mountPoint + "/*")
-				Expect(err).ToNot(HaveOccurred())
-				Expect(len(files)).To(Equal(1))
-				Expect(files[0]).To(Equal(mountPoint + "/" + fileName))
-			}
-		})
-
-		Context("and a second container with the same host origin bind-mount", func() {
-
-			var bindMount2 garden.BindMount
-			var container2 garden.Container
+			var bindMount garden.BindMount
+			var container garden.Container
 
 			BeforeEach(func() {
-				bindMount2 = garden.BindMount{
+
+				bindMount = garden.BindMount{
 					SrcPath: mountPoint,
-					DstPath: "/mnt/testmount2",
+					DstPath: "/mnt/testmount",
 					Mode:    garden.BindMountModeRW,
 					Origin:  garden.BindMountOriginHost,
 				}
 			})
 
 			JustBeforeEach(func() {
-				container2 = createContainer(bindMount2)
+				container = createContainer(bindMount)
 			})
 
-			It("the second container should be able to access data written by the first", func() {
+			It("should be able to write to that volume", func() {
 
 				dir := "/mnt/testmount"
 				fileName := "bind-mount-test-file"
 				filePath := filepath.Join(dir, fileName)
 				createContainerTestFileIn(container, filePath)
+
 				expectContainerTestFileExists(container, filePath)
 
-				dir = "/mnt/testmount2"
-				filePath = filepath.Join(dir, fileName)
-				expectContainerTestFileExists(container2, filePath)
+				By("expecting the file it wrote to be available outside of the container")
+				files, err := filepath.Glob(mountPoint + "/*")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(len(files)).To(Equal(1))
+				Expect(files[0]).To(Equal(mountPoint + "/" + fileName))
+			})
+
+			Context("when a second container bind mounts the same \"host origin\"", func() {
+
+				var bindMount2 garden.BindMount
+				var container2 garden.Container
+
+				BeforeEach(func() {
+					bindMount2 = garden.BindMount{
+						SrcPath: mountPoint,
+						DstPath: "/mnt/testmount2",
+						Mode:    garden.BindMountModeRW,
+						Origin:  garden.BindMountOriginHost,
+					}
+				})
+
+				JustBeforeEach(func() {
+					container2 = createContainer(bindMount2)
+				})
+
+				It("should be able to read the file written by the first", func() {
+
+					dir := "/mnt/testmount"
+					fileName := "bind-mount-test-file"
+					filePath := filepath.Join(dir, fileName)
+					createContainerTestFileIn(container, filePath)
+					expectContainerTestFileExists(container, filePath)
+
+					dir = "/mnt/testmount2"
+					filePath = filepath.Join(dir, fileName)
+					expectContainerTestFileExists(container2, filePath)
+				})
 			})
 		})
 	})
