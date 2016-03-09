@@ -62,13 +62,9 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		config.VolManDriverPath = fakeDriverDir
 		config.GardenNetwork = "tcp"
 		config.GardenAddr = componentMaker.Addresses.GardenLinux
-		// config.ReservedExpirationTime = pruningInterval
-		// config.ContainerReapInterval = pruningInterval
 		config.HealthyMonitoringInterval = time.Second
 		config.UnhealthyMonitoringInterval = 100 * time.Millisecond
-		// config.ExportNetworkEnvVars = exportNetworkEnvVars
 		config.ContainerOwnerName = ownerName
-		// config.CachePath = cachePath
 		config.GardenHealthcheckProcessPath = "/bin/sh"
 		config.GardenHealthcheckProcessArgs = []string{"-c", "echo", "checking health"}
 		config.GardenHealthcheckProcessUser = "vcap"
@@ -124,7 +120,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 			Context("when running the container", func() {
 				var runReq executor.RunRequest
 				BeforeEach(func() {
-					volumeMounts := []executor.VolumeMount{executor.VolumeMount{ContainerPath: "/testmount", Driver: "fakedriver", VolumeId: "some-volumeId", Config: "some-config"}}
+					volumeMounts := []executor.VolumeMount{executor.VolumeMount{ContainerPath: "/testmount", Driver: "fakedriver", VolumeId: "some-volumeId", Config: "some-config", Mode: garden.BindMountModeRW}}
 					runInfo := executor.RunInfo{
 						VolumeMounts: volumeMounts,
 						Action: models.WrapAction(&models.RunAction{
@@ -136,7 +132,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 					runReq = executor.NewRunRequest(guid, &runInfo, executor.Tags{})
 				})
 
-				Context("when successfully mounting the volume", func() {
+				Context("when successfully mounting a RW Mode volume", func() {
 					It("can write files to the mounted volume", func() {
 						err := executorClient.RunContainer(logger, &runReq)
 						Expect(err).NotTo(HaveOccurred())
