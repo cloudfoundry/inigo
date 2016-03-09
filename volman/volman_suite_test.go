@@ -28,7 +28,7 @@ var (
 	gardenProcess ifrit.Process
 	gardenClient  garden.Client
 
-	fakeDriverPath    string
+	fakeDriverDir     string
 	volmanClient      volman.Manager
 	fakedriverProcess ifrit.Process
 
@@ -61,6 +61,7 @@ var _ = BeforeEach(func() {
 	gardenClient = componentMaker.GardenClient()
 
 	fakeDriverPath := componentMaker.Artifacts.Executables["fake-driver"]
+	fakeDriverDir = filepath.Dir(strings.Split(fakeDriverPath, ",")[0])
 	parentPath := filepath.Dir(strings.Split(fakeDriverPath, ",")[0])
 	volmanClient = componentMaker.VolmanClient(parentPath)
 
