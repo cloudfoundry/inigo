@@ -3,6 +3,7 @@ package volman_test
 import (
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 
@@ -97,10 +98,9 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 		Context("when allocating a container with a volman mount", func() {
 			var (
-				allocationRequest  executor.AllocationRequest
 				guid               string
+				allocationRequest  executor.AllocationRequest
 				allocationFailures []executor.AllocationFailure
-				fileName           = string(time.Now().UnixNano()) + "-testfile.txt"
 			)
 
 			BeforeEach(func() {
@@ -109,6 +109,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 				guid = id.String()
 
 				tags := executor.Tags{"some-tag": "some-value"}
+
 				allocationRequest = executor.NewAllocationRequest(guid, &executor.Resource{}, tags)
 
 				allocationFailures, err = executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest})
@@ -118,9 +119,17 @@ var _ = Describe("Executor/Garden/Volman", func() {
 			})
 
 			Context("when running the container", func() {
-				var runReq executor.RunRequest
+				var (
+					runReq   executor.RunRequest
+					volumeId string
+					fileName string
+				)
+
 				BeforeEach(func() {
-					volumeMounts := []executor.VolumeMount{executor.VolumeMount{ContainerPath: "/testmount", Driver: "fakedriver", VolumeId: "some-volumeId", Config: "some-config", Mode: garden.BindMountModeRW}}
+					fileName = "testfile-" + string(time.Now().UnixNano()) + ".txt"
+					volumeId = "some-volumeID-" + string(time.Now().UnixNano())
+					someConfig := map[string]interface{}{"volume_id": volumeId}
+					volumeMounts := []executor.VolumeMount{executor.VolumeMount{ContainerPath: "/testmount", Driver: "fakedriver", VolumeId: volumeId, Config: someConfig, Mode: uint8(garden.BindMountModeRW)}}
 					runInfo := executor.RunInfo{
 						VolumeMounts: volumeMounts,
 						Action: models.WrapAction(&models.RunAction{
@@ -133,16 +142,27 @@ var _ = Describe("Executor/Garden/Volman", func() {
 				})
 
 				Context("when successfully mounting a RW Mode volume", func() {
-					It("can write files to the mounted volume", func() {
+					BeforeEach(func() {
 						err := executorClient.RunContainer(logger, &runReq)
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
 						Expect(getContainer(guid).RunResult.Failed).Should(BeFalse())
+					})
 
-						By("expecting the file it wrote to be available outside of the container")
-						files, err := filepath.Glob("/tmp/fakeDriverMountPoint*/" + fileName)
+					It("can write files to the mounted volume", func() {
+						By("we expect the file it wrote to be available outside of the container")
+						files, err := filepath.Glob(path.Join("/tmp/_fakedriver/", volumeId, fileName))
 						Expect(err).ToNot(HaveOccurred())
 						Expect(len(files)).To(Equal(1))
+					})
+
+					It("cleans up the mounts afterwards", func() {
+						err := executorClient.DeleteContainer(logger, guid)
+						Expect(err).NotTo(HaveOccurred())
+
+						files, err := filepath.Glob(path.Join("/tmp/_fakedriver/", volumeId, fileName))
+						Expect(err).ToNot(HaveOccurred())
+						Expect(len(files)).To(Equal(0))
 					})
 				})
 			})
