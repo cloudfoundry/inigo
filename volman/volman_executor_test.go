@@ -129,7 +129,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 					fileName = "testfile-" + string(time.Now().UnixNano()) + ".txt"
 					volumeId = "some-volumeID-" + string(time.Now().UnixNano())
 					someConfig := map[string]interface{}{"volume_id": volumeId}
-					volumeMounts := []executor.VolumeMount{executor.VolumeMount{ContainerPath: "/testmount", Driver: "fakedriver", VolumeId: volumeId, Config: someConfig, Mode: uint8(garden.BindMountModeRW)}}
+					volumeMounts := []executor.VolumeMount{executor.VolumeMount{ContainerPath: "/testmount", Driver: "fakedriver", VolumeId: volumeId, Config: someConfig, Mode: executor.BindMountModeRW}}
 					runInfo := executor.RunInfo{
 						VolumeMounts: volumeMounts,
 						Action: models.WrapAction(&models.RunAction{
