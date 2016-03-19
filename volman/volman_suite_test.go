@@ -3,8 +3,6 @@ package volman_test
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/cloudfoundry-incubator/garden"
@@ -60,10 +58,8 @@ var _ = BeforeEach(func() {
 	gardenProcess = ginkgomon.Invoke(componentMaker.GardenLinux())
 	gardenClient = componentMaker.GardenClient()
 
-	fakeDriverPath := componentMaker.Artifacts.Executables["fake-driver"]
-	fakeDriverDir = filepath.Dir(strings.Split(fakeDriverPath, ",")[0])
-	volmanClient = componentMaker.VolmanClient(fakeDriverDir)
-	fakedriverProcess = ginkgomon.Invoke(componentMaker.VolmanDriver(logger, fakeDriverPath))
+	fakedriverProcess = ginkgomon.Invoke(componentMaker.VolmanDriver(logger))
+	volmanClient = componentMaker.VolmanClient()
 })
 
 var _ = AfterEach(func() {
@@ -97,6 +93,18 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["fake-driver"], err = gexec.Build("github.com/cloudfoundry-incubator/volman/fakedriver/cmd/fakedriver", "-race")
+	Expect(err).NotTo(HaveOccurred())
+
+	builtExecutables["auctioneer"], err = gexec.BuildIn(os.Getenv("AUCTIONEER_GOPATH"), "github.com/cloudfoundry-incubator/auctioneer/cmd/auctioneer", "-race")
+	Expect(err).NotTo(HaveOccurred())
+
+	builtExecutables["rep"], err = gexec.BuildIn(os.Getenv("REP_GOPATH"), "github.com/cloudfoundry-incubator/rep/cmd/rep", "-race")
+	Expect(err).NotTo(HaveOccurred())
+
+	builtExecutables["bbs"], err = gexec.BuildIn(os.Getenv("BBS_GOPATH"), "github.com/cloudfoundry-incubator/bbs/cmd/bbs", "-race")
+	Expect(err).NotTo(HaveOccurred())
+
+	builtExecutables["file-server"], err = gexec.BuildIn(os.Getenv("FILE_SERVER_GOPATH"), "github.com/cloudfoundry-incubator/file-server/cmd/file-server", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	return builtExecutables

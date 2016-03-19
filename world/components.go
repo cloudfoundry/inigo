@@ -21,6 +21,7 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/inigo/gardenrunner"
 	"github.com/cloudfoundry-incubator/volman"
+	"github.com/cloudfoundry-incubator/volman/voldriver"
 	volmanclient "github.com/cloudfoundry-incubator/volman/vollocal"
 	gorouterconfig "github.com/cloudfoundry/gorouter/config"
 	"github.com/cloudfoundry/gunk/diegonats"
@@ -31,14 +32,18 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"golang.org/x/crypto/ssh"
-	"github.com/cloudfoundry-incubator/volman/voldriver"
-	"path/filepath"
 )
 
 type BuiltExecutables map[string]string
 type BuiltLifecycles map[string]string
 
-const LifecycleFilename = "some-lifecycle.tar.gz"
+const (
+	LifecycleFilename = "some-lifecycle.tar.gz"
+)
+
+var (
+	VolmanDriverConfigDir = os.TempDir()
+)
 
 type BuiltArtifacts struct {
 	Executables BuiltExecutables
@@ -61,22 +66,23 @@ type SSLConfig struct {
 }
 
 type ComponentAddresses struct {
-	NATS          string
-	Etcd          string
-	EtcdPeer      string
-	Consul        string
-	BBS           string
-	Rep           string
-	FakeCC        string
-	FileServer    string
-	CCUploader    string
-	Router        string
-	TPSListener   string
-	GardenLinux   string
-	Stager        string
-	NsyncListener string
-	Auctioneer    string
-	SSHProxy      string
+	NATS             string
+	Etcd             string
+	EtcdPeer         string
+	Consul           string
+	BBS              string
+	Rep              string
+	FakeCC           string
+	FileServer       string
+	CCUploader       string
+	Router           string
+	TPSListener      string
+	GardenLinux      string
+	Stager           string
+	NsyncListener    string
+	Auctioneer       string
+	SSHProxy         string
+	FakeVolmanDriver string
 }
 
 type ComponentMaker struct {
@@ -258,6 +264,7 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 			"-gardenHealthcheckProcessPath", "/bin/sh",
 			"-gardenHealthcheckProcessArgs", "-c,echo,foo",
 			"-gardenHealthcheckProcessUser", "vcap",
+			"-volmanDriverConfigDir", VolmanDriverConfigDir,
 		},
 		argv...,
 	)
@@ -622,25 +629,24 @@ func (maker ComponentMaker) EtcdCluster() string {
 	return "https://" + maker.Addresses.Etcd
 }
 
-func (maker ComponentMaker) VolmanClient(driverPath string) volman.Manager {
-	return volmanclient.NewLocalClient(driverPath)
+func (maker ComponentMaker) VolmanClient() volman.Manager {
+	return volmanclient.NewLocalClient(VolmanDriverConfigDir)
 }
 
-func (make ComponentMaker) VolmanDriver(logger lager.Logger, fakeDriverPath string) ifrit.Runner {
-	fakedriverServerPort := 9750 + ginkgo.GinkgoParallelNode()
+func (maker ComponentMaker) VolmanDriver(logger lager.Logger) ifrit.Runner {
 	debugServerAddress := fmt.Sprintf("0.0.0.0:%d", 9850+ginkgo.GinkgoParallelNode())
-	url := fmt.Sprintf("0.0.0.0:%d", fakedriverServerPort)
 	fakeDriverRunner := ginkgomon.New(ginkgomon.Config{
 		Name: "fakedriverServer",
 		Command: exec.Command(
-			fakeDriverPath,
-			"-listenAddr", url,
+			maker.Artifacts.Executables["fake-driver"],
+			"-listenAddr", maker.Addresses.FakeVolmanDriver,
 			"-debugAddr", debugServerAddress,
 		),
 		StartCheck: "fakedriverServer.started",
 	})
-	parentPath := filepath.Dir(strings.Split(fakeDriverPath, ",")[0])
-	voldriver.WriteDriverSpec(logger, parentPath, "fakedriver", "http://" + url)
+
+	voldriver.WriteDriverSpec(logger, VolmanDriverConfigDir, "fakedriver", "http://"+maker.Addresses.FakeVolmanDriver)
+
 	return fakeDriverRunner
 }
 
