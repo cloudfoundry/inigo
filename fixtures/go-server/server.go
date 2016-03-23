@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -10,6 +11,7 @@ import (
 func main() {
 	http.HandleFunc("/", hello)
 	http.HandleFunc("/env", env)
+	http.HandleFunc("/write", write)
 	fmt.Println("listening...")
 
 	ports := os.Getenv("PORT")
@@ -36,6 +38,28 @@ type VCAPApplication struct {
 
 func hello(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(res, "%s", os.Getenv("INSTANCE_INDEX"))
+}
+
+func write(res http.ResponseWriter, req *http.Request) {
+	mountPointPath := os.Getenv("MOUNT_POINT_DIR") + "/test.txt"
+
+	d1 := []byte("Hello Persistant World!\n")
+	err := ioutil.WriteFile(mountPointPath, d1, 0644)
+	if err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+		res.Write([]byte(err.Error()))
+		return
+	}
+
+	res.WriteHeader(http.StatusOK)
+	body, err := ioutil.ReadFile(mountPointPath)
+	if err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+		res.Write([]byte(err.Error()))
+		return
+	}
+	res.Write(body)
+	return
 }
 
 func env(res http.ResponseWriter, req *http.Request) {
