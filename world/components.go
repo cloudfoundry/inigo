@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/cloudfoundry-incubator/bbs"
@@ -18,7 +17,6 @@ import (
 	"github.com/cloudfoundry-incubator/garden"
 	gardenclient "github.com/cloudfoundry-incubator/garden/client"
 	gardenconnection "github.com/cloudfoundry-incubator/garden/client/connection"
-	"github.com/cloudfoundry-incubator/inigo/fake_cc"
 	"github.com/cloudfoundry-incubator/inigo/gardenrunner"
 	"github.com/cloudfoundry-incubator/volman"
 	"github.com/cloudfoundry-incubator/volman/voldriver"
@@ -72,14 +70,9 @@ type ComponentAddresses struct {
 	Consul           string
 	BBS              string
 	Rep              string
-	FakeCC           string
 	FileServer       string
-	CCUploader       string
 	Router           string
-	TPSListener      string
 	GardenLinux      string
-	Stager           string
-	NsyncListener    string
 	Auctioneer       string
 	SSHProxy         string
 	FakeVolmanDriver string
@@ -354,71 +347,6 @@ func (maker ComponentMaker) RouteEmitter(argv ...string) ifrit.Runner {
 	})
 }
 
-func (maker ComponentMaker) TPSListener(argv ...string) ifrit.Runner {
-	return ginkgomon.New(ginkgomon.Config{
-		Name:              "tps-listener",
-		AnsiColorCode:     "37m",
-		StartCheck:        `"tps-listener.started"`,
-		StartCheckTimeout: 10 * time.Second,
-		Command: exec.Command(
-			maker.Artifacts.Executables["tps-listener"],
-			append([]string{
-				"-bbsAddress", maker.BBSURL(),
-				"-bbsCACert", maker.BbsSSL.CACert,
-				"-bbsClientCert", maker.BbsSSL.ClientCert,
-				"-bbsClientKey", maker.BbsSSL.ClientKey,
-				"-consulCluster", maker.ConsulCluster(),
-				"-listenAddr", maker.Addresses.TPSListener,
-				"-logLevel", "debug",
-			}, argv...)...,
-		),
-	})
-}
-
-func (maker ComponentMaker) NsyncListener(argv ...string) ifrit.Runner {
-	address := maker.Addresses.NsyncListener
-	port, err := strconv.Atoi(strings.Split(address, ":")[1])
-	Expect(err).NotTo(HaveOccurred())
-
-	return ginkgomon.New(ginkgomon.Config{
-		Name:              "nsync-listener",
-		AnsiColorCode:     "90m",
-		StartCheck:        `"nsync.listener.started"`,
-		StartCheckTimeout: 10 * time.Second,
-		Command: exec.Command(
-			maker.Artifacts.Executables["nsync-listener"],
-			append(maker.appendLifecycleArgs([]string{
-				"-bbsAddress", maker.BBSURL(),
-				"-bbsCACert", maker.BbsSSL.CACert,
-				"-bbsClientCert", maker.BbsSSL.ClientCert,
-				"-bbsClientKey", maker.BbsSSL.ClientKey,
-				"-consulCluster", maker.ConsulCluster(),
-				"-fileServerURL", "http://" + maker.Addresses.FileServer,
-				"-listenAddress", fmt.Sprintf("127.0.0.1:%d", port),
-				"-logLevel", "debug",
-			}), argv...)...,
-		),
-	})
-}
-
-func (maker ComponentMaker) CCUploader(argv ...string) ifrit.Runner {
-	return ginkgomon.New(ginkgomon.Config{
-		Name:              "cc-uploader",
-		AnsiColorCode:     "91m",
-		StartCheck:        `"cc-uploader.ready"`,
-		StartCheckTimeout: 10 * time.Second,
-		Command: exec.Command(
-			maker.Artifacts.Executables["cc-uploader"],
-			append([]string{
-				"-address", maker.Addresses.CCUploader,
-				"-ccJobPollingInterval", "100ms",
-				"-consulCluster", maker.ConsulCluster(),
-				"-logLevel", "debug",
-			}, argv...)...,
-		),
-	})
-}
-
 func (maker ComponentMaker) FileServer(argv ...string) (ifrit.Runner, string) {
 	servedFilesDir, err := ioutil.TempDir("", "file-server-files")
 	Expect(err).NotTo(HaveOccurred())
@@ -499,46 +427,6 @@ func (maker ComponentMaker) Router() ifrit.Runner {
 			err := os.Remove(configFile.Name())
 			Expect(err).NotTo(HaveOccurred())
 		},
-	})
-}
-
-func (maker ComponentMaker) FakeCC() *fake_cc.FakeCC {
-	return fake_cc.New(maker.Addresses.FakeCC)
-}
-
-func (maker ComponentMaker) Stager(argv ...string) ifrit.Runner {
-	return maker.StagerN(0, argv...)
-}
-
-func (maker ComponentMaker) StagerN(portOffset int, argv ...string) ifrit.Runner {
-	address := maker.Addresses.Stager
-	port, err := strconv.Atoi(strings.Split(address, ":")[1])
-	Expect(err).NotTo(HaveOccurred())
-
-	return ginkgomon.New(ginkgomon.Config{
-		Name:              "stager",
-		AnsiColorCode:     "94m",
-		StartCheck:        "Listening for staging requests!",
-		StartCheckTimeout: 10 * time.Second,
-		Command: exec.Command(
-			maker.Artifacts.Executables["stager"],
-			append(maker.appendLifecycleArgs([]string{
-				"-bbsAddress", maker.BBSURL(),
-				"-bbsCACert", maker.BbsSSL.CACert,
-				"-bbsClientCert", maker.BbsSSL.ClientCert,
-				"-bbsClientKey", maker.BbsSSL.ClientKey,
-				"-ccBaseURL", "http://" + maker.Addresses.FakeCC,
-				"-ccPassword", fake_cc.CC_PASSWORD,
-				"-ccUploaderURL", "http://" + maker.Addresses.CCUploader,
-				"-ccUsername", fake_cc.CC_USERNAME,
-				"-consulCluster", maker.ConsulCluster(),
-				"-dockerStagingStack", maker.DefaultStack(),
-				"-fileServerURL", "http://" + maker.Addresses.FileServer,
-				"-listenAddress", fmt.Sprintf("127.0.0.1:%d", offsetPort(port, portOffset)),
-				"-logLevel", "debug",
-				"-stagingTaskCallbackURL", fmt.Sprintf("http://127.0.0.1:%d", offsetPort(port, portOffset)),
-			}), argv...)...,
-		),
 	})
 }
 
