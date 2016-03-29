@@ -20,7 +20,6 @@ var _ = Describe("Given garden, volman, fakedriver", func() {
 	)
 
 	Context("and a mounted volume", func() {
-
 		BeforeEach(func() {
 			someConfig := map[string]interface{}{"volume_id": "someID"}
 			mountPointResponse, err := volmanClient.Mount(logger, "fakedriver", "someVolume", someConfig)
@@ -29,7 +28,6 @@ var _ = Describe("Given garden, volman, fakedriver", func() {
 		})
 
 		Context("when the container bind mounts with \"host origin\"", func() {
-
 			var bindMount garden.BindMount
 			var container garden.Container
 
@@ -48,7 +46,6 @@ var _ = Describe("Given garden, volman, fakedriver", func() {
 			})
 
 			It("should be able to write to that volume", func() {
-
 				dir := "/mnt/testmount"
 				fileName := "bind-mount-test-file"
 				filePath := filepath.Join(dir, fileName)
@@ -64,7 +61,6 @@ var _ = Describe("Given garden, volman, fakedriver", func() {
 			})
 
 			Context("when a second container bind mounts the same \"host origin\"", func() {
-
 				var bindMount2 garden.BindMount
 				var container2 garden.Container
 
@@ -82,7 +78,6 @@ var _ = Describe("Given garden, volman, fakedriver", func() {
 				})
 
 				It("should be able to read the file written by the first", func() {
-
 					dir := "/mnt/testmount"
 					fileName := "bind-mount-test-file"
 					filePath := filepath.Join(dir, fileName)

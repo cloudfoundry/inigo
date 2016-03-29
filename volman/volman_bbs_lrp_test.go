@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
@@ -72,11 +73,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 
 	AfterEach(func() {
 		destroyContainerErrors := helpers.CleanupGarden(gardenClient)
-
-		helpers.StopProcesses(cellProcess)
-
-		helpers.StopProcesses(plumbing)
-
+		helpers.StopProcesses(plumbing, cellProcess)
 		Expect(destroyContainerErrors).To(
 			BeEmpty(),
 			"%d containers failed to be destroyed!",
@@ -138,6 +135,51 @@ var _ = Describe("LRPs with volume mounts", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(statusCode).To(Equal(200))
 			Expect(string(body)).To(Equal("Hello Persistant World!\n"))
+		})
+
+		Context("when driver required not available on any cell", func() {
+			BeforeEach(func() {
+				lrp.VolumeMounts = []*models.VolumeMount{
+					generateVolumeObject("non-existent-driver"),
+				}
+			})
+
+			It("should error placing the lrp", func() {
+				var actualLRP *models.ActualLRP
+				Eventually(func() interface{} {
+					group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(processGuid, 0)
+					Expect(err).NotTo(HaveOccurred())
+
+					var evacuating bool
+					actualLRP, evacuating = group.Resolve()
+					Expect(evacuating).To(BeFalse())
+
+					return actualLRP.PlacementError
+				}).Should(Equal(auctiontypes.ErrorCellMismatch.Error()))
+			})
+		})
+
+		Context("when one of the drivers required is not available on any cell", func() {
+			BeforeEach(func() {
+				lrp.VolumeMounts = []*models.VolumeMount{
+					generateVolumeObject("non-existent-driver"),
+					generateVolumeObject("fakedriver"),
+				}
+			})
+
+			It("should error placing the task", func() {
+				var actualLRP *models.ActualLRP
+				Eventually(func() interface{} {
+					group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(processGuid, 0)
+					Expect(err).NotTo(HaveOccurred())
+
+					var evacuating bool
+					actualLRP, evacuating = group.Resolve()
+					Expect(evacuating).To(BeFalse())
+
+					return actualLRP.PlacementError
+				}).Should(Equal(auctiontypes.ErrorCellMismatch.Error()))
+			})
 		})
 	})
 })

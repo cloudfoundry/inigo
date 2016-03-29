@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/cloudfoundry-incubator/auction/auctiontypes"
 	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
@@ -18,11 +19,10 @@ import (
 
 var _ = Describe("Tasks", func() {
 	var (
-		cellProcess         ifrit.Process
-		fileServerStaticDir string
-		plumbing            ifrit.Process
-		logger              lager.Logger
-		bbsClient           bbs.Client
+		cellProcess, plumbing ifrit.Process
+		fileServerStaticDir   string
+		logger                lager.Logger
+		bbsClient             bbs.Client
 	)
 
 	BeforeEach(func() {
@@ -52,56 +52,143 @@ var _ = Describe("Tasks", func() {
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(cellProcess)
+		helpers.StopProcesses(plumbing, cellProcess)
 	})
 
 	Describe("running a task with volume mount", func() {
 		var (
-			fileName, volumeId, guid string
+			fileName, guid string
 		)
 
-		BeforeEach(func() {
-			guid = helpers.GenerateGuid()
+		Context("when driver required is available on a cell", func() {
+			BeforeEach(func() {
+				guid = helpers.GenerateGuid()
 
-			fileName = "testfile-" + string(time.Now().UnixNano()) + ".txt"
-			volumeId = "some-volumeID-" + string(time.Now().UnixNano())
-			someConfig := map[string]interface{}{"volume_id": volumeId}
-			jsonSomeConfig, err := json.Marshal(someConfig)
-			Expect(err).NotTo(HaveOccurred())
-			expectedTask := helpers.TaskCreateRequest(
-				guid,
-				&models.RunAction{
-					Path: "/bin/touch",
-					User: "root",
-					Args: []string{"/testmount/" + fileName},
-				},
-			)
-			expectedTask.VolumeMounts = []*models.VolumeMount{
-				&models.VolumeMount{
-					Driver:        "fakedriver",
-					VolumeId:      volumeId,
-					ContainerPath: "/testmount",
-					Mode:          models.BindMountMode_RW,
-					Config:        jsonSomeConfig,
-				},
-			}
+				fileName = "testfile-" + string(time.Now().UnixNano()) + ".txt"
+				expectedTask := helpers.TaskCreateRequest(
+					guid,
+					&models.RunAction{
+						Path: "/bin/touch",
+						User: "root",
+						Args: []string{"/testmount/" + fileName},
+					},
+				)
+				expectedTask.VolumeMounts = []*models.VolumeMount{
+					generateVolumeObject("fakedriver"),
+				}
 
-			err = bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
-			Expect(err).NotTo(HaveOccurred())
+				err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("can write files to the mounted volume", func() {
+				var task *models.Task
+				Eventually(func() interface{} {
+					var err error
+
+					task, err = bbsClient.TaskByGuid(guid)
+					Expect(err).NotTo(HaveOccurred())
+
+					return task.State
+				}).Should(Equal(models.Task_Completed))
+
+				Expect(task.Failed).To(BeFalse())
+			})
 		})
 
-		It("can write files to the mounted volume", func() {
-			var task *models.Task
-			Eventually(func() interface{} {
-				var err error
+		Context("when driver required not available on any cell", func() {
+			var (
+				expectedTask *models.Task
+			)
 
-				task, err = bbsClient.TaskByGuid(guid)
+			BeforeEach(func() {
+				guid = helpers.GenerateGuid()
+				expectedTask = helpers.TaskCreateRequest(
+					guid,
+					&models.RunAction{
+						User: "vcap",
+						Path: "sh",
+						Args: []string{"-c", "echo 'volman!'"},
+					},
+				)
+				expectedTask.VolumeMounts = []*models.VolumeMount{
+					generateVolumeObject("non-existent-driver"),
+				}
+			})
+
+			It("should error placing the task", func() {
+				err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 
-				return task.State
-			}).Should(Equal(models.Task_Completed))
+				var task *models.Task
+				Eventually(func() interface{} {
+					var err error
 
-			Expect(task.Failed).To(BeFalse())
+					task, err = bbsClient.TaskByGuid(expectedTask.TaskGuid)
+					Expect(err).NotTo(HaveOccurred())
+
+					return task.State
+				}).Should(Equal(models.Task_Completed))
+
+				Expect(task.Failed).To(BeTrue())
+				Expect(task.FailureReason).To(Equal(auctiontypes.ErrorCellMismatch.Error()))
+			})
+		})
+
+		Context("when one of the drivers required is not available on any cell", func() {
+			var (
+				expectedTask *models.Task
+			)
+
+			BeforeEach(func() {
+				guid = helpers.GenerateGuid()
+				expectedTask = helpers.TaskCreateRequest(
+					guid,
+					&models.RunAction{
+						User: "vcap",
+						Path: "sh",
+						Args: []string{"-c", "echo 'volman!'"},
+					},
+				)
+
+				expectedTask.VolumeMounts = []*models.VolumeMount{
+					generateVolumeObject("non-existent-driver"),
+					generateVolumeObject("fakedriver"),
+				}
+			})
+
+			It("should error placing the task", func() {
+				err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				Expect(err).NotTo(HaveOccurred())
+
+				var task *models.Task
+				Eventually(func() interface{} {
+					var err error
+
+					task, err = bbsClient.TaskByGuid(expectedTask.TaskGuid)
+					Expect(err).NotTo(HaveOccurred())
+
+					return task.State
+				}).Should(Equal(models.Task_Completed))
+
+				Expect(task.Failed).To(BeTrue())
+				Expect(task.FailureReason).To(Equal(auctiontypes.ErrorCellMismatch.Error()))
+			})
 		})
 	})
 })
+
+func generateVolumeObject(driver string) *models.VolumeMount {
+	volumeId := "some-volumeID-" + string(time.Now().UnixNano())
+	someConfig := map[string]interface{}{"volume_id": volumeId}
+	jsonSomeConfig, err := json.Marshal(someConfig)
+	Expect(err).NotTo(HaveOccurred())
+
+	return &models.VolumeMount{
+		Driver:        driver,
+		VolumeId:      volumeId,
+		ContainerPath: "/testmount",
+		Mode:          models.BindMountMode_RW,
+		Config:        jsonSomeConfig,
+	}
+}

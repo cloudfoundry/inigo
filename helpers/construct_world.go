@@ -2,12 +2,14 @@ package helpers
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
 	"github.com/cloudfoundry-incubator/diego-ssh/keys"
 	"github.com/cloudfoundry-incubator/inigo/world"
+	"github.com/nu7hatch/gouuid"
 
 	"github.com/onsi/ginkgo/config"
 
@@ -88,6 +90,12 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		CACert:     caCert,
 	}
 
+	guid, err := uuid.NewV4()
+	Expect(err).NotTo(HaveOccurred())
+
+	volmanConfigDir, err := ioutil.TempDir(os.TempDir(), guid.String())
+	Expect(err).NotTo(HaveOccurred())
+
 	return world.ComponentMaker{
 		Artifacts: builtArtifacts,
 		Addresses: addresses,
@@ -96,10 +104,11 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 
 		ExternalAddress: externalAddress,
 
-		GardenBinPath:   gardenBinPath,
-		GardenGraphPath: gardenGraphPath,
-		SSHConfig:       sshKeys,
-		EtcdSSL:         sslConfig,
-		BbsSSL:          sslConfig,
+		GardenBinPath:         gardenBinPath,
+		GardenGraphPath:       gardenGraphPath,
+		SSHConfig:             sshKeys,
+		EtcdSSL:               sslConfig,
+		BbsSSL:                sslConfig,
+		VolmanDriverConfigDir: volmanConfigDir,
 	}
 }

@@ -39,10 +39,6 @@ const (
 	LifecycleFilename = "some-lifecycle.tar.gz"
 )
 
-var (
-	VolmanDriverConfigDir = os.TempDir()
-)
-
 type BuiltArtifacts struct {
 	Executables BuiltExecutables
 	Lifecycles  BuiltLifecycles
@@ -92,6 +88,8 @@ type ComponentMaker struct {
 	SSHConfig SSHKeys
 	EtcdSSL   SSLConfig
 	BbsSSL    SSLConfig
+
+	VolmanDriverConfigDir string
 }
 
 func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
@@ -155,8 +153,11 @@ func (maker ComponentMaker) Consul(argv ...string) ifrit.Runner {
 
 	clusterRunner := consulrunner.NewClusterRunner(startingPort, 1, "http")
 	return ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
+		defer ginkgo.GinkgoRecover()
+
 		done := make(chan struct{})
 		go func() {
+			defer ginkgo.GinkgoRecover()
 			clusterRunner.Start()
 			close(done)
 		}()
@@ -257,7 +258,7 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 			"-gardenHealthcheckProcessPath", "/bin/sh",
 			"-gardenHealthcheckProcessArgs", "-c,echo,foo",
 			"-gardenHealthcheckProcessUser", "vcap",
-			"-volmanDriverConfigDir", VolmanDriverConfigDir,
+			"-volmanDriverConfigDir", maker.VolmanDriverConfigDir,
 		},
 		argv...,
 	)
@@ -518,7 +519,7 @@ func (maker ComponentMaker) EtcdCluster() string {
 }
 
 func (maker ComponentMaker) VolmanClient() volman.Manager {
-	return volmanclient.NewLocalClient(VolmanDriverConfigDir)
+	return volmanclient.NewLocalClient(maker.VolmanDriverConfigDir)
 }
 
 func (maker ComponentMaker) VolmanDriver(logger lager.Logger) ifrit.Runner {
@@ -533,7 +534,7 @@ func (maker ComponentMaker) VolmanDriver(logger lager.Logger) ifrit.Runner {
 		StartCheck: "fakedriverServer.started",
 	})
 
-	voldriver.WriteDriverSpec(logger, VolmanDriverConfigDir, "fakedriver", "http://"+maker.Addresses.FakeVolmanDriver)
+	voldriver.WriteDriverSpec(logger, maker.VolmanDriverConfigDir, "fakedriver", "http://"+maker.Addresses.FakeVolmanDriver)
 
 	return fakeDriverRunner
 }

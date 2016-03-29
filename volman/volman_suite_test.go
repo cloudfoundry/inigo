@@ -64,9 +64,7 @@ var _ = BeforeEach(func() {
 
 var _ = AfterEach(func() {
 	destroyContainerErrors := helpers.CleanupGarden(gardenClient)
-
 	helpers.StopProcesses(gardenProcess, fakedriverProcess)
-
 	Expect(destroyContainerErrors).To(
 		BeEmpty(),
 		"%d containers failed to be destroyed!",

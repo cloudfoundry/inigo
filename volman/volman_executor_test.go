@@ -12,7 +12,6 @@ import (
 	"github.com/cloudfoundry-incubator/executor"
 	executorinit "github.com/cloudfoundry-incubator/executor/initializer"
 	"github.com/cloudfoundry-incubator/garden"
-	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -61,7 +60,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 		ownerName = "executor" + generator.RandomName()
 
-		config.VolmanDriverPath = world.VolmanDriverConfigDir
+		config.VolmanDriverPath = componentMaker.VolmanDriverConfigDir
 		config.GardenNetwork = "tcp"
 		config.GardenAddr = componentMaker.Addresses.GardenLinux
 		config.HealthyMonitoringInterval = time.Second
