@@ -530,6 +530,7 @@ func (maker ComponentMaker) VolmanDriver(logger lager.Logger) ifrit.Runner {
 			maker.Artifacts.Executables["fake-driver"],
 			"-listenAddr", maker.Addresses.FakeVolmanDriver,
 			"-debugAddr", debugServerAddress,
+			"-mountDir", maker.VolmanDriverConfigDir,
 		),
 		StartCheck: "fakedriverServer.started",
 	})

@@ -151,7 +151,8 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 					It("can write files to the mounted volume", func() {
 						By("we expect the file it wrote to be available outside of the container")
-						files, err := filepath.Glob(path.Join("/tmp/_fakedriver/", volumeId, fileName))
+						volmanPath := path.Join(componentMaker.VolmanDriverConfigDir, "_volumes", volumeId, fileName)
+						files, err := filepath.Glob(volmanPath)
 						Expect(err).ToNot(HaveOccurred())
 						Expect(len(files)).To(Equal(1))
 					})
@@ -160,7 +161,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 						err := executorClient.DeleteContainer(logger, guid)
 						Expect(err).NotTo(HaveOccurred())
 
-						files, err := filepath.Glob(path.Join("/tmp/_fakedriver/", volumeId, fileName))
+						files, err := filepath.Glob(path.Join(componentMaker.VolmanDriverConfigDir, "_volumes", volumeId, fileName))
 						Expect(err).ToNot(HaveOccurred())
 						Expect(len(files)).To(Equal(0))
 					})
