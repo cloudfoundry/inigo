@@ -50,53 +50,50 @@ var _ = Describe("Executor/Garden/Volman", func() {
 			return getContainer(guid).State
 		}
 	}
+	Context("when volman is not correctly configured", func() {
+		BeforeEach(func() {
+			config = executorinit.DefaultConfiguration
 
-	BeforeEach(func() {
-		config = executorinit.DefaultConfiguration
+			var err error
+			cachePath, err = ioutil.TempDir("", "executor-tmp")
+			Expect(err).NotTo(HaveOccurred())
 
-		var err error
-		cachePath, err = ioutil.TempDir("", "executor-tmp")
-		Expect(err).NotTo(HaveOccurred())
+			ownerName = "executor" + generator.RandomName()
 
-		ownerName = "executor" + generator.RandomName()
+			config.VolmanDriverPath = ""
+			config.GardenNetwork = "tcp"
+			config.GardenAddr = componentMaker.Addresses.GardenLinux
+			config.HealthyMonitoringInterval = time.Second
+			config.UnhealthyMonitoringInterval = 100 * time.Millisecond
+			config.ContainerOwnerName = ownerName
+			config.GardenHealthcheckProcessPath = "/bin/sh"
+			config.GardenHealthcheckProcessArgs = []string{"-c", "echo", "checking health"}
+			config.GardenHealthcheckProcessUser = "vcap"
+			logger = lagertest.NewTestLogger("test")
+			var executorMembers grouper.Members
+			executorClient, executorMembers, err = executorinit.Initialize(logger, config, clock.NewClock())
+			Expect(err).NotTo(HaveOccurred())
+			runner = grouper.NewParallel(os.Kill, executorMembers)
 
-		config.VolmanDriverPath = componentMaker.VolmanDriverConfigDir
-		config.GardenNetwork = "tcp"
-		config.GardenAddr = componentMaker.Addresses.GardenLinux
-		config.HealthyMonitoringInterval = time.Second
-		config.UnhealthyMonitoringInterval = 100 * time.Millisecond
-		config.ContainerOwnerName = ownerName
-		config.GardenHealthcheckProcessPath = "/bin/sh"
-		config.GardenHealthcheckProcessArgs = []string{"-c", "echo", "checking health"}
-		config.GardenHealthcheckProcessUser = "vcap"
-		logger = lagertest.NewTestLogger("test")
-		var executorMembers grouper.Members
-		executorClient, executorMembers, err = executorinit.Initialize(logger, config, clock.NewClock())
-		Expect(err).NotTo(HaveOccurred())
-		runner = grouper.NewParallel(os.Kill, executorMembers)
-
-		gardenCapacity, err = gardenClient.Capacity()
-		Expect(err).NotTo(HaveOccurred())
-	})
-
-	AfterEach(func() {
-		if executorClient != nil {
-			executorClient.Cleanup(logger)
-		}
-
-		if process != nil {
-			ginkgomon.Kill(process)
-		}
-
-		os.RemoveAll(cachePath)
-	})
-
-	Context("when running an executor in front of garden and volman", func() {
-		JustBeforeEach(func() {
-			process = ginkgomon.Invoke(runner)
+			gardenCapacity, err = gardenClient.Capacity()
+			Expect(err).NotTo(HaveOccurred())
 		})
 
-		Context("when allocating a container with a volman mount", func() {
+		AfterEach(func() {
+			if executorClient != nil {
+				executorClient.Cleanup(logger)
+			}
+
+			if process != nil {
+				ginkgomon.Kill(process)
+			}
+
+			os.RemoveAll(cachePath)
+		})
+		Context("when allocating a container without any volman mounts", func() {
+			JustBeforeEach(func() {
+				process = ginkgomon.Invoke(runner)
+			})
 			var (
 				guid               string
 				allocationRequest  executor.AllocationRequest
@@ -120,50 +117,142 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 			Context("when running the container", func() {
 				var (
-					runReq   executor.RunRequest
-					volumeId string
-					fileName string
+					runReq executor.RunRequest
 				)
 
 				BeforeEach(func() {
-					fileName = "testfile-" + string(time.Now().UnixNano()) + ".txt"
-					volumeId = "some-volumeID-" + string(time.Now().UnixNano())
-					someConfig := map[string]interface{}{"volume_id": volumeId}
-					volumeMounts := []executor.VolumeMount{executor.VolumeMount{ContainerPath: "/testmount", Driver: "fakedriver", VolumeId: volumeId, Config: someConfig, Mode: executor.BindMountModeRW}}
 					runInfo := executor.RunInfo{
-						VolumeMounts: volumeMounts,
 						Action: models.WrapAction(&models.RunAction{
 							Path: "/bin/touch",
 							User: "root",
-							Args: []string{"/testmount/" + fileName},
+							Args: []string{"/tmp"},
 						}),
 					}
 					runReq = executor.NewRunRequest(guid, &runInfo, executor.Tags{})
 				})
+				It("container start should succeed", func() {
+					err := executorClient.RunContainer(logger, &runReq)
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
+					Expect(getContainer(guid).RunResult.Failed).Should(BeFalse())
+				})
+			})
+		})
+	})
+	Context("when volman is correctly configured", func() {
+		BeforeEach(func() {
+			config = executorinit.DefaultConfiguration
 
-				Context("when successfully mounting a RW Mode volume", func() {
+			var err error
+			cachePath, err = ioutil.TempDir("", "executor-tmp")
+			Expect(err).NotTo(HaveOccurred())
+
+			ownerName = "executor" + generator.RandomName()
+
+			config.VolmanDriverPath = componentMaker.VolmanDriverConfigDir
+			config.GardenNetwork = "tcp"
+			config.GardenAddr = componentMaker.Addresses.GardenLinux
+			config.HealthyMonitoringInterval = time.Second
+			config.UnhealthyMonitoringInterval = 100 * time.Millisecond
+			config.ContainerOwnerName = ownerName
+			config.GardenHealthcheckProcessPath = "/bin/sh"
+			config.GardenHealthcheckProcessArgs = []string{"-c", "echo", "checking health"}
+			config.GardenHealthcheckProcessUser = "vcap"
+			logger = lagertest.NewTestLogger("test")
+			var executorMembers grouper.Members
+			executorClient, executorMembers, err = executorinit.Initialize(logger, config, clock.NewClock())
+			Expect(err).NotTo(HaveOccurred())
+			runner = grouper.NewParallel(os.Kill, executorMembers)
+
+			gardenCapacity, err = gardenClient.Capacity()
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			if executorClient != nil {
+				executorClient.Cleanup(logger)
+			}
+
+			if process != nil {
+				ginkgomon.Kill(process)
+			}
+
+			os.RemoveAll(cachePath)
+		})
+
+		Context("when running an executor in front of garden and volman", func() {
+			JustBeforeEach(func() {
+				process = ginkgomon.Invoke(runner)
+			})
+
+			Context("when allocating a container with a volman mount", func() {
+				var (
+					guid               string
+					allocationRequest  executor.AllocationRequest
+					allocationFailures []executor.AllocationFailure
+				)
+
+				BeforeEach(func() {
+					id, err := uuid.NewV4()
+					Expect(err).NotTo(HaveOccurred())
+					guid = id.String()
+
+					tags := executor.Tags{"some-tag": "some-value"}
+
+					allocationRequest = executor.NewAllocationRequest(guid, &executor.Resource{}, tags)
+
+					allocationFailures, err = executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest})
+
+					Expect(err).NotTo(HaveOccurred())
+					Expect(allocationFailures).To(BeEmpty())
+				})
+
+				Context("when running the container", func() {
+					var (
+						runReq   executor.RunRequest
+						volumeId string
+						fileName string
+					)
+
 					BeforeEach(func() {
-						err := executorClient.RunContainer(logger, &runReq)
-						Expect(err).NotTo(HaveOccurred())
-						Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
-						Expect(getContainer(guid).RunResult.Failed).Should(BeFalse())
+						fileName = "testfile-" + string(time.Now().UnixNano()) + ".txt"
+						volumeId = "some-volumeID-" + string(time.Now().UnixNano())
+						someConfig := map[string]interface{}{"volume_id": volumeId}
+						volumeMounts := []executor.VolumeMount{executor.VolumeMount{ContainerPath: "/testmount", Driver: "fakedriver", VolumeId: volumeId, Config: someConfig, Mode: executor.BindMountModeRW}}
+						runInfo := executor.RunInfo{
+							VolumeMounts: volumeMounts,
+							Action: models.WrapAction(&models.RunAction{
+								Path: "/bin/touch",
+								User: "root",
+								Args: []string{"/testmount/" + fileName},
+							}),
+						}
+						runReq = executor.NewRunRequest(guid, &runInfo, executor.Tags{})
 					})
+					Context("when successfully mounting a RW Mode volume", func() {
+						BeforeEach(func() {
+							err := executorClient.RunContainer(logger, &runReq)
+							Expect(err).NotTo(HaveOccurred())
+							Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
+							Expect(getContainer(guid).RunResult.Failed).Should(BeFalse())
+						})
 
-					It("can write files to the mounted volume", func() {
-						By("we expect the file it wrote to be available outside of the container")
-						volmanPath := path.Join(componentMaker.VolmanDriverConfigDir, "_volumes", volumeId, fileName)
-						files, err := filepath.Glob(volmanPath)
-						Expect(err).ToNot(HaveOccurred())
-						Expect(len(files)).To(Equal(1))
-					})
+						It("can write files to the mounted volume", func() {
+							By("we expect the file it wrote to be available outside of the container")
+							volmanPath := path.Join(componentMaker.VolmanDriverConfigDir, "_volumes", volumeId, fileName)
+							files, err := filepath.Glob(volmanPath)
+							Expect(err).ToNot(HaveOccurred())
+							Expect(len(files)).To(Equal(1))
+						})
 
-					It("cleans up the mounts afterwards", func() {
-						err := executorClient.DeleteContainer(logger, guid)
-						Expect(err).NotTo(HaveOccurred())
+						It("cleans up the mounts afterwards", func() {
+							err := executorClient.DeleteContainer(logger, guid)
+							Expect(err).NotTo(HaveOccurred())
 
-						files, err := filepath.Glob(path.Join(componentMaker.VolmanDriverConfigDir, "_volumes", volumeId, fileName))
-						Expect(err).ToNot(HaveOccurred())
-						Expect(len(files)).To(Equal(0))
+							files, err := filepath.Glob(path.Join(componentMaker.VolmanDriverConfigDir, "_volumes", volumeId, fileName))
+							Expect(err).ToNot(HaveOccurred())
+							Expect(len(files)).To(Equal(0))
+						})
 					})
 				})
 			})
