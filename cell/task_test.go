@@ -15,6 +15,7 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 
 	"github.com/cloudfoundry-incubator/bbs/models"
+	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	. "github.com/onsi/ginkgo"
@@ -250,6 +251,36 @@ echo should have died by now
 
 				Expect(task.Failed).To(BeTrue())
 				Expect(task.FailureReason).To(ContainSubstring("exceeded 500ms timeout"))
+			})
+		})
+
+		Context("when properties are present on the task definition", func() {
+			It("propagates them to the garden container", func() {
+				expectedTask := helpers.TaskCreateRequest(
+					guid,
+					&models.RunAction{
+						User: "vcap",
+						Path: "sleep",
+						Args: []string{"5"},
+					},
+				)
+				expectedTask.Properties = map[string]string{
+					"some-key": "some-value",
+				}
+
+				err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				Expect(err).NotTo(HaveOccurred())
+
+				var properties garden.Properties
+				Eventually(func() error {
+					container, err := gardenClient.Lookup(expectedTask.TaskGuid)
+					if err == nil {
+						properties, err = container.Properties()
+					}
+					return err
+				}).ShouldNot(HaveOccurred())
+
+				Expect(properties).To(HaveKeyWithValue("some-key", "some-value"))
 			})
 		})
 	})
