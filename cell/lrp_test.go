@@ -94,6 +94,32 @@ var _ = Describe("LRP", func() {
 			Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 		})
 
+		Context("when properties are present on the desired LRP", func() {
+			BeforeEach(func() {
+				lrp.Properties = map[string]string{
+					"my-key": "my-value",
+				}
+			})
+
+			It("passes them to garden", func() {
+				Eventually(helpers.LRPStatePoller(bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+
+				lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
+				Expect(err).NotTo(HaveOccurred())
+
+				actualLRP := lrps[0].Instance
+				containerHandle := fmt.Sprintf("%s-%s", actualLRP.ProcessGuid, actualLRP.InstanceGuid)
+
+				container, err := gardenClient.Lookup(containerHandle)
+				Expect(err).NotTo(HaveOccurred())
+
+				props, err := container.Properties()
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(props).To(HaveKeyWithValue("my-key", "my-value"))
+			})
+		})
+
 		Context("when it's unhealthy for longer than its start timeout", func() {
 			BeforeEach(func() {
 				lrp.StartTimeout = 5
