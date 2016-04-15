@@ -15,7 +15,7 @@ var _ = Describe("Given volman and fakedriver", func() {
 		volumeId = "test-volume"
 	})
 
-	It("should mount a volumn", func() {
+	It("should mount a volume", func() {
 		var err error
 		someConfig := map[string]interface{}{"volume_id": "someID"}
 		mountPointResponse, err := volmanClient.Mount(logger, driverId, volumeId, someConfig)

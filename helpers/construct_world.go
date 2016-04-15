@@ -56,7 +56,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		BBS:              fmt.Sprintf("127.0.0.1:%d", 20500+config.GinkgoConfig.ParallelNode),
 		Auctioneer:       fmt.Sprintf("0.0.0.0:%d", 23000+config.GinkgoConfig.ParallelNode),
 		SSHProxy:         fmt.Sprintf("127.0.0.1:%d", 23500+config.GinkgoConfig.ParallelNode),
-		FakeVolmanDriver: fmt.Sprintf("127.0.0.1:%d", 24000+config.GinkgoConfig.ParallelNode),
+		FakeVolmanDriver: fmt.Sprintf("127.0.0.1:%d", 24500+config.GinkgoConfig.ParallelNode),
 	}
 
 	hostKeyPair, err := keys.RSAKeyPairFactory.NewKeyPair(1024)

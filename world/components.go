@@ -19,11 +19,11 @@ import (
 	gardenconnection "github.com/cloudfoundry-incubator/garden/client/connection"
 	"github.com/cloudfoundry-incubator/inigo/gardenrunner"
 	"github.com/cloudfoundry-incubator/volman"
-	"github.com/cloudfoundry-incubator/volman/voldriver"
 	volmanclient "github.com/cloudfoundry-incubator/volman/vollocal"
 	gorouterconfig "github.com/cloudfoundry/gorouter/config"
 	"github.com/cloudfoundry/gunk/diegonats"
 	"github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
@@ -258,7 +258,7 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 			"-gardenHealthcheckProcessPath", "/bin/sh",
 			"-gardenHealthcheckProcessArgs", "-c,echo,foo",
 			"-gardenHealthcheckProcessUser", "vcap",
-			"-volmanDriverConfigDir", maker.VolmanDriverConfigDir,
+			"-volmanDriverConfigDir", path.Join(VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
 		},
 		argv...,
 	)
@@ -518,8 +518,8 @@ func (maker ComponentMaker) EtcdCluster() string {
 	return "https://" + maker.Addresses.Etcd
 }
 
-func (maker ComponentMaker) VolmanClient() volman.Manager {
-	return volmanclient.NewLocalClient(maker.VolmanDriverConfigDir)
+func (maker ComponentMaker) VolmanClient(logger lager.Logger) (volman.Manager, ifrit.Runner) {
+	return volmanclient.NewLocalClient(logger, path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)))
 }
 
 func (maker ComponentMaker) VolmanDriver(logger lager.Logger) ifrit.Runner {
@@ -531,11 +531,10 @@ func (maker ComponentMaker) VolmanDriver(logger lager.Logger) ifrit.Runner {
 			"-listenAddr", maker.Addresses.FakeVolmanDriver,
 			"-debugAddr", debugServerAddress,
 			"-mountDir", maker.VolmanDriverConfigDir,
+			"-driversPath", path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
 		),
 		StartCheck: "fakedriverServer.started",
 	})
-
-	voldriver.WriteDriverSpec(logger, maker.VolmanDriverConfigDir, "fakedriver", "http://"+maker.Addresses.FakeVolmanDriver)
 
 	return fakeDriverRunner
 }

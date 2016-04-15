@@ -26,9 +26,11 @@ var (
 	gardenProcess ifrit.Process
 	gardenClient  garden.Client
 
-	fakeDriverDir     string
-	volmanClient      volman.Manager
-	fakedriverProcess ifrit.Process
+	fakeDriverDir       string
+	volmanClient        volman.Manager
+	driverSyncer        ifrit.Runner
+	driverSyncerProcess ifrit.Process
+	fakedriverProcess   ifrit.Process
 
 	logger lager.Logger
 )
@@ -53,18 +55,22 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 })
 
 var _ = BeforeEach(func() {
-	logger = lagertest.NewTestLogger("Volman Inigo Tests")
+	logger = lagertest.NewTestLogger("volman-inigo-suite")
 
 	gardenProcess = ginkgomon.Invoke(componentMaker.GardenLinux())
 	gardenClient = componentMaker.GardenClient()
 
 	fakedriverProcess = ginkgomon.Invoke(componentMaker.VolmanDriver(logger))
-	volmanClient = componentMaker.VolmanClient()
+
+	volmanClient, driverSyncer = componentMaker.VolmanClient(logger)
+	driverSyncerProcess = ginkgomon.Invoke(driverSyncer)
 })
 
 var _ = AfterEach(func() {
 	destroyContainerErrors := helpers.CleanupGarden(gardenClient)
-	helpers.StopProcesses(gardenProcess, fakedriverProcess)
+
+	helpers.StopProcesses(gardenProcess, driverSyncerProcess, fakedriverProcess)
+
 	Expect(destroyContainerErrors).To(
 		BeEmpty(),
 		"%d containers failed to be destroyed!",

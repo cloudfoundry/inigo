@@ -87,7 +87,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 		BeforeEach(func() {
 			processGuid = helpers.GenerateGuid()
 
-			volumeId := "some-volumeID-" + string(time.Now().UnixNano())
+			volumeId := fmt.Sprintf("some-volumeID-%d", time.Now().UnixNano())
 			someConfig := map[string]interface{}{"volume_id": volumeId}
 			jsonSomeConfig, err := json.Marshal(someConfig)
 			Expect(err).NotTo(HaveOccurred())

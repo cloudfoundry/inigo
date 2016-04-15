@@ -1,6 +1,7 @@
 package volman_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -14,6 +15,7 @@ import (
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
+	ginkgoconfig "github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
@@ -25,17 +27,15 @@ import (
 
 // these tests could eventually be folded into ../executor/executor_garden_test.go
 var _ = Describe("Executor/Garden/Volman", func() {
-	const pruningInterval = 500 * time.Millisecond
+
 	var (
 		executorClient executor.Client
 		process        ifrit.Process
 		runner         ifrit.Runner
 		gardenCapacity garden.Capacity
-		// exportNetworkEnvVars bool
-		cachePath string
-		config    executorinit.Configuration
-		logger    lager.Logger
-		ownerName string
+		cachePath      string
+		config         executorinit.Configuration
+		logger         lager.Logger
 	)
 
 	getContainer := func(guid string) executor.Container {
@@ -50,29 +50,31 @@ var _ = Describe("Executor/Garden/Volman", func() {
 			return getContainer(guid).State
 		}
 	}
+
 	Context("when volman is not correctly configured", func() {
 		BeforeEach(func() {
+			logger = lagertest.NewTestLogger("volman-executor-tests")
 			config = executorinit.DefaultConfiguration
 
 			var err error
 			cachePath, err = ioutil.TempDir("", "executor-tmp")
 			Expect(err).NotTo(HaveOccurred())
 
-			ownerName = "executor" + generator.RandomName()
-
-			config.VolmanDriverPath = ""
+			config = executorinit.DefaultConfiguration
+			config.VolmanDriverPath = path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", ginkgoconfig.GinkgoConfig.ParallelNode))
 			config.GardenNetwork = "tcp"
 			config.GardenAddr = componentMaker.Addresses.GardenLinux
 			config.HealthyMonitoringInterval = time.Second
 			config.UnhealthyMonitoringInterval = 100 * time.Millisecond
-			config.ContainerOwnerName = ownerName
+			config.ContainerOwnerName = "executor" + generator.RandomName()
 			config.GardenHealthcheckProcessPath = "/bin/sh"
 			config.GardenHealthcheckProcessArgs = []string{"-c", "echo", "checking health"}
 			config.GardenHealthcheckProcessUser = "vcap"
-			logger = lagertest.NewTestLogger("test")
+
 			var executorMembers grouper.Members
 			executorClient, executorMembers, err = executorinit.Initialize(logger, config, clock.NewClock())
 			Expect(err).NotTo(HaveOccurred())
+
 			runner = grouper.NewParallel(os.Kill, executorMembers)
 
 			gardenCapacity, err = gardenClient.Capacity()
@@ -181,11 +183,12 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		})
 
 		Context("when running an executor in front of garden and volman", func() {
-			JustBeforeEach(func() {
+
+			BeforeEach(func() {
 				process = ginkgomon.Invoke(runner)
 			})
 
-			Context("when allocating a container with a volman mount", func() {
+			Context("when allocating a container", func() {
 				var (
 					guid               string
 					allocationRequest  executor.AllocationRequest
@@ -215,8 +218,8 @@ var _ = Describe("Executor/Garden/Volman", func() {
 					)
 
 					BeforeEach(func() {
-						fileName = "testfile-" + string(time.Now().UnixNano()) + ".txt"
-						volumeId = "some-volumeID-" + string(time.Now().UnixNano())
+						fileName = fmt.Sprintf("testfile-%d.txt", time.Now().UnixNano())
+						volumeId = fmt.Sprintf("some-volumeID-%d", time.Now().UnixNano())
 						someConfig := map[string]interface{}{"volume_id": volumeId}
 						volumeMounts := []executor.VolumeMount{executor.VolumeMount{ContainerPath: "/testmount", Driver: "fakedriver", VolumeId: volumeId, Config: someConfig, Mode: executor.BindMountModeRW}}
 						runInfo := executor.RunInfo{
