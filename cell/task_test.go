@@ -264,7 +264,7 @@ echo should have died by now
 						Args: []string{"5"},
 					},
 				)
-				expectedTask.Properties = map[string]string{
+				expectedTask.NetworkProperties = map[string]string{
 					"some-key": "some-value",
 				}
 
