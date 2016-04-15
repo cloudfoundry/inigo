@@ -264,8 +264,10 @@ echo should have died by now
 						Args: []string{"5"},
 					},
 				)
-				expectedTask.NetworkProperties = map[string]string{
-					"some-key": "some-value",
+				expectedTask.Network = &models.Network{
+					Properties: map[string]string{
+						"some-key": "some-value",
+					},
 				}
 
 				err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)

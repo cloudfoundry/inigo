@@ -96,8 +96,10 @@ var _ = Describe("LRP", func() {
 
 		Context("when properties are present on the desired LRP", func() {
 			BeforeEach(func() {
-				lrp.NetworkProperties = map[string]string{
-					"my-key": "my-value",
+				lrp.Network = &models.Network{
+					Properties: map[string]string{
+						"my-key": "my-value",
+					},
 				}
 			})
 
