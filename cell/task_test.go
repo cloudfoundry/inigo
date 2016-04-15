@@ -280,7 +280,7 @@ echo should have died by now
 					return err
 				}).ShouldNot(HaveOccurred())
 
-				Expect(properties).To(HaveKeyWithValue("some-key", "some-value"))
+				Expect(properties).To(HaveKeyWithValue("network.some-key", "some-value"))
 			})
 		})
 	})

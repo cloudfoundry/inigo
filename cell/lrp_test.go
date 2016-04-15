@@ -116,7 +116,7 @@ var _ = Describe("LRP", func() {
 				props, err := container.Properties()
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(props).To(HaveKeyWithValue("my-key", "my-value"))
+				Expect(props).To(HaveKeyWithValue("network.my-key", "my-value"))
 			})
 		})
 
