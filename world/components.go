@@ -72,6 +72,7 @@ type ComponentAddresses struct {
 	Auctioneer       string
 	SSHProxy         string
 	FakeVolmanDriver string
+	MySQL            string
 }
 
 type ComponentMaker struct {
@@ -108,6 +109,35 @@ func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
 				"--port", port,
 			}, argv...)...,
 		),
+	})
+}
+
+func (maker ComponentMaker) SQL(argv ...string) ifrit.Runner {
+	return ginkgomon.New(ginkgomon.Config{
+		Name:              "sql",
+		AnsiColorCode:     "31m",
+		StartCheck:        "etcdserver: published",
+		StartCheckTimeout: 10 * time.Second,
+		Command: exec.Command(
+			"etcd",
+			append([]string{
+				"--name", nodeName,
+				"--data-dir", dataDir,
+				"--listen-client-urls", "https://" + maker.Addresses.Etcd,
+				"--listen-peer-urls", "http://" + maker.Addresses.EtcdPeer,
+				"--initial-cluster", nodeName + "=" + "http://" + maker.Addresses.EtcdPeer,
+				"--initial-advertise-peer-urls", "http://" + maker.Addresses.EtcdPeer,
+				"--initial-cluster-state", "new",
+				"--advertise-client-urls", "https://" + maker.Addresses.Etcd,
+				"--cert-file", maker.EtcdSSL.ServerCert,
+				"--key-file", maker.EtcdSSL.ServerKey,
+				"--ca-file", maker.EtcdSSL.CACert,
+			}, argv...)...,
+		),
+		Cleanup: func() {
+			err := os.RemoveAll(dataDir)
+			Expect(err).NotTo(HaveOccurred())
+		},
 	})
 }
 
@@ -206,6 +236,8 @@ func (maker ComponentMaker) BBS(argv ...string) ifrit.Runner {
 				"-etcdCluster", maker.EtcdCluster(),
 				"-etcdKeyFile", maker.EtcdSSL.ClientKey,
 				"-listenAddress", maker.Addresses.BBS,
+				"-databaseConnectionString", "diego:diego_password@/foo",
+				"-databaseDriver", "mysql",
 				"-logLevel", "debug",
 				"-requireSSL",
 				"-certFile", maker.BbsSSL.ServerCert,
