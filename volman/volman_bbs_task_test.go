@@ -22,7 +22,7 @@ var _ = Describe("Tasks", func() {
 		cellProcess, plumbing ifrit.Process
 		fileServerStaticDir   string
 		logger                lager.Logger
-		bbsClient             bbs.Client
+		bbsClient             bbs.InternalClient
 	)
 
 	BeforeEach(func() {

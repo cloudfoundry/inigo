@@ -43,7 +43,7 @@ var defaultMonitor = models.WrapAction(&models.RunAction{
 	Path: "true",
 })
 
-func UpsertInigoDomain(bbsClient bbs.Client) {
+func UpsertInigoDomain(bbsClient bbs.InternalClient) {
 	err := bbsClient.UpsertDomain(defaultDomain, 0)
 	Expect(err).NotTo(HaveOccurred())
 }

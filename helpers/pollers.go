@@ -6,7 +6,7 @@ import (
 )
 import . "github.com/onsi/gomega"
 
-func ActiveActualLRPs(client bbs.Client, processGuid string) []models.ActualLRP {
+func ActiveActualLRPs(client bbs.InternalClient, processGuid string) []models.ActualLRP {
 	lrpGroups, err := client.ActualLRPGroupsByProcessGuid(processGuid)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -21,7 +21,7 @@ func ActiveActualLRPs(client bbs.Client, processGuid string) []models.ActualLRP 
 	return startedLRPs
 }
 
-func TaskStatePoller(client bbs.Client, taskGuid string, task *models.Task) func() models.Task_State {
+func TaskStatePoller(client bbs.InternalClient, taskGuid string, task *models.Task) func() models.Task_State {
 	return func() models.Task_State {
 		rTask, err := client.TaskByGuid(taskGuid)
 		Expect(err).NotTo(HaveOccurred())
@@ -34,7 +34,7 @@ func TaskStatePoller(client bbs.Client, taskGuid string, task *models.Task) func
 	}
 }
 
-func LRPStatePoller(client bbs.Client, processGuid string, lrp *models.ActualLRP) func() string {
+func LRPStatePoller(client bbs.InternalClient, processGuid string, lrp *models.ActualLRP) func() string {
 	return func() string {
 		lrpGroups, err := client.ActualLRPGroupsByProcessGuid(processGuid)
 		Expect(err).NotTo(HaveOccurred())
@@ -53,7 +53,7 @@ func LRPStatePoller(client bbs.Client, processGuid string, lrp *models.ActualLRP
 	}
 }
 
-func LRPInstanceStatePoller(client bbs.Client, processGuid string, index int, lrp *models.ActualLRP) func() string {
+func LRPInstanceStatePoller(client bbs.InternalClient, processGuid string, index int, lrp *models.ActualLRP) func() string {
 	return func() string {
 		lrpGroup, err := client.ActualLRPGroupByProcessGuidAndIndex(processGuid, index)
 		Expect(err).NotTo(HaveOccurred())

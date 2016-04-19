@@ -487,7 +487,7 @@ func (maker ComponentMaker) GardenClient() garden.Client {
 	return gardenclient.New(gardenconnection.New("tcp", maker.Addresses.GardenLinux))
 }
 
-func (maker ComponentMaker) BBSClient() bbs.Client {
+func (maker ComponentMaker) BBSClient() bbs.InternalClient {
 	client, err := bbs.NewSecureClient(
 		maker.BBSURL(),
 		maker.BbsSSL.CACert,

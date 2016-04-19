@@ -32,7 +32,7 @@ var (
 	plumbing         ifrit.Process
 	natsClient       diegonats.NATSClient
 	gardenClient     garden.Client
-	bbsClient        bbs.Client
+	bbsClient        bbs.InternalClient
 	bbsServiceClient bbs.ServiceClient
 	logger           lager.Logger
 )

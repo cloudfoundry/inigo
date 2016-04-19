@@ -28,7 +28,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 		fileServerStaticDir string
 		plumbing            ifrit.Process
 		logger              lager.Logger
-		bbsClient           bbs.Client
+		bbsClient           bbs.InternalClient
 		processGuid         string
 		archiveFiles        []archive_helper.ArchiveFile
 	)
