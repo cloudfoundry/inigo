@@ -258,7 +258,7 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 			"-gardenHealthcheckProcessPath", "/bin/sh",
 			"-gardenHealthcheckProcessArgs", "-c,echo,foo",
 			"-gardenHealthcheckProcessUser", "vcap",
-			"-volmanDriverConfigDir", path.Join(VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
+			"-volmanDriverConfigDir", path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
 		},
 		argv...,
 	)
