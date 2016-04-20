@@ -2,12 +2,14 @@ package cell_test
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	"github.com/cloudfoundry-incubator/stager/diego_errors"
+	"github.com/pivotal-golang/lager"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -43,7 +45,9 @@ var _ = Describe("Task Lifecycle", func() {
 				{"rep", componentMaker.Rep("-memoryMB", "1024")},
 			}))
 
+			log.Println("!!!!!!!!!!!!!!!!!! Starting up auctioneer...")
 			auctioneerProcess = ginkgomon.Invoke(componentMaker.Auctioneer())
+			log.Println("!!!!!!!!!!!!!!!!!! Started auctioneer")
 		})
 
 		Context("and a standard Task is desired", func() {
@@ -178,7 +182,7 @@ var _ = Describe("Task Lifecycle", func() {
 							helpers.StopProcesses(cellProcess)
 						})
 
-						It("eventually marks the task as failed", func() {
+						FIt("eventually marks the task as failed", func() {
 							// time is primarily influenced by rep's heartbeat interval
 							var completedTask *models.Task
 							Eventually(func() interface{} {
@@ -187,6 +191,7 @@ var _ = Describe("Task Lifecycle", func() {
 								completedTask, err = bbsClient.TaskByGuid(taskGuid)
 								Expect(err).NotTo(HaveOccurred())
 
+								logger.Info("task-state-fetched", lager.Data{"task": completedTask})
 								return completedTask.State
 							}).Should(Equal(models.Task_Completed))
 

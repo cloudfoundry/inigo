@@ -30,6 +30,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	gardenRootFSPath := os.Getenv("GARDEN_ROOTFS")
 	gardenGraphPath := os.Getenv("GARDEN_GRAPH_PATH")
 	externalAddress := os.Getenv("EXTERNAL_ADDRESS")
+	useSQL := os.Getenv("USE_SQL") != ""
 
 	if gardenGraphPath == "" {
 		gardenGraphPath = os.TempDir()
@@ -57,6 +58,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		Auctioneer:       fmt.Sprintf("0.0.0.0:%d", 23000+config.GinkgoConfig.ParallelNode),
 		SSHProxy:         fmt.Sprintf("127.0.0.1:%d", 23500+config.GinkgoConfig.ParallelNode),
 		FakeVolmanDriver: fmt.Sprintf("127.0.0.1:%d", 24500+config.GinkgoConfig.ParallelNode),
+		SQL:              fmt.Sprintf("diego:diego_password@/diego_%d", config.GinkgoConfig.ParallelNode),
 	}
 
 	hostKeyPair, err := keys.RSAKeyPairFactory.NewKeyPair(1024)
@@ -110,5 +112,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		EtcdSSL:               sslConfig,
 		BbsSSL:                sslConfig,
 		VolmanDriverConfigDir: volmanConfigDir,
+
+		UseSQL: useSQL,
 	}
 }
