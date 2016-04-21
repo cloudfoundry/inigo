@@ -122,25 +122,13 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	builtExecutables["rep"], err = gexec.BuildIn(os.Getenv("REP_GOPATH"), "github.com/cloudfoundry-incubator/rep/cmd/rep", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	builtExecutables["stager"], err = gexec.BuildIn(os.Getenv("STAGER_GOPATH"), "github.com/cloudfoundry-incubator/stager/cmd/stager", "-race")
-	Expect(err).NotTo(HaveOccurred())
-
 	builtExecutables["bbs"], err = gexec.BuildIn(os.Getenv("BBS_GOPATH"), "github.com/cloudfoundry-incubator/bbs/cmd/bbs", "-race")
-	Expect(err).NotTo(HaveOccurred())
-
-	builtExecutables["nsync-listener"], err = gexec.BuildIn(os.Getenv("NSYNC_GOPATH"), "github.com/cloudfoundry-incubator/nsync/cmd/nsync-listener", "-race")
-	Expect(err).NotTo(HaveOccurred())
-
-	builtExecutables["nsync-bulker"], err = gexec.BuildIn(os.Getenv("NSYNC_GOPATH"), "github.com/cloudfoundry-incubator/nsync/cmd/nsync-bulker", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["file-server"], err = gexec.BuildIn(os.Getenv("FILE_SERVER_GOPATH"), "github.com/cloudfoundry-incubator/file-server/cmd/file-server", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["route-emitter"], err = gexec.BuildIn(os.Getenv("ROUTE_EMITTER_GOPATH"), "github.com/cloudfoundry-incubator/route-emitter/cmd/route-emitter", "-race")
-	Expect(err).NotTo(HaveOccurred())
-
-	builtExecutables["tps-listener"], err = gexec.BuildIn(os.Getenv("TPS_GOPATH"), "github.com/cloudfoundry-incubator/tps/cmd/tps-listener", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["router"], err = gexec.BuildIn(os.Getenv("ROUTER_GOPATH"), "github.com/cloudfoundry/gorouter", "-race")

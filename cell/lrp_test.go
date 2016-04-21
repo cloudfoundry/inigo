@@ -13,7 +13,6 @@ import (
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/routing-info/cfroutes"
-	"github.com/cloudfoundry-incubator/stager/diego_errors"
 	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -397,7 +396,7 @@ var _ = Describe("LRP", func() {
 					return lrp.PlacementError
 				}
 
-				Eventually(lrpFunc).Should(Equal(diego_errors.CELL_MISMATCH_MESSAGE))
+				Eventually(lrpFunc).Should(Equal("found no compatible cell"))
 			})
 		})
 
@@ -418,7 +417,7 @@ var _ = Describe("LRP", func() {
 					return lrp.PlacementError
 				}
 
-				Eventually(lrpFunc).Should(Equal(diego_errors.CELL_MISMATCH_MESSAGE))
+				Eventually(lrpFunc).Should(Equal("found no compatible cell"))
 			})
 		})
 

@@ -7,7 +7,6 @@ import (
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
-	"github.com/cloudfoundry-incubator/stager/diego_errors"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -112,7 +111,7 @@ var _ = Describe("Task Lifecycle", func() {
 				})
 
 				It("marks the task as complete, failed and cancelled", func() {
-					Eventually(theFailureReason).Should(Equal(diego_errors.CELL_MISMATCH_MESSAGE))
+					Eventually(theFailureReason).Should(Equal("found no compatible cell"))
 				})
 			})
 
@@ -134,7 +133,7 @@ var _ = Describe("Task Lifecycle", func() {
 				})
 
 				It("marks the task as complete, failed and cancelled", func() {
-					Eventually(theFailureReason).Should(Equal(diego_errors.INSUFFICIENT_RESOURCES_MESSAGE))
+					Eventually(theFailureReason).Should(Equal("insufficient resources"))
 				})
 			})
 
