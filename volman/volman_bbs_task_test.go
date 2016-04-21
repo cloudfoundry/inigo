@@ -32,6 +32,7 @@ var _ = Describe("Tasks", func() {
 		plumbing = ginkgomon.Invoke(grouper.NewOrdered(os.Kill, grouper.Members{
 			{"initial-services", grouper.NewParallel(os.Kill, grouper.Members{
 				{"etcd", componentMaker.Etcd()},
+				{"sql", componentMaker.SQL()},
 				{"consul", componentMaker.Consul()},
 			})},
 			{"bbs", componentMaker.BBS()},

@@ -1,6 +1,7 @@
 package world
 
 import (
+	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -22,6 +23,7 @@ import (
 	volmanclient "github.com/cloudfoundry-incubator/volman/vollocal"
 	gorouterconfig "github.com/cloudfoundry/gorouter/config"
 	"github.com/cloudfoundry/gunk/diegonats"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
@@ -72,6 +74,7 @@ type ComponentAddresses struct {
 	Auctioneer       string
 	SSHProxy         string
 	FakeVolmanDriver string
+	SQL              string
 }
 
 type ComponentMaker struct {
@@ -90,6 +93,8 @@ type ComponentMaker struct {
 	BbsSSL    SSLConfig
 
 	VolmanDriverConfigDir string
+
+	UseSQL bool
 }
 
 func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
@@ -108,6 +113,46 @@ func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
 				"--port", port,
 			}, argv...)...,
 		),
+	})
+}
+
+func (maker ComponentMaker) SQL(argv ...string) ifrit.Runner {
+	if !maker.UseSQL {
+		// If we aren't using SQL, return a no-op ifrit runner
+		return ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
+			close(ready)
+
+			<-signals
+
+			return nil
+		})
+	}
+
+	return ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
+		defer ginkgo.GinkgoRecover()
+
+		db, err := sql.Open("mysql", "diego:diego_password@/")
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(db.Ping).ShouldNot(HaveOccurred())
+
+		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", ginkgo.GinkgoParallelNode()))
+		Expect(err).NotTo(HaveOccurred())
+
+		sqlDBName := fmt.Sprintf("diego_%d", ginkgo.GinkgoParallelNode())
+		db, err = sql.Open("mysql", fmt.Sprintf("diego:diego_password@/%s", sqlDBName))
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(db.Ping).ShouldNot(HaveOccurred())
+
+		close(ready)
+
+		select {
+		case <-signals:
+			_, err := db.Exec(fmt.Sprintf("DROP DATABASE %s", sqlDBName))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(db.Close()).To(Succeed())
+		}
+
+		return nil
 	})
 }
 
@@ -188,6 +233,31 @@ func (maker ComponentMaker) GardenLinux(argv ...string) *gardenrunner.Runner {
 }
 
 func (maker ComponentMaker) BBS(argv ...string) ifrit.Runner {
+	bbsArgs := []string{
+		"-activeKeyLabel=" + "secure-key-1",
+		"-advertiseURL", maker.BBSURL(),
+		"-auctioneerAddress", "http://" + maker.Addresses.Auctioneer,
+		"-consulCluster", maker.ConsulCluster(),
+		"-encryptionKey=" + "secure-key-1:secure-passphrase",
+		"-listenAddress", maker.Addresses.BBS,
+		"-logLevel", "debug",
+		"-requireSSL",
+		"-certFile", maker.BbsSSL.ServerCert,
+		"-keyFile", maker.BbsSSL.ServerKey,
+		"-caFile", maker.BbsSSL.CACert,
+		"-etcdCaFile", maker.EtcdSSL.CACert,
+		"-etcdCertFile", maker.EtcdSSL.ClientCert,
+		"-etcdCluster", maker.EtcdCluster(),
+		"-etcdKeyFile", maker.EtcdSSL.ClientKey,
+	}
+
+	if maker.UseSQL {
+		bbsArgs = append(bbsArgs,
+			"-databaseConnectionString", maker.Addresses.SQL,
+			"-databaseDriver", "mysql",
+		)
+	}
+
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "bbs",
 		AnsiColorCode:     "32m",
@@ -195,23 +265,7 @@ func (maker ComponentMaker) BBS(argv ...string) ifrit.Runner {
 		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["bbs"],
-			append([]string{
-				"-activeKeyLabel=" + "secure-key-1",
-				"-advertiseURL", maker.BBSURL(),
-				"-auctioneerAddress", "http://" + maker.Addresses.Auctioneer,
-				"-consulCluster", maker.ConsulCluster(),
-				"-encryptionKey=" + "secure-key-1:secure-passphrase",
-				"-etcdCaFile", maker.EtcdSSL.CACert,
-				"-etcdCertFile", maker.EtcdSSL.ClientCert,
-				"-etcdCluster", maker.EtcdCluster(),
-				"-etcdKeyFile", maker.EtcdSSL.ClientKey,
-				"-listenAddress", maker.Addresses.BBS,
-				"-logLevel", "debug",
-				"-requireSSL",
-				"-certFile", maker.BbsSSL.ServerCert,
-				"-keyFile", maker.BbsSSL.ServerKey,
-				"-caFile", maker.BbsSSL.CACert,
-			}, argv...)...,
+			append(bbsArgs, argv...)...,
 		),
 	})
 }
