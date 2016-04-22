@@ -108,9 +108,6 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	builtExecutables["rep"], err = gexec.BuildIn(os.Getenv("REP_GOPATH"), "github.com/cloudfoundry-incubator/rep/cmd/rep", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	builtExecutables["stager"], err = gexec.BuildIn(os.Getenv("STAGER_GOPATH"), "github.com/cloudfoundry-incubator/stager/cmd/stager", "-race")
-	Expect(err).NotTo(HaveOccurred())
-
 	builtExecutables["bbs"], err = gexec.BuildIn(os.Getenv("BBS_GOPATH"), "github.com/cloudfoundry-incubator/bbs/cmd/bbs", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
