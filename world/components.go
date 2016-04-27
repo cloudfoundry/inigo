@@ -573,7 +573,10 @@ func (maker ComponentMaker) EtcdCluster() string {
 }
 
 func (maker ComponentMaker) VolmanClient(logger lager.Logger) (volman.Manager, ifrit.Runner) {
-	return volmanclient.NewLocalClient(logger, path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)))
+	driverConfig := volmanclient.NewDriverConfig()
+	driverConfig.DriverPath = path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode))
+
+	return volmanclient.NewServer(logger, driverConfig)
 }
 
 func (maker ComponentMaker) VolmanDriver(logger lager.Logger) ifrit.Runner {
