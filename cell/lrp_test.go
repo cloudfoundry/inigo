@@ -109,7 +109,7 @@ var _ = Describe("LRP", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				actualLRP := lrps[0].Instance
-				containerHandle := fmt.Sprintf("%s-%s", actualLRP.ProcessGuid, actualLRP.InstanceGuid)
+				containerHandle := rep.LRPContainerGuid(actualLRP.ProcessGuid, actualLRP.InstanceGuid)
 
 				container, err := gardenClient.Lookup(containerHandle)
 				Expect(err).NotTo(HaveOccurred())
