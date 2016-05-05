@@ -57,7 +57,7 @@ var _ = Describe("Tasks as specific user", func() {
 				},
 			)
 			expectedTask.Privileged = true
-			err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+			err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 
 			var task *models.Task
@@ -65,7 +65,7 @@ var _ = Describe("Tasks as specific user", func() {
 			Eventually(func() interface{} {
 				var err error
 
-				task, err = bbsClient.TaskByGuid(guid)
+				task, err = bbsClient.TaskByGuid(logger, guid)
 				Expect(err).NotTo(HaveOccurred())
 
 				return task.State

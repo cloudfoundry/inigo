@@ -104,14 +104,14 @@ var _ = Describe("Evacuation", func() {
 			Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
 		})
 
-		err := bbsClient.DesireLRP(lrp)
+		err := bbsClient.DesireLRP(logger, lrp)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("running an actual LRP instance")
-		Eventually(helpers.LRPStatePoller(bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+		Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 		Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 
-		actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(processGuid, 0)
+		actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, processGuid, 0)
 		Expect(err).NotTo(HaveOccurred())
 
 		actualLRP, isEvacuating := actualLRPGroup.Resolve()
@@ -144,7 +144,7 @@ var _ = Describe("Evacuation", func() {
 		}).Should(Equal(0))
 
 		By("running immediately after the rep exits and is eventually routable")
-		Expect(helpers.LRPStatePoller(bbsClient, processGuid, nil)()).To(Equal(models.ActualLRPStateRunning))
+		Expect(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)()).To(Equal(models.ActualLRPStateRunning))
 		Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 		Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 	})

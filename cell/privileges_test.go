@@ -52,7 +52,7 @@ var _ = Describe("Privileges", func() {
 		})
 
 		JustBeforeEach(func() {
-			err := bbsClient.DesireTask(taskToDesire.TaskGuid, taskToDesire.Domain, taskToDesire.TaskDefinition)
+			err := bbsClient.DesireTask(logger, taskToDesire.TaskGuid, taskToDesire.Domain, taskToDesire.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -63,7 +63,7 @@ var _ = Describe("Privileges", func() {
 
 			It("succeeds", func() {
 				var task models.Task
-				Eventually(helpers.TaskStatePoller(bbsClient, taskToDesire.TaskGuid, &task)).Should(Equal(models.Task_Completed))
+				Eventually(helpers.TaskStatePoller(logger, bbsClient, taskToDesire.TaskGuid, &task)).Should(Equal(models.Task_Completed))
 				Expect(task.Failed).To(BeFalse())
 			})
 		})
@@ -75,7 +75,7 @@ var _ = Describe("Privileges", func() {
 
 			It("fails", func() {
 				var task models.Task
-				Eventually(helpers.TaskStatePoller(bbsClient, taskToDesire.TaskGuid, &task)).Should(Equal(models.Task_Completed))
+				Eventually(helpers.TaskStatePoller(logger, bbsClient, taskToDesire.TaskGuid, &task)).Should(Equal(models.Task_Completed))
 				Expect(task.Failed).To(BeTrue())
 			})
 		})
@@ -89,7 +89,7 @@ var _ = Describe("Privileges", func() {
 		})
 
 		JustBeforeEach(func() {
-			err := bbsClient.DesireLRP(lrpRequest)
+			err := bbsClient.DesireLRP(logger, lrpRequest)
 			Expect(err).NotTo(HaveOccurred())
 		})
 

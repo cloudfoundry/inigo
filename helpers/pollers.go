@@ -3,11 +3,13 @@ package helpers
 import (
 	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/bbs/models"
-)
-import . "github.com/onsi/gomega"
+	"github.com/pivotal-golang/lager"
 
-func ActiveActualLRPs(client bbs.InternalClient, processGuid string) []models.ActualLRP {
-	lrpGroups, err := client.ActualLRPGroupsByProcessGuid(processGuid)
+	. "github.com/onsi/gomega"
+)
+
+func ActiveActualLRPs(logger lager.Logger, client bbs.InternalClient, processGuid string) []models.ActualLRP {
+	lrpGroups, err := client.ActualLRPGroupsByProcessGuid(logger, processGuid)
 	Expect(err).NotTo(HaveOccurred())
 
 	startedLRPs := make([]models.ActualLRP, 0, len(lrpGroups))
@@ -21,9 +23,9 @@ func ActiveActualLRPs(client bbs.InternalClient, processGuid string) []models.Ac
 	return startedLRPs
 }
 
-func TaskStatePoller(client bbs.InternalClient, taskGuid string, task *models.Task) func() models.Task_State {
+func TaskStatePoller(logger lager.Logger, client bbs.InternalClient, taskGuid string, task *models.Task) func() models.Task_State {
 	return func() models.Task_State {
-		rTask, err := client.TaskByGuid(taskGuid)
+		rTask, err := client.TaskByGuid(logger, taskGuid)
 		Expect(err).NotTo(HaveOccurred())
 
 		if task != nil {
@@ -34,9 +36,9 @@ func TaskStatePoller(client bbs.InternalClient, taskGuid string, task *models.Ta
 	}
 }
 
-func LRPStatePoller(client bbs.InternalClient, processGuid string, lrp *models.ActualLRP) func() string {
+func LRPStatePoller(logger lager.Logger, client bbs.InternalClient, processGuid string, lrp *models.ActualLRP) func() string {
 	return func() string {
-		lrpGroups, err := client.ActualLRPGroupsByProcessGuid(processGuid)
+		lrpGroups, err := client.ActualLRPGroupsByProcessGuid(logger, processGuid)
 		Expect(err).NotTo(HaveOccurred())
 
 		if len(lrpGroups) == 0 {
@@ -53,9 +55,9 @@ func LRPStatePoller(client bbs.InternalClient, processGuid string, lrp *models.A
 	}
 }
 
-func LRPInstanceStatePoller(client bbs.InternalClient, processGuid string, index int, lrp *models.ActualLRP) func() string {
+func LRPInstanceStatePoller(logger lager.Logger, client bbs.InternalClient, processGuid string, index int, lrp *models.ActualLRP) func() string {
 	return func() string {
-		lrpGroup, err := client.ActualLRPGroupByProcessGuidAndIndex(processGuid, index)
+		lrpGroup, err := client.ActualLRPGroupByProcessGuidAndIndex(logger, processGuid, index)
 		Expect(err).NotTo(HaveOccurred())
 
 		foundLRP, _ := lrpGroup.Resolve()

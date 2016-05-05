@@ -71,7 +71,7 @@ var _ = Describe("Tasks", func() {
 					},
 				},
 			)
-			err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+			err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 
 			var task *models.Task
@@ -79,7 +79,7 @@ var _ = Describe("Tasks", func() {
 			Eventually(func() interface{} {
 				var err error
 
-				task, err = bbsClient.TaskByGuid(guid)
+				task, err = bbsClient.TaskByGuid(logger, guid)
 				Expect(err).NotTo(HaveOccurred())
 
 				return task.State
@@ -98,7 +98,7 @@ var _ = Describe("Tasks", func() {
 					Dir:  "/tmp",
 				},
 			)
-			err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+			err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 
 			Expect(err).NotTo(HaveOccurred())
 
@@ -107,7 +107,7 @@ var _ = Describe("Tasks", func() {
 			Eventually(func() interface{} {
 				var err error
 
-				task, err = bbsClient.TaskByGuid(guid)
+				task, err = bbsClient.TaskByGuid(logger, guid)
 				Expect(err).NotTo(HaveOccurred())
 
 				return task.State
@@ -141,7 +141,7 @@ var _ = Describe("Tasks", func() {
 					1024,
 				)
 
-				err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 
 				Expect(err).NotTo(HaveOccurred())
 
@@ -151,7 +151,7 @@ var _ = Describe("Tasks", func() {
 				Eventually(func() interface{} {
 					var err error
 
-					task, err = bbsClient.TaskByGuid(guid)
+					task, err = bbsClient.TaskByGuid(logger, guid)
 					Expect(err).NotTo(HaveOccurred())
 
 					return task.State
@@ -199,14 +199,14 @@ echo should have died by now
 					),
 				)
 
-				err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 
 				var task *models.Task
 				Eventually(func() interface{} {
 					var err error
 
-					task, err = bbsClient.TaskByGuid(guid)
+					task, err = bbsClient.TaskByGuid(logger, guid)
 					Expect(err).NotTo(HaveOccurred())
 
 					return task.State
@@ -235,7 +235,7 @@ echo should have died by now
 					),
 				)
 
-				err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 
 				Expect(err).NotTo(HaveOccurred())
 
@@ -243,7 +243,7 @@ echo should have died by now
 				Eventually(func() interface{} {
 					var err error
 
-					task, err = bbsClient.TaskByGuid(guid)
+					task, err = bbsClient.TaskByGuid(logger, guid)
 					Expect(err).NotTo(HaveOccurred())
 
 					return task.State
@@ -270,7 +270,7 @@ echo should have died by now
 					},
 				}
 
-				err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 
 				var properties garden.Properties
@@ -319,7 +319,7 @@ echo should have died by now
 					),
 				)
 
-				err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
@@ -347,7 +347,7 @@ echo should have died by now
 				}
 				expectedTask.LegacyDownloadUser = "vcap"
 
-				err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
@@ -407,7 +407,7 @@ echo should have died by now
 				),
 			)
 
-			err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+			err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(gotRequest).Should(BeClosed())
@@ -430,14 +430,14 @@ echo should have died by now
 			)
 			expectedTask.ResultFile = "/home/vcap/thingy"
 
-			err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+			err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 
 			var task *models.Task
 			Eventually(func() interface{} {
 				var err error
 
-				task, err = bbsClient.TaskByGuid(guid)
+				task, err = bbsClient.TaskByGuid(logger, guid)
 				Expect(err).NotTo(HaveOccurred())
 
 				return task.State

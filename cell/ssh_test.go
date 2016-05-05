@@ -143,21 +143,21 @@ var _ = Describe("SSH", func() {
 		logger := lagertest.NewTestLogger("test")
 		logger.Info("desired-ssh-lrp", lager.Data{"lrp": lrp})
 
-		err := bbsClient.DesireLRP(&lrp)
+		err := bbsClient.DesireLRP(logger, &lrp)
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(func() []*models.ActualLRPGroup {
-			lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
+			lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGuid)
 			Expect(err).NotTo(HaveOccurred())
 			return lrps
 		}).Should(HaveLen(2))
 
 		Eventually(
-			helpers.LRPInstanceStatePoller(bbsClient, processGuid, 0, nil),
+			helpers.LRPInstanceStatePoller(logger, bbsClient, processGuid, 0, nil),
 		).Should(Equal(models.ActualLRPStateRunning))
 
 		Eventually(
-			helpers.LRPInstanceStatePoller(bbsClient, processGuid, 1, nil),
+			helpers.LRPInstanceStatePoller(logger, bbsClient, processGuid, 1, nil),
 		).Should(Equal(models.ActualLRPStateRunning))
 	})
 
@@ -201,7 +201,7 @@ var _ = Describe("SSH", func() {
 
 			It("returns an error", func() {
 				Eventually(
-					helpers.LRPInstanceStatePoller(bbsClient, processGuid, 0, nil),
+					helpers.LRPInstanceStatePoller(logger, bbsClient, processGuid, 0, nil),
 				).Should(Equal(models.ActualLRPStateRunning))
 
 				_, err := ssh.Dial("tcp", address, clientConfig)

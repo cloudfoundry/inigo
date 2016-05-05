@@ -125,12 +125,12 @@ var _ = Describe("LRPs with volume mounts", func() {
 		})
 
 		JustBeforeEach(func() {
-			err := bbsClient.DesireLRP(lrp)
+			err := bbsClient.DesireLRP(logger, lrp)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("can write to a file on the mounted volume", func() {
-			Eventually(helpers.LRPStatePoller(bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 			Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 			body, statusCode, err := helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses.Router, helpers.DefaultHost, "write")
 			Expect(err).NotTo(HaveOccurred())
@@ -148,7 +148,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 			It("should error placing the lrp", func() {
 				var actualLRP *models.ActualLRP
 				Eventually(func() interface{} {
-					group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(processGuid, 0)
+					group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, processGuid, 0)
 					Expect(err).NotTo(HaveOccurred())
 
 					var evacuating bool
@@ -171,7 +171,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 			It("should error placing the task", func() {
 				var actualLRP *models.ActualLRP
 				Eventually(func() interface{} {
-					group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(processGuid, 0)
+					group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, processGuid, 0)
 					Expect(err).NotTo(HaveOccurred())
 
 					var evacuating bool

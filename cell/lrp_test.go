@@ -84,12 +84,12 @@ var _ = Describe("LRP", func() {
 		})
 
 		JustBeforeEach(func() {
-			err := bbsClient.DesireLRP(lrp)
+			err := bbsClient.DesireLRP(logger, lrp)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("eventually runs", func() {
-			Eventually(helpers.LRPStatePoller(bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 			Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 		})
 
@@ -103,9 +103,9 @@ var _ = Describe("LRP", func() {
 			})
 
 			It("passes them to garden", func() {
-				Eventually(helpers.LRPStatePoller(bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 
-				lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
+				lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGuid)
 				Expect(err).NotTo(HaveOccurred())
 
 				actualLRP := lrps[0].Instance
@@ -133,7 +133,7 @@ var _ = Describe("LRP", func() {
 
 			It("eventually marks the LRP as crashed", func() {
 				Eventually(
-					helpers.LRPStatePoller(bbsClient, processGuid, nil),
+					helpers.LRPStatePoller(logger, bbsClient, processGuid, nil),
 				).Should(Equal(models.ActualLRPStateCrashed))
 			})
 		})
@@ -174,7 +174,7 @@ var _ = Describe("LRP", func() {
 						"processGuid":   processGuid,
 						"updateRequest": desiredUpdate})
 
-					err := bbsClient.UpdateDesiredLRP(processGuid, &desiredUpdate)
+					err := bbsClient.UpdateDesiredLRP(logger, processGuid, &desiredUpdate)
 
 					logger.Info("after-update-desired", lager.Data{
 						"error": err,
@@ -199,7 +199,7 @@ var _ = Describe("LRP", func() {
 
 			JustBeforeEach(func() {
 				Eventually(func() []*models.ActualLRPGroup {
-					lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
+					lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGuid)
 					Expect(err).NotTo(HaveOccurred())
 
 					return lrps
@@ -215,7 +215,7 @@ var _ = Describe("LRP", func() {
 				})
 
 				JustBeforeEach(func() {
-					err := bbsClient.UpdateDesiredLRP(processGuid, &models.DesiredLRPUpdate{
+					err := bbsClient.UpdateDesiredLRP(logger, processGuid, &models.DesiredLRPUpdate{
 						Instances: &newInstances,
 					})
 					Expect(err).NotTo(HaveOccurred())
@@ -228,7 +228,7 @@ var _ = Describe("LRP", func() {
 
 					It("scales up to the correct number of instances", func() {
 						Eventually(func() []*models.ActualLRPGroup {
-							lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
+							lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGuid)
 							Expect(err).NotTo(HaveOccurred())
 
 							return lrps
@@ -245,7 +245,7 @@ var _ = Describe("LRP", func() {
 
 					It("scales down to the correct number of instances", func() {
 						Eventually(func() []*models.ActualLRPGroup {
-							lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
+							lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGuid)
 							Expect(err).NotTo(HaveOccurred())
 
 							return lrps
@@ -262,7 +262,7 @@ var _ = Describe("LRP", func() {
 
 					It("scales down to the correct number of instances", func() {
 						Eventually(func() []*models.ActualLRPGroup {
-							lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
+							lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGuid)
 							Expect(err).NotTo(HaveOccurred())
 
 							return lrps
@@ -273,13 +273,13 @@ var _ = Describe("LRP", func() {
 
 					It("can be scaled back up", func() {
 						newInstances := int32(1)
-						err := bbsClient.UpdateDesiredLRP(processGuid, &models.DesiredLRPUpdate{
+						err := bbsClient.UpdateDesiredLRP(logger, processGuid, &models.DesiredLRPUpdate{
 							Instances: &newInstances,
 						})
 						Expect(err).NotTo(HaveOccurred())
 
 						Eventually(func() []*models.ActualLRPGroup {
-							lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
+							lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGuid)
 							Expect(err).NotTo(HaveOccurred())
 
 							return lrps
@@ -292,13 +292,13 @@ var _ = Describe("LRP", func() {
 
 			Describe("deleting it", func() {
 				JustBeforeEach(func() {
-					err := bbsClient.RemoveDesiredLRP(processGuid)
+					err := bbsClient.RemoveDesiredLRP(logger, processGuid)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("stops all instances", func() {
 					Eventually(func() []*models.ActualLRPGroup {
-						lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
+						lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGuid)
 						Expect(err).NotTo(HaveOccurred())
 
 						return lrps
@@ -386,7 +386,7 @@ var _ = Describe("LRP", func() {
 
 			It("fails and sets a placement error", func() {
 				lrpFunc := func() string {
-					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
+					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGuid)
 					Expect(err).NotTo(HaveOccurred())
 					if len(lrpGroups) == 0 {
 						return ""
@@ -407,7 +407,7 @@ var _ = Describe("LRP", func() {
 
 			It("fails and sets a placement error", func() {
 				lrpFunc := func() string {
-					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
+					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGuid)
 					Expect(err).NotTo(HaveOccurred())
 					if len(lrpGroups) == 0 {
 						return ""
@@ -429,7 +429,7 @@ var _ = Describe("LRP", func() {
 
 			It("runs", func() {
 				Eventually(func() []*models.ActualLRPGroup {
-					lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
+					lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGuid)
 					Expect(err).NotTo(HaveOccurred())
 					return lrps
 				}).Should(HaveLen(1))
@@ -449,7 +449,7 @@ var _ = Describe("Crashing LRPs", func() {
 
 	crashCount := func(guid string, index int) func() int32 {
 		return func() int32 {
-			actualGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(guid, index)
+			actualGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, guid, index)
 			Expect(err).NotTo(HaveOccurred())
 			actual, _ := actualGroup.Resolve()
 			return actual.CrashCount
@@ -488,7 +488,7 @@ var _ = Describe("Crashing LRPs", func() {
 			BeforeEach(func() {
 				lrp := helpers.CrashingLRPCreateRequest(processGuid)
 
-				err := bbsClient.DesireLRP(lrp)
+				err := bbsClient.DesireLRP(logger, lrp)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -508,14 +508,14 @@ var _ = Describe("Crashing LRPs", func() {
 			BeforeEach(func() {
 				lrp := helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
 
-				err := bbsClient.DesireLRP(lrp)
+				err := bbsClient.DesireLRP(logger, lrp)
 				Expect(err).NotTo(HaveOccurred())
 
-				Eventually(helpers.LRPStatePoller(bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 			})
 
 			It("crashes the instance and restarts it", func() {
-				group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(processGuid, 0)
+				group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, processGuid, 0)
 				Expect(err).NotTo(HaveOccurred())
 
 				handle := rep.LRPContainerGuid(group.Instance.GetProcessGuid(), group.Instance.GetInstanceGuid())
@@ -523,7 +523,7 @@ var _ = Describe("Crashing LRPs", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(crashCount(processGuid, 0)).Should(BeEquivalentTo(1))
-				Eventually(helpers.LRPStatePoller(bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 			})
 		})
 	})

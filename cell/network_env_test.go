@@ -64,12 +64,12 @@ var _ = Describe("Network Environment Variables", func() {
 			)
 			taskToDesire.ResultFile = "/home/vcap/env"
 
-			err := bbsClient.DesireTask(taskToDesire.TaskGuid, taskToDesire.Domain, taskToDesire.TaskDefinition)
+			err := bbsClient.DesireTask(logger, taskToDesire.TaskGuid, taskToDesire.Domain, taskToDesire.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func() interface{} {
 				var err error
-				task, err = bbsClient.TaskByGuid(guid)
+				task, err = bbsClient.TaskByGuid(logger, guid)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				return task.State
@@ -124,13 +124,13 @@ var _ = Describe("Network Environment Variables", func() {
 				Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
 			})
 
-			err := bbsClient.DesireLRP(lrp)
+			err := bbsClient.DesireLRP(logger, lrp)
 			Expect(err).NotTo(HaveOccurred())
 
-			Eventually(helpers.LRPStatePoller(bbsClient, guid, nil)).Should(Equal(models.ActualLRPStateRunning))
+			Eventually(helpers.LRPStatePoller(logger, bbsClient, guid, nil)).Should(Equal(models.ActualLRPStateRunning))
 			Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 
-			lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(guid)
+			lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, guid)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(lrps).To(HaveLen(1))

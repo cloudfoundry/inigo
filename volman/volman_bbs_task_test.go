@@ -78,7 +78,7 @@ var _ = Describe("Tasks", func() {
 					generateVolumeObject("fakedriver"),
 				}
 
-				err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -87,7 +87,7 @@ var _ = Describe("Tasks", func() {
 				Eventually(func() interface{} {
 					var err error
 
-					task, err = bbsClient.TaskByGuid(guid)
+					task, err = bbsClient.TaskByGuid(logger, guid)
 					Expect(err).NotTo(HaveOccurred())
 
 					return task.State
@@ -118,14 +118,14 @@ var _ = Describe("Tasks", func() {
 			})
 
 			It("should error placing the task", func() {
-				err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 
 				var task *models.Task
 				Eventually(func() interface{} {
 					var err error
 
-					task, err = bbsClient.TaskByGuid(expectedTask.TaskGuid)
+					task, err = bbsClient.TaskByGuid(logger, expectedTask.TaskGuid)
 					Expect(err).NotTo(HaveOccurred())
 
 					return task.State
@@ -159,14 +159,14 @@ var _ = Describe("Tasks", func() {
 			})
 
 			It("should error placing the task", func() {
-				err := bbsClient.DesireTask(expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 
 				var task *models.Task
 				Eventually(func() interface{} {
 					var err error
 
-					task, err = bbsClient.TaskByGuid(expectedTask.TaskGuid)
+					task, err = bbsClient.TaskByGuid(logger, expectedTask.TaskGuid)
 					Expect(err).NotTo(HaveOccurred())
 
 					return task.State

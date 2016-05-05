@@ -7,6 +7,7 @@ import (
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/routing-info/cfroutes"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-golang/lager"
 )
 
 const defaultDomain = "inigo"
@@ -43,8 +44,8 @@ var defaultMonitor = models.WrapAction(&models.RunAction{
 	Path: "true",
 })
 
-func UpsertInigoDomain(bbsClient bbs.InternalClient) {
-	err := bbsClient.UpsertDomain(defaultDomain, 0)
+func UpsertInigoDomain(logger lager.Logger, bbsClient bbs.InternalClient) {
+	err := bbsClient.UpsertDomain(logger, defaultDomain, 0)
 	Expect(err).NotTo(HaveOccurred())
 }
 
