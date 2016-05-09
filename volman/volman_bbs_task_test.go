@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-golang/lager"
+	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -26,6 +27,7 @@ var _ = Describe("Tasks", func() {
 	)
 
 	BeforeEach(func() {
+		logger = lagertest.NewTestLogger("volman-tasks")
 		var fileServerRunner ifrit.Runner
 		fileServerRunner, fileServerStaticDir = componentMaker.FileServer()
 
