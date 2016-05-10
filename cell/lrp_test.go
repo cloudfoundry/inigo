@@ -123,7 +123,7 @@ var _ = Describe("LRP", func() {
 
 		Context("when it's unhealthy for longer than its start timeout", func() {
 			BeforeEach(func() {
-				lrp.StartTimeout = 5
+				lrp.StartTimeoutMs = 5
 
 				lrp.Monitor = models.WrapAction(&models.RunAction{
 					User: "vcap",
