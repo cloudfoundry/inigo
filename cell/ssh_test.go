@@ -127,11 +127,11 @@ var _ = Describe("SSH", func() {
 				Path: "nc",
 				Args: []string{"-z", "127.0.0.1", "3456"},
 			}),
-			StartTimeout: 60,
-			RootFs:       "preloaded:" + helpers.PreloadedStacks[0],
-			MemoryMb:     128,
-			DiskMb:       128,
-			Ports:        []uint32{3456},
+			StartTimeoutMs: 60000,
+			RootFs:         "preloaded:" + helpers.PreloadedStacks[0],
+			MemoryMb:       128,
+			DiskMb:         128,
+			Ports:          []uint32{3456},
 			Routes: &models.Routes{
 				routes.DIEGO_SSH: &sshRouteMessage,
 			},
@@ -211,7 +211,7 @@ var _ = Describe("SSH", func() {
 
 		Context("when a bare-bones docker image is used as the root filesystem", func() {
 			BeforeEach(func() {
-				lrp.StartTimeout = 120
+				lrp.StartTimeoutMs = 120000
 				lrp.RootFs = "docker:///cloudfoundry/diego-docker-app"
 
 				// busybox nc requires -p but ubuntu's won't allow it
