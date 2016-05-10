@@ -58,7 +58,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		config = executorinit.DefaultConfiguration
-		config.VolmanDriverPath = path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", ginkgoconfig.GinkgoConfig.ParallelNode))
+		config.VolmanDriverPaths = []string{path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", ginkgoconfig.GinkgoConfig.ParallelNode))}
 		config.GardenNetwork = "tcp"
 		config.GardenAddr = componentMaker.Addresses.GardenLinux
 		config.HealthyMonitoringInterval = time.Second
@@ -73,8 +73,8 @@ var _ = Describe("Executor/Garden/Volman", func() {
 	Context("when volman is not correctly configured", func() {
 
 		BeforeEach(func() {
-			var invalidDriverPath = ""
-			config.VolmanDriverPath = invalidDriverPath
+			var invalidDriverPath = []string{""}
+			config.VolmanDriverPaths = invalidDriverPath
 
 			executorClient, runner = initializeExecutor(logger, config)
 

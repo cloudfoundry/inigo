@@ -312,7 +312,7 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 			"-gardenHealthcheckProcessPath", "/bin/sh",
 			"-gardenHealthcheckProcessArgs", "-c,echo,foo",
 			"-gardenHealthcheckProcessUser", "vcap",
-			"-volmanDriverConfigDir", path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
+			"-volmanDriverPaths", path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
 		},
 		argv...,
 	)
@@ -574,7 +574,7 @@ func (maker ComponentMaker) EtcdCluster() string {
 
 func (maker ComponentMaker) VolmanClient(logger lager.Logger) (volman.Manager, ifrit.Runner) {
 	driverConfig := volmanclient.NewDriverConfig()
-	driverConfig.DriverPath = path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode))
+	driverConfig.DriverPaths = []string{path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode))}
 
 	return volmanclient.NewServer(logger, driverConfig)
 }
