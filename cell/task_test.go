@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/tedsuo/ifrit"
@@ -230,7 +229,7 @@ echo should have died by now
 								Path: "sleep",
 								Args: []string{"1"},
 							},
-							500*time.Millisecond,
+							500,
 						),
 					),
 				)
