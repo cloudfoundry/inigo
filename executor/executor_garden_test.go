@@ -277,7 +277,7 @@ var _ = Describe("Executor/Garden", func() {
 					ginkgomon.Interrupt(gardenProcess)
 					Eventually(isHealthy).Should(BeFalse())
 
-					gardenProcess = ginkgomon.Invoke(componentMaker.GardenLinux())
+					gardenProcess = ginkgomon.Invoke(componentMaker.Garden())
 					Eventually(isHealthy).Should(BeTrue())
 				})
 			})
@@ -303,7 +303,7 @@ var _ = Describe("Executor/Garden", func() {
 				})
 
 				AfterEach(func() {
-					gardenProcess = ginkgomon.Invoke(componentMaker.GardenLinux())
+					gardenProcess = ginkgomon.Invoke(componentMaker.Garden())
 				})
 
 				It("should return an error", func() {

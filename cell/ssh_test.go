@@ -93,6 +93,7 @@ var _ = Describe("SSH", func() {
 			ProcessGuid: processGuid,
 			Domain:      "inigo",
 			Instances:   2,
+			Privileged:  true,
 			Setup: models.WrapAction(models.Serial(
 				&models.DownloadAction{
 					Artifact: "sshd",

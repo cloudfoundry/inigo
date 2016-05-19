@@ -75,7 +75,7 @@ var _ = Describe("LRP", func() {
 				LogSource: "APP",
 			}}
 			lrp.LegacyDownloadUser = "vcap"
-			lrp.Privileged = false
+			lrp.Privileged = true
 			lrp.Action = models.WrapAction(&models.RunAction{
 				User: "vcap",
 				Path: "/tmp/diego/lrp/go-server",

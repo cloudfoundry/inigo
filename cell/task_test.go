@@ -71,6 +71,8 @@ var _ = Describe("Tasks", func() {
 					},
 				},
 			)
+			expectedTask.Privileged = true
+
 			err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -98,6 +100,8 @@ var _ = Describe("Tasks", func() {
 					Dir:  "/tmp",
 				},
 			)
+			expectedTask.Privileged = true
+
 			err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 
 			Expect(err).NotTo(HaveOccurred())
@@ -345,6 +349,8 @@ echo should have died by now
 						LogSource: "announce-tar",
 					},
 				}
+
+				expectedTask.Privileged = true
 				expectedTask.LegacyDownloadUser = "vcap"
 
 				err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)

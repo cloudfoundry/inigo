@@ -134,6 +134,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 					}
 					runReq = executor.NewRunRequest(guid, &runInfo, executor.Tags{})
 				})
+
 				It("container start should succeed", func() {
 					err := executorClient.RunContainer(logger, &runReq)
 					Expect(err).NotTo(HaveOccurred())
@@ -207,6 +208,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 						volumeMounts := []executor.VolumeMount{executor.VolumeMount{ContainerPath: "/testmount", Driver: "fakedriver", VolumeId: volumeId, Config: someConfig, Mode: executor.BindMountModeRW}}
 						runInfo := executor.RunInfo{
 							VolumeMounts: volumeMounts,
+							Privileged:   true,
 							Action: models.WrapAction(&models.RunAction{
 								Path: "/bin/touch",
 								User: "root",

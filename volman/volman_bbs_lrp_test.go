@@ -113,6 +113,8 @@ var _ = Describe("LRPs with volume mounts", func() {
 				LogSource: "APP",
 			}}
 
+			lrp.Privileged = true
+
 			lrp.LegacyDownloadUser = "vcap"
 			lrp.Action = models.WrapAction(&models.RunAction{
 				User: "vcap",

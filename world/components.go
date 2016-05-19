@@ -220,11 +220,11 @@ func (maker ComponentMaker) Consul(argv ...string) ifrit.Runner {
 	})
 }
 
-func (maker ComponentMaker) GardenLinux(argv ...string) *gardenrunner.Runner {
+func (maker ComponentMaker) Garden(argv ...string) *gardenrunner.Runner {
 	return gardenrunner.New(
 		"tcp",
 		maker.Addresses.GardenLinux,
-		maker.Artifacts.Executables["garden-linux"],
+		maker.Artifacts.Executables["garden"],
 		maker.GardenBinPath,
 		maker.PreloadedStackPathMap[maker.DefaultStack()],
 		maker.GardenGraphPath,

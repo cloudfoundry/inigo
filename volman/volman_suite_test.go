@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/cloudfoundry-incubator/garden"
+	"github.com/cloudfoundry-incubator/inigo/gardenrunner"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/cloudfoundry-incubator/volman"
@@ -57,7 +58,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 var _ = BeforeEach(func() {
 	logger = lagertest.NewTestLogger("volman-inigo-suite")
 
-	gardenProcess = ginkgomon.Invoke(componentMaker.GardenLinux())
+	gardenProcess = ginkgomon.Invoke(componentMaker.Garden())
 	gardenClient = componentMaker.GardenClient()
 
 	fakedriverProcess = ginkgomon.Invoke(componentMaker.VolmanDriver(logger))
@@ -93,7 +94,7 @@ func CompileTestedExecutables() world.BuiltExecutables {
 
 	builtExecutables := world.BuiltExecutables{}
 
-	builtExecutables["garden-linux"], err = gexec.BuildIn(os.Getenv("GARDEN_LINUX_GOPATH"), "github.com/cloudfoundry-incubator/garden-linux", "-race", "-a", "-tags", "daemon")
+	builtExecutables["garden"], err = gexec.BuildIn(os.Getenv("GARDEN_LINUX_GOPATH"), gardenrunner.GardenServerPackageName(), "-race", "-a", "-tags", "daemon")
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["fake-driver"], err = gexec.Build("github.com/cloudfoundry-incubator/volman/fakedriver/cmd/fakedriver", "-race")

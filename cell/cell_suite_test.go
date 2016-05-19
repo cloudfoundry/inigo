@@ -20,6 +20,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/garden"
+	"github.com/cloudfoundry-incubator/inigo/gardenrunner"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	"github.com/cloudfoundry-incubator/inigo/world"
@@ -64,7 +65,7 @@ var _ = BeforeEach(func() {
 			{"sql", componentMaker.SQL()},
 			{"nats", componentMaker.NATS()},
 			{"consul", componentMaker.Consul()},
-			{"garden-linux", componentMaker.GardenLinux("-denyNetworks=0.0.0.0/0", "-allowHostAccess=true")},
+			{"garden", componentMaker.Garden()},
 		})},
 		{"bbs", componentMaker.BBS()},
 	}))
@@ -110,7 +111,7 @@ func CompileTestedExecutables() world.BuiltExecutables {
 
 	builtExecutables := world.BuiltExecutables{}
 
-	builtExecutables["garden-linux"], err = gexec.BuildIn(os.Getenv("GARDEN_LINUX_GOPATH"), "github.com/cloudfoundry-incubator/garden-linux", "-race", "-a", "-tags", "daemon")
+	builtExecutables["garden"], err = gexec.BuildIn(os.Getenv("GARDEN_LINUX_GOPATH"), gardenrunner.GardenServerPackageName(), "-race", "-a", "-tags", "daemon")
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["auctioneer"], err = gexec.BuildIn(os.Getenv("AUCTIONEER_GOPATH"), "github.com/cloudfoundry-incubator/auctioneer/cmd/auctioneer", "-race")

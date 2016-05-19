@@ -14,6 +14,7 @@ import (
 	"github.com/tedsuo/ifrit/ginkgomon"
 
 	"github.com/cloudfoundry-incubator/garden"
+	"github.com/cloudfoundry-incubator/inigo/gardenrunner"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	"github.com/cloudfoundry-incubator/inigo/world"
 )
@@ -45,7 +46,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 })
 
 var _ = BeforeEach(func() {
-	gardenProcess = ginkgomon.Invoke(componentMaker.GardenLinux())
+	gardenProcess = ginkgomon.Invoke(componentMaker.Garden())
 	gardenClient = componentMaker.GardenClient()
 })
 
@@ -76,7 +77,7 @@ func CompileTestedExecutables() world.BuiltExecutables {
 
 	builtExecutables := world.BuiltExecutables{}
 
-	builtExecutables["garden-linux"], err = gexec.BuildIn(os.Getenv("GARDEN_LINUX_GOPATH"), "github.com/cloudfoundry-incubator/garden-linux", "-race", "-a", "-tags", "daemon")
+	builtExecutables["garden"], err = gexec.BuildIn(os.Getenv("GARDEN_LINUX_GOPATH"), gardenrunner.GardenServerPackageName(), "-race", "-a", "-tags", "daemon")
 	Expect(err).NotTo(HaveOccurred())
 
 	return builtExecutables
