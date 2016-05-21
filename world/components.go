@@ -67,6 +67,7 @@ type ComponentAddresses struct {
 	EtcdPeer         string
 	Consul           string
 	BBS              string
+	Health           string
 	Rep              string
 	FileServer       string
 	Router           string
@@ -240,6 +241,7 @@ func (maker ComponentMaker) BBS(argv ...string) ifrit.Runner {
 		"-consulCluster", maker.ConsulCluster(),
 		"-encryptionKey=" + "secure-key-1:secure-passphrase",
 		"-listenAddress", maker.Addresses.BBS,
+		"-healthAddress", maker.Addresses.Health,
 		"-logLevel", "debug",
 		"-requireSSL",
 		"-certFile", maker.BbsSSL.ServerCert,
