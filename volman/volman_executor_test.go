@@ -199,13 +199,14 @@ var _ = Describe("Executor/Garden/Volman", func() {
 						runReq   executor.RunRequest
 						volumeId string
 						fileName string
+						volumeMounts []executor.VolumeMount
 					)
 
 					BeforeEach(func() {
 						fileName = fmt.Sprintf("testfile-%d.txt", time.Now().UnixNano())
 						volumeId = fmt.Sprintf("some-volumeID-%d", time.Now().UnixNano())
 						someConfig := map[string]interface{}{"volume_id": volumeId}
-						volumeMounts := []executor.VolumeMount{executor.VolumeMount{ContainerPath: "/testmount", Driver: "fakedriver", VolumeId: volumeId, Config: someConfig, Mode: executor.BindMountModeRW}}
+						volumeMounts = []executor.VolumeMount{executor.VolumeMount{ContainerPath: "/testmount", Driver: "fakedriver", VolumeId: volumeId, Config: someConfig, Mode: executor.BindMountModeRW}}
 						runInfo := executor.RunInfo{
 							VolumeMounts: volumeMounts,
 							Privileged:   true,
@@ -226,6 +227,15 @@ var _ = Describe("Executor/Garden/Volman", func() {
 							Expect(getContainer(guid).RunResult.Failed).Should(BeFalse())
 						})
 
+						AfterEach(func() {
+							err := executorClient.DeleteContainer(logger, guid)
+							Expect(err).NotTo(HaveOccurred())
+
+							files, err := filepath.Glob(path.Join(componentMaker.VolmanDriverConfigDir, "_volumes", volumeId, fileName))
+							Expect(err).ToNot(HaveOccurred())
+							Expect(len(files)).To(Equal(0))
+						})
+
 						It("can write files to the mounted volume", func() {
 							By("we expect the file it wrote to be available outside of the container")
 							volmanPath := path.Join(componentMaker.VolmanDriverConfigDir, "_volumes", volumeId, fileName)
@@ -234,14 +244,51 @@ var _ = Describe("Executor/Garden/Volman", func() {
 							Expect(len(files)).To(Equal(1))
 						})
 
-						It("cleans up the mounts afterwards", func() {
-							err := executorClient.DeleteContainer(logger, guid)
-							Expect(err).NotTo(HaveOccurred())
+						/*
+						Context("when a second container using the same volume loads and then unloads", func() {
+							var (
+								runReq2 executor.RunRequest
+								fileName2 string
+								guid2 string
+							)
+							BeforeEach(func() {
+								id, err := uuid.NewV4()
+								Expect(err).NotTo(HaveOccurred())
+								guid2 = id.String()
 
-							files, err := filepath.Glob(path.Join(componentMaker.VolmanDriverConfigDir, "_volumes", volumeId, fileName))
-							Expect(err).ToNot(HaveOccurred())
-							Expect(len(files)).To(Equal(0))
+								tags := executor.Tags{"some-tag": "some-value"}
+								allocationRequest2 := executor.NewAllocationRequest(guid2, &executor.Resource{}, tags)
+								allocationFailures, err := executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest2})
+								Expect(err).NotTo(HaveOccurred())
+								Expect(allocationFailures).To(BeEmpty())
+
+								fileName2 = fmt.Sprintf("testfile2-%d.txt", time.Now().UnixNano())
+								runInfo := executor.RunInfo{
+									VolumeMounts: volumeMounts,
+									Privileged:   true,
+									Action: models.WrapAction(&models.RunAction{
+										Path: "/bin/touch",
+										User: "root",
+										Args: []string{"/testmount/" + fileName2},
+									}),
+								}
+								runReq2 = executor.NewRunRequest(guid2, &runInfo, executor.Tags{})
+								err = executorClient.RunContainer(logger, &runReq2)
+								Expect(err).NotTo(HaveOccurred())
+								Eventually(containerStatePoller(guid2)).Should(Equal(executor.StateCompleted))
+								Expect(getContainer(guid2).RunResult.Failed).Should(BeFalse())
+								err = executorClient.DeleteContainer(logger, guid)
+								Expect(err).NotTo(HaveOccurred())
+							})
+							It("can still read files on the mounted volume for the first container", func() {
+								volmanPath := path.Join(componentMaker.VolmanDriverConfigDir, "_volumes", volumeId, fileName)
+								files, err := filepath.Glob(volmanPath)
+								Expect(err).ToNot(HaveOccurred())
+								Expect(len(files)).To(Equal(1))
+							})
 						})
+						*/
+
 					})
 				})
 			})
