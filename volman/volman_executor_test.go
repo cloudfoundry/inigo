@@ -8,12 +8,13 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/nu7hatch/gouuid"
+
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/cf-test-helpers/generator"
 	"github.com/cloudfoundry-incubator/executor"
 	executorinit "github.com/cloudfoundry-incubator/executor/initializer"
 	"github.com/cloudfoundry-incubator/garden"
-	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
 	ginkgoconfig "github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
@@ -196,9 +197,9 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 				Context("when running the container", func() {
 					var (
-						runReq   executor.RunRequest
-						volumeId string
-						fileName string
+						runReq       executor.RunRequest
+						volumeId     string
+						fileName     string
 						volumeMounts []executor.VolumeMount
 					)
 
@@ -244,12 +245,11 @@ var _ = Describe("Executor/Garden/Volman", func() {
 							Expect(len(files)).To(Equal(1))
 						})
 
-						/*
 						Context("when a second container using the same volume loads and then unloads", func() {
 							var (
-								runReq2 executor.RunRequest
+								runReq2   executor.RunRequest
 								fileName2 string
-								guid2 string
+								guid2     string
 							)
 							BeforeEach(func() {
 								id, err := uuid.NewV4()
@@ -277,7 +277,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 								Expect(err).NotTo(HaveOccurred())
 								Eventually(containerStatePoller(guid2)).Should(Equal(executor.StateCompleted))
 								Expect(getContainer(guid2).RunResult.Failed).Should(BeFalse())
-								err = executorClient.DeleteContainer(logger, guid)
+								err = executorClient.DeleteContainer(logger, guid2)
 								Expect(err).NotTo(HaveOccurred())
 							})
 							It("can still read files on the mounted volume for the first container", func() {
@@ -287,7 +287,6 @@ var _ = Describe("Executor/Garden/Volman", func() {
 								Expect(len(files)).To(Equal(1))
 							})
 						})
-						*/
 
 					})
 				})
