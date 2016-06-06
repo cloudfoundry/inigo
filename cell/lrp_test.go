@@ -2,6 +2,7 @@ package cell_test
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -30,7 +31,8 @@ var _ = Describe("LRP", func() {
 		archiveFiles        []archive_helper.ArchiveFile
 		fileServerStaticDir string
 
-		runtime ifrit.Process
+		runtime         ifrit.Process
+		archiveFilePath string
 	)
 
 	BeforeEach(func() {
@@ -91,6 +93,109 @@ var _ = Describe("LRP", func() {
 		It("eventually runs", func() {
 			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 			Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
+		})
+
+		Context("when correct checksum information is provided", func() {
+
+			var checksumValue string
+
+			createChecksum := func(algorithm string) {
+				archiveFilePath = filepath.Join(fileServerStaticDir, "lrp.zip")
+				archive_helper.CreateZipArchive(
+					archiveFilePath,
+					archiveFiles,
+				)
+				content, err := ioutil.ReadFile(archiveFilePath)
+				Expect(err).NotTo(HaveOccurred())
+				checksumValue, err = helpers.HexValueForByteArray(algorithm, content)
+				Expect(err).NotTo(HaveOccurred())
+
+				lrp.CachedDependencies[0].ChecksumAlgorithm = algorithm
+				lrp.CachedDependencies[0].ChecksumValue = checksumValue
+			}
+
+			validateLRPDesired := func() {
+				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+				Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
+			}
+
+			Context("for CachedDependency", func() {
+
+				Context("for md5", func() {
+					BeforeEach(func() {
+						createChecksum("md5")
+					})
+
+					It("eventually desires the lrp", func() {
+						validateLRPDesired()
+					})
+				})
+
+				Context("for sha1", func() {
+					BeforeEach(func() {
+						createChecksum("sha1")
+					})
+
+					It("eventually desires the lrp", func() {
+						validateLRPDesired()
+					})
+				})
+
+				Context("for sha256", func() {
+					BeforeEach(func() {
+						createChecksum("sha256")
+					})
+
+					It("eventually desires the lrp", func() {
+						validateLRPDesired()
+					})
+				})
+			})
+
+			Context("when validating checksum for download action", func() {
+
+				createDownloadActionChecksum := func(algorithm string) {
+					createChecksum(algorithm)
+					lrp.Setup = models.WrapAction(&models.DownloadAction{
+						From:              fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+						To:                "/tmp",
+						User:              "vcap",
+						ChecksumAlgorithm: algorithm,
+						ChecksumValue:     checksumValue,
+					})
+				}
+
+				Context("with md5", func() {
+					BeforeEach(func() {
+						createDownloadActionChecksum("md5")
+					})
+
+					It("eventually desires the lrp", func() {
+						validateLRPDesired()
+					})
+				})
+
+				Context("with sha1", func() {
+					BeforeEach(func() {
+						createDownloadActionChecksum("sha1")
+					})
+
+					It("eventually desires the lrp", func() {
+						validateLRPDesired()
+					})
+				})
+
+				Context("with sha256", func() {
+					BeforeEach(func() {
+						createDownloadActionChecksum("sha256")
+					})
+
+					It("eventually desires the lrp", func() {
+						validateLRPDesired()
+					})
+				})
+			})
+
 		})
 
 		Context("when properties are present on the desired LRP", func() {
@@ -524,6 +629,131 @@ var _ = Describe("Crashing LRPs", func() {
 
 				Eventually(crashCount(processGuid, 0)).Should(BeEquivalentTo(1))
 				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+			})
+		})
+	})
+
+	Describe("failed checksum", func() {
+		var lrp *models.DesiredLRP
+
+		desireLRPWithChecksum := func(algorithm string) {
+			lrp = helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
+			lrp.Setup = nil
+			lrp.CachedDependencies = []*models.CachedDependency{{
+				From:              fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+				To:                "/tmp/diego/lrp",
+				Name:              "lrp bits",
+				CacheKey:          "lrp-cache-key",
+				LogSource:         "APP",
+				ChecksumAlgorithm: algorithm,
+				ChecksumValue:     "incorrect_checksum",
+			}}
+			lrp.LegacyDownloadUser = "vcap"
+			lrp.Privileged = true
+			lrp.Action = models.WrapAction(&models.RunAction{
+				User: "vcap",
+				Path: "/tmp/diego/lrp/go-server",
+				Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
+			})
+		}
+
+		Context("for CachedDependencies", func() {
+			Context("with invalid algorithm", func() {
+				It("eventually crashes", func() {
+					desireLRPWithChecksum("invalid_algorithm")
+					err := bbsClient.DesireLRP(logger, lrp)
+					Expect(err).To(HaveOccurred())
+				})
+			})
+
+			Context("when incorrect checksum value is provided", func() {
+				Context("with md5", func() {
+					BeforeEach(func() {
+						desireLRPWithChecksum("md5")
+
+						err := bbsClient.DesireLRP(logger, lrp)
+						Expect(err).NotTo(HaveOccurred())
+					})
+
+					It("eventually crashes", func() {
+						Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateCrashed))
+					})
+				})
+
+				Context("with sha1", func() {
+					BeforeEach(func() {
+						desireLRPWithChecksum("sha1")
+
+						err := bbsClient.DesireLRP(logger, lrp)
+						Expect(err).NotTo(HaveOccurred())
+					})
+
+					It("eventually crashes", func() {
+						Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateCrashed))
+					})
+				})
+
+				Context("with sha256", func() {
+					BeforeEach(func() {
+						desireLRPWithChecksum("sha256")
+
+						err := bbsClient.DesireLRP(logger, lrp)
+						Expect(err).NotTo(HaveOccurred())
+					})
+
+					It("eventually crashes", func() {
+						Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateCrashed))
+					})
+				})
+			})
+		})
+
+		Context("for DownloadAction", func() {
+			createDownloadActionChecksum := func(algorithm string) {
+				desireLRPWithChecksum(algorithm)
+				lrp.Setup = models.WrapAction(&models.DownloadAction{
+					From:              fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+					To:                "/tmp",
+					User:              "vcap",
+					ChecksumAlgorithm: algorithm,
+					ChecksumValue:     "incorrect_checksum",
+				})
+			}
+
+			Context("with md5", func() {
+				BeforeEach(func() {
+					createDownloadActionChecksum("md5")
+					err := bbsClient.DesireLRP(logger, lrp)
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("eventually desires the lrp", func() {
+					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateCrashed))
+				})
+			})
+
+			Context("with sha1", func() {
+				BeforeEach(func() {
+					createDownloadActionChecksum("sha1")
+					err := bbsClient.DesireLRP(logger, lrp)
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("eventually desires the lrp", func() {
+					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateCrashed))
+				})
+			})
+
+			Context("with sha256", func() {
+				BeforeEach(func() {
+					createDownloadActionChecksum("sha256")
+					err := bbsClient.DesireLRP(logger, lrp)
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("eventually desires the lrp", func() {
+					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateCrashed))
+				})
 			})
 		})
 	})

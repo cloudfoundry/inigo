@@ -36,6 +36,19 @@ func TaskStatePoller(logger lager.Logger, client bbs.InternalClient, taskGuid st
 	}
 }
 
+func TaskFailedPoller(logger lager.Logger, client bbs.InternalClient, taskGuid string, task *models.Task) func() bool {
+	return func() bool {
+		rTask, err := client.TaskByGuid(logger, taskGuid)
+		Expect(err).NotTo(HaveOccurred())
+
+		if task != nil {
+			*task = *rTask
+		}
+
+		return rTask.Failed
+	}
+}
+
 func LRPStatePoller(logger lager.Logger, client bbs.InternalClient, processGuid string, lrp *models.ActualLRP) func() string {
 	return func() string {
 		lrpGroups, err := client.ActualLRPGroupsByProcessGuid(logger, processGuid)

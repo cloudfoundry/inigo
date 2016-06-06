@@ -307,32 +307,135 @@ echo should have died by now
 		})
 
 		Context("with a download action", func() {
-			It("downloads the file", func() {
-				expectedTask := helpers.TaskCreateRequest(
+
+			var expectedTask *models.Task
+			var downloadAction *models.DownloadAction
+
+			BeforeEach(func() {
+				downloadAction = &models.DownloadAction{
+					From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "announce.tar.gz"),
+					To:   "/home/vcap/app",
+					User: "vcap",
+				}
+
+				expectedTask = helpers.TaskCreateRequest(
 					guid,
 					models.Serial(
-						&models.DownloadAction{
-							From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "announce.tar.gz"),
-							To:   ".",
-							User: "vcap",
-						},
+						downloadAction,
 						&models.RunAction{
 							User: "vcap",
-							Path: "./announce",
+							Path: "./app/announce",
 						},
 					),
 				)
+			})
 
-				err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+			Context("with no checksum", func() {
+				It("downloads the file", func() {
+					err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
+				})
+			})
 
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
+			Context("with checksum", func() {
+
+				var checksumValue string
+
+				Context("when valid", func() {
+					createChecksum := func(algorithm string) {
+						archiveFilePath := filepath.Join(fileServerStaticDir, "announce.tar.gz")
+						test_helper.CreateTarGZArchive(archiveFilePath, []test_helper.ArchiveFile{
+							{
+								Name: "announce",
+								Body: fmt.Sprintf("#!/bin/sh\n\ncurl %s", inigo_announcement_server.AnnounceURL(guid)),
+								Mode: 0755,
+							},
+						})
+						content, err := ioutil.ReadFile(archiveFilePath)
+						Expect(err).NotTo(HaveOccurred())
+						checksumValue, err = helpers.HexValueForByteArray(algorithm, content)
+						Expect(err).NotTo(HaveOccurred())
+
+						downloadAction.ChecksumAlgorithm = algorithm
+						downloadAction.ChecksumValue = checksumValue
+					}
+
+					It("downloads the file for md5", func() {
+						createChecksum("md5")
+						err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
+					})
+
+					It("downloads the file for sha1", func() {
+						createChecksum("sha1")
+						err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
+					})
+
+					It("downloads the file for sha256", func() {
+						createChecksum("sha256")
+						err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
+					})
+				})
+
+				Context("when invalid", func() {
+
+					It("with incorrect algorithm", func() {
+						downloadAction.ChecksumAlgorithm = "incorrect_algorithm"
+						downloadAction.ChecksumValue = "incorrect_checksum"
+						err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+						Expect(err).To(HaveOccurred())
+					})
+
+					Context("with incorrect checksum value", func() {
+						It("for md5", func() {
+							downloadAction.ChecksumAlgorithm = "md5"
+							downloadAction.ChecksumValue = "incorrect_checksum"
+							err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+							Expect(err).NotTo(HaveOccurred())
+							Eventually(helpers.TaskFailedPoller(logger, bbsClient, expectedTask.TaskGuid, nil)).Should(BeTrue())
+						})
+
+						It("for sha1", func() {
+							downloadAction.ChecksumAlgorithm = "sha1"
+							downloadAction.ChecksumValue = "incorrect_checksum"
+							err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+							Expect(err).NotTo(HaveOccurred())
+							Eventually(helpers.TaskFailedPoller(logger, bbsClient, expectedTask.TaskGuid, nil)).Should(BeTrue())
+						})
+
+						It("for sha256", func() {
+							downloadAction.ChecksumAlgorithm = "sha256"
+							downloadAction.ChecksumValue = "incorrect_checksum"
+							err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+							Expect(err).NotTo(HaveOccurred())
+							Eventually(helpers.TaskFailedPoller(logger, bbsClient, expectedTask.TaskGuid, nil)).Should(BeTrue())
+						})
+					})
+				})
 			})
 		})
 
 		Context("as a cached dependency", func() {
-			It("downloads and bind mounts the file", func() {
-				expectedTask := helpers.TaskCreateRequest(
+
+			var expectedTask *models.Task
+			var cachedDependency *models.CachedDependency
+
+			BeforeEach(func() {
+				cachedDependency = &models.CachedDependency{
+					Name:      "Announce Tar",
+					From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "announce.tar.gz"),
+					To:        "/home/vcap/app",
+					CacheKey:  "announce-tar",
+					LogSource: "announce-tar",
+				}
+
+				expectedTask = helpers.TaskCreateRequest(
 					guid,
 					&models.RunAction{
 						User: "vcap",
@@ -341,22 +444,104 @@ echo should have died by now
 				)
 
 				expectedTask.CachedDependencies = []*models.CachedDependency{
-					{
-						Name:      "Announce Tar",
-						From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "announce.tar.gz"),
-						To:        "/home/vcap/app",
-						CacheKey:  "announce-tar",
-						LogSource: "announce-tar",
-					},
+					cachedDependency,
 				}
 
 				expectedTask.Privileged = true
 				expectedTask.LegacyDownloadUser = "vcap"
+			})
 
-				err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+			Context("with no checksum", func() {
+				It("downloads the file", func() {
+					err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(inigo_announcement_server.Announcements).Should(ContainElement(expectedTask.TaskGuid))
+				})
+			})
 
-				Expect(err).NotTo(HaveOccurred())
-				Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
+			Context("with checksum", func() {
+
+				var checksumValue string
+
+				Context("when valid", func() {
+					createChecksum := func(algorithm string) {
+						archiveFilePath := filepath.Join(fileServerStaticDir, "announce.tar.gz")
+						test_helper.CreateTarGZArchive(archiveFilePath, []test_helper.ArchiveFile{
+							{
+								Name: "announce",
+								Body: fmt.Sprintf("#!/bin/sh\n\ncurl %s", inigo_announcement_server.AnnounceURL(guid)),
+								Mode: 0755,
+							},
+						})
+						content, err := ioutil.ReadFile(archiveFilePath)
+						Expect(err).NotTo(HaveOccurred())
+						checksumValue, err = helpers.HexValueForByteArray(algorithm, content)
+						Expect(err).NotTo(HaveOccurred())
+
+						cachedDependency.ChecksumAlgorithm = algorithm
+						cachedDependency.ChecksumValue = checksumValue
+					}
+
+					It("downloads the file for md5", func() {
+						createChecksum("md5")
+						err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+						Expect(err).NotTo(HaveOccurred())
+						expectedGuid := expectedTask.TaskGuid
+						Eventually(inigo_announcement_server.Announcements).Should(ContainElement(expectedGuid))
+					})
+
+					It("downloads the file for sha1", func() {
+						createChecksum("sha1")
+						err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+						Expect(err).NotTo(HaveOccurred())
+						expectedGuid := expectedTask.TaskGuid
+						Eventually(inigo_announcement_server.Announcements).Should(ContainElement(expectedGuid))
+					})
+
+					It("downloads the file for sha256", func() {
+						createChecksum("sha256")
+						err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+						Expect(err).NotTo(HaveOccurred())
+						expectedGuid := expectedTask.TaskGuid
+						Eventually(inigo_announcement_server.Announcements).Should(ContainElement(expectedGuid))
+					})
+				})
+
+				Context("when invalid", func() {
+
+					It("with incorrect algorithm", func() {
+						cachedDependency.ChecksumAlgorithm = "incorrect_algorithm"
+						cachedDependency.ChecksumValue = "incorrect_checksum"
+						err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+						Expect(err).To(HaveOccurred())
+					})
+
+					Context("with incorrect checksum value", func() {
+						It("for md5", func() {
+							cachedDependency.ChecksumAlgorithm = "md5"
+							cachedDependency.ChecksumValue = "incorrect_checksum"
+							err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+							Expect(err).NotTo(HaveOccurred())
+							Eventually(helpers.TaskFailedPoller(logger, bbsClient, expectedTask.TaskGuid, nil)).Should(BeTrue())
+						})
+
+						It("for sha1", func() {
+							cachedDependency.ChecksumAlgorithm = "sha1"
+							cachedDependency.ChecksumValue = "incorrect_checksum"
+							err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+							Expect(err).NotTo(HaveOccurred())
+							Eventually(helpers.TaskFailedPoller(logger, bbsClient, expectedTask.TaskGuid, nil)).Should(BeTrue())
+						})
+
+						It("for sha256", func() {
+							cachedDependency.ChecksumAlgorithm = "sha256"
+							cachedDependency.ChecksumValue = "incorrect_checksum"
+							err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+							Expect(err).NotTo(HaveOccurred())
+							Eventually(helpers.TaskFailedPoller(logger, bbsClient, expectedTask.TaskGuid, nil)).Should(BeTrue())
+						})
+					})
+				})
 			})
 		})
 	})
@@ -418,7 +603,7 @@ echo should have died by now
 
 			Eventually(gotRequest).Should(BeClosed())
 
-			Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
+			Eventually(inigo_announcement_server.Announcements).Should(ContainElement(expectedTask.TaskGuid))
 		})
 	})
 
