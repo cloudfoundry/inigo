@@ -14,16 +14,12 @@ import (
 )
 
 var _ = Describe("Tasks as specific user", func() {
-	var (
-		cellProcess ifrit.Process
-	)
-
-	var fileServerStaticDir string
+	var cellProcess ifrit.Process
 
 	BeforeEach(func() {
 		var fileServerRunner ifrit.Runner
 
-		fileServerRunner, fileServerStaticDir = componentMaker.FileServer()
+		fileServerRunner, _ = componentMaker.FileServer()
 
 		cellGroup := grouper.Members{
 			{"file-server", fileServerRunner},

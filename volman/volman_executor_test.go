@@ -14,7 +14,6 @@ import (
 	"github.com/cloudfoundry-incubator/cf-test-helpers/generator"
 	"github.com/cloudfoundry-incubator/executor"
 	executorinit "github.com/cloudfoundry-incubator/executor/initializer"
-	"github.com/cloudfoundry-incubator/garden"
 	. "github.com/onsi/ginkgo"
 	ginkgoconfig "github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
@@ -28,12 +27,10 @@ import (
 
 // these tests could eventually be folded into ../executor/executor_garden_test.go
 var _ = Describe("Executor/Garden/Volman", func() {
-
 	var (
 		executorClient executor.Client
 		process        ifrit.Process
 		runner         ifrit.Runner
-		gardenCapacity garden.Capacity
 		cachePath      string
 		config         executorinit.Configuration
 		logger         lager.Logger
@@ -72,14 +69,13 @@ var _ = Describe("Executor/Garden/Volman", func() {
 	})
 
 	Context("when volman is not correctly configured", func() {
-
 		BeforeEach(func() {
 			var invalidDriverPath = []string{""}
 			config.VolmanDriverPaths = invalidDriverPath
 
 			executorClient, runner = initializeExecutor(logger, config)
 
-			gardenCapacity, err = gardenClient.Capacity()
+			_, err = gardenClient.Capacity()
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -96,14 +92,15 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		})
 
 		Context("when allocating a container without any volman mounts", func() {
-			JustBeforeEach(func() {
-				process = ginkgomon.Invoke(runner)
-			})
 			var (
 				guid               string
 				allocationRequest  executor.AllocationRequest
 				allocationFailures []executor.AllocationFailure
 			)
+
+			JustBeforeEach(func() {
+				process = ginkgomon.Invoke(runner)
+			})
 
 			BeforeEach(func() {
 				id, err := uuid.NewV4()
@@ -147,11 +144,10 @@ var _ = Describe("Executor/Garden/Volman", func() {
 	})
 
 	Context("when volman is correctly configured", func() {
-
 		BeforeEach(func() {
 			executorClient, runner = initializeExecutor(logger, config)
 
-			gardenCapacity, err = gardenClient.Capacity()
+			_, err = gardenClient.Capacity()
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -168,7 +164,6 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		})
 
 		Context("when running an executor in front of garden and volman", func() {
-
 			BeforeEach(func() {
 				process = ginkgomon.Invoke(runner)
 			})

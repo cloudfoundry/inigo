@@ -21,7 +21,6 @@ import (
 var _ = Describe("Tasks", func() {
 	var (
 		cellProcess, plumbing ifrit.Process
-		fileServerStaticDir   string
 		logger                lager.Logger
 		bbsClient             bbs.InternalClient
 	)
@@ -29,7 +28,7 @@ var _ = Describe("Tasks", func() {
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("volman-tasks")
 		var fileServerRunner ifrit.Runner
-		fileServerRunner, fileServerStaticDir = componentMaker.FileServer()
+		fileServerRunner, _ = componentMaker.FileServer()
 
 		plumbing = ginkgomon.Invoke(grouper.NewOrdered(os.Kill, grouper.Members{
 			{"initial-services", grouper.NewParallel(os.Kill, grouper.Members{

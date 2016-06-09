@@ -22,13 +22,11 @@ var _ = Describe("Evacuation", func() {
 	var (
 		runtime ifrit.Process
 
-		cellAID           string
-		cellAExecutorAddr string
-		cellARepAddr      string
+		cellAID      string
+		cellARepAddr string
 
-		cellBID           string
-		cellBExecutorAddr string
-		cellBRepAddr      string
+		cellBID      string
+		cellBRepAddr string
 
 		cellARepRunner *ginkgomon.Runner
 		cellBRepRunner *ginkgomon.Runner
@@ -37,12 +35,10 @@ var _ = Describe("Evacuation", func() {
 		cellB ifrit.Process
 
 		processGuid string
-		appId       string
 	)
 
 	BeforeEach(func() {
 		processGuid = helpers.GenerateGuid()
-		appId = helpers.GenerateGuid()
 
 		fileServer, fileServerStaticDir := componentMaker.FileServer()
 
@@ -56,9 +52,6 @@ var _ = Describe("Evacuation", func() {
 
 		cellAID = "cell-a"
 		cellBID = "cell-b"
-
-		cellAExecutorAddr = fmt.Sprintf("127.0.0.1:%d", 13100+GinkgoParallelNode())
-		cellBExecutorAddr = fmt.Sprintf("127.0.0.1:%d", 13200+GinkgoParallelNode())
 
 		cellARepAddr = fmt.Sprintf("0.0.0.0:%d", 14100+GinkgoParallelNode())
 		cellBRepAddr = fmt.Sprintf("0.0.0.0:%d", 14200+GinkgoParallelNode())
