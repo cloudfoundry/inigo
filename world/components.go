@@ -24,6 +24,7 @@ import (
 	gorouterconfig "github.com/cloudfoundry/gorouter/config"
 	"github.com/cloudfoundry/gunk/diegonats"
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
@@ -95,7 +96,9 @@ type ComponentMaker struct {
 
 	VolmanDriverConfigDir string
 
-	UseSQL bool
+	DBDriverName           string
+	DBBaseConnectionString string
+	UseSQL                 bool
 }
 
 func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
@@ -132,7 +135,7 @@ func (maker ComponentMaker) SQL(argv ...string) ifrit.Runner {
 	return ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
 		defer ginkgo.GinkgoRecover()
 
-		db, err := sql.Open("mysql", "diego:diego_password@/")
+		db, err := sql.Open(maker.DBDriverName, maker.DBBaseConnectionString)
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(db.Ping).ShouldNot(HaveOccurred())
 
@@ -140,17 +143,22 @@ func (maker ComponentMaker) SQL(argv ...string) ifrit.Runner {
 		Expect(err).NotTo(HaveOccurred())
 
 		sqlDBName := fmt.Sprintf("diego_%d", ginkgo.GinkgoParallelNode())
-		db, err = sql.Open("mysql", fmt.Sprintf("diego:diego_password@/%s", sqlDBName))
+		db, err = sql.Open(maker.DBDriverName, fmt.Sprintf("%s%s", maker.DBBaseConnectionString, sqlDBName))
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(db.Ping).ShouldNot(HaveOccurred())
+
+		Expect(db.Close()).To(Succeed())
 
 		close(ready)
 
 		select {
 		case <-signals:
-			_, err := db.Exec(fmt.Sprintf("DROP DATABASE %s", sqlDBName))
+			db, err := sql.Open(maker.DBDriverName, maker.DBBaseConnectionString)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(db.Close()).To(Succeed())
+			Eventually(db.Ping).ShouldNot(HaveOccurred())
+
+			_, err = db.Exec(fmt.Sprintf("DROP DATABASE %s", sqlDBName))
+			Expect(err).NotTo(HaveOccurred())
 		}
 
 		return nil
@@ -256,7 +264,7 @@ func (maker ComponentMaker) BBS(argv ...string) ifrit.Runner {
 	if maker.UseSQL {
 		bbsArgs = append(bbsArgs,
 			"-databaseConnectionString", maker.Addresses.SQL,
-			"-databaseDriver", "mysql",
+			"-databaseDriver", maker.DBDriverName,
 		)
 	}
 
