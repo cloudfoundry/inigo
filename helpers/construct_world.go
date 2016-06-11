@@ -35,12 +35,14 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	useSQL := dbDriverName != ""
 
 	var dbBaseConnectionString string
-	if dbDriverName == "postgres" {
-		dbBaseConnectionString = "postgres://diego:diego_pw@127.0.0.1/"
-	} else if dbDriverName == "mysql" {
-		dbBaseConnectionString = "diego:diego_password@/"
-	} else {
-		panic("Unsupported driver")
+	if useSQL {
+		if dbDriverName == "postgres" {
+			dbBaseConnectionString = "postgres://diego:diego_pw@127.0.0.1/"
+		} else if dbDriverName == "mysql" {
+			dbBaseConnectionString = "diego:diego_password@/"
+		} else {
+			panic(fmt.Sprintf("Unsupported Driver: %s", dbDriverName))
+		}
 	}
 
 	if gardenGraphPath == "" {
