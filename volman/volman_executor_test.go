@@ -202,7 +202,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 						fileName = fmt.Sprintf("testfile-%d.txt", time.Now().UnixNano())
 						volumeId = fmt.Sprintf("some-volumeID-%d", time.Now().UnixNano())
 						someConfig := map[string]interface{}{"volume_id": volumeId}
-						volumeMounts = []executor.VolumeMount{executor.VolumeMount{ContainerPath: "/testmount", Driver: "fakedriver", VolumeId: volumeId, Config: someConfig, Mode: executor.BindMountModeRW}}
+						volumeMounts = []executor.VolumeMount{executor.VolumeMount{ContainerPath: "/testmount", Driver: "localdriver", VolumeId: volumeId, Config: someConfig, Mode: executor.BindMountModeRW}}
 						runInfo := executor.RunInfo{
 							VolumeMounts: volumeMounts,
 							Privileged:   true,

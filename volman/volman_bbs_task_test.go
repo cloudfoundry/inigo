@@ -76,7 +76,7 @@ var _ = Describe("Tasks", func() {
 					},
 				)
 				expectedTask.VolumeMounts = []*models.VolumeMount{
-					generateVolumeObject("fakedriver"),
+					generateVolumeObject("localdriver"),
 				}
 				expectedTask.Privileged = true
 
@@ -157,7 +157,7 @@ var _ = Describe("Tasks", func() {
 
 				expectedTask.VolumeMounts = []*models.VolumeMount{
 					generateVolumeObject("non-existent-driver"),
-					generateVolumeObject("fakedriver"),
+					generateVolumeObject("localdriver"),
 				}
 
 				expectedTask.Privileged = true

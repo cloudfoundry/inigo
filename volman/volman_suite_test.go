@@ -27,11 +27,10 @@ var (
 	gardenProcess ifrit.Process
 	gardenClient  garden.Client
 
-	fakeDriverDir       string
 	volmanClient        volman.Manager
 	driverSyncer        ifrit.Runner
 	driverSyncerProcess ifrit.Process
-	fakedriverProcess   ifrit.Process
+	localDriverProcess   ifrit.Process
 
 	logger lager.Logger
 )
@@ -61,7 +60,7 @@ var _ = BeforeEach(func() {
 	gardenProcess = ginkgomon.Invoke(componentMaker.Garden())
 	gardenClient = componentMaker.GardenClient()
 
-	fakedriverProcess = ginkgomon.Invoke(componentMaker.VolmanDriver(logger))
+	localDriverProcess = ginkgomon.Invoke(componentMaker.VolmanDriver(logger))
 
 	volmanClient, driverSyncer = componentMaker.VolmanClient(logger)
 	driverSyncerProcess = ginkgomon.Invoke(driverSyncer)
@@ -70,7 +69,7 @@ var _ = BeforeEach(func() {
 var _ = AfterEach(func() {
 	destroyContainerErrors := helpers.CleanupGarden(gardenClient)
 
-	helpers.StopProcesses(gardenProcess, driverSyncerProcess, fakedriverProcess)
+	helpers.StopProcesses(gardenProcess, driverSyncerProcess, localDriverProcess)
 
 	Expect(destroyContainerErrors).To(
 		BeEmpty(),
@@ -97,7 +96,7 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	builtExecutables["garden"], err = gexec.BuildIn(os.Getenv("GARDEN_GOPATH"), gardenrunner.GardenServerPackageName(), "-race", "-a", "-tags", "daemon")
 	Expect(err).NotTo(HaveOccurred())
 
-	builtExecutables["fake-driver"], err = gexec.Build("github.com/cloudfoundry-incubator/volman/fakedriver/cmd/fakedriver", "-race")
+	builtExecutables["local-driver"], err = gexec.Build("github.com/cloudfoundry-incubator/localdriver/cmd/localdriver", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["auctioneer"], err = gexec.BuildIn(os.Getenv("AUCTIONEER_GOPATH"), "github.com/cloudfoundry-incubator/auctioneer/cmd/auctioneer", "-race")

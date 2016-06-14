@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Given garden, volman, fakedriver", func() {
+var _ = Describe("Given garden, volman, localdriver", func() {
 
 	var (
 		// volmanClient        volman.Manager
@@ -22,7 +22,7 @@ var _ = Describe("Given garden, volman, fakedriver", func() {
 	Context("and a mounted volume", func() {
 		BeforeEach(func() {
 			someConfig := map[string]interface{}{"volume_id": "someID"}
-			mountPointResponse, err := volmanClient.Mount(logger, "fakedriver", "someVolume", someConfig)
+			mountPointResponse, err := volmanClient.Mount(logger, "localdriver", "someVolume", someConfig)
 			Expect(err).NotTo(HaveOccurred())
 			mountPoint = mountPointResponse.Path
 		})

@@ -97,7 +97,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 
 			lrp.VolumeMounts = []*models.VolumeMount{
 				&models.VolumeMount{
-					Driver:        "fakedriver",
+					Driver:        "localdriver",
 					VolumeId:      volumeId,
 					ContainerPath: "/testmount",
 					Mode:          models.BindMountMode_RW,
@@ -166,7 +166,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 			BeforeEach(func() {
 				lrp.VolumeMounts = []*models.VolumeMount{
 					generateVolumeObject("non-existent-driver"),
-					generateVolumeObject("fakedriver"),
+					generateVolumeObject("localdriver"),
 				}
 			})
 

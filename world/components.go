@@ -592,15 +592,15 @@ func (maker ComponentMaker) VolmanClient(logger lager.Logger) (volman.Manager, i
 func (maker ComponentMaker) VolmanDriver(logger lager.Logger) ifrit.Runner {
 	debugServerAddress := fmt.Sprintf("0.0.0.0:%d", 9850+ginkgo.GinkgoParallelNode())
 	fakeDriverRunner := ginkgomon.New(ginkgomon.Config{
-		Name: "fakedriverServer",
+		Name: "local-driver",
 		Command: exec.Command(
-			maker.Artifacts.Executables["fake-driver"],
+			maker.Artifacts.Executables["local-driver"],
 			"-listenAddr", maker.Addresses.FakeVolmanDriver,
 			"-debugAddr", debugServerAddress,
 			"-mountDir", maker.VolmanDriverConfigDir,
 			"-driversPath", path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
 		),
-		StartCheck: "fakedriverServer.started",
+		StartCheck: "local-driver-server.started",
 	})
 
 	return fakeDriverRunner

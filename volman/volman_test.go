@@ -5,13 +5,13 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Given volman and fakedriver", func() {
+var _ = Describe("Given volman and localdriver", func() {
 
 	var driverId string
 	var volumeId string
 
 	BeforeEach(func() {
-		driverId = "fakedriver"
+		driverId = "localdriver"
 		volumeId = "test-volume"
 	})
 
