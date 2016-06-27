@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/cloudfoundry-incubator/bbs/models"
+	"code.cloudfoundry.org/bbs/models"
 	"github.com/cloudfoundry-incubator/inigo/helpers"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

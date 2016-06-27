@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cloudfoundry-incubator/bbs"
+	"code.cloudfoundry.org/bbs"
 	"github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"

@@ -3,8 +3,8 @@ package helpers
 import (
 	"fmt"
 
-	"github.com/cloudfoundry-incubator/bbs"
-	"github.com/cloudfoundry-incubator/bbs/models"
+	"code.cloudfoundry.org/bbs"
+	"code.cloudfoundry.org/bbs/models"
 	"github.com/cloudfoundry-incubator/routing-info/cfroutes"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-golang/lager"

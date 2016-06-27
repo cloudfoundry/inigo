@@ -30,7 +30,7 @@ var (
 	volmanClient        volman.Manager
 	driverSyncer        ifrit.Runner
 	driverSyncerProcess ifrit.Process
-	localDriverProcess   ifrit.Process
+	localDriverProcess  ifrit.Process
 
 	logger lager.Logger
 )
@@ -108,7 +108,7 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	builtExecutables["rep"], err = gexec.BuildIn(os.Getenv("REP_GOPATH"), "github.com/cloudfoundry-incubator/rep/cmd/rep", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	builtExecutables["bbs"], err = gexec.BuildIn(os.Getenv("BBS_GOPATH"), "github.com/cloudfoundry-incubator/bbs/cmd/bbs", "-race")
+	builtExecutables["bbs"], err = gexec.BuildIn(os.Getenv("BBS_GOPATH"), "code.cloudfoundry.org/bbs/cmd/bbs", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["file-server"], err = gexec.BuildIn(os.Getenv("FILE_SERVER_GOPATH"), "github.com/cloudfoundry-incubator/file-server/cmd/file-server", "-race")
