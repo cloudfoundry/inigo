@@ -135,11 +135,11 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	builtExecutables["router"], err = gexec.BuildIn(os.Getenv("ROUTER_GOPATH"), "github.com/cloudfoundry/gorouter", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	builtExecutables["ssh-proxy"], err = gexec.Build("github.com/cloudfoundry-incubator/diego-ssh/cmd/ssh-proxy", "-race")
+	builtExecutables["ssh-proxy"], err = gexec.Build("code.cloudfoundry.org/diego-ssh/cmd/ssh-proxy", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	os.Setenv("CGO_ENABLED", "0")
-	builtExecutables["sshd"], err = gexec.Build("github.com/cloudfoundry-incubator/diego-ssh/cmd/sshd", "-a", "-installsuffix", "static")
+	builtExecutables["sshd"], err = gexec.Build("code.cloudfoundry.org/diego-ssh/cmd/sshd", "-a", "-installsuffix", "static")
 	os.Unsetenv("CGO_ENABLED")
 	Expect(err).NotTo(HaveOccurred())
 

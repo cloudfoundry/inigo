@@ -120,7 +120,7 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	builtExecutables["router"], err = gexec.BuildIn(os.Getenv("ROUTER_GOPATH"), "github.com/cloudfoundry/gorouter", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	builtExecutables["ssh-proxy"], err = gexec.Build("github.com/cloudfoundry-incubator/diego-ssh/cmd/ssh-proxy", "-race")
+	builtExecutables["ssh-proxy"], err = gexec.Build("code.cloudfoundry.org/diego-ssh/cmd/ssh-proxy", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	return builtExecutables

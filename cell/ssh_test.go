@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 
 	"code.cloudfoundry.org/bbs/models"
+	ssh_helpers "code.cloudfoundry.org/diego-ssh/helpers"
+	"code.cloudfoundry.org/diego-ssh/routes"
 	"code.cloudfoundry.org/inigo/helpers"
-	ssh_helpers "github.com/cloudfoundry-incubator/diego-ssh/helpers"
-	"github.com/cloudfoundry-incubator/diego-ssh/routes"
 	"github.com/pivotal-golang/archiver/compressor"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
