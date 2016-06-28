@@ -1,5 +1,7 @@
 # Inigo
 
+**Note**: This repository should be imported as `code.cloudfoundry.org/inigo`.
+
 Inigo is the integration test suite for Diego, the new container management
 system for Cloud Foundry. Learn more about Diego and its components at
 [diego-design-notes](https://github.com/cloudfoundry/diego-design-notes)
