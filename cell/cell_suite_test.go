@@ -149,10 +149,10 @@ func CompileTestedExecutables() world.BuiltExecutables {
 func BuildLifecycles() world.BuiltLifecycles {
 	builtLifecycles := world.BuiltLifecycles{}
 
-	builderPath, err := gexec.BuildIn(os.Getenv("BUILDPACK_APP_LIFECYCLE_GOPATH"), "github.com/cloudfoundry-incubator/buildpack_app_lifecycle/builder", "-race")
+	builderPath, err := gexec.BuildIn(os.Getenv("BUILDPACK_APP_LIFECYCLE_GOPATH"), "code.cloudfoundry.org/buildpackapplifecycle/builder", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	launcherPath, err := gexec.BuildIn(os.Getenv("BUILDPACK_APP_LIFECYCLE_GOPATH"), "github.com/cloudfoundry-incubator/buildpack_app_lifecycle/launcher", "-race")
+	launcherPath, err := gexec.BuildIn(os.Getenv("BUILDPACK_APP_LIFECYCLE_GOPATH"), "code.cloudfoundry.org/buildpackapplifecycle/launcher", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	healthcheckPath, err := gexec.Build("code.cloudfoundry.org/healthcheck/cmd/healthcheck", "-race")
