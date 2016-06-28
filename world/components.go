@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs"
+	"code.cloudfoundry.org/consuladapter"
+	"code.cloudfoundry.org/consuladapter/consulrunner"
 	"github.com/cloudfoundry-incubator/candiedyaml"
-	"github.com/cloudfoundry-incubator/consuladapter"
-	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
 	"github.com/cloudfoundry-incubator/garden"
 	gardenclient "github.com/cloudfoundry-incubator/garden/client"
 	gardenconnection "github.com/cloudfoundry-incubator/garden/client/connection"

@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cloudfoundry-incubator/consuladapter/consulrunner"
+	"code.cloudfoundry.org/consuladapter/consulrunner"
 	"github.com/cloudfoundry-incubator/diego-ssh/keys"
 	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/nu7hatch/gouuid"
