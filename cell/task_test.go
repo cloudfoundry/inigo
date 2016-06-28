@@ -15,9 +15,9 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/inigo/helpers"
+	"code.cloudfoundry.org/inigo/inigo_announcement_server"
 	"github.com/cloudfoundry-incubator/garden"
-	"github.com/cloudfoundry-incubator/inigo/helpers"
-	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"

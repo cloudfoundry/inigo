@@ -10,7 +10,7 @@ import (
 	"code.cloudfoundry.org/auction/auctiontypes"
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
-	"github.com/cloudfoundry-incubator/inigo/helpers"
+	"code.cloudfoundry.org/inigo/helpers"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-golang/lager"
@@ -18,7 +18,7 @@ import (
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
 
-	"github.com/cloudfoundry-incubator/inigo/fixtures"
+	"code.cloudfoundry.org/inigo/fixtures"
 	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 )
 

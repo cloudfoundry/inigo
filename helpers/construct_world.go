@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 
 	"code.cloudfoundry.org/consuladapter/consulrunner"
+	"code.cloudfoundry.org/inigo/world"
 	"github.com/cloudfoundry-incubator/diego-ssh/keys"
-	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/nu7hatch/gouuid"
 
 	"github.com/onsi/ginkgo/config"

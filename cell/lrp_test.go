@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
-	"github.com/cloudfoundry-incubator/inigo/fixtures"
-	"github.com/cloudfoundry-incubator/inigo/helpers"
+	"code.cloudfoundry.org/inigo/fixtures"
+	"code.cloudfoundry.org/inigo/helpers"
 	"github.com/cloudfoundry-incubator/rep"
 	"github.com/cloudfoundry-incubator/routing-info/cfroutes"
 	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"

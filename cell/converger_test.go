@@ -6,8 +6,8 @@ import (
 	"syscall"
 
 	"code.cloudfoundry.org/bbs/models"
-	"github.com/cloudfoundry-incubator/inigo/fixtures"
-	"github.com/cloudfoundry-incubator/inigo/helpers"
+	"code.cloudfoundry.org/inigo/fixtures"
+	"code.cloudfoundry.org/inigo/helpers"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"

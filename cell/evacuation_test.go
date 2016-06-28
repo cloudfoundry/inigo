@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 
 	"code.cloudfoundry.org/bbs/models"
-	"github.com/cloudfoundry-incubator/inigo/fixtures"
-	"github.com/cloudfoundry-incubator/inigo/helpers"
+	"code.cloudfoundry.org/inigo/fixtures"
+	"code.cloudfoundry.org/inigo/helpers"
 	"github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"

@@ -19,11 +19,11 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 
 	"code.cloudfoundry.org/bbs"
+	"code.cloudfoundry.org/inigo/gardenrunner"
+	"code.cloudfoundry.org/inigo/helpers"
+	"code.cloudfoundry.org/inigo/inigo_announcement_server"
+	"code.cloudfoundry.org/inigo/world"
 	"github.com/cloudfoundry-incubator/garden"
-	"github.com/cloudfoundry-incubator/inigo/gardenrunner"
-	"github.com/cloudfoundry-incubator/inigo/helpers"
-	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
-	"github.com/cloudfoundry-incubator/inigo/world"
 	"github.com/cloudfoundry/gunk/diegonats"
 )
 
@@ -155,7 +155,7 @@ func BuildLifecycles() world.BuiltLifecycles {
 	launcherPath, err := gexec.BuildIn(os.Getenv("BUILDPACK_APP_LIFECYCLE_GOPATH"), "github.com/cloudfoundry-incubator/buildpack_app_lifecycle/launcher", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	healthcheckPath, err := gexec.Build("github.com/cloudfoundry-incubator/healthcheck/cmd/healthcheck", "-race")
+	healthcheckPath, err := gexec.Build("code.cloudfoundry.org/healthcheck/cmd/healthcheck", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	lifecycleDir, err := ioutil.TempDir("", "lifecycle-dir")

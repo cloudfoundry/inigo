@@ -9,7 +9,7 @@ import (
 )
 
 func GoServerApp() []archive_helper.ArchiveFile {
-	serverPath, err := gexec.Build("github.com/cloudfoundry-incubator/inigo/fixtures/go-server")
+	serverPath, err := gexec.Build("code.cloudfoundry.org/inigo/fixtures/go-server")
 	Expect(err).NotTo(HaveOccurred())
 
 	contents, err := ioutil.ReadFile(serverPath)

@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"code.cloudfoundry.org/bbs/models"
-	"github.com/cloudfoundry-incubator/inigo/helpers"
-	"github.com/cloudfoundry-incubator/inigo/inigo_announcement_server"
+	"code.cloudfoundry.org/inigo/helpers"
+	"code.cloudfoundry.org/inigo/inigo_announcement_server"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
