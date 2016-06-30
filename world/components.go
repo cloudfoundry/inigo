@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs"
+	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
 	"code.cloudfoundry.org/inigo/gardenrunner"
@@ -28,7 +29,6 @@ import (
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"

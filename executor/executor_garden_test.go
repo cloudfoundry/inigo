@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/executor/gardenhealth"
 	executorinit "code.cloudfoundry.org/executor/initializer"
@@ -19,7 +20,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
-	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
