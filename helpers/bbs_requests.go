@@ -5,9 +5,9 @@ import (
 
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry-incubator/routing-info/cfroutes"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-golang/lager"
 )
 
 const defaultDomain = "inigo"
