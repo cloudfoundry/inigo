@@ -9,12 +9,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"

@@ -3,9 +3,9 @@ package fixtures
 import (
 	"io/ioutil"
 
+	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
-	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 )
 
 func GoServerApp() []archive_helper.ArchiveFile {

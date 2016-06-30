@@ -7,11 +7,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"code.cloudfoundry.org/archiver/compressor"
 	"code.cloudfoundry.org/bbs/models"
 	ssh_helpers "code.cloudfoundry.org/diego-ssh/helpers"
 	"code.cloudfoundry.org/diego-ssh/routes"
 	"code.cloudfoundry.org/inigo/helpers"
-	"github.com/pivotal-golang/archiver/compressor"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"

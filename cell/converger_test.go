@@ -12,9 +12,9 @@ import (
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
 
+	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 )
 
 var _ = Describe("Convergence to desired state", func() {

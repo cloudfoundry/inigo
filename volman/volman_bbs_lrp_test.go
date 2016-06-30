@@ -18,8 +18,8 @@ import (
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
 
+	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/inigo/fixtures"
-	archive_helper "github.com/pivotal-golang/archiver/extractor/test_helper"
 )
 
 var _ = Describe("LRPs with volume mounts", func() {

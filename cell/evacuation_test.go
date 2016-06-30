@@ -6,10 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
-	"github.com/pivotal-golang/archiver/extractor/test_helper"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
