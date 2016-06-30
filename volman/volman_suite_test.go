@@ -8,6 +8,7 @@ import (
 	"code.cloudfoundry.org/inigo/gardenrunner"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/inigo/world"
+	"code.cloudfoundry.org/localip"
 	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry-incubator/volman"
 	. "github.com/onsi/ginkgo"
@@ -16,7 +17,6 @@ import (
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/ginkgoreporter"
 	"github.com/pivotal-golang/lager/lagertest"
-	"github.com/pivotal-golang/localip"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
