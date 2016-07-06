@@ -19,20 +19,17 @@ var _ = Describe("Task Lifecycle", func() {
 	var (
 		auctioneerProcess ifrit.Process
 		cellProcess       ifrit.Process
-		convergerProcess  ifrit.Process
 	)
 
 	BeforeEach(func() {
 		auctioneerProcess = nil
 		cellProcess = nil
-		convergerProcess = nil
 	})
 
 	AfterEach(func() {
 		helpers.StopProcesses(
 			auctioneerProcess,
 			cellProcess,
-			convergerProcess,
 		)
 	})
 
@@ -160,13 +157,6 @@ var _ = Describe("Task Lifecycle", func() {
 			})
 
 			Context("when a converger is running", func() {
-				BeforeEach(func() {
-					convergerProcess = ginkgomon.Invoke(componentMaker.Converger(
-						"-convergeRepeatInterval", "1s",
-						"-kickTaskDuration", "1s",
-					))
-				})
-
 				Context("after the task starts", func() {
 					JustBeforeEach(func() {
 						Eventually(inigo_announcement_server.Announcements).Should(ContainElement(taskGuid))
@@ -262,11 +252,6 @@ exit 0
 
 	Context("when an auctioneer is not running", func() {
 		BeforeEach(func() {
-			convergerProcess = ginkgomon.Invoke(componentMaker.Converger(
-				"-convergeRepeatInterval", "1s",
-				"-kickTaskDuration", "1s",
-			))
-
 			cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 				{"rep", componentMaker.Rep()},
 			}))
@@ -307,13 +292,6 @@ exit 0
 	})
 
 	Context("when a very impatient converger is running", func() {
-		BeforeEach(func() {
-			convergerProcess = ginkgomon.Invoke(componentMaker.Converger(
-				"-convergeRepeatInterval", "1s",
-				"-expirePendingTaskDuration", "1s",
-			))
-		})
-
 		Context("and a task is desired", func() {
 			var taskGuid string
 

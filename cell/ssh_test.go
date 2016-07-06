@@ -64,7 +64,6 @@ var _ = Describe("SSH", func() {
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
 			{"rep", componentMaker.Rep()},
-			{"converger", componentMaker.Converger()},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 			{"ssh-proxy", componentMaker.SSHProxy()},

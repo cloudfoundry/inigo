@@ -44,7 +44,6 @@ var _ = Describe("LRP", func() {
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
 			{"rep", componentMaker.Rep()},
-			{"converger", componentMaker.Converger()},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 		}))
@@ -576,9 +575,6 @@ var _ = Describe("Crashing LRPs", func() {
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
 			{"rep", componentMaker.Rep()},
-			{"converger", componentMaker.Converger(
-				"-convergeRepeatInterval", "1s",
-			)},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 		}))

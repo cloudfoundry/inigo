@@ -45,7 +45,6 @@ var _ = Describe("Evacuation", func() {
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
-			{"converger", componentMaker.Converger("-convergeRepeatInterval", "1s")},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 		}))

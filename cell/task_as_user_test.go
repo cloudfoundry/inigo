@@ -25,7 +25,6 @@ var _ = Describe("Tasks as specific user", func() {
 			{"file-server", fileServerRunner},
 			{"rep", componentMaker.Rep("-memoryMB", "1024")},
 			{"auctioneer", componentMaker.Auctioneer()},
-			{"converger", componentMaker.Converger()},
 		}
 		cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, cellGroup))
 

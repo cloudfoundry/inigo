@@ -23,7 +23,6 @@ var _ = Describe("Convergence to desired state", func() {
 
 		auctioneer ifrit.Process
 		rep        ifrit.Process
-		converger  ifrit.Process
 
 		appId       string
 		processGuid string
@@ -59,7 +58,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 	AfterEach(func() {
 		By("Stopping all the processes")
-		helpers.StopProcesses(auctioneer, rep, converger, runtime)
+		helpers.StopProcesses(auctioneer, rep, runtime)
 	})
 
 	Describe("Executor fault tolerance", func() {
@@ -70,9 +69,6 @@ var _ = Describe("Convergence to desired state", func() {
 		Context("when an rep, and converger are running", func() {
 			BeforeEach(func() {
 				rep = ginkgomon.Invoke(componentMaker.Rep())
-				converger = ginkgomon.Invoke(componentMaker.Converger(
-					"-convergeRepeatInterval", "1s",
-				))
 			})
 
 			Context("and an LRP is desired", func() {
@@ -143,50 +139,10 @@ var _ = Describe("Convergence to desired state", func() {
 						})
 					})
 				})
-
-				Context("and the rep and converger go away", func() {
-					BeforeEach(func() {
-						converger.Signal(syscall.SIGKILL)
-						rep.Signal(syscall.SIGKILL)
-					})
-
-					Context("and the LRP is scaled down (but the event is not handled)", func() {
-						BeforeEach(func() {
-							onePlease := int32(1)
-
-							err := bbsClient.UpdateDesiredLRP(logger, processGuid, &models.DesiredLRPUpdate{
-								Instances: &onePlease,
-							})
-							Expect(err).NotTo(HaveOccurred())
-
-							Consistently(runningLRPsPoller).Should(HaveLen(2))
-						})
-
-						Context("and rep and converger come back", func() {
-							BeforeEach(func() {
-								rep = ginkgomon.Invoke(componentMaker.Rep())
-								converger = ginkgomon.Invoke(componentMaker.Converger(
-									"-convergeRepeatInterval", "1s",
-								))
-							})
-
-							It("eventually scales the LRP down", func() {
-								Eventually(runningLRPsPoller).Should(HaveLen(1))
-								Eventually(helloWorldInstancePoller).Should(Equal([]string{"0"}))
-							})
-						})
-					})
-				})
 			})
 		})
 
 		Context("when a converger is running without a rep", func() {
-			BeforeEach(func() {
-				converger = ginkgomon.Invoke(componentMaker.Converger(
-					"-convergeRepeatInterval", "1s",
-				))
-			})
-
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
 					err := bbsClient.DesireLRP(logger, helpers.DefaultLRPCreateRequest(processGuid, appId, 1))
@@ -211,12 +167,6 @@ var _ = Describe("Convergence to desired state", func() {
 	})
 
 	Describe("Auctioneer Fault Tolerance", func() {
-		BeforeEach(func() {
-			converger = ginkgomon.Invoke(componentMaker.Converger(
-				"-convergeRepeatInterval", "1s",
-			))
-		})
-
 		Context("when a rep is running with no auctioneer", func() {
 			BeforeEach(func() {
 				rep = ginkgomon.Invoke(componentMaker.Rep())

@@ -31,6 +31,8 @@ var (
 	componentMaker world.ComponentMaker
 
 	plumbing         ifrit.Process
+	bbsProcess       ifrit.Process
+	bbsArgs          []string
 	natsClient       diegonats.NATSClient
 	gardenClient     garden.Client
 	bbsClient        bbs.InternalClient
@@ -67,7 +69,6 @@ var _ = BeforeEach(func() {
 			{"consul", componentMaker.Consul()},
 			{"garden", componentMaker.Garden()},
 		})},
-		{"bbs", componentMaker.BBS()},
 	}))
 
 	helpers.ConsulWaitUntilReady()
@@ -76,10 +77,16 @@ var _ = BeforeEach(func() {
 
 	gardenClient = componentMaker.GardenClient()
 	natsClient = componentMaker.NATSClient()
-	bbsClient = componentMaker.BBSClient()
-	bbsServiceClient = componentMaker.BBSServiceClient(logger)
 
 	inigo_announcement_server.Start(componentMaker.ExternalAddress)
+
+	bbsArgs = []string{"-convergeRepeatInterval", "1s"}
+})
+
+var _ = JustBeforeEach(func() {
+	bbsProcess = ginkgomon.Invoke(componentMaker.BBS(bbsArgs...))
+	bbsClient = componentMaker.BBSClient()
+	bbsServiceClient = componentMaker.BBSServiceClient(logger)
 })
 
 var _ = AfterEach(func() {
@@ -88,6 +95,7 @@ var _ = AfterEach(func() {
 	destroyContainerErrors := helpers.CleanupGarden(gardenClient)
 
 	helpers.StopProcesses(plumbing)
+	helpers.StopProcesses(bbsProcess)
 
 	Expect(destroyContainerErrors).To(
 		BeEmpty(),
@@ -115,9 +123,6 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["auctioneer"], err = gexec.BuildIn(os.Getenv("AUCTIONEER_GOPATH"), "code.cloudfoundry.org/auctioneer/cmd/auctioneer", "-race")
-	Expect(err).NotTo(HaveOccurred())
-
-	builtExecutables["converger"], err = gexec.BuildIn(os.Getenv("CONVERGER_GOPATH"), "code.cloudfoundry.org/converger/cmd/converger", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["rep"], err = gexec.BuildIn(os.Getenv("REP_GOPATH"), "code.cloudfoundry.org/rep/cmd/rep", "-race")
