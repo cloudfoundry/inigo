@@ -227,6 +227,9 @@ var _ = Describe("Executor/Garden/Volman", func() {
 							err := executorClient.DeleteContainer(logger, guid)
 							Expect(err).NotTo(HaveOccurred())
 
+							err = os.RemoveAll(path.Join(componentMaker.VolmanDriverConfigDir, "_volumes", volumeId))
+							Expect(err).ToNot(HaveOccurred())
+
 							files, err := filepath.Glob(path.Join(componentMaker.VolmanDriverConfigDir, "_volumes", volumeId, fileName))
 							Expect(err).ToNot(HaveOccurred())
 							Expect(len(files)).To(Equal(0))
