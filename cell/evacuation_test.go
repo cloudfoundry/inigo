@@ -42,10 +42,15 @@ var _ = Describe("Evacuation", func() {
 
 		fileServer, fileServerStaticDir := componentMaker.FileServer()
 
+		By("restarting the bbs with smaller convergeRepeatInterval")
+		ginkgomon.Interrupt(bbsProcess)
+		bbsProcess = ginkgomon.Invoke(componentMaker.BBS(
+			"-convergeRepeatInterval", "1s",
+		))
+
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
-			{"converger", componentMaker.Converger("-convergeRepeatInterval", "1s")},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 		}))

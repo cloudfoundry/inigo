@@ -30,12 +30,12 @@ import (
 var (
 	componentMaker world.ComponentMaker
 
-	plumbing         ifrit.Process
-	natsClient       diegonats.NATSClient
-	gardenClient     garden.Client
-	bbsClient        bbs.InternalClient
-	bbsServiceClient bbs.ServiceClient
-	logger           lager.Logger
+	plumbing, bbsProcess ifrit.Process
+	natsClient           diegonats.NATSClient
+	gardenClient         garden.Client
+	bbsClient            bbs.InternalClient
+	bbsServiceClient     bbs.ServiceClient
+	logger               lager.Logger
 )
 
 var _ = SynchronizedBeforeSuite(func() []byte {
@@ -59,16 +59,14 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 })
 
 var _ = BeforeEach(func() {
-	plumbing = ginkgomon.Invoke(grouper.NewOrdered(os.Kill, grouper.Members{
-		{"initial-services", grouper.NewParallel(os.Kill, grouper.Members{
-			{"etcd", componentMaker.Etcd()},
-			{"sql", componentMaker.SQL()},
-			{"nats", componentMaker.NATS()},
-			{"consul", componentMaker.Consul()},
-			{"garden", componentMaker.Garden()},
-		})},
-		{"bbs", componentMaker.BBS()},
+	plumbing = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+		{"etcd", componentMaker.Etcd()},
+		{"sql", componentMaker.SQL()},
+		{"nats", componentMaker.NATS()},
+		{"consul", componentMaker.Consul()},
+		{"garden", componentMaker.Garden()},
 	}))
+	bbsProcess = ginkgomon.Invoke(componentMaker.BBS())
 
 	helpers.ConsulWaitUntilReady()
 	logger = lager.NewLogger("test")
@@ -115,9 +113,6 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["auctioneer"], err = gexec.BuildIn(os.Getenv("AUCTIONEER_GOPATH"), "code.cloudfoundry.org/auctioneer/cmd/auctioneer", "-race")
-	Expect(err).NotTo(HaveOccurred())
-
-	builtExecutables["converger"], err = gexec.BuildIn(os.Getenv("CONVERGER_GOPATH"), "code.cloudfoundry.org/converger/cmd/converger", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["rep"], err = gexec.BuildIn(os.Getenv("REP_GOPATH"), "code.cloudfoundry.org/rep/cmd/rep", "-race")

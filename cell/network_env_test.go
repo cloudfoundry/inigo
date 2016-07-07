@@ -38,7 +38,6 @@ var _ = Describe("Network Environment Variables", func() {
 	JustBeforeEach(func() {
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"rep", componentMaker.Rep(repFlags...)},
-			{"converger", componentMaker.Converger()},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"router", componentMaker.Router()},
 			{"route-emitter", componentMaker.RouteEmitter()},

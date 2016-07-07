@@ -85,7 +85,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 			}
 
 			if process != nil {
-				ginkgomon.Kill(process)
+				ginkgomon.Interrupt(process)
 			}
 
 			os.RemoveAll(cachePath)
@@ -157,7 +157,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 			}
 
 			if process != nil {
-				ginkgomon.Kill(process)
+				ginkgomon.Interrupt(process)
 			}
 
 			os.RemoveAll(cachePath)

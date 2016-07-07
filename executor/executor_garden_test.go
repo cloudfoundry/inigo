@@ -84,7 +84,7 @@ var _ = Describe("Executor/Garden", func() {
 		}
 
 		if process != nil {
-			ginkgomon.Kill(process)
+			ginkgomon.Interrupt(process)
 		}
 
 		os.RemoveAll(cachePath)

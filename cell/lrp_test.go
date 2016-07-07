@@ -44,7 +44,6 @@ var _ = Describe("LRP", func() {
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
 			{"rep", componentMaker.Rep()},
-			{"converger", componentMaker.Converger()},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 		}))
@@ -572,13 +571,16 @@ var _ = Describe("Crashing LRPs", func() {
 
 		processGuid = helpers.GenerateGuid()
 
+		By("restarting the bbs with smaller convergeRepeatInterval")
+		ginkgomon.Interrupt(bbsProcess)
+		bbsProcess = ginkgomon.Invoke(componentMaker.BBS(
+			"-convergeRepeatInterval", "1s",
+		))
+
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
 			{"rep", componentMaker.Rep()},
-			{"converger", componentMaker.Converger(
-				"-convergeRepeatInterval", "1s",
-			)},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 		}))

@@ -344,29 +344,6 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 	})
 }
 
-func (maker ComponentMaker) Converger(argv ...string) ifrit.Runner {
-	return ginkgomon.New(ginkgomon.Config{
-		Name:              "converger",
-		AnsiColorCode:     "34m",
-		StartCheck:        `"converger.started"`,
-		StartCheckTimeout: 25 * time.Second,
-
-		Command: exec.Command(
-			maker.Artifacts.Executables["converger"],
-			append([]string{
-				"-bbsAddress", maker.BBSURL(),
-				"-lockTTL", "10s",
-				"-lockRetryInterval", "1s",
-				"-consulCluster", maker.ConsulCluster(),
-				"-logLevel", "debug",
-				"-bbsClientCert", maker.BbsSSL.ClientCert,
-				"-bbsClientKey", maker.BbsSSL.ClientKey,
-				"-bbsCACert", maker.BbsSSL.CACert,
-			}, argv...)...,
-		),
-	})
-}
-
 func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "auctioneer",
