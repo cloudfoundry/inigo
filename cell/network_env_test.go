@@ -135,7 +135,9 @@ var _ = Describe("Network Environment Variables", func() {
 			Expect(lrps).To(HaveLen(1))
 			actualLRP = lrps[0].Instance
 
-			response, _, err = helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses.Router, helpers.DefaultHost, "env")
+			var status int
+			response, status, err = helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses.Router, helpers.DefaultHost, "env")
+			Expect(status).To(Equal(http.StatusOK))
 			Expect(err).NotTo(HaveOccurred())
 		})
 
