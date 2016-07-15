@@ -192,9 +192,9 @@ func generateVolumeObject(driver string) *models.VolumeMount {
 
 	return &models.VolumeMount{
 		Driver:        driver,
-		VolumeId:      volumeId,
-		ContainerPath: "/testmount",
-		Mode:          models.BindMountMode_RW,
-		Config:        jsonSomeConfig,
+		DeprecatedVolumeId:      volumeId,
+		ContainerDir: "/testmount",
+		DeprecatedMode:          models.BindMountMode_RW,
+		DeprecatedConfig:        jsonSomeConfig,
 	}
 }
