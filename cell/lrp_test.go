@@ -255,7 +255,7 @@ var _ = Describe("LRP", func() {
 				})
 			})
 
-			It("can not access container ports without routes", func() {
+			FIt("can not access container ports without routes", func() {
 				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route-8080")).Should(Equal(http.StatusOK))
 				Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route-8080")).Should(Equal(http.StatusOK))
 				Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route-9080")).Should(Equal(http.StatusNotFound))
@@ -286,7 +286,7 @@ var _ = Describe("LRP", func() {
 					Expect(err).NotTo(HaveOccurred())
 				})
 
-				It("can immediately access the container port with the associated routes", func() {
+				FIt("can immediately access the container port with the associated routes", func() {
 					Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route-8080")).Should(Equal(http.StatusOK))
 					Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route-8080")).Should(Equal(http.StatusOK))
 
