@@ -145,6 +145,8 @@ func (r *Runner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 		gardenArgs = appendDefaultFlag(gardenArgs, "--nstar-bin", r.binPath+"/nstar")
 		gardenArgs = appendDefaultFlag(gardenArgs, "--tar-bin", r.binPath+"/tar")
 		gardenArgs = appendDefaultFlag(gardenArgs, "--runc-bin", r.binPath+"/runc")
+		gardenArgs = appendDefaultFlag(gardenArgs, "--port-pool-start", strconv.Itoa(51000+(1000*ginkgo.GinkgoParallelNode())))
+		gardenArgs = appendDefaultFlag(gardenArgs, "--port-pool-size", "1000")
 
 		switch r.network {
 		case "tcp":
