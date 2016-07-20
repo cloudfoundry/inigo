@@ -14,17 +14,20 @@ import (
 
 var _ = Describe("Given garden, volman, localdriver", func() {
 
-	var (
-		// volmanClient        volman.Manager
-		mountPoint string
-	)
+	var mountPoint string
 
 	Context("and a mounted volume", func() {
+
 		BeforeEach(func() {
-			someConfig := map[string]interface{}{"volume_id": "someID"}
+			someConfig := map[string]interface{}{"volume_id": "volman_garden_test-someID"}
 			mountPointResponse, err := volmanClient.Mount(logger, "localdriver", "someVolume", someConfig)
 			Expect(err).NotTo(HaveOccurred())
 			mountPoint = mountPointResponse.Path
+		})
+
+		AfterEach(func() {
+			err := volmanClient.Unmount(logger, "localdriver", "someVolume")
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		Context("when the container bind mounts with \"host origin\"", func() {

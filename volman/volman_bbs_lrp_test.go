@@ -136,8 +136,8 @@ var _ = Describe("LRPs with volume mounts", func() {
 			Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 			body, statusCode, err := helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses.Router, helpers.DefaultHost, "write")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(statusCode).To(Equal(200))
 			Expect(string(body)).To(Equal("Hello Persistant World!\n"))
+			Expect(statusCode).To(Equal(200))
 		})
 
 		Context("when driver required not available on any cell", func() {

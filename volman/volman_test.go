@@ -17,16 +17,18 @@ var _ = Describe("Given volman and localdriver", func() {
 
 	It("should mount a volume", func() {
 		var err error
-		someConfig := map[string]interface{}{"volume_id": "someID"}
+		someConfig := map[string]interface{}{"volume_id": "volman_test-someID"}
 		mountPointResponse, err := volmanClient.Mount(logger, driverId, volumeId, someConfig)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(mountPointResponse.Path).NotTo(BeEmpty())
+
+		volmanClient.Unmount(logger, driverId, volumeId)
 	})
 
 	Context("and a mounted volman", func() {
 		BeforeEach(func() {
 			var err error
-			someConfig := map[string]interface{}{"volume_id": "someID"}
+			someConfig := map[string]interface{}{"volume_id": "volman_test-someID"}
 			mountPointResponse, err := volmanClient.Mount(logger, driverId, volumeId, someConfig)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(mountPointResponse.Path).NotTo(BeEmpty())
