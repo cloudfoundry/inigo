@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
-	"path/filepath"
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
@@ -161,32 +160,6 @@ var _ = Describe("Executor/Garden", func() {
 
 		JustBeforeEach(func() {
 			process = ginkgomon.Invoke(runner)
-		})
-
-		Context("when the cache directory exists and contains files", func() {
-			BeforeEach(func() {
-				err := os.MkdirAll(cachePath, 0755)
-				Expect(err).NotTo(HaveOccurred())
-
-				err = ioutil.WriteFile(filepath.Join(cachePath, "should-get-deleted"), []byte("some-contents"), 0755)
-				Expect(err).NotTo(HaveOccurred())
-			})
-
-			It("clears it out", func() {
-				Eventually(func() []string {
-					files, err := ioutil.ReadDir(cachePath)
-					if err != nil {
-						return nil
-					}
-
-					filenames := make([]string, len(files))
-					for i := 0; i < len(files); i++ {
-						filenames[i] = files[i].Name()
-					}
-
-					return filenames
-				}, 10*time.Second).Should(BeEmpty())
-			})
 		})
 
 		Context("when the cache directory doesn't exist", func() {
