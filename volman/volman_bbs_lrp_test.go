@@ -184,5 +184,28 @@ var _ = Describe("LRPs with volume mounts", func() {
 				}).Should(Equal(auctiontypes.ErrorCellMismatch.Error()))
 			})
 		})
+
+		Context("when one of the drivers required is on a cell, but not running", func() {
+			BeforeEach(func() {
+				lrp.VolumeMounts = []*models.VolumeMount{
+					generateVolumeObject("deaddriver"),
+					generateVolumeObject("localdriver"),
+				}
+			})
+
+			It("should error placing the task", func() {
+				var actualLRP *models.ActualLRP
+				Eventually(func() interface{} {
+					group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, processGuid, 0)
+					Expect(err).NotTo(HaveOccurred())
+
+					var evacuating bool
+					actualLRP, evacuating = group.Resolve()
+					Expect(evacuating).To(BeFalse())
+
+					return actualLRP.PlacementError
+				}).Should(Equal(auctiontypes.ErrorCellMismatch.Error()))
+			})
+		})
 	})
 })

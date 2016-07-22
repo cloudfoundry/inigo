@@ -5,6 +5,10 @@ import (
 	"os"
 	"testing"
 
+	"fmt"
+	"path"
+	"path/filepath"
+
 	"code.cloudfoundry.org/inigo/gardenrunner"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/inigo/world"
@@ -13,8 +17,10 @@ import (
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/localip"
 	"github.com/cloudfoundry-incubator/garden"
+	"github.com/cloudfoundry-incubator/voldriver"
 	"github.com/cloudfoundry-incubator/volman"
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
@@ -33,6 +39,8 @@ var (
 	localDriverProcess  ifrit.Process
 
 	logger lager.Logger
+
+	driverPluginsPath string
 )
 
 var _ = SynchronizedBeforeSuite(func() []byte {
@@ -62,8 +70,13 @@ var _ = BeforeEach(func() {
 
 	localDriverProcess = ginkgomon.Invoke(componentMaker.VolmanDriver(logger))
 
+	// make a dummy spec file not corresponding to a running driver just to make sure volman ignores it
+	driverPluginsPath = path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode))
+	voldriver.WriteDriverSpec(logger, driverPluginsPath, "deaddriver", "json", []byte(`{"Name":"deaddriver","Addr":"https://127.0.0.1:1111"}`))
+
 	volmanClient, driverSyncer = componentMaker.VolmanClient(logger)
 	driverSyncerProcess = ginkgomon.Invoke(driverSyncer)
+
 })
 
 var _ = AfterEach(func() {
@@ -76,6 +89,8 @@ var _ = AfterEach(func() {
 		"%d containers failed to be destroyed!",
 		len(destroyContainerErrors),
 	)
+
+	os.Remove(filepath.Join(driverPluginsPath, "deaddriver.json"))
 })
 
 func TestVolman(t *testing.T) {
