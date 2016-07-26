@@ -191,10 +191,12 @@ func generateVolumeObject(driver string) *models.VolumeMount {
 	Expect(err).NotTo(HaveOccurred())
 
 	return &models.VolumeMount{
-		Driver:        driver,
-		DeprecatedVolumeId:      volumeId,
+		Driver:       driver,
 		ContainerDir: "/testmount",
-		DeprecatedMode:          models.BindMountMode_RW,
-		DeprecatedConfig:        jsonSomeConfig,
+		Mode:         "rw",
+		Shared: &models.SharedDevice{
+			VolumeId:    volumeId,
+			MountConfig: string(jsonSomeConfig),
+		},
 	}
 }

@@ -97,11 +97,13 @@ var _ = Describe("LRPs with volume mounts", func() {
 
 			lrp.VolumeMounts = []*models.VolumeMount{
 				&models.VolumeMount{
-					Driver:             "localdriver",
-					DeprecatedVolumeId: volumeId,
-					ContainerDir:       "/testmount",
-					DeprecatedMode:     models.BindMountMode_RW,
-					DeprecatedConfig:   jsonSomeConfig,
+					Driver:       "localdriver",
+					ContainerDir: "/testmount",
+					Mode:         "rw",
+					Shared: &models.SharedDevice{
+						VolumeId:    volumeId,
+						MountConfig: string(jsonSomeConfig),
+					},
 				},
 			}
 
