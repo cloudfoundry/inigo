@@ -111,7 +111,7 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	builtExecutables["garden"], err = gexec.BuildIn(os.Getenv("GARDEN_GOPATH"), gardenrunner.GardenServerPackageName(), "-race", "-a", "-tags", "daemon")
 	Expect(err).NotTo(HaveOccurred())
 
-	builtExecutables["local-driver"], err = gexec.Build("github.com/cloudfoundry-incubator/localdriver/cmd/localdriver", "-race")
+	builtExecutables["local-driver"], err = gexec.Build("code.cloudfoundry.org/localdriver/cmd/localdriver", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["auctioneer"], err = gexec.BuildIn(os.Getenv("AUCTIONEER_GOPATH"), "code.cloudfoundry.org/auctioneer/cmd/auctioneer", "-race")
