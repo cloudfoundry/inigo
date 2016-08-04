@@ -139,7 +139,6 @@ func (r *Runner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 		gardenArgs = appendDefaultFlag(gardenArgs, "--denyNetworks", "0.0.0.0/0")
 	} else { // garden-runc
 		gardenArgs = appendDefaultFlag(gardenArgs, "--init-bin", r.binPath+"/init")
-		gardenArgs = appendDefaultFlag(gardenArgs, "--iodaemon-bin", r.binPath+"/iodaemon")
 		gardenArgs = appendDefaultFlag(gardenArgs, "--dadoo-bin", r.binPath+"/dadoo")
 		gardenArgs = appendDefaultFlag(gardenArgs, "--kawasaki-bin", r.binPath+"/kawasaki")
 		gardenArgs = appendDefaultFlag(gardenArgs, "--nstar-bin", r.binPath+"/nstar")
