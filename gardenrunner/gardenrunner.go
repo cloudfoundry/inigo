@@ -43,7 +43,7 @@ func UseGardenRunc() bool {
 
 func GardenServerPackageName() string {
 	if UseGardenRunc() {
-		return "github.com/cloudfoundry-incubator/guardian/cmd/guardian"
+		return "code.cloudfoundry.org/guardian/cmd/guardian"
 	}
 	return "github.com/cloudfoundry-incubator/garden-linux"
 }
