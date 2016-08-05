@@ -37,12 +37,25 @@ type Runner struct {
 	graphPath string
 }
 
+func UseOldGardenRunc() bool {
+	// return true if we are using old garden-runc (i.e. version <= 0.4)
+	// we use the package name to distinguish them
+	oldGardenRuncPath := os.Getenv("GOPATH") + "/src/github.com/cloudfoundry-incubator/guardian"
+	if _, err := os.Stat(oldGardenRuncPath); os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
 func UseGardenRunc() bool {
 	return os.Getenv("USE_GARDEN_RUNC") != ""
 }
 
 func GardenServerPackageName() string {
 	if UseGardenRunc() {
+		if UseOldGardenRunc() {
+			return "github.com/cloudfoundry-incubator/guardian/cmd/guardian"
+		}
 		return "code.cloudfoundry.org/guardian/cmd/guardian"
 	}
 	return "code.cloudfoundry.org/garden-linux"
@@ -138,6 +151,11 @@ func (r *Runner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 		gardenArgs = appendDefaultFlag(gardenArgs, "--allowHostAccess", "")
 		gardenArgs = appendDefaultFlag(gardenArgs, "--denyNetworks", "0.0.0.0/0")
 	} else { // garden-runc
+		if UseOldGardenRunc() {
+			gardenArgs = appendDefaultFlag(gardenArgs, "--iodaemon-bin", r.binPath+"/iodaemon")
+			gardenArgs = appendDefaultFlag(gardenArgs, "--kawasaki-bin", r.binPath+"/kawasaki")
+		}
+
 		gardenArgs = appendDefaultFlag(gardenArgs, "--init-bin", r.binPath+"/init")
 		gardenArgs = appendDefaultFlag(gardenArgs, "--dadoo-bin", r.binPath+"/dadoo")
 		gardenArgs = appendDefaultFlag(gardenArgs, "--nstar-bin", r.binPath+"/nstar")
