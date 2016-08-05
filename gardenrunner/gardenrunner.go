@@ -40,7 +40,7 @@ type Runner struct {
 func UseOldGardenRunc() bool {
 	// return true if we are using old garden-runc (i.e. version <= 0.4)
 	// we use the package name to distinguish them
-	oldGardenRuncPath := os.Getenv("GOPATH") + "/src/github.com/cloudfoundry-incubator/guardian"
+	oldGardenRuncPath := os.Getenv("GARDEN_GOPATH") + "/src/github.com/cloudfoundry-incubator/guardian"
 	if _, err := os.Stat(oldGardenRuncPath); os.IsNotExist(err) {
 		return false
 	}
