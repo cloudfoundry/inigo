@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
+	"code.cloudfoundry.org/guardian/gqt/runner"
 	"code.cloudfoundry.org/inigo/gardenrunner"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/volman"
@@ -229,7 +231,17 @@ func (maker ComponentMaker) Consul(argv ...string) ifrit.Runner {
 	})
 }
 
-func (maker ComponentMaker) Garden(argv ...string) *gardenrunner.Runner {
+func (maker ComponentMaker) Garden(argv ...string) ifrit.Runner {
+	if gardenrunner.UseGardenRunc() {
+		return runner.NewGardenRunner(
+			maker.Artifacts.Executables["garden"],
+			filepath.Join(maker.GardenBinPath, "init"),
+			filepath.Join(maker.GardenBinPath, "nstar"),
+			filepath.Join(maker.GardenBinPath, "dadoo"),
+			maker.PreloadedStackPathMap[maker.DefaultStack()],
+			filepath.Join(maker.GardenBinPath, "tar"))
+	}
+
 	return gardenrunner.New(
 		"tcp",
 		maker.Addresses.GardenLinux,
