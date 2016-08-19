@@ -233,13 +233,26 @@ func (maker ComponentMaker) Consul(argv ...string) ifrit.Runner {
 
 func (maker ComponentMaker) Garden(argv ...string) ifrit.Runner {
 	if gardenrunner.UseGardenRunc() {
+		gardenArgs := []string{}
+		gardenArgs = append(gardenArgs, "--runc-bin", filepath.Join(maker.GardenBinPath, "runc"))
+		gardenArgs = append(gardenArgs, "--port-pool-size", "1000")
+		gardenArgs = append(gardenArgs, "--allow-host-access", "")
+		gardenArgs = append(gardenArgs, "--deny-network", "0.0.0.0/0")
+		if gardenrunner.UseOldGardenRunc() {
+			gardenArgs = append(gardenArgs, "--iodaemon-bin", maker.GardenBinPath+"/iodaemon")
+			gardenArgs = append(gardenArgs, "--kawasaki-bin", maker.GardenBinPath+"/kawasaki")
+		}
 		return runner.NewGardenRunner(
 			maker.Artifacts.Executables["garden"],
 			filepath.Join(maker.GardenBinPath, "init"),
 			filepath.Join(maker.GardenBinPath, "nstar"),
 			filepath.Join(maker.GardenBinPath, "dadoo"),
 			maker.PreloadedStackPathMap[maker.DefaultStack()],
-			filepath.Join(maker.GardenBinPath, "tar"))
+			filepath.Join(maker.GardenBinPath, "tar"),
+			"tcp",
+			maker.Addresses.GardenLinux,
+			gardenArgs...,
+		)
 	}
 
 	return gardenrunner.New(
