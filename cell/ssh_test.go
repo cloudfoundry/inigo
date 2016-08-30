@@ -118,7 +118,20 @@ var _ = Describe("SSH", func() {
 					Path: "sh",
 					Args: []string{
 						"-c",
-						`while true; do echo "sup dawg" | nc -l 127.0.0.1 9999; done`,
+						`
+						kill_nc() {
+							kill -15 $child
+							exit
+						}
+
+						trap kill_nc 15 9
+
+						while true; do
+						  echo "sup dawg" | nc -l 127.0.0.1 9999 &
+							child=$!
+							wait $child
+						done
+						`,
 					},
 				},
 			)),
@@ -231,7 +244,20 @@ var _ = Describe("SSH", func() {
 						Path: "sh",
 						Args: []string{
 							"-c",
-							`while true; do echo "sup dawg" | nc -l 127.0.0.1 -p 9999; done`,
+							`
+							kill_nc() {
+								kill -15 $child
+								exit
+							}
+
+							trap kill_nc 15 9
+
+							while true; do
+							  echo "sup dawg" | nc -l 127.0.0.1 -p 9999 &
+								child=$!
+								wait $child
+							done
+							`,
 						},
 					},
 				))

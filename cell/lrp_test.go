@@ -95,7 +95,6 @@ var _ = Describe("LRP", func() {
 		})
 
 		Context("when correct checksum information is provided", func() {
-
 			var checksumValue string
 
 			createChecksum := func(algorithm string) {
@@ -119,7 +118,6 @@ var _ = Describe("LRP", func() {
 			}
 
 			Context("for CachedDependency", func() {
-
 				Context("for md5", func() {
 					BeforeEach(func() {
 						createChecksum("md5")
@@ -152,7 +150,6 @@ var _ = Describe("LRP", func() {
 			})
 
 			Context("when validating checksum for download action", func() {
-
 				createDownloadActionChecksum := func(algorithm string) {
 					createChecksum(algorithm)
 					lrp.Setup = models.WrapAction(&models.DownloadAction{
@@ -563,7 +560,7 @@ var _ = Describe("Crashing LRPs", func() {
 	BeforeEach(func() {
 		fileServer, fileServerStaticDir := componentMaker.FileServer()
 
-		archiveFiles := fixtures.HelloWorldIndexLRP()
+		archiveFiles := fixtures.GoServerApp()
 		archive_helper.CreateZipArchive(
 			filepath.Join(fileServerStaticDir, "lrp.zip"),
 			archiveFiles,

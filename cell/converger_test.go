@@ -40,7 +40,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 		archive_helper.CreateZipArchive(
 			filepath.Join(fileServerStaticDir, "lrp.zip"),
-			fixtures.HelloWorldIndexLRP(),
+			fixtures.GoServerApp(),
 		)
 
 		appId = helpers.GenerateGuid()

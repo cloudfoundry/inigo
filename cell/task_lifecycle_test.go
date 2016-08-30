@@ -49,7 +49,7 @@ var _ = Describe("Task Lifecycle", func() {
 			var taskToCreate *models.Task
 
 			BeforeEach(func() {
-				taskSleepSeconds = 10
+				taskSleepSeconds = 5
 				taskGuid = helpers.GenerateGuid()
 
 				taskToCreate = helpers.TaskCreateRequestWithMemory(
@@ -60,7 +60,17 @@ var _ = Describe("Task Lifecycle", func() {
 						Args: []string{
 							"-c",
 							// sleep a bit so that we can make assertions around behavior as it's running
-							fmt.Sprintf("curl %s; sleep %d", inigo_announcement_server.AnnounceURL(taskGuid), taskSleepSeconds),
+							fmt.Sprintf(`
+kill_sleep() {
+	kill -15 $child
+	exit
+}
+trap kill_sleep 15 9
+curl %s
+sleep %d &
+child=$!
+wait $child
+							`, inigo_announcement_server.AnnounceURL(taskGuid), taskSleepSeconds),
 						},
 					},
 					512,

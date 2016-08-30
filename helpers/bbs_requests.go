@@ -27,15 +27,14 @@ var defaultPorts = []uint32{8080}
 var defaultSetupFunc = func() *models.Action {
 	return models.WrapAction(&models.DownloadAction{
 		From: fmt.Sprintf("http://%s/v1/static/%s", addresses.FileServer, "lrp.zip"),
-		To:   ".",
+		To:   "/tmp",
 		User: "vcap",
 	})
 }
 
 var defaultAction = models.WrapAction(&models.RunAction{
 	User: "vcap",
-	Path: "bash",
-	Args: []string{"server.sh"},
+	Path: "/tmp/go-server",
 	Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
 })
 
@@ -158,7 +157,14 @@ func PrivilegedLRPCreateRequest(processGuid string) *models.DesiredLRP {
 			Args: []string{
 				"-c",
 				`
+				    kill_server() {
+							kill -9 $child
+							exit
+						}
+
 						mkfifo request
+
+						trap kill_server 15 9
 
 						while true; do
 						{
@@ -171,7 +177,10 @@ func PrivilegedLRPCreateRequest(processGuid string) *models.DesiredLRP {
 
 						  echo -n -e "HTTP/1.1 ${status}\r\n"
 						  echo -n -e "Content-Length: 0\r\n\r\n"
-						} | nc -l 0.0.0.0 8080 > request;
+						} | nc -l 0.0.0.0 8080 > request &
+
+						child=$!
+						wait $child
 						done
 						`,
 			},
