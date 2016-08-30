@@ -61,15 +61,18 @@ var _ = Describe("Task Lifecycle", func() {
 							"-c",
 							// sleep a bit so that we can make assertions around behavior as it's running
 							fmt.Sprintf(`
-kill_sleep() {
-	kill -15 $child
-	exit
-}
-trap kill_sleep 15 9
-curl %s
-sleep %d &
-child=$!
-wait $child
+								kill_sleep() {
+									kill -15 $child
+									exit
+								}
+
+								trap kill_sleep 15 9
+
+								curl %s
+								sleep %d &
+
+								child=$!
+								wait $child
 							`, inigo_announcement_server.AnnounceURL(taskGuid), taskSleepSeconds),
 						},
 					},

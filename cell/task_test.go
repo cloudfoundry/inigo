@@ -263,8 +263,23 @@ echo should have died by now
 					guid,
 					&models.RunAction{
 						User: "vcap",
-						Path: "sleep",
-						Args: []string{"5"},
+						Path: "sh",
+						Args: []string{
+							"-c",
+							`
+							kill_sleep() {
+								kill -15 $child
+								exit
+							}
+
+							trap kill_sleep 15 9
+
+							sleep 5 &
+
+							child=$!
+							wait $child
+							`,
+						},
 					},
 				)
 				expectedTask.Network = &models.Network{
