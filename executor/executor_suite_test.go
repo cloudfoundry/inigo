@@ -13,10 +13,10 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 
+	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/inigo/gardenrunner"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/inigo/world"
-	"github.com/cloudfoundry-incubator/garden"
 )
 
 var (

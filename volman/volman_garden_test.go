@@ -5,7 +5,7 @@ import (
 
 	"path/filepath"
 
-	"github.com/cloudfoundry-incubator/garden"
+	"code.cloudfoundry.org/garden"
 	"github.com/onsi/gomega/gbytes"
 
 	. "github.com/onsi/ginkgo"

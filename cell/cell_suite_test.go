@@ -19,11 +19,11 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 
 	"code.cloudfoundry.org/bbs"
+	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/inigo/gardenrunner"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/inigo/inigo_announcement_server"
 	"code.cloudfoundry.org/inigo/world"
-	"github.com/cloudfoundry-incubator/garden"
 	"github.com/cloudfoundry/gunk/diegonats"
 )
 
