@@ -230,8 +230,23 @@ echo should have died by now
 						models.Timeout(
 							&models.RunAction{
 								User: "vcap",
-								Path: "sleep",
-								Args: []string{"1"},
+								Path: "sh",
+								Args: []string{
+									"-c",
+									`
+									kill_sleep() {
+										kill -15 $child
+										exit
+									}
+
+									trap kill_sleep 15 9
+
+									sleep 1 &
+
+									child=$!
+									wait $child
+									`,
+								},
 							},
 							500*time.Millisecond,
 						),
