@@ -18,12 +18,12 @@ import (
 	"code.cloudfoundry.org/garden"
 	gardenclient "code.cloudfoundry.org/garden/client"
 	gardenconnection "code.cloudfoundry.org/garden/client/connection"
+	gorouterconfig "code.cloudfoundry.org/gorouter/config"
 	"code.cloudfoundry.org/inigo/gardenrunner"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/volman"
 	volmanclient "code.cloudfoundry.org/volman/vollocal"
 	"github.com/cloudfoundry-incubator/candiedyaml"
-	gorouterconfig "github.com/cloudfoundry/gorouter/config"
 	"github.com/cloudfoundry/gunk/diegonats"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
@@ -430,10 +430,10 @@ func (maker ComponentMaker) Router() ifrit.Runner {
 	routerConfig := &gorouterconfig.Config{
 		Port: uint16(routerPortInt),
 
-		PruneStaleDropletsIntervalInSeconds: 5,
-		DropletStaleThresholdInSeconds:      10,
-		PublishActiveAppsIntervalInSeconds:  0,
-		StartResponseDelayIntervalInSeconds: 1,
+		PruneStaleDropletsInterval: 5 * time.Second,
+		DropletStaleThreshold:      10 * time.Second,
+		PublishActiveAppsInterval:  0 * time.Second,
+		StartResponseDelayInterval: 1 * time.Second,
 
 		Nats: []gorouterconfig.NatsConfig{
 			{
