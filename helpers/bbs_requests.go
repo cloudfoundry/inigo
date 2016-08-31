@@ -6,7 +6,7 @@ import (
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/lager"
-	"github.com/cloudfoundry-incubator/routing-info/cfroutes"
+	"code.cloudfoundry.org/routing-info/cfroutes"
 	. "github.com/onsi/gomega"
 )
 

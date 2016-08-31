@@ -16,7 +16,7 @@ import (
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep"
-	"github.com/cloudfoundry-incubator/routing-info/cfroutes"
+	"code.cloudfoundry.org/routing-info/cfroutes"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
