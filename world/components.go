@@ -247,6 +247,7 @@ func (maker ComponentMaker) Garden(argv ...string) ifrit.Runner {
 			filepath.Join(maker.GardenBinPath, "init"),
 			filepath.Join(maker.GardenBinPath, "nstar"),
 			filepath.Join(maker.GardenBinPath, "dadoo"),
+			filepath.Join(maker.GardenBinPath, "grootfs"),
 			maker.PreloadedStackPathMap[maker.DefaultStack()],
 			filepath.Join(maker.GardenBinPath, "tar"),
 			"tcp",
