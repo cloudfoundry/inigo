@@ -139,6 +139,8 @@ func (maker ComponentMaker) SQL(argv ...string) ifrit.Runner {
 
 		db, err := sql.Open(maker.DBDriverName, maker.DBBaseConnectionString)
 		Expect(err).NotTo(HaveOccurred())
+		defer db.Close()
+
 		Eventually(db.Ping).ShouldNot(HaveOccurred())
 
 		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", ginkgo.GinkgoParallelNode()))
