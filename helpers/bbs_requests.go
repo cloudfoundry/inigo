@@ -11,6 +11,7 @@ import (
 )
 
 const defaultDomain = "inigo"
+const defaultLogGuid = "logGuid"
 
 var defaultPreloadedRootFS = "preloaded:" + DefaultStack
 var SecondaryPreloadedRootFS = "preloaded:" + PreloadedStacks[1]
@@ -21,7 +22,6 @@ const dockerRootFS = "docker:///cloudfoundry/diego-docker-app#latest"
 const DefaultHost = "lrp-route"
 
 var defaultRoutes = cfroutes.CFRoutes{{Hostnames: []string{DefaultHost}, Port: 8080}}.RoutingInfo()
-
 var defaultPorts = []uint32{8080}
 
 var defaultSetupFunc = func() *models.Action {
@@ -48,11 +48,18 @@ func UpsertInigoDomain(logger lager.Logger, bbsClient bbs.InternalClient) {
 	Expect(err).NotTo(HaveOccurred())
 }
 
-func DefaultLRPCreateRequest(processGuid, logGuid string, numInstances int) *models.DesiredLRP {
+func lrpCreateRequest(
+	processGuid,
+	logGuid,
+	rootfs string,
+	numInstances int,
+	placementTags []string,
+	action, monitor *models.Action,
+) *models.DesiredLRP {
 	return &models.DesiredLRP{
 		ProcessGuid: processGuid,
 		Domain:      defaultDomain,
-		RootFs:      defaultPreloadedRootFS,
+		RootFs:      rootfs,
 		Instances:   int32(numInstances),
 
 		LogGuid: logGuid,
@@ -60,103 +67,70 @@ func DefaultLRPCreateRequest(processGuid, logGuid string, numInstances int) *mod
 		Routes: &defaultRoutes,
 		Ports:  defaultPorts,
 
-		Setup:   defaultSetupFunc(),
-		Action:  defaultAction,
-		Monitor: defaultMonitor,
+		Setup:         defaultSetupFunc(),
+		Action:        action,
+		Monitor:       monitor,
+		PlacementTags: placementTags,
 	}
+}
+
+func DefaultLRPCreateRequest(processGuid, logGuid string, numInstances int) *models.DesiredLRP {
+	return lrpCreateRequest(processGuid, logGuid, defaultPreloadedRootFS, numInstances, nil, defaultAction, defaultMonitor)
+}
+
+func LRPCreateRequestWithPlacementTag(processGuid string, tags []string) *models.DesiredLRP {
+	return lrpCreateRequest(processGuid, defaultLogGuid, defaultPreloadedRootFS, 1, tags, defaultAction, defaultMonitor)
 }
 
 func LRPCreateRequestWithRootFS(processGuid, rootfs string) *models.DesiredLRP {
-	return &models.DesiredLRP{
-		ProcessGuid: processGuid,
-		Domain:      defaultDomain,
-		RootFs:      rootfs,
-		Instances:   1,
-
-		Routes: &defaultRoutes,
-		Ports:  defaultPorts,
-
-		Setup:   defaultSetupFunc(),
-		Action:  defaultAction,
-		Monitor: defaultMonitor,
-	}
+	return lrpCreateRequest(processGuid, defaultLogGuid, rootfs, 1, nil, defaultAction, defaultMonitor)
 }
 
 func DockerLRPCreateRequest(processGuid string) *models.DesiredLRP {
-	return &models.DesiredLRP{
-		ProcessGuid: processGuid,
-		Domain:      defaultDomain,
-		RootFs:      dockerRootFS,
-		Instances:   1,
+	action := models.WrapAction(&models.RunAction{
+		User: "vcap",
+		Path: "dockerapp",
+		Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
+	})
 
-		Routes: &defaultRoutes,
-		Ports:  defaultPorts,
-
-		Action: models.WrapAction(&models.RunAction{
-			User: "vcap",
-			Path: "dockerapp",
-			Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
-		}),
-		Monitor: defaultMonitor,
-	}
+	return lrpCreateRequest(processGuid, defaultLogGuid, dockerRootFS, 1, nil, action, defaultMonitor)
 }
 
 func CrashingLRPCreateRequest(processGuid string) *models.DesiredLRP {
-	return &models.DesiredLRP{
-		ProcessGuid: processGuid,
-		Domain:      defaultDomain,
-		RootFs:      defaultPreloadedRootFS,
-		Instances:   1,
-
-		Action: models.WrapAction(&models.RunAction{User: "vcap", Path: "false"}),
-	}
+	action := models.WrapAction(&models.RunAction{User: "vcap", Path: "false"})
+	return lrpCreateRequest(processGuid, defaultLogGuid, defaultPreloadedRootFS, 1, nil, action, defaultMonitor)
 }
 
 func LightweightLRPCreateRequest(processGuid string) *models.DesiredLRP {
-	return &models.DesiredLRP{
-		ProcessGuid: processGuid,
-		Domain:      defaultDomain,
-		RootFs:      defaultPreloadedRootFS,
-		Instances:   1,
+	action := models.WrapAction(&models.RunAction{
+		User: "vcap",
+		Path: "sh",
+		Args: []string{
+			"-c",
+			"while true; do sleep 1; done",
+		},
+	})
 
-		MemoryMb: 128,
-		DiskMb:   1024,
+	monitor := models.WrapAction(&models.RunAction{
+		User: "vcap",
+		Path: "sh",
+		Args: []string{"-c", "echo all good"},
+	})
 
-		Ports: defaultPorts,
-
-		Action: models.WrapAction(&models.RunAction{
-			User: "vcap",
-			Path: "sh",
-			Args: []string{
-				"-c",
-				"while true; do sleep 1; done",
-			},
-		}),
-		Monitor: models.WrapAction(&models.RunAction{
-			User: "vcap",
-			Path: "sh",
-			Args: []string{"-c", "echo all good"},
-		}),
-	}
+	lrp := lrpCreateRequest(processGuid, defaultLogGuid, defaultPreloadedRootFS, 1, nil, action, monitor)
+	lrp.MemoryMb = 128
+	lrp.DiskMb = 1024
+	return lrp
 }
 
 func PrivilegedLRPCreateRequest(processGuid string) *models.DesiredLRP {
-	return &models.DesiredLRP{
-		ProcessGuid: processGuid,
-		Domain:      defaultDomain,
-		RootFs:      defaultPreloadedRootFS,
-		Instances:   1,
-
-		Routes: &defaultRoutes,
-		Ports:  defaultPorts,
-
-		Action: models.WrapAction(&models.RunAction{
-			Path: "bash",
-			// always run as root; tests change task-level privileged
-			User: "root",
-			Args: []string{
-				"-c",
-				`
+	action := models.WrapAction(&models.RunAction{
+		Path: "bash",
+		// always run as root; tests change task-level privileged
+		User: "root",
+		Args: []string{
+			"-c",
+			`
 				    kill_server() {
 							kill -9 $child
 							exit
@@ -183,9 +157,12 @@ func PrivilegedLRPCreateRequest(processGuid string) *models.DesiredLRP {
 						wait $child
 						done
 						`,
-			},
-		}),
-	}
+		},
+	})
+
+	lrpRequest := lrpCreateRequest(processGuid, defaultLogGuid, defaultPreloadedRootFS, 1, nil, action, defaultMonitor)
+	lrpRequest.Setup = nil
+	return lrpRequest
 }
 
 func TaskCreateRequest(taskGuid string, action models.ActionInterface) *models.Task {
