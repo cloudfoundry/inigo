@@ -169,6 +169,12 @@ func TaskCreateRequest(taskGuid string, action models.ActionInterface) *models.T
 	return taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, 0, 0)
 }
 
+func TaskCreateRequestWithTags(taskGuid string, action models.ActionInterface, tags []string) *models.Task {
+	task := taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, 0, 0)
+	task.PlacementTags = tags
+	return task
+}
+
 func TaskCreateRequestWithMemory(taskGuid string, action models.ActionInterface, memoryMB int) *models.Task {
 	return taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, memoryMB, 0)
 }
