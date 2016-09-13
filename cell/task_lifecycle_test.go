@@ -143,7 +143,7 @@ var _ = Describe("Task Lifecycle", func() {
 				})
 
 				It("marks the task as complete, failed and cancelled", func() {
-					Eventually(theFailureReason).Should(Equal("insufficient resources"))
+					Eventually(theFailureReason).Should(Equal("insufficient resources: memory"))
 				})
 			})
 
