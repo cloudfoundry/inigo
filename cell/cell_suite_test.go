@@ -24,14 +24,12 @@ import (
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/inigo/inigo_announcement_server"
 	"code.cloudfoundry.org/inigo/world"
-	"github.com/cloudfoundry/gunk/diegonats"
 )
 
 var (
 	componentMaker world.ComponentMaker
 
 	plumbing, bbsProcess ifrit.Process
-	natsClient           diegonats.NATSClient
 	gardenClient         garden.Client
 	bbsClient            bbs.InternalClient
 	bbsServiceClient     bbs.ServiceClient
@@ -73,7 +71,6 @@ var _ = BeforeEach(func() {
 	logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 
 	gardenClient = componentMaker.GardenClient()
-	natsClient = componentMaker.NATSClient()
 	bbsClient = componentMaker.BBSClient()
 	bbsServiceClient = componentMaker.BBSServiceClient(logger)
 

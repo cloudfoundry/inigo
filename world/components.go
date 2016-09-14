@@ -26,7 +26,6 @@ import (
 	"code.cloudfoundry.org/volman"
 	volmanclient "code.cloudfoundry.org/volman/vollocal"
 	"github.com/cloudfoundry-incubator/candiedyaml"
-	"github.com/cloudfoundry/gunk/diegonats"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	"github.com/onsi/ginkgo"
@@ -541,15 +540,6 @@ func (maker ComponentMaker) DefaultStack() string {
 	}
 
 	return defaultStack
-}
-
-func (maker ComponentMaker) NATSClient() diegonats.NATSClient {
-	client := diegonats.NewClient()
-
-	_, err := client.Connect([]string{"nats://" + maker.Addresses.NATS})
-	Expect(err).NotTo(HaveOccurred())
-
-	return client
 }
 
 func (maker ComponentMaker) GardenClient() garden.Client {
