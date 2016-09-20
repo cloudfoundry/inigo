@@ -589,20 +589,36 @@ var _ = Describe("Crashing LRPs", func() {
 
 	Describe("crashing apps", func() {
 		Context("when an app flaps", func() {
-			BeforeEach(func() {
-				lrp := helpers.CrashingLRPCreateRequest(processGuid)
+			var lrp *models.DesiredLRP
 
+			BeforeEach(func() {
+				lrp = helpers.CrashingLRPCreateRequest(processGuid)
+			})
+
+			JustBeforeEach(func() {
 				err := bbsClient.DesireLRP(logger, lrp)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("imediately restarts the app 3 times", func() {
-				// the bbs immediately starts it 3 times
-				Eventually(crashCount(processGuid, 0)).Should(BeEquivalentTo(3))
-				// then exponential backoff kicks in
-				Consistently(crashCount(processGuid, 0), 15*time.Second).Should(BeEquivalentTo(3))
-				// eventually we cross the first backoff threshold (30 seconds)
-				Eventually(crashCount(processGuid, 0), 30*time.Second).Should(BeEquivalentTo(4))
+			testAppRecovery := func(index int) {
+				It("imediately restarts the app 3 times", func() {
+					// the bbs immediately starts it 3 times
+					Eventually(crashCount(processGuid, index)).Should(BeEquivalentTo(3))
+					// then exponential backoff kicks in
+					Consistently(crashCount(processGuid, index), 15*time.Second).Should(BeEquivalentTo(3))
+					// eventually we cross the first backoff threshold (30 seconds)
+					Eventually(crashCount(processGuid, index), 30*time.Second).Should(BeEquivalentTo(4))
+				})
+			}
+
+			testAppRecovery(0)
+
+			Context("when the app has multiple indices", func() {
+				BeforeEach(func() {
+					lrp.Instances = 2
+				})
+
+				testAppRecovery(1)
 			})
 		})
 	})
