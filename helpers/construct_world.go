@@ -97,12 +97,28 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	Expect(err).NotTo(HaveOccurred())
 	caCert, err := filepath.Abs(assetsPath + "ca.crt")
 	Expect(err).NotTo(HaveOccurred())
+	auctioneerServerCert, err := filepath.Abs(assetsPath + "auctioneer_server.crt")
+	Expect(err).NotTo(HaveOccurred())
+	auctioneerServerKey, err := filepath.Abs(assetsPath + "auctioneer_server.key")
+	Expect(err).NotTo(HaveOccurred())
+	auctioneerClientCrt, err := filepath.Abs(assetsPath + "auctioneer_client.crt")
+	Expect(err).NotTo(HaveOccurred())
+	auctioneerClientKey, err := filepath.Abs(assetsPath + "auctioneer_client.key")
+	Expect(err).NotTo(HaveOccurred())
 
 	sslConfig := world.SSLConfig{
 		ServerCert: serverCert,
 		ServerKey:  serverKey,
 		ClientCert: clientCrt,
 		ClientKey:  clientKey,
+		CACert:     caCert,
+	}
+
+	auctioneerSSLConfig := world.SSLConfig{
+		ServerCert: auctioneerServerCert,
+		ServerKey:  auctioneerServerKey,
+		ClientCert: auctioneerClientCrt,
+		ClientKey:  auctioneerClientKey,
 		CACert:     caCert,
 	}
 
@@ -125,6 +141,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		SSHConfig:             sshKeys,
 		EtcdSSL:               sslConfig,
 		BbsSSL:                sslConfig,
+		AuctioneerSSL:         auctioneerSSLConfig,
 		VolmanDriverConfigDir: volmanConfigDir,
 
 		DBDriverName:           dbDriverName,

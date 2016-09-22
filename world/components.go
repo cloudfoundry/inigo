@@ -91,9 +91,10 @@ type ComponentMaker struct {
 	GardenBinPath   string
 	GardenGraphPath string
 
-	SSHConfig SSHKeys
-	EtcdSSL   SSLConfig
-	BbsSSL    SSLConfig
+	SSHConfig     SSHKeys
+	EtcdSSL       SSLConfig
+	BbsSSL        SSLConfig
+	AuctioneerSSL SSLConfig
 
 	VolmanDriverConfigDir string
 
@@ -272,7 +273,10 @@ func (maker ComponentMaker) BBS(argv ...string) ifrit.Runner {
 	bbsArgs := []string{
 		"-activeKeyLabel=" + "secure-key-1",
 		"-advertiseURL", maker.BBSURL(),
-		"-auctioneerAddress", "http://" + maker.Addresses.Auctioneer,
+		"-auctioneerAddress", "https://" + maker.Addresses.Auctioneer,
+		"-auctioneerCACert", maker.AuctioneerSSL.CACert,
+		"-auctioneerClientCert", maker.AuctioneerSSL.ClientCert,
+		"-auctioneerClientKey", maker.AuctioneerSSL.ClientKey,
 		"-consulCluster", maker.ConsulCluster(),
 		"-encryptionKey=" + "secure-key-1:secure-passphrase",
 		"-listenAddress", maker.Addresses.BBS,
@@ -381,14 +385,17 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 			maker.Artifacts.Executables["auctioneer"],
 			append([]string{
 				"-bbsAddress", maker.BBSURL(),
+				"-bbsClientCert", maker.BbsSSL.ClientCert,
+				"-bbsClientKey", maker.BbsSSL.ClientKey,
+				"-bbsCACert", maker.BbsSSL.CACert,
 				"-listenAddr", maker.Addresses.Auctioneer,
 				"-lockRetryInterval", "1s",
 				"-consulCluster", maker.ConsulCluster(),
 				"-logLevel", "debug",
-				"-bbsClientCert", maker.BbsSSL.ClientCert,
-				"-bbsClientKey", maker.BbsSSL.ClientKey,
-				"-bbsCACert", maker.BbsSSL.CACert,
 				"-startingContainerWeight", "0.33",
+				"-caFile", maker.AuctioneerSSL.CACert,
+				"-certFile", maker.AuctioneerSSL.ClientCert,
+				"-keyFile", maker.AuctioneerSSL.ClientKey,
 			}, argv...)...,
 		),
 	})
