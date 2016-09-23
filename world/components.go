@@ -394,8 +394,8 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 				"-logLevel", "debug",
 				"-startingContainerWeight", "0.33",
 				"-caFile", maker.AuctioneerSSL.CACert,
-				"-certFile", maker.AuctioneerSSL.ClientCert,
-				"-keyFile", maker.AuctioneerSSL.ClientKey,
+				"-certFile", maker.AuctioneerSSL.ServerCert,
+				"-keyFile", maker.AuctioneerSSL.ServerKey,
 			}, argv...)...,
 		),
 	})
