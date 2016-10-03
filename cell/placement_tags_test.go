@@ -127,7 +127,7 @@ var _ = Describe("Placement Tags", func() {
 					return lrp.PlacementError
 				}
 
-				Eventually(lrpFunc).Should(Equal("found no compatible cell"))
+				Eventually(lrpFunc).Should(ContainSubstring("found no compatible cell with placement tags"))
 			})
 		})
 	})
@@ -214,7 +214,7 @@ var _ = Describe("Placement Tags", func() {
 					return t.FailureReason
 				}
 
-				Eventually(taskFunc).Should(Equal("found no compatible cell"))
+				Eventually(taskFunc).Should(ContainSubstring("found no compatible cell with placement tags"))
 			})
 		})
 	})
