@@ -497,7 +497,7 @@ var _ = Describe("LRP", func() {
 					return lrp.PlacementError
 				}
 
-				Eventually(lrpFunc).Should(Equal("found no compatible cell"))
+				Eventually(lrpFunc).Should(ContainSubstring("found no compatible cell"))
 			})
 		})
 
@@ -518,7 +518,7 @@ var _ = Describe("LRP", func() {
 					return lrp.PlacementError
 				}
 
-				Eventually(lrpFunc).Should(Equal("found no compatible cell"))
+				Eventually(lrpFunc).Should(ContainSubstring("found no compatible cell"))
 			})
 		})
 

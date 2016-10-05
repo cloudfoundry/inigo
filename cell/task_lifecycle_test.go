@@ -121,7 +121,7 @@ var _ = Describe("Task Lifecycle", func() {
 				})
 
 				It("marks the task as complete, failed and cancelled", func() {
-					Eventually(theFailureReason).Should(Equal("found no compatible cell"))
+					Eventually(theFailureReason).Should(ContainSubstring("found no compatible cell"))
 				})
 			})
 
