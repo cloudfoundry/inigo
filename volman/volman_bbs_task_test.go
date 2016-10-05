@@ -135,7 +135,7 @@ var _ = Describe("Tasks", func() {
 				}).Should(Equal(models.Task_Completed))
 
 				Expect(task.Failed).To(BeTrue())
-				Expect(task.FailureReason).To(Equal(auctiontypes.ErrorCellMismatch.Error()))
+				Expect(task.FailureReason).To(Equal(auctiontypes.ErrorVolumeDriverMismatch.Error()))
 			})
 		})
 
@@ -178,7 +178,7 @@ var _ = Describe("Tasks", func() {
 				}).Should(Equal(models.Task_Completed))
 
 				Expect(task.Failed).To(BeTrue())
-				Expect(task.FailureReason).To(Equal(auctiontypes.ErrorCellMismatch.Error()))
+				Expect(task.FailureReason).To(Equal(auctiontypes.ErrorVolumeDriverMismatch.Error()))
 			})
 		})
 	})

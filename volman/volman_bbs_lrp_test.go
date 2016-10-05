@@ -160,7 +160,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 					Expect(evacuating).To(BeFalse())
 
 					return actualLRP.PlacementError
-				}).Should(Equal(auctiontypes.ErrorCellMismatch.Error()))
+				}).Should(Equal(auctiontypes.ErrorVolumeDriverMismatch.Error()))
 			})
 		})
 
@@ -183,7 +183,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 					Expect(evacuating).To(BeFalse())
 
 					return actualLRP.PlacementError
-				}).Should(Equal(auctiontypes.ErrorCellMismatch.Error()))
+				}).Should(Equal(auctiontypes.ErrorVolumeDriverMismatch.Error()))
 			})
 		})
 
@@ -206,7 +206,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 					Expect(evacuating).To(BeFalse())
 
 					return actualLRP.PlacementError
-				}).Should(Equal(auctiontypes.ErrorCellMismatch.Error()))
+				}).Should(Equal(auctiontypes.ErrorVolumeDriverMismatch.Error()))
 			})
 		})
 	})
