@@ -22,11 +22,13 @@ var _ = Describe("Evacuation", func() {
 	var (
 		runtime ifrit.Process
 
-		cellAID      string
-		cellARepAddr string
+		cellAID            string
+		cellARepAddr       string
+		cellARepSecureAddr string
 
-		cellBID      string
-		cellBRepAddr string
+		cellBID            string
+		cellBRepAddr       string
+		cellBRepSecureAddr string
 
 		cellARepRunner *ginkgomon.Runner
 		cellBRepRunner *ginkgomon.Runner
@@ -58,12 +60,15 @@ var _ = Describe("Evacuation", func() {
 		cellAID = "cell-a"
 		cellBID = "cell-b"
 
-		cellARepAddr = fmt.Sprintf("0.0.0.0:%d", 14100+GinkgoParallelNode())
-		cellBRepAddr = fmt.Sprintf("0.0.0.0:%d", 14200+GinkgoParallelNode())
+		cellARepAddr = fmt.Sprintf("0.0.0.0:%d", 14200+GinkgoParallelNode())
+		cellARepSecureAddr = fmt.Sprintf("0.0.0.0:%d", 14300+GinkgoParallelNode())
+		cellBRepAddr = fmt.Sprintf("0.0.0.0:%d", 14400+GinkgoParallelNode())
+		cellBRepSecureAddr = fmt.Sprintf("0.0.0.0:%d", 14500+GinkgoParallelNode())
 
 		cellARepRunner = componentMaker.RepN(0,
 			"-cellID", cellAID,
 			"-listenAddr", cellARepAddr,
+			"-listenAddrSecurable", cellARepSecureAddr,
 			"-evacuationTimeout", "30s",
 			"-containerOwnerName", cellAID+"-executor",
 		)
@@ -71,6 +76,7 @@ var _ = Describe("Evacuation", func() {
 		cellBRepRunner = componentMaker.RepN(1,
 			"-cellID", cellBID,
 			"-listenAddr", cellBRepAddr,
+			"-listenAddrSecurable", cellBRepSecureAddr,
 			"-evacuationTimeout", "30s",
 			"-containerOwnerName", cellBID+"-executor",
 		)

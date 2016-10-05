@@ -350,6 +350,8 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 			"-gardenHealthcheckProcessArgs", "-c,echo,foo",
 			"-gardenHealthcheckProcessUser", "vcap",
 			"-volmanDriverPaths", path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
+			"-requireTLS=false",
+			"-listenAddrSecurable", fmt.Sprintf("%s:%d", host, offsetPort(port+100, n)),
 		},
 		argv...,
 	)
