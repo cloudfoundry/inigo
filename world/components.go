@@ -64,20 +64,21 @@ type SSLConfig struct {
 }
 
 type ComponentAddresses struct {
-	NATS             string
-	Etcd             string
-	EtcdPeer         string
-	Consul           string
-	BBS              string
-	Health           string
-	Rep              string
-	FileServer       string
-	Router           string
-	GardenLinux      string
-	Auctioneer       string
-	SSHProxy         string
-	FakeVolmanDriver string
-	SQL              string
+	NATS                string
+	Etcd                string
+	EtcdPeer            string
+	Consul              string
+	BBS                 string
+	Health              string
+	Rep                 string
+	FileServer          string
+	Router              string
+	GardenLinux         string
+	Auctioneer          string
+	SSHProxy            string
+	SSHProxyHealthCheck string
+	FakeVolmanDriver    string
+	SQL                 string
 }
 
 type ComponentMaker struct {
@@ -511,6 +512,7 @@ func (maker ComponentMaker) SSHProxy(argv ...string) ifrit.Runner {
 			maker.Artifacts.Executables["ssh-proxy"],
 			append([]string{
 				"-address", maker.Addresses.SSHProxy,
+				"-healthCheckAddress", maker.Addresses.SSHProxyHealthCheck,
 				"-bbsAddress", maker.BBSURL(),
 				"-bbsCACert", maker.BbsSSL.CACert,
 				"-bbsClientCert", maker.BbsSSL.ClientCert,

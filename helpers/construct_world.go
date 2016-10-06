@@ -59,20 +59,21 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	}
 
 	addresses = world.ComponentAddresses{
-		GardenLinux:      fmt.Sprintf("127.0.0.1:%d", 10000+config.GinkgoConfig.ParallelNode),
-		NATS:             fmt.Sprintf("127.0.0.1:%d", 11000+config.GinkgoConfig.ParallelNode),
-		Etcd:             fmt.Sprintf("127.0.0.1:%d", 12000+config.GinkgoConfig.ParallelNode),
-		EtcdPeer:         fmt.Sprintf("127.0.0.1:%d", 12500+config.GinkgoConfig.ParallelNode),
-		Consul:           fmt.Sprintf("127.0.0.1:%d", 12750+config.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength),
-		Rep:              fmt.Sprintf("0.0.0.0:%d", 14000+config.GinkgoConfig.ParallelNode),
-		FileServer:       fmt.Sprintf("%s:%d", localIP, 17000+config.GinkgoConfig.ParallelNode),
-		Router:           fmt.Sprintf("127.0.0.1:%d", 18000+config.GinkgoConfig.ParallelNode),
-		BBS:              fmt.Sprintf("127.0.0.1:%d", 20500+config.GinkgoConfig.ParallelNode*2),
-		Health:           fmt.Sprintf("127.0.0.1:%d", 20500+config.GinkgoConfig.ParallelNode*2+1),
-		Auctioneer:       fmt.Sprintf("0.0.0.0:%d", 23000+config.GinkgoConfig.ParallelNode),
-		SSHProxy:         fmt.Sprintf("127.0.0.1:%d", 23500+config.GinkgoConfig.ParallelNode),
-		FakeVolmanDriver: fmt.Sprintf("127.0.0.1:%d", 24500+config.GinkgoConfig.ParallelNode),
-		SQL:              fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, config.GinkgoConfig.ParallelNode),
+		GardenLinux:         fmt.Sprintf("127.0.0.1:%d", 10000+config.GinkgoConfig.ParallelNode),
+		NATS:                fmt.Sprintf("127.0.0.1:%d", 11000+config.GinkgoConfig.ParallelNode),
+		Etcd:                fmt.Sprintf("127.0.0.1:%d", 12000+config.GinkgoConfig.ParallelNode),
+		EtcdPeer:            fmt.Sprintf("127.0.0.1:%d", 12500+config.GinkgoConfig.ParallelNode),
+		Consul:              fmt.Sprintf("127.0.0.1:%d", 12750+config.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength),
+		Rep:                 fmt.Sprintf("0.0.0.0:%d", 14000+config.GinkgoConfig.ParallelNode),
+		FileServer:          fmt.Sprintf("%s:%d", localIP, 17000+config.GinkgoConfig.ParallelNode),
+		Router:              fmt.Sprintf("127.0.0.1:%d", 18000+config.GinkgoConfig.ParallelNode),
+		BBS:                 fmt.Sprintf("127.0.0.1:%d", 20500+config.GinkgoConfig.ParallelNode*2),
+		Health:              fmt.Sprintf("127.0.0.1:%d", 20500+config.GinkgoConfig.ParallelNode*2+1),
+		Auctioneer:          fmt.Sprintf("0.0.0.0:%d", 23000+config.GinkgoConfig.ParallelNode),
+		SSHProxy:            fmt.Sprintf("127.0.0.1:%d", 23500+config.GinkgoConfig.ParallelNode),
+		SSHProxyHealthCheck: fmt.Sprintf("127.0.0.1:%d", 24500+config.GinkgoConfig.ParallelNode),
+		FakeVolmanDriver:    fmt.Sprintf("127.0.0.1:%d", 25500+config.GinkgoConfig.ParallelNode),
+		SQL:                 fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, config.GinkgoConfig.ParallelNode),
 	}
 
 	hostKeyPair, err := keys.RSAKeyPairFactory.NewKeyPair(1024)
