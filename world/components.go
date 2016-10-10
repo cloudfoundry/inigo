@@ -34,6 +34,8 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"golang.org/x/crypto/ssh"
+	"code.cloudfoundry.org/voldriver"
+	"code.cloudfoundry.org/voldriver/driverhttp"
 )
 
 type BuiltExecutables map[string]string
@@ -588,7 +590,7 @@ func (maker ComponentMaker) VolmanClient(logger lager.Logger) (volman.Manager, i
 	return volmanclient.NewServer(logger, driverConfig)
 }
 
-func (maker ComponentMaker) VolmanDriver(logger lager.Logger) ifrit.Runner {
+func (maker ComponentMaker) VolmanDriver(logger lager.Logger) (ifrit.Runner, voldriver.Driver) {
 	debugServerAddress := fmt.Sprintf("0.0.0.0:%d", 9850+ginkgo.GinkgoParallelNode())
 	fakeDriverRunner := ginkgomon.New(ginkgomon.Config{
 		Name: "local-driver",
@@ -602,7 +604,10 @@ func (maker ComponentMaker) VolmanDriver(logger lager.Logger) ifrit.Runner {
 		StartCheck: "local-driver-server.started",
 	})
 
-	return fakeDriverRunner
+	client, err := driverhttp.NewRemoteClient("http://" + maker.Addresses.FakeVolmanDriver, nil)
+	Expect(err).NotTo(HaveOccurred())
+
+	return fakeDriverRunner, client
 }
 
 // offsetPort retuns a new port offest by a given number in such a way

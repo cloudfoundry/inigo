@@ -36,7 +36,10 @@ var (
 	volmanClient        volman.Manager
 	driverSyncer        ifrit.Runner
 	driverSyncerProcess ifrit.Process
+	localDriverRunner  ifrit.Runner
 	localDriverProcess  ifrit.Process
+
+	driverClient voldriver.Driver
 
 	logger lager.Logger
 
@@ -68,7 +71,8 @@ var _ = BeforeEach(func() {
 	gardenProcess = ginkgomon.Invoke(componentMaker.Garden())
 	gardenClient = componentMaker.GardenClient()
 
-	localDriverProcess = ginkgomon.Invoke(componentMaker.VolmanDriver(logger))
+	localDriverRunner, driverClient = componentMaker.VolmanDriver(logger)
+	localDriverProcess = ginkgomon.Invoke(localDriverRunner)
 
 	// make a dummy spec file not corresponding to a running driver just to make sure volman ignores it
 	driverPluginsPath = path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode))

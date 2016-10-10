@@ -23,6 +23,7 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
+	"code.cloudfoundry.org/voldriver"
 )
 
 // these tests could eventually be folded into ../executor/executor_garden_test.go
@@ -67,6 +68,53 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		config.GardenHealthcheckProcessUser = "vcap"
 
 	})
+
+	Describe("Starting up", func() {
+		var (
+			//ownerName string
+		)
+
+		BeforeEach(func() {
+			//ownerName = "executor"
+
+			os.RemoveAll(cachePath)
+
+			executorClient, runner = initializeExecutor(logger, config)
+
+			_, err = gardenClient.Capacity()
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		JustBeforeEach(func() {
+			process = ginkgomon.Invoke(runner)
+		})
+
+		Context("when there are volumes", func() {
+
+			BeforeEach(func() {
+				errorResponse := driverClient.Create(logger, voldriver.CreateRequest{
+					Name: "a-volume",
+					Opts: map[string]interface{}{
+						"volume_id": "a-volume",
+					},
+				})
+				Expect(errorResponse.Err).To(BeEmpty())
+
+				mountResponse := driverClient.Mount(logger, voldriver.MountRequest{
+					Name: "a-volume",
+				})
+				Expect(mountResponse.Err).To(BeEmpty())
+			})
+
+			It("deletes the volumes", func() {
+				listResponse := driverClient.List(logger)
+				Expect(listResponse.Err).To(BeEmpty())
+				Expect(len(listResponse.Volumes)).To(Equal(1))
+				Expect(listResponse.Volumes[0].Mountpoint).To(BeEmpty())
+			})
+		})
+	})
+
 
 	Context("when volman is not correctly configured", func() {
 		BeforeEach(func() {
