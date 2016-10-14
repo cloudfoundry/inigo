@@ -1,6 +1,7 @@
 package volman_test
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -16,6 +17,8 @@ import (
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/voldriver"
+	"code.cloudfoundry.org/voldriver/driverhttp"
 	"github.com/cloudfoundry-incubator/cf-test-helpers/generator"
 	. "github.com/onsi/ginkgo"
 	ginkgoconfig "github.com/onsi/ginkgo/config"
@@ -23,7 +26,6 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
-	"code.cloudfoundry.org/voldriver"
 )
 
 // these tests could eventually be folded into ../executor/executor_garden_test.go
@@ -35,6 +37,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		cachePath      string
 		config         executorinit.Configuration
 		logger         lager.Logger
+		env            voldriver.Env
 		err            error
 	)
 
@@ -52,6 +55,8 @@ var _ = Describe("Executor/Garden/Volman", func() {
 	}
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("volman-executor-tests")
+		ctx := context.TODO()
+		env = driverhttp.NewHttpDriverEnv(logger, ctx)
 
 		cachePath, err = ioutil.TempDir("", "executor-tmp")
 		Expect(err).NotTo(HaveOccurred())
@@ -71,7 +76,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 	Describe("Starting up", func() {
 		var (
-			//ownerName string
+		//ownerName string
 		)
 
 		BeforeEach(func() {
@@ -92,7 +97,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		Context("when there are volumes", func() {
 
 			BeforeEach(func() {
-				errorResponse := driverClient.Create(logger, voldriver.CreateRequest{
+				errorResponse := driverClient.Create(env, voldriver.CreateRequest{
 					Name: "a-volume",
 					Opts: map[string]interface{}{
 						"volume_id": "a-volume",
@@ -100,21 +105,20 @@ var _ = Describe("Executor/Garden/Volman", func() {
 				})
 				Expect(errorResponse.Err).To(BeEmpty())
 
-				mountResponse := driverClient.Mount(logger, voldriver.MountRequest{
+				mountResponse := driverClient.Mount(env, voldriver.MountRequest{
 					Name: "a-volume",
 				})
 				Expect(mountResponse.Err).To(BeEmpty())
 			})
 
 			It("deletes the volumes", func() {
-				listResponse := driverClient.List(logger)
+				listResponse := driverClient.List(env)
 				Expect(listResponse.Err).To(BeEmpty())
 				Expect(len(listResponse.Volumes)).To(Equal(1))
 				Expect(listResponse.Volumes[0].Mountpoint).To(BeEmpty())
 			})
 		})
 	})
-
 
 	Context("when volman is not correctly configured", func() {
 		BeforeEach(func() {
