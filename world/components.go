@@ -23,6 +23,8 @@ import (
 	"code.cloudfoundry.org/guardian/gqt/runner"
 	"code.cloudfoundry.org/inigo/gardenrunner"
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/voldriver"
+	"code.cloudfoundry.org/voldriver/driverhttp"
 	"code.cloudfoundry.org/volman"
 	volmanclient "code.cloudfoundry.org/volman/vollocal"
 	"github.com/cloudfoundry-incubator/candiedyaml"
@@ -34,8 +36,6 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"golang.org/x/crypto/ssh"
-	"code.cloudfoundry.org/voldriver"
-	"code.cloudfoundry.org/voldriver/driverhttp"
 )
 
 type BuiltExecutables map[string]string
@@ -354,6 +354,7 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 			"-gardenHealthcheckProcessUser", "vcap",
 			"-volmanDriverPaths", path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
 			"-requireTLS=false",
+			"-advertiseDomain", "cell.service.consul",
 			"-listenAddrSecurable", fmt.Sprintf("%s:%d", host, offsetPort(port+100, n)),
 		},
 		argv...,
@@ -604,7 +605,7 @@ func (maker ComponentMaker) VolmanDriver(logger lager.Logger) (ifrit.Runner, vol
 		StartCheck: "local-driver-server.started",
 	})
 
-	client, err := driverhttp.NewRemoteClient("http://" + maker.Addresses.FakeVolmanDriver, nil)
+	client, err := driverhttp.NewRemoteClient("http://"+maker.Addresses.FakeVolmanDriver, nil)
 	Expect(err).NotTo(HaveOccurred())
 
 	return fakeDriverRunner, client
