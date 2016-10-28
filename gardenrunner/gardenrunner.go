@@ -90,7 +90,6 @@ func (r *Runner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 
 	depotPath := filepath.Join(r.tmpdir, "containers")
 	snapshotsPath := filepath.Join(r.tmpdir, "snapshots")
-	stateDirPath := filepath.Join(r.tmpdir, "state")
 
 	if err := os.MkdirAll(depotPath, 0755); err != nil {
 		return err
