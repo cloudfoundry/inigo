@@ -23,6 +23,8 @@ import (
 	"code.cloudfoundry.org/guardian/gqt/runner"
 	"code.cloudfoundry.org/inigo/gardenrunner"
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/voldriver"
+	"code.cloudfoundry.org/voldriver/driverhttp"
 	"code.cloudfoundry.org/volman"
 	volmanclient "code.cloudfoundry.org/volman/vollocal"
 	"github.com/cloudfoundry-incubator/candiedyaml"
@@ -34,8 +36,6 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"golang.org/x/crypto/ssh"
-	"code.cloudfoundry.org/voldriver"
-	"code.cloudfoundry.org/voldriver/driverhttp"
 )
 
 type BuiltExecutables map[string]string
@@ -236,38 +236,26 @@ func (maker ComponentMaker) Consul(argv ...string) ifrit.Runner {
 }
 
 func (maker ComponentMaker) Garden(argv ...string) ifrit.Runner {
-	if gardenrunner.UseGardenRunc() {
-		gardenArgs := []string{}
-		gardenArgs = append(gardenArgs, "--runc-bin", filepath.Join(maker.GardenBinPath, "runc"))
-		gardenArgs = append(gardenArgs, "--port-pool-size", "1000")
-		gardenArgs = append(gardenArgs, "--allow-host-access", "")
-		gardenArgs = append(gardenArgs, "--deny-network", "0.0.0.0/0")
-		if gardenrunner.UseOldGardenRunc() {
-			gardenArgs = append(gardenArgs, "--iodaemon-bin", maker.GardenBinPath+"/iodaemon")
-			gardenArgs = append(gardenArgs, "--kawasaki-bin", maker.GardenBinPath+"/kawasaki")
-		}
-		return runner.NewGardenRunner(
-			maker.Artifacts.Executables["garden"],
-			filepath.Join(maker.GardenBinPath, "init"),
-			filepath.Join(maker.GardenBinPath, "nstar"),
-			filepath.Join(maker.GardenBinPath, "dadoo"),
-			filepath.Join(maker.GardenBinPath, "grootfs"),
-			maker.PreloadedStackPathMap[maker.DefaultStack()],
-			filepath.Join(maker.GardenBinPath, "tar"),
-			"tcp",
-			maker.Addresses.GardenLinux,
-			gardenArgs...,
-		)
+	gardenArgs := []string{}
+	gardenArgs = append(gardenArgs, "--runc-bin", filepath.Join(maker.GardenBinPath, "runc"))
+	gardenArgs = append(gardenArgs, "--port-pool-size", "1000")
+	gardenArgs = append(gardenArgs, "--allow-host-access", "")
+	gardenArgs = append(gardenArgs, "--deny-network", "0.0.0.0/0")
+	if gardenrunner.UseOldGardenRunc() {
+		gardenArgs = append(gardenArgs, "--iodaemon-bin", maker.GardenBinPath+"/iodaemon")
+		gardenArgs = append(gardenArgs, "--kawasaki-bin", maker.GardenBinPath+"/kawasaki")
 	}
-
-	return gardenrunner.New(
+	return runner.NewGardenRunner(
+		maker.Artifacts.Executables["garden"],
+		filepath.Join(maker.GardenBinPath, "init"),
+		filepath.Join(maker.GardenBinPath, "nstar"),
+		filepath.Join(maker.GardenBinPath, "dadoo"),
+		filepath.Join(maker.GardenBinPath, "grootfs"),
+		maker.PreloadedStackPathMap[maker.DefaultStack()],
+		filepath.Join(maker.GardenBinPath, "tar"),
 		"tcp",
 		maker.Addresses.GardenLinux,
-		maker.Artifacts.Executables["garden"],
-		maker.GardenBinPath,
-		maker.PreloadedStackPathMap[maker.DefaultStack()],
-		maker.GardenGraphPath,
-		argv...,
+		gardenArgs...,
 	)
 }
 
@@ -604,7 +592,7 @@ func (maker ComponentMaker) VolmanDriver(logger lager.Logger) (ifrit.Runner, vol
 		StartCheck: "local-driver-server.started",
 	})
 
-	client, err := driverhttp.NewRemoteClient("http://" + maker.Addresses.FakeVolmanDriver, nil)
+	client, err := driverhttp.NewRemoteClient("http://"+maker.Addresses.FakeVolmanDriver, nil)
 	Expect(err).NotTo(HaveOccurred())
 
 	return fakeDriverRunner, client

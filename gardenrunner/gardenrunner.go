@@ -47,18 +47,11 @@ func UseOldGardenRunc() bool {
 	return true
 }
 
-func UseGardenRunc() bool {
-	return os.Getenv("USE_GARDEN_RUNC") != ""
-}
-
 func GardenServerPackageName() string {
-	if UseGardenRunc() {
-		if UseOldGardenRunc() {
-			return "github.com/cloudfoundry-incubator/guardian/cmd/guardian"
-		}
-		return "code.cloudfoundry.org/guardian/cmd/guardian"
+	if UseOldGardenRunc() {
+		return "github.com/cloudfoundry-incubator/guardian/cmd/guardian"
 	}
-	return "code.cloudfoundry.org/garden-linux"
+	return "code.cloudfoundry.org/guardian/cmd/guardian"
 }
 
 func New(network, addr string, bin, binPath, rootFSPath, graphRoot string, argv ...string) *Runner {
@@ -132,70 +125,44 @@ func (r *Runner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	gardenArgs = appendDefaultFlag(gardenArgs, "--graph", r.graphPath)
 	gardenArgs = appendDefaultFlag(gardenArgs, "--tag", strconv.Itoa(ginkgo.GinkgoParallelNode()))
 
-	if !UseGardenRunc() { // garden-linux
-		gardenArgs = appendDefaultFlag(gardenArgs, "--bin", r.binPath)
-		gardenArgs = appendDefaultFlag(gardenArgs, "--listenNetwork", r.network)
-		gardenArgs = appendDefaultFlag(gardenArgs, "--listenAddr", r.addr)
-		if r.rootFSPath != "" { //rootfs is an optional parameter
-			gardenArgs = appendDefaultFlag(gardenArgs, "--rootfs", r.rootFSPath)
-		}
-		gardenArgs = appendDefaultFlag(gardenArgs, "--snapshots", snapshotsPath)
-		gardenArgs = appendDefaultFlag(gardenArgs, "--logLevel", "debug")
-		gardenArgs = appendDefaultFlag(gardenArgs, "--networkPool", fmt.Sprintf("10.250.%d.0/24", ginkgo.GinkgoParallelNode()))
-		gardenArgs = appendDefaultFlag(gardenArgs, "--portPoolStart", strconv.Itoa(51000+(1000*ginkgo.GinkgoParallelNode())))
-		gardenArgs = appendDefaultFlag(gardenArgs, "--portPoolSize", "1000")
-
-		gardenArgs = appendDefaultFlag(gardenArgs, "--debugAddr", fmt.Sprintf(":808%d", ginkgo.GinkgoParallelNode()))
-		gardenArgs = appendDefaultFlag(gardenArgs, "--stateDir", stateDirPath)
-
-		gardenArgs = appendDefaultFlag(gardenArgs, "--allowHostAccess", "")
-		gardenArgs = appendDefaultFlag(gardenArgs, "--denyNetworks", "0.0.0.0/0")
-	} else { // garden-runc
-		if UseOldGardenRunc() {
-			gardenArgs = appendDefaultFlag(gardenArgs, "--iodaemon-bin", r.binPath+"/iodaemon")
-			gardenArgs = appendDefaultFlag(gardenArgs, "--kawasaki-bin", r.binPath+"/kawasaki")
-		}
-
-		gardenArgs = appendDefaultFlag(gardenArgs, "--init-bin", r.binPath+"/init")
-		gardenArgs = appendDefaultFlag(gardenArgs, "--dadoo-bin", r.binPath+"/dadoo")
-		gardenArgs = appendDefaultFlag(gardenArgs, "--nstar-bin", r.binPath+"/nstar")
-		gardenArgs = appendDefaultFlag(gardenArgs, "--tar-bin", r.binPath+"/tar")
-		gardenArgs = appendDefaultFlag(gardenArgs, "--runc-bin", r.binPath+"/runc")
-		gardenArgs = appendDefaultFlag(gardenArgs, "--port-pool-start", strconv.Itoa(51000+(1000*ginkgo.GinkgoParallelNode())))
-		gardenArgs = appendDefaultFlag(gardenArgs, "--port-pool-size", "1000")
-
-		switch r.network {
-		case "tcp":
-			gardenArgs = appendDefaultFlag(gardenArgs, "--bind-ip", strings.Split(r.addr, ":")[0])
-			gardenArgs = appendDefaultFlag(gardenArgs, "--bind-port", strings.Split(r.addr, ":")[1])
-		case "unix":
-			gardenArgs = appendDefaultFlag(gardenArgs, "--bind-socket", r.addr)
-		}
-
-		gardenArgs = appendDefaultFlag(gardenArgs, "--network-pool", fmt.Sprintf("10.250.%d.0/24", ginkgo.GinkgoParallelNode()))
-
-		if r.rootFSPath != "" { //default-rootfs is an optional parameter
-			gardenArgs = appendDefaultFlag(gardenArgs, "--default-rootfs", r.rootFSPath)
-		}
-
-		gardenArgs = appendDefaultFlag(gardenArgs, "--allow-host-access", "")
-		gardenArgs = appendDefaultFlag(gardenArgs, "--deny-network", "0.0.0.0/0")
+	if UseOldGardenRunc() {
+		gardenArgs = appendDefaultFlag(gardenArgs, "--iodaemon-bin", r.binPath+"/iodaemon")
+		gardenArgs = appendDefaultFlag(gardenArgs, "--kawasaki-bin", r.binPath+"/kawasaki")
 	}
+
+	gardenArgs = appendDefaultFlag(gardenArgs, "--init-bin", r.binPath+"/init")
+	gardenArgs = appendDefaultFlag(gardenArgs, "--dadoo-bin", r.binPath+"/dadoo")
+	gardenArgs = appendDefaultFlag(gardenArgs, "--nstar-bin", r.binPath+"/nstar")
+	gardenArgs = appendDefaultFlag(gardenArgs, "--tar-bin", r.binPath+"/tar")
+	gardenArgs = appendDefaultFlag(gardenArgs, "--runc-bin", r.binPath+"/runc")
+	gardenArgs = appendDefaultFlag(gardenArgs, "--port-pool-start", strconv.Itoa(51000+(1000*ginkgo.GinkgoParallelNode())))
+	gardenArgs = appendDefaultFlag(gardenArgs, "--port-pool-size", "1000")
+
+	switch r.network {
+	case "tcp":
+		gardenArgs = appendDefaultFlag(gardenArgs, "--bind-ip", strings.Split(r.addr, ":")[0])
+		gardenArgs = appendDefaultFlag(gardenArgs, "--bind-port", strings.Split(r.addr, ":")[1])
+	case "unix":
+		gardenArgs = appendDefaultFlag(gardenArgs, "--bind-socket", r.addr)
+	}
+
+	gardenArgs = appendDefaultFlag(gardenArgs, "--network-pool", fmt.Sprintf("10.250.%d.0/24", ginkgo.GinkgoParallelNode()))
+
+	if r.rootFSPath != "" { //default-rootfs is an optional parameter
+		gardenArgs = appendDefaultFlag(gardenArgs, "--default-rootfs", r.rootFSPath)
+	}
+
+	gardenArgs = appendDefaultFlag(gardenArgs, "--allow-host-access", "")
 
 	var signal os.Signal
 
 	r.Command = exec.Command(r.bin, gardenArgs...)
 
-	startLogLine := "garden-linux.started"
-	if UseGardenRunc() {
-		startLogLine = "guardian.started"
-	}
-
 	process := ifrit.Invoke(&ginkgomon.Runner{
 		Name:              "garden",
 		Command:           r.Command,
 		AnsiColorCode:     "31m",
-		StartCheck:        startLogLine,
+		StartCheck:        "guardian.started",
 		StartCheckTimeout: 30 * time.Second,
 		Cleanup: func() {
 			if signal == syscall.SIGQUIT {
