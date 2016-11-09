@@ -97,6 +97,7 @@ type ComponentMaker struct {
 	SSHConfig SSHKeys
 	EtcdSSL   SSLConfig
 	BbsSSL    SSLConfig
+	RepSSL    SSLConfig
 
 	VolmanDriverConfigDir string
 
@@ -277,6 +278,9 @@ func (maker ComponentMaker) BBS(argv ...string) ifrit.Runner {
 		"-etcdCertFile", maker.EtcdSSL.ClientCert,
 		"-etcdCluster", maker.EtcdCluster(),
 		"-etcdKeyFile", maker.EtcdSSL.ClientKey,
+		"-repCACert", maker.RepSSL.CACert,
+		"-repClientCert", maker.RepSSL.ClientCert,
+		"-repClientKey", maker.RepSSL.ClientKey,
 	}
 
 	if maker.UseSQL {
@@ -341,7 +345,11 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 			"-gardenHealthcheckProcessArgs", "-c,echo,foo",
 			"-gardenHealthcheckProcessUser", "vcap",
 			"-volmanDriverPaths", path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
-			"-requireTLS=false",
+			"-certFile", maker.RepSSL.ServerCert,
+			"-keyFile", maker.RepSSL.ServerKey,
+			"-caFile", maker.RepSSL.CACert,
+			"-requireTLS=true",
+			"-enableLegacyApiServer=false",
 			"-listenAddrSecurable", fmt.Sprintf("%s:%d", host, offsetPort(port+100, n)),
 		},
 		argv...,
@@ -382,6 +390,9 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 				"-bbsClientKey", maker.BbsSSL.ClientKey,
 				"-bbsCACert", maker.BbsSSL.CACert,
 				"-startingContainerWeight", "0.33",
+				"-repCACert", maker.RepSSL.CACert,
+				"-repClientCert", maker.RepSSL.ClientCert,
+				"-repClientKey", maker.RepSSL.ClientKey,
 			}, argv...)...,
 		),
 	})

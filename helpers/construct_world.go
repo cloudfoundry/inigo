@@ -88,9 +88,13 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		PrivateKeyPem: userKeyPair.PEMEncodedPrivateKey(),
 		AuthorizedKey: userKeyPair.AuthorizedKey(),
 	}
-	serverCert, err := filepath.Abs(assetsPath + "server.crt")
+	bbsServerCert, err := filepath.Abs(assetsPath + "bbs_server.crt")
 	Expect(err).NotTo(HaveOccurred())
-	serverKey, err := filepath.Abs(assetsPath + "server.key")
+	bbsServerKey, err := filepath.Abs(assetsPath + "bbs_server.key")
+	Expect(err).NotTo(HaveOccurred())
+	repServerCert, err := filepath.Abs(assetsPath + "rep_server.crt")
+	Expect(err).NotTo(HaveOccurred())
+	repServerKey, err := filepath.Abs(assetsPath + "rep_server.key")
 	Expect(err).NotTo(HaveOccurred())
 	clientCrt, err := filepath.Abs(assetsPath + "client.crt")
 	Expect(err).NotTo(HaveOccurred())
@@ -100,8 +104,16 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	Expect(err).NotTo(HaveOccurred())
 
 	sslConfig := world.SSLConfig{
-		ServerCert: serverCert,
-		ServerKey:  serverKey,
+		ServerCert: bbsServerCert,
+		ServerKey:  bbsServerKey,
+		ClientCert: clientCrt,
+		ClientKey:  clientKey,
+		CACert:     caCert,
+	}
+
+	repSSLConfig := world.SSLConfig{
+		ServerCert: repServerCert,
+		ServerKey:  repServerKey,
 		ClientCert: clientCrt,
 		ClientKey:  clientKey,
 		CACert:     caCert,
@@ -126,6 +138,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		SSHConfig:             sshKeys,
 		EtcdSSL:               sslConfig,
 		BbsSSL:                sslConfig,
+		RepSSL:                repSSLConfig,
 		VolmanDriverConfigDir: volmanConfigDir,
 
 		DBDriverName:           dbDriverName,
