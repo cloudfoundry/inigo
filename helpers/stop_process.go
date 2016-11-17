@@ -37,7 +37,7 @@ func StopProcesses(processes ...ifrit.Process) {
 				process.Signal(syscall.SIGQUIT)
 				Eventually(process.Wait(), 10*time.Second).Should(Receive())
 
-				Expect(true).To(BeFalse(), "process did not shut down cleanly; SIGQUIT sent")
+				Fail("process did not shut down cleanly; SIGQUIT sent. To determine which process failed to shut down in time, search for the goroutine dump above.")
 			}
 		}
 	})
