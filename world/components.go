@@ -2,6 +2,7 @@ package world
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -16,6 +17,7 @@ import (
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
+	sshproxyconfig "code.cloudfoundry.org/diego-ssh/cmd/ssh-proxy/config"
 	"code.cloudfoundry.org/garden"
 	gardenclient "code.cloudfoundry.org/garden/client"
 	gardenconnection "code.cloudfoundry.org/garden/client/connection"
@@ -23,6 +25,7 @@ import (
 	"code.cloudfoundry.org/guardian/gqt/runner"
 	"code.cloudfoundry.org/inigo/gardenrunner"
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/voldriver"
 	"code.cloudfoundry.org/voldriver/driverhttp"
 	"code.cloudfoundry.org/volman"
@@ -504,6 +507,29 @@ func (maker ComponentMaker) Router() ifrit.Runner {
 }
 
 func (maker ComponentMaker) SSHProxy(argv ...string) ifrit.Runner {
+	sshProxyConfig := sshproxyconfig.SSHProxyConfig{
+		Address:            maker.Addresses.SSHProxy,
+		HealthCheckAddress: maker.Addresses.SSHProxyHealthCheck,
+		BBSAddress:         maker.BBSURL(),
+		BBSCACert:          maker.BbsSSL.CACert,
+		BBSClientCert:      maker.BbsSSL.ClientCert,
+		BBSClientKey:       maker.BbsSSL.ClientKey,
+		ConsulCluster:      maker.ConsulCluster(),
+		EnableDiegoAuth:    true,
+		HostKey:            maker.SSHConfig.HostKeyPem,
+		LagerConfig: lagerflags.LagerConfig{
+			LogLevel: "debug",
+		},
+	}
+
+	configFile, err := ioutil.TempFile("", "ssh-proxy-config")
+	Expect(err).NotTo(HaveOccurred())
+	defer configFile.Close()
+
+	encoder := json.NewEncoder(configFile)
+	err = encoder.Encode(&sshProxyConfig)
+	Expect(err).NotTo(HaveOccurred())
+
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "ssh-proxy",
 		AnsiColorCode:     "96m",
@@ -512,16 +538,7 @@ func (maker ComponentMaker) SSHProxy(argv ...string) ifrit.Runner {
 		Command: exec.Command(
 			maker.Artifacts.Executables["ssh-proxy"],
 			append([]string{
-				"-address", maker.Addresses.SSHProxy,
-				"-healthCheckAddress", maker.Addresses.SSHProxyHealthCheck,
-				"-bbsAddress", maker.BBSURL(),
-				"-bbsCACert", maker.BbsSSL.CACert,
-				"-bbsClientCert", maker.BbsSSL.ClientCert,
-				"-bbsClientKey", maker.BbsSSL.ClientKey,
-				"-consulCluster", maker.ConsulCluster(),
-				"-enableDiegoAuth",
-				"-hostKey", maker.SSHConfig.HostKeyPem,
-				"-logLevel", "debug",
+				"-config", configFile.Name(),
 			}, argv...)...,
 		),
 	})
