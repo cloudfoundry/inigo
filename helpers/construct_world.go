@@ -31,7 +31,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	gardenGraphPath := os.Getenv("GARDEN_GRAPH_PATH")
 	externalAddress := os.Getenv("EXTERNAL_ADDRESS")
 
-	dbDriverName := os.Getenv("USE_SQL")
+	dbDriverName := os.Getenv("SQL_FLAVOR")
 	useSQL := dbDriverName != ""
 
 	var dbBaseConnectionString string
