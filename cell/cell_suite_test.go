@@ -58,7 +58,6 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 var _ = BeforeEach(func() {
 	plumbing = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-		{"etcd", componentMaker.Etcd()},
 		{"sql", componentMaker.SQL()},
 		{"nats", componentMaker.NATS()},
 		{"consul", componentMaker.Consul()},

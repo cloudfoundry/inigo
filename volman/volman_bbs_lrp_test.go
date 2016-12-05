@@ -38,7 +38,6 @@ var _ = Describe("LRPs with volume mounts", func() {
 		fileServerRunner, fileServerStaticDir = componentMaker.FileServer()
 		plumbing = ginkgomon.Invoke(grouper.NewOrdered(os.Kill, grouper.Members{
 			{"initial-services", grouper.NewParallel(os.Kill, grouper.Members{
-				{"etcd", componentMaker.Etcd()},
 				{"sql", componentMaker.SQL()},
 				{"nats", componentMaker.NATS()},
 				{"consul", componentMaker.Consul()},

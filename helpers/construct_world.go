@@ -61,8 +61,6 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	addresses = world.ComponentAddresses{
 		GardenLinux:         fmt.Sprintf("127.0.0.1:%d", 10000+config.GinkgoConfig.ParallelNode),
 		NATS:                fmt.Sprintf("127.0.0.1:%d", 11000+config.GinkgoConfig.ParallelNode),
-		Etcd:                fmt.Sprintf("127.0.0.1:%d", 12000+config.GinkgoConfig.ParallelNode),
-		EtcdPeer:            fmt.Sprintf("127.0.0.1:%d", 12500+config.GinkgoConfig.ParallelNode),
 		Consul:              fmt.Sprintf("127.0.0.1:%d", 12750+config.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength),
 		Rep:                 fmt.Sprintf("0.0.0.0:%d", 14000+config.GinkgoConfig.ParallelNode),
 		FileServer:          fmt.Sprintf("%s:%d", localIP, 17000+config.GinkgoConfig.ParallelNode),
@@ -136,7 +134,6 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		GardenBinPath:         gardenBinPath,
 		GardenGraphPath:       gardenGraphPath,
 		SSHConfig:             sshKeys,
-		EtcdSSL:               sslConfig,
 		BbsSSL:                sslConfig,
 		RepSSL:                repSSLConfig,
 		VolmanDriverConfigDir: volmanConfigDir,

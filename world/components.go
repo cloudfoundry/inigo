@@ -70,8 +70,6 @@ type SSLConfig struct {
 
 type ComponentAddresses struct {
 	NATS                string
-	Etcd                string
-	EtcdPeer            string
 	Consul              string
 	BBS                 string
 	Health              string
@@ -98,7 +96,6 @@ type ComponentMaker struct {
 	GardenGraphPath string
 
 	SSHConfig SSHKeys
-	EtcdSSL   SSLConfig
 	BbsSSL    SSLConfig
 	RepSSL    SSLConfig
 
@@ -175,38 +172,6 @@ func (maker ComponentMaker) SQL(argv ...string) ifrit.Runner {
 	})
 }
 
-func (maker ComponentMaker) Etcd(argv ...string) ifrit.Runner {
-	nodeName := fmt.Sprintf("etcd_%d", ginkgo.GinkgoParallelNode())
-	dataDir := path.Join(os.TempDir(), nodeName)
-
-	return ginkgomon.New(ginkgomon.Config{
-		Name:              "etcd",
-		AnsiColorCode:     "31m",
-		StartCheck:        "etcdserver: published",
-		StartCheckTimeout: 10 * time.Second,
-		Command: exec.Command(
-			"etcd",
-			append([]string{
-				"--name", nodeName,
-				"--data-dir", dataDir,
-				"--listen-client-urls", "https://" + maker.Addresses.Etcd,
-				"--listen-peer-urls", "http://" + maker.Addresses.EtcdPeer,
-				"--initial-cluster", nodeName + "=" + "http://" + maker.Addresses.EtcdPeer,
-				"--initial-advertise-peer-urls", "http://" + maker.Addresses.EtcdPeer,
-				"--initial-cluster-state", "new",
-				"--advertise-client-urls", "https://" + maker.Addresses.Etcd,
-				"--cert-file", maker.EtcdSSL.ServerCert,
-				"--key-file", maker.EtcdSSL.ServerKey,
-				"--ca-file", maker.EtcdSSL.CACert,
-			}, argv...)...,
-		),
-		Cleanup: func() {
-			err := os.RemoveAll(dataDir)
-			Expect(err).NotTo(HaveOccurred())
-		},
-	})
-}
-
 func (maker ComponentMaker) Consul(argv ...string) ifrit.Runner {
 	_, port, err := net.SplitHostPort(maker.Addresses.Consul)
 	Expect(err).NotTo(HaveOccurred())
@@ -277,10 +242,6 @@ func (maker ComponentMaker) BBS(argv ...string) ifrit.Runner {
 		"-certFile", maker.BbsSSL.ServerCert,
 		"-keyFile", maker.BbsSSL.ServerKey,
 		"-caFile", maker.BbsSSL.CACert,
-		"-etcdCaFile", maker.EtcdSSL.CACert,
-		"-etcdCertFile", maker.EtcdSSL.ClientCert,
-		"-etcdCluster", maker.EtcdCluster(),
-		"-etcdKeyFile", maker.EtcdSSL.ClientKey,
 		"-repCACert", maker.RepSSL.CACert,
 		"-repClientCert", maker.RepSSL.ClientCert,
 		"-repClientKey", maker.RepSSL.ClientKey,
@@ -593,10 +554,6 @@ func (maker ComponentMaker) BBSURL() string {
 
 func (maker ComponentMaker) ConsulCluster() string {
 	return "http://" + maker.Addresses.Consul
-}
-
-func (maker ComponentMaker) EtcdCluster() string {
-	return "https://" + maker.Addresses.Etcd
 }
 
 func (maker ComponentMaker) VolmanClient(logger lager.Logger) (volman.Manager, ifrit.Runner) {
