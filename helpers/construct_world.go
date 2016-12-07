@@ -62,12 +62,12 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		GardenLinux:         fmt.Sprintf("127.0.0.1:%d", 10000+config.GinkgoConfig.ParallelNode),
 		NATS:                fmt.Sprintf("127.0.0.1:%d", 11000+config.GinkgoConfig.ParallelNode),
 		Consul:              fmt.Sprintf("127.0.0.1:%d", 12750+config.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength),
-		Rep:                 fmt.Sprintf("0.0.0.0:%d", 14000+config.GinkgoConfig.ParallelNode),
+		Rep:                 fmt.Sprintf("127.0.0.1:%d", 14000+config.GinkgoConfig.ParallelNode),
 		FileServer:          fmt.Sprintf("%s:%d", localIP, 17000+config.GinkgoConfig.ParallelNode),
 		Router:              fmt.Sprintf("127.0.0.1:%d", 18000+config.GinkgoConfig.ParallelNode),
 		BBS:                 fmt.Sprintf("127.0.0.1:%d", 20500+config.GinkgoConfig.ParallelNode*2),
 		Health:              fmt.Sprintf("127.0.0.1:%d", 20500+config.GinkgoConfig.ParallelNode*2+1),
-		Auctioneer:          fmt.Sprintf("0.0.0.0:%d", 23000+config.GinkgoConfig.ParallelNode),
+		Auctioneer:          fmt.Sprintf("127.0.0.1:%d", 23000+config.GinkgoConfig.ParallelNode),
 		SSHProxy:            fmt.Sprintf("127.0.0.1:%d", 23500+config.GinkgoConfig.ParallelNode),
 		SSHProxyHealthCheck: fmt.Sprintf("127.0.0.1:%d", 24500+config.GinkgoConfig.ParallelNode),
 		FakeVolmanDriver:    fmt.Sprintf("127.0.0.1:%d", 25500+config.GinkgoConfig.ParallelNode),
@@ -94,6 +94,10 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	Expect(err).NotTo(HaveOccurred())
 	repServerKey, err := filepath.Abs(assetsPath + "rep_server.key")
 	Expect(err).NotTo(HaveOccurred())
+	auctioneerServerCert, err := filepath.Abs(assetsPath + "auctioneer_server.crt")
+	Expect(err).NotTo(HaveOccurred())
+	auctioneerServerKey, err := filepath.Abs(assetsPath + "auctioneer_server.key")
+	Expect(err).NotTo(HaveOccurred())
 	clientCrt, err := filepath.Abs(assetsPath + "client.crt")
 	Expect(err).NotTo(HaveOccurred())
 	clientKey, err := filepath.Abs(assetsPath + "client.key")
@@ -112,6 +116,14 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	repSSLConfig := world.SSLConfig{
 		ServerCert: repServerCert,
 		ServerKey:  repServerKey,
+		ClientCert: clientCrt,
+		ClientKey:  clientKey,
+		CACert:     caCert,
+	}
+
+	auctioneerSSLConfig := world.SSLConfig{
+		ServerCert: auctioneerServerCert,
+		ServerKey:  auctioneerServerKey,
 		ClientCert: clientCrt,
 		ClientKey:  clientKey,
 		CACert:     caCert,
@@ -136,6 +148,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		SSHConfig:             sshKeys,
 		BbsSSL:                sslConfig,
 		RepSSL:                repSSLConfig,
+		AuctioneerSSL:         auctioneerSSLConfig,
 		VolmanDriverConfigDir: volmanConfigDir,
 
 		DBDriverName:           dbDriverName,

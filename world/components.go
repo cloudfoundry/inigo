@@ -95,9 +95,10 @@ type ComponentMaker struct {
 	GardenBinPath   string
 	GardenGraphPath string
 
-	SSHConfig SSHKeys
-	BbsSSL    SSLConfig
-	RepSSL    SSLConfig
+	SSHConfig     SSHKeys
+	BbsSSL        SSLConfig
+	RepSSL        SSLConfig
+	AuctioneerSSL SSLConfig
 
 	VolmanDriverConfigDir string
 
@@ -232,7 +233,7 @@ func (maker ComponentMaker) BBS(argv ...string) ifrit.Runner {
 	bbsArgs := []string{
 		"-activeKeyLabel=" + "secure-key-1",
 		"-advertiseURL", maker.BBSURL(),
-		"-auctioneerAddress", "http://" + maker.Addresses.Auctioneer,
+		"-auctioneerAddress", "https://" + maker.Addresses.Auctioneer,
 		"-consulCluster", maker.ConsulCluster(),
 		"-encryptionKey=" + "secure-key-1:secure-passphrase",
 		"-listenAddress", maker.Addresses.BBS,
@@ -245,6 +246,9 @@ func (maker ComponentMaker) BBS(argv ...string) ifrit.Runner {
 		"-repCACert", maker.RepSSL.CACert,
 		"-repClientCert", maker.RepSSL.ClientCert,
 		"-repClientKey", maker.RepSSL.ClientKey,
+		"-auctioneerCACert", maker.AuctioneerSSL.CACert,
+		"-auctioneerClientCert", maker.AuctioneerSSL.ClientCert,
+		"-auctioneerClientKey", maker.AuctioneerSSL.ClientKey,
 	}
 
 	if maker.UseSQL {
@@ -357,6 +361,9 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 				"-repCACert", maker.RepSSL.CACert,
 				"-repClientCert", maker.RepSSL.ClientCert,
 				"-repClientKey", maker.RepSSL.ClientKey,
+				"-caCertFile", maker.AuctioneerSSL.CACert,
+				"-serverCertFile", maker.AuctioneerSSL.ServerCert,
+				"-serverKeyFile", maker.AuctioneerSSL.ServerKey,
 			}, argv...)...,
 		),
 	})

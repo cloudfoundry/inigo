@@ -36,7 +36,7 @@ var (
 	volmanClient        volman.Manager
 	driverSyncer        ifrit.Runner
 	driverSyncerProcess ifrit.Process
-	localDriverRunner  ifrit.Runner
+	localDriverRunner   ifrit.Runner
 	localDriverProcess  ifrit.Process
 
 	driverClient voldriver.Driver
