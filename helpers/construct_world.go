@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
 	"code.cloudfoundry.org/diego-ssh/keys"
 	"code.cloudfoundry.org/inigo/world"
@@ -31,18 +32,15 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	gardenGraphPath := os.Getenv("GARDEN_GRAPH_PATH")
 	externalAddress := os.Getenv("EXTERNAL_ADDRESS")
 
-	dbDriverName := os.Getenv("SQL_FLAVOR")
-	useSQL := dbDriverName != ""
-
 	var dbBaseConnectionString string
-	if useSQL {
-		if dbDriverName == "postgres" {
-			dbBaseConnectionString = "postgres://diego:diego_pw@127.0.0.1/"
-		} else if dbDriverName == "mysql" {
-			dbBaseConnectionString = "diego:diego_password@/"
-		} else {
-			panic(fmt.Sprintf("Unsupported Driver: %s", dbDriverName))
-		}
+	var dbDriverName string
+
+	if test_helpers.UsePostgres() {
+		dbDriverName = "postgres"
+		dbBaseConnectionString = "postgres://diego:diego_pw@127.0.0.1/"
+	} else {
+		dbDriverName = "mysql"
+		dbBaseConnectionString = "diego:diego_password@/"
 	}
 
 	if gardenGraphPath == "" {
@@ -153,6 +151,5 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 
 		DBDriverName:           dbDriverName,
 		DBBaseConnectionString: dbBaseConnectionString,
-		UseSQL:                 useSQL,
 	}
 }

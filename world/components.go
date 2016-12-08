@@ -104,7 +104,6 @@ type ComponentMaker struct {
 
 	DBDriverName           string
 	DBBaseConnectionString string
-	UseSQL                 bool
 }
 
 func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
@@ -127,17 +126,6 @@ func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
 }
 
 func (maker ComponentMaker) SQL(argv ...string) ifrit.Runner {
-	if !maker.UseSQL {
-		// If we aren't using SQL, return a no-op ifrit runner
-		return ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
-			close(ready)
-
-			<-signals
-
-			return nil
-		})
-	}
-
 	return ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
 		defer ginkgo.GinkgoRecover()
 
@@ -249,14 +237,9 @@ func (maker ComponentMaker) BBS(argv ...string) ifrit.Runner {
 		"-auctioneerCACert", maker.AuctioneerSSL.CACert,
 		"-auctioneerClientCert", maker.AuctioneerSSL.ClientCert,
 		"-auctioneerClientKey", maker.AuctioneerSSL.ClientKey,
+		"-databaseConnectionString", maker.Addresses.SQL,
+		"-databaseDriver", maker.DBDriverName,
 		"-auctioneerRequireTLS=true",
-	}
-
-	if maker.UseSQL {
-		bbsArgs = append(bbsArgs,
-			"-databaseConnectionString", maker.Addresses.SQL,
-			"-databaseDriver", maker.DBDriverName,
-		)
 	}
 
 	return ginkgomon.New(ginkgomon.Config{
