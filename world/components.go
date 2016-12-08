@@ -249,6 +249,7 @@ func (maker ComponentMaker) BBS(argv ...string) ifrit.Runner {
 		"-auctioneerCACert", maker.AuctioneerSSL.CACert,
 		"-auctioneerClientCert", maker.AuctioneerSSL.ClientCert,
 		"-auctioneerClientKey", maker.AuctioneerSSL.ClientKey,
+		"-auctioneerRequireTLS=true",
 	}
 
 	if maker.UseSQL {
