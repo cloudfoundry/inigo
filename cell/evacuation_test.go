@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/bbs/models"
@@ -108,6 +109,25 @@ var _ = Describe("Evacuation", func() {
 			Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
 		})
 
+		lrp.Monitor = models.WrapAction(
+			models.EmitProgressFor(
+				models.Timeout(
+					&models.RunAction{
+						User: "vcap",
+						Path: "sh",
+						Args: []string{
+							"-c",
+							`curl -I http://0.0.0.0:8080 --connect-timeout 2`,
+						},
+					},
+					5*time.Second,
+				),
+				"start",
+				"success",
+				"fail",
+			),
+		)
+
 		err := bbsClient.DesireLRP(logger, lrp)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -122,15 +142,15 @@ var _ = Describe("Evacuation", func() {
 		Expect(isEvacuating).To(BeFalse())
 
 		var evacuatingRepAddr string
-		var evacutaingRepRunner *ginkgomon.Runner
+		var evacuatingRepRunner *ginkgomon.Runner
 
 		switch actualLRP.CellId {
 		case cellAID:
 			evacuatingRepAddr = cellARepAddr
-			evacutaingRepRunner = cellARepRunner
+			evacuatingRepRunner = cellARepRunner
 		case cellBID:
 			evacuatingRepAddr = cellBRepAddr
-			evacutaingRepRunner = cellBRepRunner
+			evacuatingRepRunner = cellBRepRunner
 		default:
 			panic("what? who?")
 		}
@@ -144,12 +164,11 @@ var _ = Describe("Evacuation", func() {
 		By("staying routable so long as its rep is alive")
 		Eventually(func() int {
 			Expect(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)()).To(Equal(http.StatusOK))
-			return evacutaingRepRunner.ExitCode()
+			return evacuatingRepRunner.ExitCode()
 		}).Should(Equal(0))
 
-		By("running immediately after the rep exits and is eventually routable")
+		By("running immediately after the rep exits and is routable")
 		Expect(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)()).To(Equal(models.ActualLRPStateRunning))
-		Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 		Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 	})
 })
