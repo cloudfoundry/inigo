@@ -11,6 +11,7 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
+	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -67,20 +68,22 @@ var _ = Describe("Evacuation", func() {
 		cellBRepSecureAddr = fmt.Sprintf("0.0.0.0:%d", 14500+GinkgoParallelNode())
 
 		cellARepRunner = componentMaker.RepN(0,
-			"-cellID", cellAID,
-			"-listenAddr", cellARepAddr,
-			"-listenAddrSecurable", cellARepSecureAddr,
-			"-evacuationTimeout", "30s",
-			"-containerOwnerName", cellAID+"-executor",
-		)
+			func(config *repconfig.RepConfig) {
+				config.CellID = cellAID
+				config.ListenAddr = cellARepAddr
+				config.ListenAddrSecurable = cellARepSecureAddr
+				config.EvacuationTimeout = repconfig.Duration(30 * time.Second)
+				config.ContainerOwnerName = cellAID + "-executor"
+			})
 
 		cellBRepRunner = componentMaker.RepN(1,
-			"-cellID", cellBID,
-			"-listenAddr", cellBRepAddr,
-			"-listenAddrSecurable", cellBRepSecureAddr,
-			"-evacuationTimeout", "30s",
-			"-containerOwnerName", cellBID+"-executor",
-		)
+			func(config *repconfig.RepConfig) {
+				config.CellID = cellBID
+				config.ListenAddr = cellBRepAddr
+				config.ListenAddrSecurable = cellBRepSecureAddr
+				config.EvacuationTimeout = repconfig.Duration(30 * time.Second)
+				config.ContainerOwnerName = cellBID + "-executor"
+			})
 
 		cellA = ginkgomon.Invoke(cellARepRunner)
 		cellB = ginkgomon.Invoke(cellBRepRunner)

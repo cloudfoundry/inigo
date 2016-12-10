@@ -8,6 +8,7 @@ import (
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/inigo/inigo_announcement_server"
 
+	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
@@ -35,8 +36,9 @@ var _ = Describe("Task Lifecycle", func() {
 
 	Context("when a rep, and auctioneer are running", func() {
 		BeforeEach(func() {
+
 			cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-				{"rep", componentMaker.Rep("-memoryMB", "1024")},
+				{"rep", componentMaker.Rep(func(config *repconfig.RepConfig) { config.MemoryMB = "1024" })},
 			}))
 
 			auctioneerProcess = ginkgomon.Invoke(componentMaker.Auctioneer())

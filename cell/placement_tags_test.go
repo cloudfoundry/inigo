@@ -11,6 +11,7 @@ import (
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/lager"
 
+	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
@@ -29,9 +30,13 @@ var _ = Describe("Placement Tags", func() {
 
 		var fileServer ifrit.Runner
 		fileServer, fileServerStaticDir := componentMaker.FileServer()
+		modifyRepConfig := func(config *repconfig.RepConfig) {
+			config.PlacementTags = []string{"inigo-tag"}
+			config.OptionalPlacementTags = []string{"inigo-optional-tag"}
+		}
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"file-server", fileServer},
-			{"rep-with-tag", componentMaker.Rep("-placementTag=inigo-tag", "-optionalPlacementTag=inigo-optional-tag")},
+			{"rep-with-tag", componentMaker.Rep(modifyRepConfig)},
 			{"auctioneer", componentMaker.Auctioneer()},
 		}))
 

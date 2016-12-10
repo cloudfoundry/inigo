@@ -13,6 +13,7 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
+	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
@@ -23,7 +24,7 @@ import (
 var _ = Describe("Network Environment Variables", func() {
 	var (
 		guid                string
-		repFlags            []string
+		modifyRepConfig     func(*repconfig.RepConfig)
 		fileServerStaticDir string
 		fileServer          ifrit.Runner
 		runtime             ifrit.Process
@@ -31,13 +32,13 @@ var _ = Describe("Network Environment Variables", func() {
 
 	BeforeEach(func() {
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
-		repFlags = []string{}
+		modifyRepConfig = func(*repconfig.RepConfig) {}
 		guid = helpers.GenerateGuid()
 	})
 
 	JustBeforeEach(func() {
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"rep", componentMaker.Rep(repFlags...)},
+			{"rep", componentMaker.Rep(modifyRepConfig)},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"router", componentMaker.Router()},
 			{"route-emitter", componentMaker.RouteEmitter()},
@@ -75,9 +76,9 @@ var _ = Describe("Network Environment Variables", func() {
 			}).Should(Equal(models.Task_Completed))
 		})
 
-		Context("when -exportNetworkEnvVars=false is set", func() {
+		Context("when ExportNetworkEnvVars is false", func() {
 			BeforeEach(func() {
-				repFlags = []string{"-exportNetworkEnvVars=false"}
+				modifyRepConfig = func(config *repconfig.RepConfig) { config.ExportNetworkEnvVars = false }
 			})
 
 			It("does not set the networking environment variables", func() {
@@ -85,9 +86,9 @@ var _ = Describe("Network Environment Variables", func() {
 			})
 		})
 
-		Context("when -exportNetworkEnvVars=true is set", func() {
+		Context("when ExportNetworkEnvVars is true", func() {
 			BeforeEach(func() {
-				repFlags = []string{"-exportNetworkEnvVars=true"}
+				modifyRepConfig = func(config *repconfig.RepConfig) { config.ExportNetworkEnvVars = true }
 			})
 
 			It("sets the networking environment variables", func() {
@@ -142,9 +143,9 @@ var _ = Describe("Network Environment Variables", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		Context("when -exportNetworkEnvVars=false is set", func() {
+		Context("when ExportNetworkEnvVars is false", func() {
 			BeforeEach(func() {
-				repFlags = []string{"-exportNetworkEnvVars=false"}
+				modifyRepConfig = func(config *repconfig.RepConfig) { config.ExportNetworkEnvVars = false }
 			})
 
 			It("does not set the networking environment variables", func() {
@@ -156,9 +157,9 @@ var _ = Describe("Network Environment Variables", func() {
 			})
 		})
 
-		Context("when -exportNetworkEnvVars=true is set", func() {
+		Context("when ExportNetworkEnvVars is true", func() {
 			BeforeEach(func() {
-				repFlags = []string{"-exportNetworkEnvVars=true"}
+				modifyRepConfig = func(config *repconfig.RepConfig) { config.ExportNetworkEnvVars = true }
 			})
 
 			It("sets the networking environment variables", func() {

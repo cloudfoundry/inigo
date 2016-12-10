@@ -9,6 +9,7 @@ import (
 
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/inigo/helpers"
+	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -23,7 +24,7 @@ var _ = Describe("Tasks as specific user", func() {
 
 		cellGroup := grouper.Members{
 			{"file-server", fileServerRunner},
-			{"rep", componentMaker.Rep("-memoryMB", "1024")},
+			{"rep", componentMaker.Rep(func(config *repconfig.RepConfig) { config.MemoryMB = "1024" })},
 			{"auctioneer", componentMaker.Auctioneer()},
 		}
 		cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, cellGroup))

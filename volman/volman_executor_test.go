@@ -65,23 +65,16 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		config.VolmanDriverPaths = []string{path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", ginkgoconfig.GinkgoConfig.ParallelNode))}
 		config.GardenNetwork = "tcp"
 		config.GardenAddr = componentMaker.Addresses.GardenLinux
-		config.HealthyMonitoringInterval = time.Second
-		config.UnhealthyMonitoringInterval = 100 * time.Millisecond
+		config.HealthyMonitoringInterval = executorinit.Duration(time.Second)
+		config.UnhealthyMonitoringInterval = executorinit.Duration(100 * time.Millisecond)
 		config.ContainerOwnerName = "executor" + generator.RandomName()
 		config.GardenHealthcheckProcessPath = "/bin/sh"
 		config.GardenHealthcheckProcessArgs = []string{"-c", "echo", "checking health"}
 		config.GardenHealthcheckProcessUser = "vcap"
-
 	})
 
 	Describe("Starting up", func() {
-		var (
-		//ownerName string
-		)
-
 		BeforeEach(func() {
-			//ownerName = "executor"
-
 			os.RemoveAll(cachePath)
 
 			executorClient, runner = initializeExecutor(logger, config)
@@ -95,7 +88,6 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		})
 
 		Context("when there are volumes", func() {
-
 			BeforeEach(func() {
 				errorResponse := driverClient.Create(env, voldriver.CreateRequest{
 					Name: "a-volume",

@@ -26,6 +26,7 @@ import (
 	"code.cloudfoundry.org/inigo/gardenrunner"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
+	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	"code.cloudfoundry.org/voldriver"
 	"code.cloudfoundry.org/voldriver/driverhttp"
 	"code.cloudfoundry.org/volman"
@@ -254,11 +255,11 @@ func (maker ComponentMaker) BBS(argv ...string) ifrit.Runner {
 	})
 }
 
-func (maker ComponentMaker) Rep(argv ...string) *ginkgomon.Runner {
-	return maker.RepN(0, argv...)
+func (maker ComponentMaker) Rep(modifyConfigFuncs ...func(*repconfig.RepConfig)) *ginkgomon.Runner {
+	return maker.RepN(0, modifyConfigFuncs...)
 }
 
-func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
+func (maker ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.RepConfig)) *ginkgomon.Runner {
 	host, portString, err := net.SplitHostPort(maker.Addresses.Rep)
 	Expect(err).NotTo(HaveOccurred())
 	port, err := strconv.Atoi(portString)
@@ -271,44 +272,55 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 
 	cachePath := path.Join(tmpDir, "cache")
 
-	args := append(
-		[]string{
-			"-sessionName", name,
-			"-rootFSProvider", "docker",
-			"-bbsAddress", maker.BBSURL(),
-			"-listenAddr", fmt.Sprintf("%s:%d", host, offsetPort(port, n)),
-			"-cellID", "the-cell-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()) + "-" + strconv.Itoa(n),
-			"-pollingInterval", "1s",
-			"-evacuationPollingInterval", "1s",
-			"-evacuationTimeout", "1s",
-			"-lockTTL", "10s",
-			"-lockRetryInterval", "1s",
-			"-consulCluster", maker.ConsulCluster(),
-			"-gardenNetwork", "tcp",
-			"-gardenAddr", maker.Addresses.GardenLinux,
-			"-containerMaxCpuShares", "1024",
-			"-cachePath", cachePath,
-			"-tempDir", tmpDir,
-			"-logLevel", "debug",
-			"-bbsClientCert", maker.BbsSSL.ClientCert,
-			"-bbsClientKey", maker.BbsSSL.ClientKey,
-			"-bbsCACert", maker.BbsSSL.CACert,
-			"-gardenHealthcheckProcessPath", "/bin/sh",
-			"-gardenHealthcheckProcessArgs", "-c,echo,foo",
-			"-gardenHealthcheckProcessUser", "vcap",
-			"-volmanDriverPaths", path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
-			"-certFile", maker.RepSSL.ServerCert,
-			"-keyFile", maker.RepSSL.ServerKey,
-			"-caFile", maker.RepSSL.CACert,
-			"-requireTLS=true",
-			"-enableLegacyApiServer=false",
-			"-listenAddrSecurable", fmt.Sprintf("%s:%d", host, offsetPort(port+100, n)),
+	repConfig := repconfig.RepConfig{
+		SessionName:               name,
+		SupportedProviders:        []string{"docker"},
+		BBSAddress:                maker.BBSURL(),
+		ListenAddr:                fmt.Sprintf("%s:%d", host, offsetPort(port, n)),
+		CellID:                    "the-cell-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()) + "-" + strconv.Itoa(n),
+		PollingInterval:           repconfig.Duration(1 * time.Second),
+		EvacuationPollingInterval: repconfig.Duration(1 * time.Second),
+		EvacuationTimeout:         repconfig.Duration(1 * time.Second),
+		LockTTL:                   repconfig.Duration(10 * time.Second),
+		LockRetryInterval:         repconfig.Duration(1 * time.Second),
+		ConsulCluster:             maker.ConsulCluster(),
+		BBSClientCertFile:         maker.BbsSSL.ClientCert,
+		BBSClientKeyFile:          maker.BbsSSL.ClientKey,
+		BBSCACertFile:             maker.BbsSSL.CACert,
+		ServerCertFile:            maker.RepSSL.ServerCert,
+		ServerKeyFile:             maker.RepSSL.ServerKey,
+		CaCertFile:                maker.RepSSL.CACert,
+		RequireTLS:                true,
+		EnableLegacyAPIServer:     false,
+		ListenAddrSecurable:       fmt.Sprintf("%s:%d", host, offsetPort(port+100, n)),
+		PreloadedRootFS:           maker.PreloadedStackPathMap,
+		ExecutorConfig: repconfig.ExecutorConfig{
+			GardenNetwork:         "tcp",
+			GardenAddr:            maker.Addresses.GardenLinux,
+			ContainerMaxCpuShares: 1024,
+			CachePath:             cachePath,
+			TempDir:               tmpDir,
+			GardenHealthcheckProcessPath: "/bin/sh",
+			GardenHealthcheckProcessArgs: []string{"-c", "echo", "foo"},
+			GardenHealthcheckProcessUser: "vcap",
+			VolmanDriverPaths:            path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
 		},
-		argv...,
-	)
-	for stack, path := range maker.PreloadedStackPathMap {
-		args = append(args, "-preloadedRootFS", fmt.Sprintf("%s:%s", stack, path))
+		LagerConfig: lagerflags.LagerConfig{
+			LogLevel: "debug",
+		},
 	}
+
+	for _, modifyConfig := range modifyConfigFuncs {
+		modifyConfig(&repConfig)
+	}
+
+	configFile, err := ioutil.TempFile(os.TempDir(), "rep-config")
+	Expect(err).NotTo(HaveOccurred())
+
+	defer configFile.Close()
+
+	err = json.NewEncoder(configFile).Encode(repConfig)
+	Expect(err).NotTo(HaveOccurred())
 
 	return ginkgomon.New(ginkgomon.Config{
 		Name:          name,
@@ -317,7 +329,9 @@ func (maker ComponentMaker) RepN(n int, argv ...string) *ginkgomon.Runner {
 		// rep is not started until it can ping an executor and run a healthcheck
 		// container on garden; this can take a bit to start, so account for it
 		StartCheckTimeout: 2 * time.Minute,
-		Command:           exec.Command(maker.Artifacts.Executables["rep"], args...),
+		Command: exec.Command(
+			maker.Artifacts.Executables["rep"],
+			"-config", configFile.Name()),
 		Cleanup: func() {
 			os.RemoveAll(tmpDir)
 		},

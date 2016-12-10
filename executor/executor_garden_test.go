@@ -29,7 +29,7 @@ import (
 )
 
 var _ = Describe("Executor/Garden", func() {
-	const pruningInterval = 500 * time.Millisecond
+	const pruningInterval = executorinit.Duration(500 * time.Millisecond)
 	var (
 		executorClient       executor.Client
 		process              ifrit.Process
@@ -59,8 +59,8 @@ var _ = Describe("Executor/Garden", func() {
 		config.GardenAddr = componentMaker.Addresses.GardenLinux
 		config.ReservedExpirationTime = pruningInterval
 		config.ContainerReapInterval = pruningInterval
-		config.HealthyMonitoringInterval = time.Second
-		config.UnhealthyMonitoringInterval = 100 * time.Millisecond
+		config.HealthyMonitoringInterval = executorinit.Duration(time.Second)
+		config.UnhealthyMonitoringInterval = executorinit.Duration(100 * time.Millisecond)
 		config.ExportNetworkEnvVars = exportNetworkEnvVars
 		config.ContainerOwnerName = ownerName
 		config.CachePath = cachePath
@@ -213,8 +213,8 @@ var _ = Describe("Executor/Garden", func() {
 	Describe("Failing start up", func() {
 		BeforeEach(func() {
 			config.GardenHealthcheckRootFS = "/bad/path"
-			config.GardenHealthcheckInterval = 5 * time.Millisecond
-			config.GardenHealthcheckCommandRetryPause = 5 * time.Millisecond
+			config.GardenHealthcheckInterval = executorinit.Duration(5 * time.Millisecond)
+			config.GardenHealthcheckCommandRetryPause = executorinit.Duration(5 * time.Millisecond)
 		})
 
 		It("shuts down the executor", func() {
@@ -239,7 +239,7 @@ var _ = Describe("Executor/Garden", func() {
 
 			Context("garden fails then resolves the problem", func() {
 				BeforeEach(func() {
-					config.GardenHealthcheckInterval = 5 * time.Millisecond
+					config.GardenHealthcheckInterval = executorinit.Duration(5 * time.Millisecond)
 				})
 
 				It("reports correctly", func() {
