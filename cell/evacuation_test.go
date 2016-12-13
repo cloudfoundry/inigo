@@ -73,8 +73,8 @@ var _ = Describe("Evacuation", func() {
 				config.ListenAddr = cellARepAddr
 				config.ListenAddrSecurable = cellARepSecureAddr
 				config.EvacuationTimeout = repconfig.Duration(30 * time.Second)
-				config.ContainerOwnerName = cellAID + "-executor"
-			})
+			},
+		)
 
 		cellBRepRunner = componentMaker.RepN(1,
 			func(config *repconfig.RepConfig) {
@@ -82,7 +82,6 @@ var _ = Describe("Evacuation", func() {
 				config.ListenAddr = cellBRepAddr
 				config.ListenAddrSecurable = cellBRepSecureAddr
 				config.EvacuationTimeout = repconfig.Duration(30 * time.Second)
-				config.ContainerOwnerName = cellBID + "-executor"
 			})
 
 		cellA = ginkgomon.Invoke(cellARepRunner)

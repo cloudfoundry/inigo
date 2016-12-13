@@ -315,10 +315,12 @@ func (maker ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.Rep
 			ContainerMaxCpuShares: 1024,
 			CachePath:             cachePath,
 			TempDir:               tmpDir,
-			GardenHealthcheckProcessPath: "/bin/sh",
-			GardenHealthcheckProcessArgs: []string{"-c", "echo", "foo"},
-			GardenHealthcheckProcessUser: "vcap",
-			VolmanDriverPaths:            path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
+			GardenHealthcheckProcessPath:  "/bin/sh",
+			GardenHealthcheckProcessArgs:  []string{"-c", "echo", "foo"},
+			GardenHealthcheckProcessUser:  "vcap",
+			VolmanDriverPaths:             path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
+			ContainerOwnerName:            "executor-" + strconv.Itoa(n),
+			HealthCheckContainerOwnerName: "executor-health-check-" + strconv.Itoa(n),
 		},
 		LagerConfig: lagerflags.LagerConfig{
 			LogLevel: "debug",
@@ -383,23 +385,35 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 }
 
 func (maker ComponentMaker) RouteEmitter(argv ...string) ifrit.Runner {
+	return maker.RouteEmitterN(0, false, argv...)
+}
+
+func (maker ComponentMaker) RouteEmitterN(n int, localMode bool, argv ...string) ifrit.Runner {
+	name := "route-emitter-" + strconv.Itoa(n)
+	args := []string{
+		"-sessionName", name,
+		"-natsAddresses", maker.Addresses.NATS,
+		"-bbsAddress", maker.BBSURL(),
+		"-lockRetryInterval", "1s",
+		"-consulCluster", maker.ConsulCluster(),
+		"-logLevel", "debug",
+		"-bbsClientCert", maker.BbsSSL.ClientCert,
+		"-bbsClientKey", maker.BbsSSL.ClientKey,
+		"-bbsCACert", maker.BbsSSL.CACert,
+	}
+	if localMode {
+		args = append(args, "-cellID", "the-cell-id-"+strconv.Itoa(ginkgo.GinkgoParallelNode())+"-"+strconv.Itoa(n))
+	}
+	args = append(args, argv...)
+
 	return ginkgomon.New(ginkgomon.Config{
-		Name:              "route-emitter",
+		Name:              name,
 		AnsiColorCode:     "36m",
-		StartCheck:        `"route-emitter.started"`,
+		StartCheck:        `"` + name + `.watcher.sync.complete"`,
 		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["route-emitter"],
-			append([]string{
-				"-natsAddresses", maker.Addresses.NATS,
-				"-bbsAddress", maker.BBSURL(),
-				"-lockRetryInterval", "1s",
-				"-consulCluster", maker.ConsulCluster(),
-				"-logLevel", "debug",
-				"-bbsClientCert", maker.BbsSSL.ClientCert,
-				"-bbsClientKey", maker.BbsSSL.ClientKey,
-				"-bbsCACert", maker.BbsSSL.CACert,
-			}, argv...)...,
+			args...,
 		),
 	})
 }
