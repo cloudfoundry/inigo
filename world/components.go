@@ -309,7 +309,7 @@ func (maker ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.Rep
 		EnableLegacyAPIServer:     false,
 		ListenAddrSecurable:       fmt.Sprintf("%s:%d", host, offsetPort(port+100, n)),
 		PreloadedRootFS:           maker.PreloadedStackPathMap,
-		Configuration: executorinit.Configuration{
+		ExecutorConfig: executorinit.ExecutorConfig{
 			GardenNetwork:         "tcp",
 			GardenAddr:            maker.Addresses.GardenLinux,
 			ContainerMaxCpuShares: 1024,

@@ -37,7 +37,7 @@ var _ = Describe("Executor/Garden", func() {
 		gardenCapacity          garden.Capacity
 		exportNetworkEnvVars    bool
 		cachePath               string
-		config                  executorinit.Configuration
+		config                  executorinit.ExecutorConfig
 		logger                  lager.Logger
 		ownerName               string
 		gardenHealthcheckRootFS string

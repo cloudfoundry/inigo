@@ -35,7 +35,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		process        ifrit.Process
 		runner         ifrit.Runner
 		cachePath      string
-		config         executorinit.Configuration
+		config         executorinit.ExecutorConfig
 		logger         lager.Logger
 		env            voldriver.Env
 		err            error
@@ -337,7 +337,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 	})
 })
 
-func initializeExecutor(logger lager.Logger, config executorinit.Configuration) (executor.Client, ifrit.Runner) {
+func initializeExecutor(logger lager.Logger, config executorinit.ExecutorConfig) (executor.Client, ifrit.Runner) {
 	var executorMembers grouper.Members
 	var err error
 	var executorClient executor.Client
