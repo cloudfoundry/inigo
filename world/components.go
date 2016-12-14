@@ -18,6 +18,7 @@ import (
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
 	sshproxyconfig "code.cloudfoundry.org/diego-ssh/cmd/ssh-proxy/config"
+	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/garden"
 	gardenclient "code.cloudfoundry.org/garden/client"
 	gardenconnection "code.cloudfoundry.org/garden/client/connection"
@@ -194,7 +195,15 @@ func (maker ComponentMaker) Consul(argv ...string) ifrit.Runner {
 	})
 }
 
-func (maker ComponentMaker) Garden(argv ...string) ifrit.Runner {
+func (maker ComponentMaker) GardenWithoutDefaultStack() ifrit.Runner {
+	return maker.garden(false)
+}
+
+func (maker ComponentMaker) Garden() ifrit.Runner {
+	return maker.garden(true)
+}
+
+func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 	gardenArgs := []string{}
 	gardenArgs = append(gardenArgs, "--runc-bin", filepath.Join(maker.GardenBinPath, "runc"))
 	gardenArgs = append(gardenArgs, "--port-pool-size", "1000")
@@ -204,13 +213,19 @@ func (maker ComponentMaker) Garden(argv ...string) ifrit.Runner {
 		gardenArgs = append(gardenArgs, "--iodaemon-bin", maker.GardenBinPath+"/iodaemon")
 		gardenArgs = append(gardenArgs, "--kawasaki-bin", maker.GardenBinPath+"/kawasaki")
 	}
+
+	defaultRootFS := ""
+	if includeDefaultStack {
+		defaultRootFS = maker.PreloadedStackPathMap[maker.DefaultStack()]
+	}
+
 	return runner.NewGardenRunner(
 		maker.Artifacts.Executables["garden"],
 		filepath.Join(maker.GardenBinPath, "init"),
 		filepath.Join(maker.GardenBinPath, "nstar"),
 		filepath.Join(maker.GardenBinPath, "dadoo"),
 		filepath.Join(maker.GardenBinPath, "grootfs"),
-		maker.PreloadedStackPathMap[maker.DefaultStack()],
+		defaultRootFS,
 		filepath.Join(maker.GardenBinPath, "tar"),
 		"tcp",
 		maker.Addresses.GardenLinux,
@@ -294,7 +309,7 @@ func (maker ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.Rep
 		EnableLegacyAPIServer:     false,
 		ListenAddrSecurable:       fmt.Sprintf("%s:%d", host, offsetPort(port+100, n)),
 		PreloadedRootFS:           maker.PreloadedStackPathMap,
-		ExecutorConfig: repconfig.ExecutorConfig{
+		ExecutorConfig: executorinit.ExecutorConfig{
 			GardenNetwork:         "tcp",
 			GardenAddr:            maker.Addresses.GardenLinux,
 			ContainerMaxCpuShares: 1024,

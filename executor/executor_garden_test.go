@@ -31,45 +31,49 @@ import (
 var _ = Describe("Executor/Garden", func() {
 	const pruningInterval = executorinit.Duration(500 * time.Millisecond)
 	var (
-		executorClient       executor.Client
-		process              ifrit.Process
-		runner               ifrit.Runner
-		gardenCapacity       garden.Capacity
-		exportNetworkEnvVars bool
-		cachePath            string
-		config               executorinit.Configuration
-		logger               lager.Logger
-		ownerName            string
+		executorClient          executor.Client
+		process                 ifrit.Process
+		runner                  ifrit.Runner
+		gardenCapacity          garden.Capacity
+		exportNetworkEnvVars    bool
+		cachePath               string
+		config                  executorinit.ExecutorConfig
+		logger                  lager.Logger
+		ownerName               string
+		gardenHealthcheckRootFS string
 	)
 
 	BeforeEach(func() {
+		gardenHealthcheckRootFS = ""
 		config = executorinit.DefaultConfiguration
-
-		var err error
-		cachePath, err = ioutil.TempDir("", "executor-tmp")
-		Expect(err).NotTo(HaveOccurred())
-
-		ownerName = "executor" + generator.RandomName()
-	})
-
-	JustBeforeEach(func() {
-		var err error
-
 		config.GardenNetwork = "tcp"
 		config.GardenAddr = componentMaker.Addresses.GardenLinux
 		config.ReservedExpirationTime = pruningInterval
 		config.ContainerReapInterval = pruningInterval
 		config.HealthyMonitoringInterval = executorinit.Duration(time.Second)
 		config.UnhealthyMonitoringInterval = executorinit.Duration(100 * time.Millisecond)
-		config.ExportNetworkEnvVars = exportNetworkEnvVars
-		config.ContainerOwnerName = ownerName
-		config.CachePath = cachePath
 		config.GardenHealthcheckProcessPath = "/bin/sh"
 		config.GardenHealthcheckProcessArgs = []string{"-c", "echo", "checking health"}
 		config.GardenHealthcheckProcessUser = "vcap"
+
+		var err error
+		cachePath, err = ioutil.TempDir("", "executor-tmp")
+		Expect(err).NotTo(HaveOccurred())
+
+		ownerName = "executor" + generator.RandomName()
+
+		config.CachePath = cachePath
+		config.ContainerOwnerName = ownerName
+	})
+
+	JustBeforeEach(func() {
+		var err error
+
+		config.ExportNetworkEnvVars = exportNetworkEnvVars
+
 		logger = lagertest.NewTestLogger("test")
 		var executorMembers grouper.Members
-		executorClient, executorMembers, err = executorinit.Initialize(logger, config, clock.NewClock())
+		executorClient, executorMembers, err = executorinit.Initialize(logger, config, gardenHealthcheckRootFS, clock.NewClock())
 		Expect(err).NotTo(HaveOccurred())
 		runner = grouper.NewParallel(os.Kill, executorMembers)
 
@@ -211,17 +215,48 @@ var _ = Describe("Executor/Garden", func() {
 	})
 
 	Describe("Failing start up", func() {
-		BeforeEach(func() {
-			config.GardenHealthcheckRootFS = "/bad/path"
-			config.GardenHealthcheckInterval = executorinit.Duration(5 * time.Millisecond)
-			config.GardenHealthcheckCommandRetryPause = executorinit.Duration(5 * time.Millisecond)
+		Context("when an invalid rootFS is given for the garden healtcheck", func() {
+			BeforeEach(func() {
+				gardenHealthcheckRootFS = "/bad/path"
+				config.GardenHealthcheckInterval = executorinit.Duration(5 * time.Millisecond)
+				config.GardenHealthcheckCommandRetryPause = executorinit.Duration(5 * time.Millisecond)
+			})
+
+			It("shuts down the executor", func() {
+				process = ifrit.Background(runner)
+				processExit := process.Wait()
+
+				Eventually(processExit).Should(Receive(HaveOccurred()))
+			})
 		})
 
-		It("shuts down the executor", func() {
-			process = ifrit.Background(runner)
-			processExit := process.Wait()
+		Context("when a blank garden healthcheck RootFS is given", func() {
+			BeforeEach(func() {
+				gardenHealthcheckRootFS = ""
+			})
 
-			Eventually(processExit).Should(Receive(HaveOccurred()))
+			Context("when garden is started without a default RootFS", func() {
+				BeforeEach(func() {
+					ginkgomon.Interrupt(gardenProcess)
+					gardenProcess = ginkgomon.Invoke(componentMaker.GardenWithoutDefaultStack())
+				})
+
+				It("shuts down the executor", func() {
+					process = ifrit.Background(runner)
+					processExit := process.Wait()
+
+					Eventually(processExit).Should(Receive(HaveOccurred()))
+				})
+			})
+
+			Context("when garden is started with a default RootFS", func() {
+				It("starts without an error", func() {
+					process = ifrit.Background(runner)
+					processExit := process.Wait()
+
+					Consistently(processExit).ShouldNot(Receive())
+				})
+			})
 		})
 	})
 

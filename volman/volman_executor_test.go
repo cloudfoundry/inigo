@@ -35,7 +35,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		process        ifrit.Process
 		runner         ifrit.Runner
 		cachePath      string
-		config         executorinit.Configuration
+		config         executorinit.ExecutorConfig
 		logger         lager.Logger
 		env            voldriver.Env
 		err            error
@@ -62,7 +62,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		config = executorinit.DefaultConfiguration
-		config.VolmanDriverPaths = []string{path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", ginkgoconfig.GinkgoConfig.ParallelNode))}
+		config.VolmanDriverPaths = path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", ginkgoconfig.GinkgoConfig.ParallelNode))
 		config.GardenNetwork = "tcp"
 		config.GardenAddr = componentMaker.Addresses.GardenLinux
 		config.HealthyMonitoringInterval = executorinit.Duration(time.Second)
@@ -114,7 +114,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 	Context("when volman is not correctly configured", func() {
 		BeforeEach(func() {
-			var invalidDriverPath = []string{""}
+			invalidDriverPath := ""
 			config.VolmanDriverPaths = invalidDriverPath
 
 			executorClient, runner = initializeExecutor(logger, config)
@@ -337,11 +337,12 @@ var _ = Describe("Executor/Garden/Volman", func() {
 	})
 })
 
-func initializeExecutor(logger lager.Logger, config executorinit.Configuration) (executor.Client, ifrit.Runner) {
+func initializeExecutor(logger lager.Logger, config executorinit.ExecutorConfig) (executor.Client, ifrit.Runner) {
 	var executorMembers grouper.Members
 	var err error
 	var executorClient executor.Client
-	executorClient, executorMembers, err = executorinit.Initialize(logger, config, clock.NewClock())
+	defaultRootFS := ""
+	executorClient, executorMembers, err = executorinit.Initialize(logger, config, defaultRootFS, clock.NewClock())
 	Expect(err).NotTo(HaveOccurred())
 
 	return executorClient, grouper.NewParallel(os.Kill, executorMembers)
