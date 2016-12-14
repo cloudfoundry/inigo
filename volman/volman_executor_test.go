@@ -62,7 +62,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		config = executorinit.DefaultConfiguration
-		config.VolmanDriverPaths = []string{path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", ginkgoconfig.GinkgoConfig.ParallelNode))}
+		config.VolmanDriverPaths = path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", ginkgoconfig.GinkgoConfig.ParallelNode))
 		config.GardenNetwork = "tcp"
 		config.GardenAddr = componentMaker.Addresses.GardenLinux
 		config.HealthyMonitoringInterval = executorinit.Duration(time.Second)
@@ -114,7 +114,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 	Context("when volman is not correctly configured", func() {
 		BeforeEach(func() {
-			var invalidDriverPath = []string{""}
+			invalidDriverPath := ""
 			config.VolmanDriverPaths = invalidDriverPath
 
 			executorClient, runner = initializeExecutor(logger, config)
@@ -341,7 +341,7 @@ func initializeExecutor(logger lager.Logger, config executorinit.Configuration) 
 	var executorMembers grouper.Members
 	var err error
 	var executorClient executor.Client
-	executorClient, executorMembers, err = executorinit.Initialize(logger, config, clock.NewClock())
+	executorClient, executorMembers, err = executorinit.Initialize(logger, config, "", clock.NewClock())
 	Expect(err).NotTo(HaveOccurred())
 
 	return executorClient, grouper.NewParallel(os.Kill, executorMembers)
