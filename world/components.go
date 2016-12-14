@@ -213,13 +213,19 @@ func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 		gardenArgs = append(gardenArgs, "--iodaemon-bin", maker.GardenBinPath+"/iodaemon")
 		gardenArgs = append(gardenArgs, "--kawasaki-bin", maker.GardenBinPath+"/kawasaki")
 	}
+
+	defaultRootFS := ""
+	if includeDefaultStack {
+		defaultRootFS = maker.PreloadedStackPathMap[maker.DefaultStack()]
+	}
+
 	return runner.NewGardenRunner(
 		maker.Artifacts.Executables["garden"],
 		filepath.Join(maker.GardenBinPath, "init"),
 		filepath.Join(maker.GardenBinPath, "nstar"),
 		filepath.Join(maker.GardenBinPath, "dadoo"),
 		filepath.Join(maker.GardenBinPath, "grootfs"),
-		maker.PreloadedStackPathMap[maker.DefaultStack()],
+		defaultRootFS,
 		filepath.Join(maker.GardenBinPath, "tar"),
 		"tcp",
 		maker.Addresses.GardenLinux,

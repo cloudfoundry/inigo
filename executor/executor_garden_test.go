@@ -28,7 +28,7 @@ import (
 	"code.cloudfoundry.org/garden"
 )
 
-var _ = FDescribe("Executor/Garden", func() {
+var _ = Describe("Executor/Garden", func() {
 	const pruningInterval = executorinit.Duration(500 * time.Millisecond)
 	var (
 		executorClient          executor.Client
@@ -230,17 +230,32 @@ var _ = FDescribe("Executor/Garden", func() {
 			})
 		})
 
-		Context("when garden is started without a default RootFS", func() {
+		Context("when a blank garden healthcheck RootFS is given", func() {
 			BeforeEach(func() {
-				ginkgomon.Interrupt(gardenProcess)
-				gardenProcess = ginkgomon.Invoke(componentMaker.GardenWithoutDefaultStack())
+				gardenHealthcheckRootFS = ""
 			})
 
-			It("an empty rootFS ", func() {
-				process = ifrit.Background(runner)
-				processExit := process.Wait()
+			Context("when garden is started without a default RootFS", func() {
+				BeforeEach(func() {
+					ginkgomon.Interrupt(gardenProcess)
+					gardenProcess = ginkgomon.Invoke(componentMaker.GardenWithoutDefaultStack())
+				})
 
-				Eventually(processExit).Should(Receive(HaveOccurred()))
+				It("shuts down the executor", func() {
+					process = ifrit.Background(runner)
+					processExit := process.Wait()
+
+					Eventually(processExit).Should(Receive(HaveOccurred()))
+				})
+			})
+
+			Context("when garden is started with a default RootFS", func() {
+				It("starts without an error", func() {
+					process = ifrit.Background(runner)
+					processExit := process.Wait()
+
+					Consistently(processExit).ShouldNot(Receive())
+				})
 			})
 		})
 	})
