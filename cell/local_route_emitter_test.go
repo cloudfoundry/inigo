@@ -79,13 +79,18 @@ var _ = Describe("LocalRouteEmitter", func() {
 	})
 
 	Describe("desiring", func() {
-		var lrp *models.DesiredLRP
+		var (
+			lrp       *models.DesiredLRP
+			instances int32
+		)
 
 		BeforeEach(func() {
-			lrp = createDesiredLRP(processGuid)
+			instances = 1
 		})
 
 		JustBeforeEach(func() {
+			lrp = createDesiredLRP(processGuid)
+			lrp.Instances = instances
 			err := bbsClient.DesireLRP(logger, lrp)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
@@ -97,6 +102,107 @@ var _ = Describe("LocalRouteEmitter", func() {
 				time.Second,
 				10*time.Millisecond,
 			).Should(Equal(http.StatusOK))
+		})
+
+		Context("when there are 3 instances", func() {
+			BeforeEach(func() {
+				instances = 3
+			})
+
+			Context("and a rep start evacuating", func() {
+				JustBeforeEach(func() {
+					evacuateARep(
+						processGuid,
+						logger,
+						bbsClient,
+						cellAID, cellARepAddr,
+						cellBID, cellBRepAddr,
+					)
+				})
+
+				It("eventually should make the new lrp routable within a second", func() {
+					Eventually(
+						helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost),
+						time.Second,
+						10*time.Millisecond,
+					).Should(ConsistOf([]string{"0", "1", "2"}))
+				})
+			})
+
+			Context("and the app is deleted", func() {
+				JustBeforeEach(func() {
+					err := bbsClient.RemoveDesiredLRP(logger, processGuid)
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("eventually is not accessible through the router within a second", func() {
+					Eventually(
+						helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost),
+						time.Second,
+						10*time.Millisecond,
+					).Should(BeEmpty())
+				})
+			})
+
+			Context("and the app is updated", func() {
+				var (
+					desiredLRPUdate *models.DesiredLRPUpdate
+				)
+
+				BeforeEach(func() {
+					desiredLRPUdate = &models.DesiredLRPUpdate{}
+				})
+
+				JustBeforeEach(func() {
+					err := bbsClient.UpdateDesiredLRP(logger, processGuid, desiredLRPUdate)
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				Context("to scale the app down", func() {
+					BeforeEach(func() {
+						newInstances := int32(1)
+						desiredLRPUdate.Instances = &newInstances
+					})
+
+					It("eventually extra routes are removed within a second", func() {
+						Eventually(
+							helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost),
+							time.Second,
+							10*time.Millisecond,
+						).Should(ConsistOf([]string{"0"}))
+					})
+				})
+
+				Context("to add new route", func() {
+					BeforeEach(func() {
+						routes := cfroutes.CFRoutes{{Hostnames: []string{helpers.DefaultHost, "some-other-route"}, Port: 8080}}.RoutingInfo()
+						desiredLRPUdate.Routes = &routes
+					})
+
+					It("eventually is accessible using the new route within a second", func() {
+						Eventually(
+							helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "some-other-route"),
+							time.Second,
+							10*time.Millisecond,
+						).Should(ConsistOf([]string{"0", "1", "2"}))
+					})
+				})
+
+				Context("and all routes are deleted", func() {
+					BeforeEach(func() {
+						routes := cfroutes.CFRoutes{}.RoutingInfo()
+						desiredLRPUdate.Routes = &routes
+					})
+
+					It("eventually not accessible using its route within a second", func() {
+						Eventually(
+							helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost),
+							time.Second,
+							10*time.Millisecond,
+						).Should(BeEmpty())
+					})
+				})
+			})
 		})
 
 		Context("when the instances count change", func() {
@@ -111,7 +217,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			Context("when the app is scaled up", func() {
+			Context("to 3 instances", func() {
 				BeforeEach(func() {
 					newInstances = 3
 				})
@@ -129,98 +235,9 @@ var _ = Describe("LocalRouteEmitter", func() {
 						10*time.Millisecond,
 					).Should(ConsistOf([]string{"0", "1", "2"}))
 				})
-
-				Context("and a rep start evacuating", func() {
-					JustBeforeEach(func() {
-						evacuateARep(
-							processGuid,
-							logger,
-							bbsClient,
-							cellAID, cellARepAddr,
-							cellBID, cellBRepAddr,
-						)
-					})
-
-					It("eventually should make the new lrp routable within a second", func() {
-						Eventually(
-							helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost),
-							time.Second,
-							10*time.Millisecond,
-						).Should(ConsistOf([]string{"0", "1", "2"}))
-					})
-				})
-
-				Context("and later scaled down", func() {
-					JustBeforeEach(func() {
-						newInstances := int32(1)
-						err := bbsClient.UpdateDesiredLRP(logger, processGuid, &models.DesiredLRPUpdate{
-							Instances: &newInstances,
-						})
-						Expect(err).NotTo(HaveOccurred())
-					})
-
-					It("eventually extra routes are removed within a second", func() {
-						Eventually(
-							helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost),
-							time.Second,
-							10*time.Millisecond,
-						).Should(ConsistOf([]string{"0"}))
-					})
-				})
-
-				Context("when the app is deleted", func() {
-					JustBeforeEach(func() {
-						err := bbsClient.RemoveDesiredLRP(logger, processGuid)
-						Expect(err).NotTo(HaveOccurred())
-					})
-
-					It("eventually is not accessible through the router within a second", func() {
-						Eventually(
-							helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost),
-							time.Second,
-							10*time.Millisecond,
-						).Should(BeEmpty())
-					})
-				})
-
-				Context("when a new route is added", func() {
-					JustBeforeEach(func() {
-						routes := cfroutes.CFRoutes{{Hostnames: []string{helpers.DefaultHost, "some-other-route"}, Port: 8080}}.RoutingInfo()
-						err := bbsClient.UpdateDesiredLRP(logger, processGuid, &models.DesiredLRPUpdate{
-							Routes: &routes,
-						})
-						Expect(err).NotTo(HaveOccurred())
-					})
-
-					It("eventually is accessible using the new route within a second", func() {
-						Eventually(
-							helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "some-other-route"),
-							time.Second,
-							10*time.Millisecond,
-						).Should(ConsistOf([]string{"0", "1", "2"}))
-					})
-				})
-
-				Context("when all routes are deleted", func() {
-					JustBeforeEach(func() {
-						routes := cfroutes.CFRoutes{}.RoutingInfo()
-						err := bbsClient.UpdateDesiredLRP(logger, processGuid, &models.DesiredLRPUpdate{
-							Routes: &routes,
-						})
-						Expect(err).NotTo(HaveOccurred())
-					})
-
-					It("eventually not accessible using its route within a second", func() {
-						Eventually(
-							helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost),
-							time.Second,
-							10*time.Millisecond,
-						).Should(BeEmpty())
-					})
-				})
 			})
 
-			Context("when the app is scaled down", func() {
+			Context("to 0 instances", func() {
 				BeforeEach(func() {
 					newInstances = 0
 				})
