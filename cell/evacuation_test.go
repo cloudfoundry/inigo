@@ -49,7 +49,7 @@ var _ = Describe("Evacuation", func() {
 		By("restarting the bbs with smaller convergeRepeatInterval")
 		ginkgomon.Interrupt(bbsProcess)
 		bbsProcess = ginkgomon.Invoke(componentMaker.BBS(
-			"-convergeRepeatInterval", "1s",
+			overrideConvergenceRepeatInterval,
 		))
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{

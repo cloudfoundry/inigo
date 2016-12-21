@@ -3,7 +3,9 @@ package cell_test
 import (
 	"fmt"
 	"os"
+	"time"
 
+	bbsconfig "code.cloudfoundry.org/bbs/cmd/bbs/config"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/inigo/inigo_announcement_server"
@@ -15,6 +17,14 @@ import (
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
 )
+
+func overrideKickTaskDuration(config *bbsconfig.BBSConfig) {
+	config.KickTaskDuration = bbsconfig.Duration(time.Second)
+}
+
+func overrideExpirePendingTaskDuration(config *bbsconfig.BBSConfig) {
+	config.ExpirePendingTaskDuration = bbsconfig.Duration(time.Second)
+}
 
 var _ = Describe("Task Lifecycle", func() {
 	var (
@@ -176,8 +186,8 @@ var _ = Describe("Task Lifecycle", func() {
 					By("restarting the bbs with smaller convergeRepeatInterval")
 					ginkgomon.Interrupt(bbsProcess)
 					bbsProcess = ginkgomon.Invoke(componentMaker.BBS(
-						"-convergeRepeatInterval", "1s",
-						"-kickTaskDuration", "1s",
+						overrideConvergenceRepeatInterval,
+						overrideKickTaskDuration,
 					))
 				})
 
@@ -279,8 +289,8 @@ exit 0
 			By("restarting the bbs with smaller convergeRepeatInterval")
 			ginkgomon.Interrupt(bbsProcess)
 			bbsProcess = ginkgomon.Invoke(componentMaker.BBS(
-				"-convergeRepeatInterval", "1s",
-				"-kickTaskDuration", "1s",
+				overrideConvergenceRepeatInterval,
+				overrideKickTaskDuration,
 			))
 
 			cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, grouper.Members{
@@ -327,8 +337,8 @@ exit 0
 			By("restarting the bbs with smaller convergeRepeatInterval")
 			ginkgomon.Interrupt(bbsProcess)
 			bbsProcess = ginkgomon.Invoke(componentMaker.BBS(
-				"-convergeRepeatInterval", "1s",
-				"-expirePendingTaskDuration", "1s",
+				overrideConvergenceRepeatInterval,
+				overrideExpirePendingTaskDuration,
 			))
 		})
 

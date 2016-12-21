@@ -14,6 +14,9 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs"
+	bbsconfig "code.cloudfoundry.org/bbs/cmd/bbs/config"
+	bbsrunner "code.cloudfoundry.org/bbs/cmd/bbs/testrunner"
+	"code.cloudfoundry.org/bbs/encryption"
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
@@ -233,41 +236,45 @@ func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 	)
 }
 
-func (maker ComponentMaker) BBS(argv ...string) ifrit.Runner {
-	bbsArgs := []string{
-		"-activeKeyLabel=" + "secure-key-1",
-		"-advertiseURL", maker.BBSURL(),
-		"-auctioneerAddress", "https://" + maker.Addresses.Auctioneer,
-		"-consulCluster", maker.ConsulCluster(),
-		"-encryptionKey=" + "secure-key-1:secure-passphrase",
-		"-listenAddress", maker.Addresses.BBS,
-		"-healthAddress", maker.Addresses.Health,
-		"-logLevel", "debug",
-		"-requireSSL",
-		"-certFile", maker.BbsSSL.ServerCert,
-		"-keyFile", maker.BbsSSL.ServerKey,
-		"-caFile", maker.BbsSSL.CACert,
-		"-repCACert", maker.RepSSL.CACert,
-		"-repClientCert", maker.RepSSL.ClientCert,
-		"-repClientKey", maker.RepSSL.ClientKey,
-		"-auctioneerCACert", maker.AuctioneerSSL.CACert,
-		"-auctioneerClientCert", maker.AuctioneerSSL.ClientCert,
-		"-auctioneerClientKey", maker.AuctioneerSSL.ClientKey,
-		"-databaseConnectionString", maker.Addresses.SQL,
-		"-databaseDriver", maker.DBDriverName,
-		"-auctioneerRequireTLS=true",
+func (maker ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig)) ifrit.Runner {
+	config := bbsconfig.BBSConfig{
+		AdvertiseURL:  maker.BBSURL(),
+		ConsulCluster: maker.ConsulCluster(),
+		EncryptionConfig: encryption.EncryptionConfig{
+			ActiveKeyLabel: "secure-key-1",
+			EncryptionKeys: map[string]string{
+				"secure-key-1": "secure-passphrase",
+			},
+		},
+		LagerConfig: lagerflags.LagerConfig{
+			LogLevel: "debug",
+		},
+		AuctioneerAddress:        "https://" + maker.Addresses.Auctioneer,
+		ListenAddress:            maker.Addresses.BBS,
+		HealthAddress:            maker.Addresses.Health,
+		RequireSSL:               true,
+		CertFile:                 maker.BbsSSL.ServerCert,
+		KeyFile:                  maker.BbsSSL.ServerKey,
+		CaFile:                   maker.BbsSSL.CACert,
+		RepCACert:                maker.RepSSL.CACert,
+		RepClientCert:            maker.RepSSL.ClientCert,
+		RepClientKey:             maker.RepSSL.ClientKey,
+		AuctioneerCACert:         maker.AuctioneerSSL.CACert,
+		AuctioneerClientCert:     maker.AuctioneerSSL.ClientCert,
+		AuctioneerClientKey:      maker.AuctioneerSSL.ClientKey,
+		DatabaseConnectionString: maker.Addresses.SQL,
+		DatabaseDriver:           maker.DBDriverName,
+		AuctioneerRequireTLS:     true,
 	}
 
-	return ginkgomon.New(ginkgomon.Config{
-		Name:              "bbs",
-		AnsiColorCode:     "32m",
-		StartCheck:        "bbs.started",
-		StartCheckTimeout: 10 * time.Second,
-		Command: exec.Command(
-			maker.Artifacts.Executables["bbs"],
-			append(bbsArgs, argv...)...,
-		),
-	})
+	for _, modifyConfig := range modifyConfigFuncs {
+		modifyConfig(&config)
+	}
+
+	runner := bbsrunner.New(maker.Artifacts.Executables["bbs"], config)
+	runner.AnsiColorCode = "32m"
+	runner.StartCheckTimeout = 10 * time.Second
+	return runner
 }
 
 func (maker ComponentMaker) Rep(modifyConfigFuncs ...func(*repconfig.RepConfig)) *ginkgomon.Runner {

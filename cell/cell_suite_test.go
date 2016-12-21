@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/ginkgoreporter"
@@ -19,6 +20,7 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 
 	"code.cloudfoundry.org/bbs"
+	bbsconfig "code.cloudfoundry.org/bbs/cmd/bbs/config"
 	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/inigo/gardenrunner"
 	"code.cloudfoundry.org/inigo/helpers"
@@ -35,6 +37,10 @@ var (
 	bbsServiceClient     bbs.ServiceClient
 	logger               lager.Logger
 )
+
+func overrideConvergenceRepeatInterval(conf *bbsconfig.BBSConfig) {
+	conf.ConvergeRepeatInterval = bbsconfig.Duration(time.Second)
+}
 
 var _ = SynchronizedBeforeSuite(func() []byte {
 	payload, err := json.Marshal(world.BuiltArtifacts{

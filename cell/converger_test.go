@@ -70,7 +70,7 @@ var _ = Describe("Convergence to desired state", func() {
 				By("restarting the bbs with smaller convergeRepeatInterval")
 				ginkgomon.Interrupt(bbsProcess)
 				bbsProcess = ginkgomon.Invoke(componentMaker.BBS(
-					"-convergeRepeatInterval", "1s",
+					overrideConvergenceRepeatInterval,
 				))
 			})
 
@@ -150,7 +150,7 @@ var _ = Describe("Convergence to desired state", func() {
 				By("restarting the bbs with smaller convergeRepeatInterval")
 				ginkgomon.Interrupt(bbsProcess)
 				bbsProcess = ginkgomon.Invoke(componentMaker.BBS(
-					"-convergeRepeatInterval", "1s",
+					overrideConvergenceRepeatInterval,
 				))
 			})
 
@@ -182,7 +182,7 @@ var _ = Describe("Convergence to desired state", func() {
 			By("restarting the bbs with smaller convergeRepeatInterval")
 			ginkgomon.Interrupt(bbsProcess)
 			bbsProcess = ginkgomon.Invoke(componentMaker.BBS(
-				"-convergeRepeatInterval", "1s",
+				overrideConvergenceRepeatInterval,
 			))
 		})
 
