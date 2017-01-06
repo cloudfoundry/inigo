@@ -18,7 +18,13 @@ func ConsulWaitUntilReady() {
 
 	startingPort := httpPort - consulrunner.PortOffsetHTTP
 
-	cr := consulrunner.NewClusterRunner(startingPort, 1, "http")
+	cr := consulrunner.NewClusterRunner(
+		consulrunner.ClusterRunnerConfig{
+			StartingPort: startingPort,
+			NumNodes:     1,
+			Scheme:       "http",
+		},
+	)
 
 	client := cr.NewClient()
 	catalog := client.Catalog()

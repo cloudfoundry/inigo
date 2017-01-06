@@ -174,7 +174,13 @@ func (maker ComponentMaker) Consul(argv ...string) ifrit.Runner {
 
 	startingPort := httpPort - consulrunner.PortOffsetHTTP
 
-	clusterRunner := consulrunner.NewClusterRunner(startingPort, 1, "http")
+	clusterRunner := consulrunner.NewClusterRunner(
+		consulrunner.ClusterRunnerConfig{
+			StartingPort: startingPort,
+			NumNodes:     1,
+			Scheme:       "http",
+		},
+	)
 	return ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
 		defer ginkgo.GinkgoRecover()
 
