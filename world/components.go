@@ -73,6 +73,12 @@ type SSLConfig struct {
 	CACert     string
 }
 
+type GardenSettingsConfig struct {
+	GardenBinPath     string
+	GardenGraphPath   string
+	GrootFSConfigPath string
+}
+
 type ComponentAddresses struct {
 	NATS                string
 	Consul              string
@@ -97,8 +103,7 @@ type ComponentMaker struct {
 
 	PreloadedStackPathMap map[string]string
 
-	GardenBinPath   string
-	GardenGraphPath string
+	GardenConfig GardenSettingsConfig
 
 	SSHConfig     SSHKeys
 	BbsSSL        SSLConfig
@@ -214,13 +219,13 @@ func (maker ComponentMaker) Garden() ifrit.Runner {
 
 func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 	gardenArgs := []string{}
-	gardenArgs = append(gardenArgs, "--runc-bin", filepath.Join(maker.GardenBinPath, "runc"))
+	gardenArgs = append(gardenArgs, "--runc-bin", filepath.Join(maker.GardenConfig.GardenBinPath, "runc"))
 	gardenArgs = append(gardenArgs, "--port-pool-size", "1000")
 	gardenArgs = append(gardenArgs, "--allow-host-access", "")
 	gardenArgs = append(gardenArgs, "--deny-network", "0.0.0.0/0")
 	if gardenrunner.UseOldGardenRunc() {
-		gardenArgs = append(gardenArgs, "--iodaemon-bin", maker.GardenBinPath+"/iodaemon")
-		gardenArgs = append(gardenArgs, "--kawasaki-bin", maker.GardenBinPath+"/kawasaki")
+		gardenArgs = append(gardenArgs, "--iodaemon-bin", maker.GardenConfig.GardenBinPath+"/iodaemon")
+		gardenArgs = append(gardenArgs, "--kawasaki-bin", maker.GardenConfig.GardenBinPath+"/kawasaki")
 	}
 
 	defaultRootFS := ""
@@ -228,14 +233,22 @@ func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 		defaultRootFS = maker.PreloadedStackPathMap[maker.DefaultStack()]
 	}
 
+	if os.Getenv("USE_GROOTFS") == "true" {
+		gardenArgs = append(gardenArgs, "--image-plugin", maker.GardenConfig.GardenBinPath+"/grootfs")
+		gardenArgs = append(gardenArgs, "--image-plugin-extra-arg", `"--config"`)
+		gardenArgs = append(gardenArgs, "--image-plugin-extra-arg", maker.GardenConfig.GrootFSConfigPath+"/config.yml")
+		gardenArgs = append(gardenArgs, "--privileged-image-plugin-extra-arg", `"--config"`)
+		gardenArgs = append(gardenArgs, "--privileged-image-plugin-extra-arg", maker.GardenConfig.GrootFSConfigPath+"/privileged-config.yml")
+	}
+
 	return runner.NewGardenRunner(
 		maker.Artifacts.Executables["garden"],
-		filepath.Join(maker.GardenBinPath, "init"),
-		filepath.Join(maker.GardenBinPath, "nstar"),
-		filepath.Join(maker.GardenBinPath, "dadoo"),
-		filepath.Join(maker.GardenBinPath, "grootfs"),
+		filepath.Join(maker.GardenConfig.GardenBinPath, "init"),
+		filepath.Join(maker.GardenConfig.GardenBinPath, "nstar"),
+		filepath.Join(maker.GardenConfig.GardenBinPath, "dadoo"),
+		filepath.Join(maker.GardenConfig.GardenBinPath, "grootfs"),
 		defaultRootFS,
-		filepath.Join(maker.GardenBinPath, "tar"),
+		filepath.Join(maker.GardenConfig.GardenBinPath, "tar"),
 		"tcp",
 		maker.Addresses.GardenLinux,
 		gardenArgs...,

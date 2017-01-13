@@ -23,7 +23,8 @@ var DefaultStack = PreloadedStacks[0]
 var addresses world.ComponentAddresses
 
 const (
-	assetsPath = "../fixtures/certs/"
+	assetsPath  = "../fixtures/certs/"
+	grootFSPath = "../fixtures/grootfs/"
 )
 
 func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) world.ComponentMaker {
@@ -127,6 +128,12 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		CACert:     caCert,
 	}
 
+	gardenConfig := world.GardenSettingsConfig{
+		GardenBinPath:     gardenBinPath,
+		GardenGraphPath:   gardenGraphPath,
+		GrootFSConfigPath: grootFSPath,
+	}
+
 	guid, err := uuid.NewV4()
 	Expect(err).NotTo(HaveOccurred())
 
@@ -141,8 +148,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 
 		ExternalAddress: externalAddress,
 
-		GardenBinPath:         gardenBinPath,
-		GardenGraphPath:       gardenGraphPath,
+		GardenConfig:          gardenConfig,
 		SSHConfig:             sshKeys,
 		BbsSSL:                sslConfig,
 		RepSSL:                repSSLConfig,

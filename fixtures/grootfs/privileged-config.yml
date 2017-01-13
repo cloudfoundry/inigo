@@ -1,0 +1,4 @@
+---
+store_path: /mnt/btrfs
+drax_bin: /usr/local/bin/drax
+log_level: debug
