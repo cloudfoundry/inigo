@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"time"
 
+	auctioneerconfig "code.cloudfoundry.org/auctioneer/cmd/auctioneer/config"
 	"code.cloudfoundry.org/bbs"
 	bbsconfig "code.cloudfoundry.org/bbs/cmd/bbs/config"
 	bbsrunner "code.cloudfoundry.org/bbs/cmd/bbs/testrunner"
@@ -384,7 +385,33 @@ func (maker ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.Rep
 	})
 }
 
-func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
+func (maker ComponentMaker) Auctioneer() ifrit.Runner {
+	auctioneerConfig := auctioneerconfig.AuctioneerConfig{
+		BBSAddress:              maker.BBSURL(),
+		ListenAddress:           maker.Addresses.Auctioneer,
+		LockRetryInterval:       durationjson.Duration(time.Second),
+		ConsulCluster:           maker.ConsulCluster(),
+		BBSClientCertFile:       maker.BbsSSL.ClientCert,
+		BBSClientKeyFile:        maker.BbsSSL.ClientKey,
+		BBSCACertFile:           maker.BbsSSL.CACert,
+		StartingContainerWeight: 0.33,
+		RepCACert:               maker.RepSSL.CACert,
+		RepClientCert:           maker.RepSSL.ClientCert,
+		RepClientKey:            maker.RepSSL.ClientKey,
+		CACertFile:              maker.AuctioneerSSL.CACert,
+		ServerCertFile:          maker.AuctioneerSSL.ServerCert,
+		ServerKeyFile:           maker.AuctioneerSSL.ServerKey,
+		LagerConfig: lagerflags.LagerConfig{
+			LogLevel: "debug",
+		},
+	}
+
+	configFile, err := ioutil.TempFile(os.TempDir(), "auctioneer-config")
+	Expect(err).NotTo(HaveOccurred())
+
+	err = json.NewEncoder(configFile).Encode(auctioneerConfig)
+	Expect(err).NotTo(HaveOccurred())
+
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "auctioneer",
 		AnsiColorCode:     "35m",
@@ -392,23 +419,7 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["auctioneer"],
-			append([]string{
-				"-bbsAddress", maker.BBSURL(),
-				"-listenAddr", maker.Addresses.Auctioneer,
-				"-lockRetryInterval", "1s",
-				"-consulCluster", maker.ConsulCluster(),
-				"-logLevel", "debug",
-				"-bbsClientCert", maker.BbsSSL.ClientCert,
-				"-bbsClientKey", maker.BbsSSL.ClientKey,
-				"-bbsCACert", maker.BbsSSL.CACert,
-				"-startingContainerWeight", "0.33",
-				"-repCACert", maker.RepSSL.CACert,
-				"-repClientCert", maker.RepSSL.ClientCert,
-				"-repClientKey", maker.RepSSL.ClientKey,
-				"-caCertFile", maker.AuctioneerSSL.CACert,
-				"-serverCertFile", maker.AuctioneerSSL.ServerCert,
-				"-serverKeyFile", maker.AuctioneerSSL.ServerKey,
-			}, argv...)...,
+			"-config", configFile.Name(),
 		),
 	})
 }
