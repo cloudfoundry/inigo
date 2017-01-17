@@ -9,6 +9,7 @@ import (
 
 	"code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
@@ -72,7 +73,7 @@ var _ = Describe("Evacuation", func() {
 				config.CellID = cellAID
 				config.ListenAddr = cellARepAddr
 				config.ListenAddrSecurable = cellARepSecureAddr
-				config.EvacuationTimeout = repconfig.Duration(30 * time.Second)
+				config.EvacuationTimeout = durationjson.Duration(30 * time.Second)
 			},
 		)
 
@@ -81,7 +82,7 @@ var _ = Describe("Evacuation", func() {
 				config.CellID = cellBID
 				config.ListenAddr = cellBRepAddr
 				config.ListenAddrSecurable = cellBRepSecureAddr
-				config.EvacuationTimeout = repconfig.Duration(30 * time.Second)
+				config.EvacuationTimeout = durationjson.Duration(30 * time.Second)
 			})
 
 		cellA = ginkgomon.Invoke(cellARepRunner)

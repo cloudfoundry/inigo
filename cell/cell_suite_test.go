@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/ginkgoreporter"
 	"code.cloudfoundry.org/localip"
@@ -39,7 +40,7 @@ var (
 )
 
 func overrideConvergenceRepeatInterval(conf *bbsconfig.BBSConfig) {
-	conf.ConvergeRepeatInterval = bbsconfig.Duration(time.Second)
+	conf.ConvergeRepeatInterval = durationjson.Duration(time.Second)
 }
 
 var _ = SynchronizedBeforeSuite(func() []byte {

@@ -7,6 +7,7 @@ import (
 
 	bbsconfig "code.cloudfoundry.org/bbs/cmd/bbs/config"
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/inigo/inigo_announcement_server"
 
@@ -19,11 +20,11 @@ import (
 )
 
 func overrideKickTaskDuration(config *bbsconfig.BBSConfig) {
-	config.KickTaskDuration = bbsconfig.Duration(time.Second)
+	config.KickTaskDuration = durationjson.Duration(time.Second)
 }
 
 func overrideExpirePendingTaskDuration(config *bbsconfig.BBSConfig) {
-	config.ExpirePendingTaskDuration = bbsconfig.Duration(time.Second)
+	config.ExpirePendingTaskDuration = durationjson.Duration(time.Second)
 }
 
 var _ = Describe("Task Lifecycle", func() {

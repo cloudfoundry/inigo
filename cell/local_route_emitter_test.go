@@ -10,10 +10,12 @@ import (
 	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/lager"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
+	routeemitterconfig "code.cloudfoundry.org/route-emitter/cmd/route-emitter/config"
 	"code.cloudfoundry.org/routing-info/cfroutes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -44,14 +46,14 @@ var _ = Describe("LocalRouteEmitter", func() {
 		repA := componentMaker.RepN(1, func(config *repconfig.RepConfig) {
 			config.CellID = cellAID
 			config.ListenAddr = cellARepAddr
-			config.EvacuationTimeout = repconfig.Duration(30 * time.Second)
+			config.EvacuationTimeout = durationjson.Duration(30 * time.Second)
 		})
 
 		cellBRepAddr = fmt.Sprintf("0.0.0.0:%d", 14400+GinkgoParallelNode())
 		repB := componentMaker.RepN(2, func(config *repconfig.RepConfig) {
 			config.CellID = cellBID
 			config.ListenAddr = cellBRepAddr
-			config.EvacuationTimeout = repconfig.Duration(30 * time.Second)
+			config.EvacuationTimeout = durationjson.Duration(30 * time.Second)
 		})
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
@@ -61,8 +63,14 @@ var _ = Describe("LocalRouteEmitter", func() {
 			{"rep-2", repB},
 			{"auctioneer", componentMaker.Auctioneer()},
 			// override syncinterval and cell id
-			{"route-emitter-1", componentMaker.RouteEmitterN(1, true, "-syncInterval", time.Hour.String(), "-cellID", cellAID)},
-			{"route-emitter-2", componentMaker.RouteEmitterN(2, true, "-syncInterval", time.Hour.String(), "-cellID", cellBID)},
+			{"route-emitter-1", componentMaker.RouteEmitterN(1, func(config *routeemitterconfig.RouteEmitterConfig) {
+				config.SyncInterval = durationjson.Duration(time.Hour)
+				config.CellID = cellAID
+			})},
+			{"route-emitter-2", componentMaker.RouteEmitterN(1, func(config *routeemitterconfig.RouteEmitterConfig) {
+				config.SyncInterval = durationjson.Duration(time.Hour)
+				config.CellID = cellBID
+			})},
 		}))
 		archiveFiles = fixtures.GoServerApp()
 	})

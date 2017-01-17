@@ -21,7 +21,9 @@ import (
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
 	sshproxyconfig "code.cloudfoundry.org/diego-ssh/cmd/ssh-proxy/config"
+	"code.cloudfoundry.org/durationjson"
 	executorinit "code.cloudfoundry.org/executor/initializer"
+	fileserverconfig "code.cloudfoundry.org/fileserver/cmd/file-server/config"
 	"code.cloudfoundry.org/garden"
 	gardenclient "code.cloudfoundry.org/garden/client"
 	gardenconnection "code.cloudfoundry.org/garden/client/connection"
@@ -31,6 +33,7 @@ import (
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
+	routeemitterconfig "code.cloudfoundry.org/route-emitter/cmd/route-emitter/config"
 	"code.cloudfoundry.org/voldriver"
 	"code.cloudfoundry.org/voldriver/driverhttp"
 	"code.cloudfoundry.org/volman"
@@ -319,11 +322,11 @@ func (maker ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.Rep
 		BBSAddress:                maker.BBSURL(),
 		ListenAddr:                fmt.Sprintf("%s:%d", host, offsetPort(port, n)),
 		CellID:                    "the-cell-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()) + "-" + strconv.Itoa(n),
-		PollingInterval:           repconfig.Duration(1 * time.Second),
-		EvacuationPollingInterval: repconfig.Duration(1 * time.Second),
-		EvacuationTimeout:         repconfig.Duration(1 * time.Second),
-		LockTTL:                   repconfig.Duration(10 * time.Second),
-		LockRetryInterval:         repconfig.Duration(1 * time.Second),
+		PollingInterval:           durationjson.Duration(1 * time.Second),
+		EvacuationPollingInterval: durationjson.Duration(1 * time.Second),
+		EvacuationTimeout:         durationjson.Duration(1 * time.Second),
+		LockTTL:                   durationjson.Duration(10 * time.Second),
+		LockRetryInterval:         durationjson.Duration(1 * time.Second),
 		ConsulCluster:             maker.ConsulCluster(),
 		BBSClientCertFile:         maker.BbsSSL.ClientCert,
 		BBSClientKeyFile:          maker.BbsSSL.ClientKey,
@@ -410,27 +413,33 @@ func (maker ComponentMaker) Auctioneer(argv ...string) ifrit.Runner {
 	})
 }
 
-func (maker ComponentMaker) RouteEmitter(argv ...string) ifrit.Runner {
-	return maker.RouteEmitterN(0, false, argv...)
+func (maker ComponentMaker) RouteEmitter() ifrit.Runner {
+	return maker.RouteEmitterN(0, func(*routeemitterconfig.RouteEmitterConfig) {})
 }
 
-func (maker ComponentMaker) RouteEmitterN(n int, localMode bool, argv ...string) ifrit.Runner {
+func (maker ComponentMaker) RouteEmitterN(n int, f func(config *routeemitterconfig.RouteEmitterConfig)) ifrit.Runner {
 	name := "route-emitter-" + strconv.Itoa(n)
-	args := []string{
-		"-sessionName", name,
-		"-natsAddresses", maker.Addresses.NATS,
-		"-bbsAddress", maker.BBSURL(),
-		"-lockRetryInterval", "1s",
-		"-consulCluster", maker.ConsulCluster(),
-		"-logLevel", "debug",
-		"-bbsClientCert", maker.BbsSSL.ClientCert,
-		"-bbsClientKey", maker.BbsSSL.ClientKey,
-		"-bbsCACert", maker.BbsSSL.CACert,
+
+	configFile, err := ioutil.TempFile("", "file-server-config")
+	Expect(err).NotTo(HaveOccurred())
+
+	cfg := routeemitterconfig.RouteEmitterConfig{
+		ConsulSessionName: name,
+		NATSAddresses:     maker.Addresses.NATS,
+		BBSAddress:        maker.BBSURL(),
+		LockRetryInterval: durationjson.Duration(time.Second),
+		ConsulCluster:     maker.ConsulCluster(),
+		LagerConfig:       lagerflags.LagerConfig{LogLevel: "debug"},
+		BBSClientCertFile: maker.BbsSSL.ClientCert,
+		BBSClientKeyFile:  maker.BbsSSL.ClientKey,
+		BBSCACertFile:     maker.BbsSSL.CACert,
 	}
-	if localMode {
-		args = append(args, "-cellID", "the-cell-id-"+strconv.Itoa(ginkgo.GinkgoParallelNode())+"-"+strconv.Itoa(n))
-	}
-	args = append(args, argv...)
+
+	f(&cfg)
+
+	encoder := json.NewEncoder(configFile)
+	err = encoder.Encode(&cfg)
+	Expect(err).NotTo(HaveOccurred())
 
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              name,
@@ -439,13 +448,32 @@ func (maker ComponentMaker) RouteEmitterN(n int, localMode bool, argv ...string)
 		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["route-emitter"],
-			args...,
+			"-config", configFile.Name(),
 		),
+		Cleanup: func() {
+			configFile.Close()
+			err := os.RemoveAll(configFile.Name())
+			Expect(err).NotTo(HaveOccurred())
+		},
 	})
 }
 
-func (maker ComponentMaker) FileServer(argv ...string) (ifrit.Runner, string) {
+func (maker ComponentMaker) FileServer() (ifrit.Runner, string) {
 	servedFilesDir, err := ioutil.TempDir("", "file-server-files")
+	Expect(err).NotTo(HaveOccurred())
+
+	configFile, err := ioutil.TempFile("", "file-server-config")
+	Expect(err).NotTo(HaveOccurred())
+
+	cfg := fileserverconfig.FileServerConfig{
+		ServerAddress:   maker.Addresses.FileServer,
+		ConsulCluster:   maker.ConsulCluster(),
+		LagerConfig:     lagerflags.LagerConfig{LogLevel: "debug"},
+		StaticDirectory: servedFilesDir,
+	}
+
+	encoder := json.NewEncoder(configFile)
+	err = encoder.Encode(&cfg)
 	Expect(err).NotTo(HaveOccurred())
 
 	return ginkgomon.New(ginkgomon.Config{
@@ -455,15 +483,13 @@ func (maker ComponentMaker) FileServer(argv ...string) (ifrit.Runner, string) {
 		StartCheckTimeout: 10 * time.Second,
 		Command: exec.Command(
 			maker.Artifacts.Executables["file-server"],
-			append([]string{
-				"-address", maker.Addresses.FileServer,
-				"-consulCluster", maker.ConsulCluster(),
-				"-logLevel", "debug",
-				"-staticDirectory", servedFilesDir,
-			}, argv...)...,
+			"-config", configFile.Name(),
 		),
 		Cleanup: func() {
 			err := os.RemoveAll(servedFilesDir)
+			Expect(err).NotTo(HaveOccurred())
+			configFile.Close()
+			err = os.RemoveAll(configFile.Name())
 			Expect(err).NotTo(HaveOccurred())
 		},
 	}), servedFilesDir
