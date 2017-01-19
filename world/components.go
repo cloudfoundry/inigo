@@ -226,6 +226,7 @@ func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 	gardenArgs = append(gardenArgs, "--runc-bin", filepath.Join(maker.GardenConfig.GardenBinPath, "runc"))
 	gardenArgs = append(gardenArgs, "--port-pool-size", "1000")
 	gardenArgs = append(gardenArgs, "--allow-host-access", "")
+	gardenArgs = append(gardenArgs, "--mtu", "1432")
 	gardenArgs = append(gardenArgs, "--deny-network", "0.0.0.0/0")
 	if gardenrunner.UseOldGardenRunc() {
 		gardenArgs = append(gardenArgs, "--iodaemon-bin", maker.GardenConfig.GardenBinPath+"/iodaemon")
