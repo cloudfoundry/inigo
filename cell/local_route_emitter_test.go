@@ -67,7 +67,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 				config.SyncInterval = durationjson.Duration(time.Hour)
 				config.CellID = cellAID
 			})},
-			{"route-emitter-2", componentMaker.RouteEmitterN(1, func(config *routeemitterconfig.RouteEmitterConfig) {
+			{"route-emitter-2", componentMaker.RouteEmitterN(2, func(config *routeemitterconfig.RouteEmitterConfig) {
 				config.SyncInterval = durationjson.Duration(time.Hour)
 				config.CellID = cellBID
 			})},
