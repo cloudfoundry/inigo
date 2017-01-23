@@ -3,7 +3,6 @@ package cell_test
 import (
 	"os"
 	"path/filepath"
-	"time"
 
 	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/bbs/models"
@@ -21,12 +20,12 @@ import (
 
 var _ = Describe("Placement Tags", func() {
 	var (
-		processGuid string
-		runtime     ifrit.Process
+		guid    string
+		runtime ifrit.Process
 	)
 
 	BeforeEach(func() {
-		processGuid = helpers.GenerateGuid()
+		guid = helpers.GenerateGuid()
 
 		var fileServer ifrit.Runner
 		fileServer, fileServerStaticDir := componentMaker.FileServer()
@@ -76,12 +75,12 @@ var _ = Describe("Placement Tags", func() {
 
 		Context("when the desired LRP matches the required tags", func() {
 			BeforeEach(func() {
-				lrp = helpers.LRPCreateRequestWithPlacementTag(processGuid, []string{"inigo-tag"})
+				lrp = helpers.LRPCreateRequestWithPlacementTag(guid, []string{"inigo-tag"})
 			})
 
 			It("succeeds and is running on correct cell", func() {
 				lrpFunc := func() string {
-					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGuid)
+					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, guid)
 					Expect(err).NotTo(HaveOccurred())
 					if len(lrpGroups) == 0 {
 						return ""
@@ -96,12 +95,12 @@ var _ = Describe("Placement Tags", func() {
 
 		Context("when the desired LRP matches the required  and optional tags", func() {
 			BeforeEach(func() {
-				lrp = helpers.LRPCreateRequestWithPlacementTag(processGuid, []string{"inigo-tag", "inigo-optional-tag"})
+				lrp = helpers.LRPCreateRequestWithPlacementTag(guid, []string{"inigo-tag", "inigo-optional-tag"})
 			})
 
 			It("succeeds and is running on correct cell", func() {
 				lrpFunc := func() string {
-					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGuid)
+					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, guid)
 					Expect(err).NotTo(HaveOccurred())
 					if len(lrpGroups) == 0 {
 						return ""
@@ -116,12 +115,12 @@ var _ = Describe("Placement Tags", func() {
 
 		Context("when no cells are advertising the placement tags", func() {
 			BeforeEach(func() {
-				lrp = helpers.LRPCreateRequestWithPlacementTag(processGuid, []string{""})
+				lrp = helpers.LRPCreateRequestWithPlacementTag(guid, []string{""})
 			})
 
 			It("fails and sets a placement error", func() {
 				lrpFunc := func() string {
-					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGuid)
+					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, guid)
 					Expect(err).NotTo(HaveOccurred())
 					if len(lrpGroups) == 0 {
 						return ""
@@ -145,13 +144,12 @@ var _ = Describe("Placement Tags", func() {
 
 		BeforeEach(func() {
 			action = models.Serial(
-				models.Timeout(
-					&models.RunAction{
-						User: "vcap",
-						Path: "sh",
-						Args: []string{
-							"-c",
-							`
+				&models.RunAction{
+					User: "vcap",
+					Path: "sh",
+					Args: []string{
+						"-c",
+						`
 									kill_sleep() {
 										kill -15 $child
 										exit
@@ -164,10 +162,8 @@ var _ = Describe("Placement Tags", func() {
 									child=$!
 									wait $child
 									`,
-						},
 					},
-					500*time.Millisecond,
-				),
+				},
 			)
 
 		})
@@ -177,39 +173,41 @@ var _ = Describe("Placement Tags", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
+		taskShouldRunSuccessfully := func() {
+			It("succeeds", func() {
+				var completedTask *models.Task
+				Eventually(func() interface{} {
+					var err error
+
+					completedTask, err = bbsClient.TaskByGuid(logger, guid)
+					Expect(err).NotTo(HaveOccurred())
+
+					return completedTask.State
+				}).Should(Equal(models.Task_Completed))
+
+				Expect(completedTask.Failed).To(BeFalse())
+			})
+		}
+
 		Context("when the task matches the required tags", func() {
 			BeforeEach(func() {
-				task = helpers.TaskCreateRequestWithTags("task-guid", action, []string{"inigo-tag"})
+				task = helpers.TaskCreateRequestWithTags(guid, action, []string{"inigo-tag"})
 			})
 
-			It("succeeds and is running on correct cell", func() {
-				taskFunc := func() string {
-					t, err := bbsClient.TaskByGuid(logger, task.TaskGuid)
-					Expect(err).NotTo(HaveOccurred())
-					return t.CellId
-				}
-				Eventually(taskFunc).Should(MatchRegexp("the-cell-id-.*-0"))
-			})
+			taskShouldRunSuccessfully()
 		})
 
 		Context("when the task matches the required and optional tags", func() {
 			BeforeEach(func() {
-				task = helpers.TaskCreateRequestWithTags("task-guid", action, []string{"inigo-tag", "inigo-optional-tag"})
+				task = helpers.TaskCreateRequestWithTags(guid, action, []string{"inigo-tag", "inigo-optional-tag"})
 			})
 
-			It("succeeds and is running on correct cell", func() {
-				taskFunc := func() string {
-					t, err := bbsClient.TaskByGuid(logger, task.TaskGuid)
-					Expect(err).NotTo(HaveOccurred())
-					return t.CellId
-				}
-				Eventually(taskFunc).Should(MatchRegexp("the-cell-id-.*-0"))
-			})
+			taskShouldRunSuccessfully()
 		})
 
 		Context("when no cells are advertising the placement tags", func() {
 			BeforeEach(func() {
-				task = helpers.TaskCreateRequestWithTags("task-guid", action, []string{""})
+				task = helpers.TaskCreateRequestWithTags(guid, action, []string{""})
 			})
 
 			It("fails and sets a placement error", func() {
