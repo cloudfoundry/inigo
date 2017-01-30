@@ -1,5 +1,5 @@
 ---
-store_path: /mnt/btrfs
+store_path: /mnt/btrfs/unprivileged
 drax_bin: /usr/local/bin/drax
 log_level: debug
 # uid_mappings:
