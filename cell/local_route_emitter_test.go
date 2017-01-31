@@ -330,7 +330,7 @@ func evacuateARep(
 
 	By("waiting for the lrp to run on the new cell")
 	Eventually(func() map[string]int {
-		lrps := helpers.ActiveActualLRPs(logger, bbsClient, processGuid)
+		lrps := helpers.RunningActualLRPs(logger, bbsClient, processGuid)
 		cellIDs := map[string]int{}
 		for _, lrp := range lrps {
 			cellIDs[lrp.CellId]++

@@ -8,19 +8,31 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func ActiveActualLRPs(logger lager.Logger, client bbs.InternalClient, processGuid string) []models.ActualLRP {
+func filteredActualLRPs(logger lager.Logger, client bbs.InternalClient, processGuid string, filter func(lrp *models.ActualLRP) bool) []models.ActualLRP {
 	lrpGroups, err := client.ActualLRPGroupsByProcessGuid(logger, processGuid)
 	Expect(err).NotTo(HaveOccurred())
 
 	startedLRPs := make([]models.ActualLRP, 0, len(lrpGroups))
 	for _, lrpGroup := range lrpGroups {
 		lrp, _ := lrpGroup.Resolve()
-		if lrp.State != models.ActualLRPStateUnclaimed {
+		if filter(lrp) {
 			startedLRPs = append(startedLRPs, *lrp)
 		}
 	}
 
 	return startedLRPs
+}
+
+func ActiveActualLRPs(logger lager.Logger, client bbs.InternalClient, processGuid string) []models.ActualLRP {
+	return filteredActualLRPs(logger, client, processGuid, func(lrp *models.ActualLRP) bool {
+		return lrp.State != models.ActualLRPStateUnclaimed
+	})
+}
+
+func RunningActualLRPs(logger lager.Logger, client bbs.InternalClient, processGuid string) []models.ActualLRP {
+	return filteredActualLRPs(logger, client, processGuid, func(lrp *models.ActualLRP) bool {
+		return lrp.State == models.ActualLRPStateRunning
+	})
 }
 
 func TaskStatePoller(logger lager.Logger, client bbs.InternalClient, taskGuid string, task *models.Task) func() models.Task_State {
