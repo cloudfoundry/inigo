@@ -27,7 +27,7 @@ import (
 var _ = Describe("LocalRouteEmitter", func() {
 	var (
 		processGuid                                  string
-		runtime                                      ifrit.Process
+		runtime, cellAProcess, cellBProcess          ifrit.Process
 		archiveFiles                                 []archive_helper.ArchiveFile
 		fileServerStaticDir                          string
 		cellAID, cellBID, cellARepAddr, cellBRepAddr string
@@ -59,15 +59,19 @@ var _ = Describe("LocalRouteEmitter", func() {
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
-			{"rep-1", repA},
-			{"rep-2", repB},
 			{"auctioneer", componentMaker.Auctioneer()},
-			// override syncinterval and cell id
-			{"route-emitter-1", componentMaker.RouteEmitterN(1, func(config *routeemitterconfig.RouteEmitterConfig) {
+		}))
+
+		cellAProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+			{"rep-a", repA},
+			{"route-emitter-a", componentMaker.RouteEmitterN(1, func(config *routeemitterconfig.RouteEmitterConfig) {
 				config.SyncInterval = durationjson.Duration(time.Hour)
 				config.CellID = cellAID
 			})},
-			{"route-emitter-2", componentMaker.RouteEmitterN(2, func(config *routeemitterconfig.RouteEmitterConfig) {
+		}))
+		cellBProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+			{"rep-b", repB},
+			{"route-emitter-b", componentMaker.RouteEmitterN(1, func(config *routeemitterconfig.RouteEmitterConfig) {
 				config.SyncInterval = durationjson.Duration(time.Hour)
 				config.CellID = cellBID
 			})},
@@ -76,7 +80,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(runtime)
+		helpers.StopProcesses(runtime, cellAProcess, cellBProcess)
 	})
 
 	JustBeforeEach(func() {
