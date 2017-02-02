@@ -464,8 +464,7 @@ func (maker ComponentMaker) RouteEmitterN(n int, f func(config *routeemitterconf
 		),
 		Cleanup: func() {
 			configFile.Close()
-			err := os.RemoveAll(configFile.Name())
-			Expect(err).NotTo(HaveOccurred())
+			os.RemoveAll(configFile.Name())
 		},
 	})
 }
