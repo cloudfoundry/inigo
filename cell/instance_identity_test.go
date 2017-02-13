@@ -20,7 +20,7 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 )
 
-var _ = FDescribe("InstanceIdentity", func() {
+var _ = Describe("InstanceIdentity", func() {
 	var (
 		credDir     string
 		cellProcess ifrit.Process
