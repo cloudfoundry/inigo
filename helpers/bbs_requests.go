@@ -123,48 +123,6 @@ func LightweightLRPCreateRequest(processGuid string) *models.DesiredLRP {
 	return lrp
 }
 
-func PrivilegedLRPCreateRequest(processGuid string) *models.DesiredLRP {
-	action := models.WrapAction(&models.RunAction{
-		Path: "bash",
-		// always run as root; tests change task-level privileged
-		User: "root",
-		Args: []string{
-			"-c",
-			`
-				    kill_server() {
-							kill -9 $child
-							exit
-						}
-
-						mkfifo request
-
-						trap kill_server 15 9
-
-						while true; do
-						{
-							read < request
-
-							status="200 OK"
-							if ! echo h > /proc/sysrq-trigger; then
-								status="500 Internal Server Error"
-							fi
-
-						  echo -n -e "HTTP/1.1 ${status}\r\n"
-						  echo -n -e "Content-Length: 0\r\n\r\n"
-						} | nc -l 0.0.0.0 8080 > request &
-
-						child=$!
-						wait $child
-						done
-						`,
-		},
-	})
-
-	lrpRequest := lrpCreateRequest(processGuid, defaultLogGuid, defaultPreloadedRootFS, 1, nil, action, defaultMonitor)
-	lrpRequest.Setup = nil
-	return lrpRequest
-}
-
 func TaskCreateRequest(taskGuid string, action models.ActionInterface) *models.Task {
 	return taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, 0, 0)
 }

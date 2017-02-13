@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
@@ -411,37 +410,17 @@ var _ = Describe("LRP", func() {
 		})
 
 		Context("Egress Rules", func() {
-			BeforeEach(func() {
-				archiveFiles = fixtures.CurlLRP()
-				lrp.Action = models.WrapAction(&models.RunAction{
-					User: "vcap",
-					Path: "bash",
-					Args: []string{"server.sh"},
-					Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
-				})
-
-				lrp.Setup = models.WrapAction(&models.DownloadAction{
-					From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
-					To:   ".",
-					User: "vcap",
-				})
-
-				lrp.CachedDependencies = nil
-			})
-
 			Context("default networking", func() {
 				It("rejects outbound tcp traffic", func() {
-					Eventually(func() string {
-						bytes, statusCode, err := helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses.Router, helpers.DefaultHost)
-						if err != nil {
-							return err.Error()
-						}
-						if statusCode != http.StatusOK {
-							return strconv.Itoa(statusCode)
-						}
-
-						return string(bytes)
-					}).Should(Equal("28"))
+					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+					bytes, statusCode, err := helpers.ResponseBodyAndStatusCodeFromHost(
+						componentMaker.Addresses.Router,
+						helpers.DefaultHost,
+						"curl",
+					)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(statusCode).To(Equal(http.StatusOK))
+					Expect(string(bytes)).To(Equal("28"))
 				})
 			})
 
@@ -465,17 +444,15 @@ var _ = Describe("LRP", func() {
 				})
 
 				It("allows outbound tcp traffic", func() {
-					Eventually(func() string {
-						bytes, statusCode, err := helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses.Router, helpers.DefaultHost)
-						if err != nil {
-							return err.Error()
-						}
-						if statusCode != http.StatusOK {
-							return strconv.Itoa(statusCode)
-						}
-
-						return string(bytes)
-					}).Should(Equal("0"))
+					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+					bytes, statusCode, err := helpers.ResponseBodyAndStatusCodeFromHost(
+						componentMaker.Addresses.Router,
+						helpers.DefaultHost,
+						"curl",
+					)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(statusCode).To(Equal(http.StatusOK))
+					Expect(string(bytes)).To(Equal("0"))
 				})
 			})
 		})

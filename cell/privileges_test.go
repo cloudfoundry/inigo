@@ -3,8 +3,11 @@ package cell_test
 import (
 	"net/http"
 	"os"
+	"path/filepath"
 
+	"code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -17,12 +20,19 @@ var _ = Describe("Privileges", func() {
 	var runtime ifrit.Process
 
 	BeforeEach(func() {
+		fileServer, fileServerStaticDir := componentMaker.FileServer()
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+			{"router", componentMaker.Router()},
+			{"file-server", fileServer},
 			{"rep", componentMaker.Rep()},
 			{"auctioneer", componentMaker.Auctioneer()},
-			{"router", componentMaker.Router()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 		}))
+
+		test_helper.CreateZipArchive(
+			filepath.Join(fileServerStaticDir, "lrp.zip"),
+			fixtures.GoServerApp(),
+		)
 	})
 
 	AfterEach(func() {
@@ -83,12 +93,18 @@ var _ = Describe("Privileges", func() {
 		var lrpRequest *models.DesiredLRP
 
 		BeforeEach(func() {
-			lrpRequest = helpers.PrivilegedLRPCreateRequest(helpers.GenerateGuid())
+			lrpRequest = helpers.DefaultLRPCreateRequest(helpers.GenerateGuid(), "log-guid", 1)
+			lrpRequest.Action = models.WrapAction(&models.RunAction{
+				User: "root",
+				Path: "/tmp/go-server",
+				Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
+			})
 		})
 
 		JustBeforeEach(func() {
 			err := bbsClient.DesireLRP(logger, lrpRequest)
 			Expect(err).NotTo(HaveOccurred())
+			Eventually(helpers.LRPStatePoller(logger, bbsClient, lrpRequest.ProcessGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 		})
 
 		Context("when the LRP is privileged", func() {
@@ -97,7 +113,7 @@ var _ = Describe("Privileges", func() {
 			})
 
 			It("succeeds", func() {
-				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
+				Expect(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost, "privileged")()).To(Equal(http.StatusOK))
 			})
 		})
 
@@ -107,7 +123,7 @@ var _ = Describe("Privileges", func() {
 			})
 
 			It("fails", func() {
-				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusInternalServerError))
+				Expect(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost, "privileged")()).To(Equal(http.StatusInternalServerError))
 			})
 		})
 	})

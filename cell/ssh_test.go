@@ -1,16 +1,20 @@
 package cell_test
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"code.cloudfoundry.org/archiver/compressor"
+	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/bbs/models"
 	ssh_helpers "code.cloudfoundry.org/diego-ssh/helpers"
 	"code.cloudfoundry.org/diego-ssh/routes"
+	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
@@ -73,6 +77,11 @@ var _ = Describe("SSH", func() {
 		err := tgCompressor.Compress(componentMaker.Artifacts.Executables["sshd"], filepath.Join(fileServerStaticDir, "sshd.tgz"))
 		Expect(err).NotTo(HaveOccurred())
 
+		archive_helper.CreateZipArchive(
+			filepath.Join(fileServerStaticDir, "lrp.zip"),
+			fixtures.GoServerApp(),
+		)
+
 		sshRoute := routes.SSHRoute{
 			ContainerPort:   3456,
 			PrivateKey:      componentMaker.SSHConfig.PrivateKeyPem,
@@ -89,16 +98,24 @@ var _ = Describe("SSH", func() {
 		}
 
 		lrp = models.DesiredLRP{
-			ProcessGuid: processGuid,
-			Domain:      "inigo",
-			Instances:   2,
-			Privileged:  true,
+			ProcessGuid:        processGuid,
+			Domain:             "inigo",
+			Instances:          2,
+			Privileged:         true,
+			LegacyDownloadUser: "vcap",
 			Setup: models.WrapAction(models.Serial(
 				&models.DownloadAction{
 					Artifact: "sshd",
 					From:     fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "sshd.tgz"),
 					To:       "/tmp",
 					CacheKey: "sshd",
+					User:     "root",
+				},
+				&models.DownloadAction{
+					Artifact: "go-server",
+					From:     fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+					To:       "/tmp/diego/lrp",
+					CacheKey: "lrp-cache-key",
 					User:     "root",
 				},
 			)),
@@ -115,24 +132,8 @@ var _ = Describe("SSH", func() {
 				},
 				&models.RunAction{
 					User: "root",
-					Path: "sh",
-					Args: []string{
-						"-c",
-						`
-						kill_nc() {
-							kill -15 $child
-							exit
-						}
-
-						trap kill_nc 15 9
-
-						while true; do
-						  echo "sup dawg" | nc -l 127.0.0.1 9999 &
-							child=$!
-							wait $child
-						done
-						`,
-					},
+					Path: "/tmp/diego/lrp/go-server",
+					Env:  []*models.EnvironmentVariable{{"PORT", "9999"}},
 				},
 			)),
 			Monitor: models.WrapAction(&models.RunAction{
@@ -193,13 +194,21 @@ var _ = Describe("SSH", func() {
 			client, err := ssh.Dial("tcp", address, clientConfig)
 			Expect(err).NotTo(HaveOccurred())
 
-			lconn, err := client.Dial("tcp", "localhost:9999")
-			Expect(err).NotTo(HaveOccurred())
+			httpClient := &http.Client{
+				Transport: &http.Transport{
+					Dial: client.Dial,
+				},
+				Timeout: 10 * time.Second,
+			}
 
-			reader := bufio.NewReader(lconn)
-			line, err := reader.ReadString('\n')
+			resp, err := httpClient.Get("http://localhost:9999/yo")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(line).To(ContainSubstring("sup dawg"))
+			defer resp.Body.Close()
+			Expect(resp.StatusCode).To(Equal(http.StatusOK))
+
+			contents, err := ioutil.ReadAll(resp.Body)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(contents).To(ContainSubstring("sup dawg"))
 		})
 
 		Context("when invalid password is used", func() {
@@ -227,41 +236,6 @@ var _ = Describe("SSH", func() {
 				lrp.StartTimeoutMs = 120000
 				lrp.RootFs = "docker:///cloudfoundry/diego-docker-app"
 
-				// busybox nc requires -p but ubuntu's won't allow it
-				lrp.Action = models.WrapAction(models.Codependent(
-					&models.RunAction{
-						User: "root",
-						Path: "/tmp/sshd",
-						Args: []string{
-							"-address=0.0.0.0:3456",
-							"-hostKey=" + componentMaker.SSHConfig.HostKeyPem,
-							"-authorizedKey=" + componentMaker.SSHConfig.AuthorizedKey,
-							"-inheritDaemonEnv",
-						},
-					},
-					&models.RunAction{
-						User: "root",
-						Path: "sh",
-						Args: []string{
-							"-c",
-							`
-							kill_nc() {
-								kill -15 $child
-								exit
-							}
-
-							trap kill_nc 15 9
-
-							while true; do
-							  echo "sup dawg" | nc -l 127.0.0.1 -p 9999 &
-								child=$!
-								wait $child
-							done
-							`,
-						},
-					},
-				))
-
 				// busybox nc doesn't support -z
 				lrp.Monitor = models.WrapAction(&models.RunAction{
 					User: "root",
@@ -287,13 +261,21 @@ var _ = Describe("SSH", func() {
 				client, err := ssh.Dial("tcp", address, clientConfig)
 				Expect(err).NotTo(HaveOccurred())
 
-				lconn, err := client.Dial("tcp", "localhost:9999")
-				Expect(err).NotTo(HaveOccurred())
+				httpClient := &http.Client{
+					Transport: &http.Transport{
+						Dial: client.Dial,
+					},
+					Timeout: 10 * time.Second,
+				}
 
-				reader := bufio.NewReader(lconn)
-				line, err := reader.ReadString('\n')
+				resp, err := httpClient.Get("http://localhost:9999/yo")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(line).To(ContainSubstring("sup dawg"))
+				defer resp.Body.Close()
+				Expect(resp.StatusCode).To(Equal(http.StatusOK))
+
+				contents, err := ioutil.ReadAll(resp.Body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(contents).To(ContainSubstring("sup dawg"))
 			})
 		})
 	})

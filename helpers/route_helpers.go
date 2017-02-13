@@ -10,13 +10,13 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func ResponseCodeFromHostPoller(routerAddr string, host string) func() (int, error) {
+func ResponseCodeFromHostPoller(routerAddr string, host string, pathElements ...string) func() (int, error) {
 	return func() (int, error) {
 		request := &http.Request{
 			URL: &url.URL{
 				Scheme: "http",
 				Host:   routerAddr,
-				Path:   "/",
+				Path:   "/" + strings.Join(pathElements, "/"),
 			},
 
 			Host: host,
