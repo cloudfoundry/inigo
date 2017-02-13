@@ -2,6 +2,7 @@ package cell_test
 
 import (
 	"encoding/pem"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -19,7 +20,7 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 )
 
-var _ = Describe("InstanceIdentity", func() {
+var _ = FDescribe("InstanceIdentity", func() {
 	var (
 		credDir     string
 		cellProcess ifrit.Process
@@ -55,12 +56,20 @@ var _ = Describe("InstanceIdentity", func() {
 		helpers.StopProcesses(cellProcess)
 	})
 
-	It("should place a key and certificate signed by the rep's ca in the right location", func() {
+	verifyCertAndKey := func(command string) {
 		By("running the task and extracting the cert and key")
-		containerCert, containerKey := runTaskAndFetchCertAndKey()
-		cert := parseCertificate(containerCert, false)
+		result := runTaskAndGetCommandOutput(command)
+		block, rest := pem.Decode([]byte(result))
+		Expect(rest).NotTo(BeEmpty())
+		Expect(block).NotTo(BeNil())
+		containerCert := block.Bytes
+		block, rest = pem.Decode(rest)
+		Expect(rest).To(BeEmpty())
+		Expect(block).NotTo(BeNil())
+		containerKey := block.Bytes
 
 		By("verify the certificate is signed properly")
+		cert := parseCertificate(containerCert, false)
 		caPath, err := filepath.Abs("../fixtures/certs/ca.crt")
 		Expect(err).NotTo(HaveOccurred())
 		caCertContent, err := ioutil.ReadFile(caPath)
@@ -72,10 +81,18 @@ var _ = Describe("InstanceIdentity", func() {
 		key, err := x509.ParsePKCS1PrivateKey(containerKey)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(&key.PublicKey).To(Equal(cert.PublicKey))
+	}
+
+	It("should place a key and certificate signed by the rep's ca in the right location", func() {
+		verifyCertAndKey("cat /etc/cf-instance-credentials/instance.crt /etc/cf-instance-credentials/instance.key")
+	})
+
+	It("should add instance identity environment variables to the container", func() {
+		verifyCertAndKey("cat $CF_INSTANCE_CERT $CF_INSTANCE_KEY")
 	})
 })
 
-func runTaskAndFetchCertAndKey() ([]byte, []byte) {
+func runTaskAndGetCommandOutput(command string) string {
 	guid := helpers.GenerateGuid()
 
 	expectedTask := helpers.TaskCreateRequest(
@@ -83,7 +100,7 @@ func runTaskAndFetchCertAndKey() ([]byte, []byte) {
 		&models.RunAction{
 			User: "vcap",
 			Path: "sh",
-			Args: []string{"-c", "cat /etc/cf-instance-credentials/instance.crt /etc/cf-instance-credentials/instance.key > thingy"},
+			Args: []string{"-c", fmt.Sprintf("%s > thingy", command)},
 		},
 	)
 	expectedTask.ResultFile = "/home/vcap/thingy"
@@ -103,16 +120,7 @@ func runTaskAndFetchCertAndKey() ([]byte, []byte) {
 
 	Expect(task.Failed).To(BeFalse())
 
-	block, rest := pem.Decode([]byte(task.Result))
-	Expect(rest).NotTo(BeEmpty())
-	Expect(block).NotTo(BeNil())
-	cert := block.Bytes
-	block, rest = pem.Decode(rest)
-	Expect(rest).To(BeEmpty())
-	Expect(block).NotTo(BeNil())
-	key := block.Bytes
-
-	return cert, key
+	return task.Result
 }
 
 func parseCertificate(cert []byte, pemEncoded bool) *x509.Certificate {
