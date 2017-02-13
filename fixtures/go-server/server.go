@@ -21,6 +21,8 @@ func main() {
 	fmt.Println("listening...")
 
 	ports := os.Getenv("PORT")
+	httpsPort := os.Getenv("HTTPS_PORT")
+
 	portArray := strings.Split(ports, " ")
 
 	errCh := make(chan error)
@@ -30,6 +32,15 @@ func main() {
 		go func(port string) {
 			errCh <- http.ListenAndServe(":"+port, nil)
 		}(port)
+
+	}
+
+	if httpsPort != "" {
+		go func() {
+			instanceCertPath := os.Getenv("CF_INSTANCE_CERT")
+			instanceKeyPath := os.Getenv("CF_INSTANCE_KEY")
+			errCh <- http.ListenAndServeTLS(":"+httpsPort, instanceCertPath, instanceKeyPath, nil)
+		}()
 	}
 
 	err := <-errCh
