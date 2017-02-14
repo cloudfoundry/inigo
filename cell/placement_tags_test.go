@@ -33,7 +33,7 @@ var _ = Describe("Placement Tags", func() {
 			config.PlacementTags = []string{"inigo-tag"}
 			config.OptionalPlacementTags = []string{"inigo-optional-tag"}
 		}
-		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, grouper.Members{
 			{"file-server", fileServer},
 			{"rep-with-tag", componentMaker.Rep(modifyRepConfig)},
 			{"auctioneer", componentMaker.Auctioneer()},
@@ -90,10 +90,11 @@ var _ = Describe("Placement Tags", func() {
 					return lrp.CellId
 				}
 				Eventually(lrpFunc).Should(MatchRegexp("the-cell-id-.*-0"))
+				Eventually(helpers.LRPStatePoller(logger, bbsClient, guid, nil)).Should(Equal(models.ActualLRPStateRunning))
 			})
 		})
 
-		Context("when the desired LRP matches the required  and optional tags", func() {
+		Context("when the desired LRP matches the required and optional tags", func() {
 			BeforeEach(func() {
 				lrp = helpers.LRPCreateRequestWithPlacementTag(guid, []string{"inigo-tag", "inigo-optional-tag"})
 			})
@@ -110,6 +111,7 @@ var _ = Describe("Placement Tags", func() {
 					return lrp.CellId
 				}
 				Eventually(lrpFunc).Should(MatchRegexp("the-cell-id-.*-0"))
+				Eventually(helpers.LRPStatePoller(logger, bbsClient, guid, nil)).Should(Equal(models.ActualLRPStateRunning))
 			})
 		})
 
