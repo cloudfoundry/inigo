@@ -124,37 +124,42 @@ func LightweightLRPCreateRequest(processGuid string) *models.DesiredLRP {
 }
 
 func TaskCreateRequest(taskGuid string, action models.ActionInterface) *models.Task {
-	return taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, 0, 0)
+	return taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, 0, 0, nil)
 }
 
 func TaskCreateRequestWithTags(taskGuid string, action models.ActionInterface, tags []string) *models.Task {
-	task := taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, 0, 0)
+	task := taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, 0, 0, nil)
 	task.PlacementTags = tags
 	return task
 }
 
 func TaskCreateRequestWithMemory(taskGuid string, action models.ActionInterface, memoryMB int) *models.Task {
-	return taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, memoryMB, 0)
+	return taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, memoryMB, 0, nil)
 }
 
 func TaskCreateRequestWithRootFS(taskGuid, rootfs string, action models.ActionInterface) *models.Task {
-	return taskCreateRequest(taskGuid, rootfs, action, 0, 0)
+	return taskCreateRequest(taskGuid, rootfs, action, 0, 0, nil)
 }
 
 func TaskCreateRequestWithMemoryAndDisk(taskGuid string, action models.ActionInterface, memoryMB, diskMB int) *models.Task {
-	return taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, memoryMB, diskMB)
+	return taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, memoryMB, diskMB, nil)
 }
 
-func taskCreateRequest(taskGuid, rootFS string, action models.ActionInterface, memoryMB, diskMB int) *models.Task {
+func TaskCreateRequestWithCertificateProperties(taskGuid string, action models.ActionInterface, certificateProperties *models.CertificateProperties) *models.Task {
+	return taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, 0, 0, certificateProperties)
+}
+
+func taskCreateRequest(taskGuid, rootFS string, action models.ActionInterface, memoryMB, diskMB int, certificateProperties *models.CertificateProperties) *models.Task {
 	return &models.Task{
 		TaskGuid: taskGuid,
 		Domain:   defaultDomain,
 
 		TaskDefinition: &models.TaskDefinition{
-			RootFs:   rootFS,
-			MemoryMb: int32(memoryMB),
-			DiskMb:   int32(diskMB),
-			Action:   models.WrapAction(action),
+			RootFs:                rootFS,
+			MemoryMb:              int32(memoryMB),
+			DiskMb:                int32(diskMB),
+			Action:                models.WrapAction(action),
+			CertificateProperties: certificateProperties,
 		},
 	}
 }

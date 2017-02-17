@@ -35,9 +35,18 @@ var _ = Describe("InstanceIdentity", func() {
 		fileServerStaticDir                         string
 		intermediateCACertPath, intermediateKeyPath string
 		rootCAs                                     *x509.CertPool
+		client                                      http.Client
+		lrp                                         *models.DesiredLRP
+		processGUID                                 string
+		organizationalUnit                          []string
 	)
 
 	BeforeEach(func() {
+		// We can only do one OrganizationalUnit at the moment until go1.8
+		// Make this 2 organizational units after we update to go1.8
+		// https://github.com/golang/go/issues/18654
+		organizationalUnit = []string{"jim:radical"}
+
 		var err error
 		credDir, err = ioutil.TempDir(os.TempDir(), "instance-creds")
 		Expect(err).NotTo(HaveOccurred())
@@ -65,6 +74,38 @@ var _ = Describe("InstanceIdentity", func() {
 			config.ExportNetworkEnvVars = true
 		}
 
+		client = http.Client{}
+		client.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: false,
+				RootCAs:            rootCAs,
+			},
+		}
+
+		processGUID = helpers.GenerateGuid()
+		lrp = helpers.DefaultLRPCreateRequest(processGUID, "log-guid", 1)
+		lrp.Setup = nil
+		lrp.CachedDependencies = []*models.CachedDependency{{
+			From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+			To:        "/tmp/diego/lrp",
+			Name:      "lrp bits",
+			CacheKey:  "lrp-cache-key",
+			LogSource: "APP",
+		}}
+		lrp.LegacyDownloadUser = "vcap"
+		lrp.Privileged = true
+		lrp.Action = models.WrapAction(&models.RunAction{
+			User: "vcap",
+			Path: "/tmp/diego/lrp/go-server",
+			Env: []*models.EnvironmentVariable{
+				{"PORT", "8080"},
+				{"HTTPS_PORT", "8081"},
+			},
+		})
+		lrp.CertificateProperties = &models.CertificateProperties{
+			OrganizationalUnit: organizationalUnit,
+		}
+
 		var fileServer ifrit.Runner
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
 		archiveFiles := fixtures.GoServerApp()
@@ -90,10 +131,8 @@ var _ = Describe("InstanceIdentity", func() {
 		helpers.StopProcesses(cellProcess)
 	})
 
-	verifyCertAndKeyArePresent := func(certPath, keyPath string) {
-		By("running the task and getting the concatenated pem cert and key")
-		result := runTaskAndGetCommandOutput(fmt.Sprintf("cat %s %s", certPath, keyPath))
-		block, rest := pem.Decode([]byte(result))
+	verifyCertAndKey := func(data []byte, organizationalUnit []string) {
+		block, rest := pem.Decode(data)
 		Expect(rest).NotTo(BeEmpty())
 		Expect(block).NotTo(BeNil())
 		containerCert := block.Bytes
@@ -109,8 +148,11 @@ var _ = Describe("InstanceIdentity", func() {
 
 		By("verify the certificate is signed properly")
 		cert := parseCertificate(containerCert, false)
+		Expect(cert.Subject.OrganizationalUnit).To(Equal(organizationalUnit))
+
 		caCertContent, err := ioutil.ReadFile(intermediateCACertPath)
 		Expect(err).NotTo(HaveOccurred())
+
 		caCert := parseCertificate(caCertContent, true)
 		verifyCertificateIsSignedBy(cert, caCert)
 
@@ -120,41 +162,65 @@ var _ = Describe("InstanceIdentity", func() {
 		Expect(&key.PublicKey).To(Equal(cert.PublicKey))
 	}
 
-	It("should add instance identity certificate and key in the right location", func() {
-		verifyCertAndKeyArePresent("/etc/cf-instance-credentials/instance.crt", "/etc/cf-instance-credentials/instance.key")
+	verifyCertAndKeyArePresentForTask := func(certPath, keyPath string, organizationalUnit []string) {
+		By("running the task and getting the concatenated pem cert and key")
+		result := runTaskAndGetCommandOutput(fmt.Sprintf("cat %s %s", certPath, keyPath), organizationalUnit)
+		verifyCertAndKey([]byte(result), organizationalUnit)
+	}
+
+	verifyCertAndKeyArePresentForLRP := func(ipAddress string, organizationalUnit []string) {
+		resp, err := client.Get(fmt.Sprintf("https://%s:8081/cf-instance-cert", ipAddress))
+		Expect(err).NotTo(HaveOccurred())
+		defer resp.Body.Close()
+
+		Expect(resp.StatusCode).To(Equal(http.StatusOK))
+
+		certData, err := ioutil.ReadAll(resp.Body)
+		Expect(err).NotTo(HaveOccurred())
+
+		resp, err = client.Get(fmt.Sprintf("https://%s:8081/cf-instance-key", ipAddress))
+		Expect(err).NotTo(HaveOccurred())
+		defer resp.Body.Close()
+
+		Expect(resp.StatusCode).To(Equal(http.StatusOK))
+
+		keyData, err := ioutil.ReadAll(resp.Body)
+		Expect(err).NotTo(HaveOccurred())
+
+		data := append(certData, keyData...)
+		verifyCertAndKey(data, organizationalUnit)
+	}
+
+	Context("tasks", func() {
+		It("should add instance identity certificate and key in the right location", func() {
+			verifyCertAndKeyArePresentForTask("/etc/cf-instance-credentials/instance.crt", "/etc/cf-instance-credentials/instance.key", organizationalUnit)
+		})
+
+		It("should add instance identity environment variables to the container", func() {
+			verifyCertAndKeyArePresentForTask("$CF_INSTANCE_CERT", "$CF_INSTANCE_KEY", organizationalUnit)
+		})
 	})
 
-	It("should add instance identity environment variables to the container", func() {
-		verifyCertAndKeyArePresent("$CF_INSTANCE_CERT", "$CF_INSTANCE_KEY")
+	Context("lrps", func() {
+		var ipAddress string
+
+		BeforeEach(func() {
+			err := bbsClient.DesireLRP(logger, lrp)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
+
+			ipAddress = getContainerInternalIP()
+		})
+
+		It("should add instance identity certificate and key in the right location", func() {
+			verifyCertAndKeyArePresentForLRP(ipAddress, organizationalUnit)
+		})
 	})
 
 	Context("when a server uses the provided cert and key", func() {
-		var (
-			processGUID string
-			ipAddress   string
-		)
+		var ipAddress string
 
 		BeforeEach(func() {
-			processGUID = helpers.GenerateGuid()
-			lrp := helpers.DefaultLRPCreateRequest(processGUID, "log-guid", 1)
-			lrp.Setup = nil
-			lrp.CachedDependencies = []*models.CachedDependency{{
-				From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
-				To:        "/tmp/diego/lrp",
-				Name:      "lrp bits",
-				CacheKey:  "lrp-cache-key",
-				LogSource: "APP",
-			}}
-			lrp.LegacyDownloadUser = "vcap"
-			lrp.Privileged = true
-			lrp.Action = models.WrapAction(&models.RunAction{
-				User: "vcap",
-				Path: "/tmp/diego/lrp/go-server",
-				Env: []*models.EnvironmentVariable{
-					{"PORT", "8080"},
-					{"HTTPS_PORT", "8081"},
-				},
-			})
 			err := bbsClient.DesireLRP(logger, lrp)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
@@ -163,20 +229,6 @@ var _ = Describe("InstanceIdentity", func() {
 		})
 
 		Context("and a client app tries to connect using the root ca cert", func() {
-			var (
-				client http.Client
-			)
-
-			BeforeEach(func() {
-				client = http.Client{}
-				client.Transport = &http.Transport{
-					TLSClientConfig: &tls.Config{
-						InsecureSkipVerify: false,
-						RootCAs:            rootCAs,
-					},
-				}
-			})
-
 			It("successfully connects and verify the sever identity", func() {
 				resp, err := client.Get(fmt.Sprintf("https://%s:8081/env", ipAddress))
 				Expect(err).NotTo(HaveOccurred())
@@ -207,7 +259,6 @@ var _ = Describe("InstanceIdentity", func() {
 			server.AppendHandlers(ghttp.RespondWith(http.StatusOK, "hello world"))
 			server.HTTPTestServer.Listener = listener
 			server.HTTPTestServer.StartTLS()
-			// server.HTTPTestServer.Start()
 			url = server.Addr()
 		})
 
@@ -217,7 +268,7 @@ var _ = Describe("InstanceIdentity", func() {
 			)
 
 			BeforeEach(func() {
-				output = runTaskAndGetCommandOutput(fmt.Sprintf("curl --silent -k --cert /etc/cf-instance-credentials/instance.crt --key /etc/cf-instance-credentials/instance.key https://%s", url))
+				output = runTaskAndGetCommandOutput(fmt.Sprintf("curl --silent -k --cert /etc/cf-instance-credentials/instance.crt --key /etc/cf-instance-credentials/instance.key https://%s", url), []string{})
 			})
 
 			It("successfully connects", func() {
@@ -241,15 +292,18 @@ func getContainerInternalIP() string {
 	return ipAddress
 }
 
-func runTaskAndGetCommandOutput(command string) string {
+func runTaskAndGetCommandOutput(command string, organizationalUnits []string) string {
 	guid := helpers.GenerateGuid()
 
-	expectedTask := helpers.TaskCreateRequest(
+	expectedTask := helpers.TaskCreateRequestWithCertificateProperties(
 		guid,
 		&models.RunAction{
 			User: "vcap",
 			Path: "sh",
 			Args: []string{"-c", fmt.Sprintf("%s > thingy", command)},
+		},
+		&models.CertificateProperties{
+			OrganizationalUnit: organizationalUnits,
 		},
 	)
 	expectedTask.ResultFile = "/home/vcap/thingy"

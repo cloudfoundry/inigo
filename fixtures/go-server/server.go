@@ -17,6 +17,8 @@ func main() {
 	http.HandleFunc("/curl", curl)
 	http.HandleFunc("/yo", yo)
 	http.HandleFunc("/privileged", privileged)
+	http.HandleFunc("/cf-instance-cert", cfInstanceCert)
+	http.HandleFunc("/cf-instance-key", cfInstanceKey)
 
 	fmt.Println("listening...")
 
@@ -116,4 +118,30 @@ func privileged(res http.ResponseWriter, req *http.Request) {
 	}
 
 	fmt.Fprint(res, "Success\n")
+}
+
+func cfInstanceCert(res http.ResponseWriter, req *http.Request) {
+	path := os.Getenv("CF_INSTANCE_CERT")
+
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	res.Write(data)
+	return
+}
+
+func cfInstanceKey(res http.ResponseWriter, req *http.Request) {
+	path := os.Getenv("CF_INSTANCE_KEY")
+
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	res.Write(data)
+	return
 }
