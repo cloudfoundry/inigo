@@ -51,7 +51,7 @@ func GardenServerPackageName() string {
 	if UseOldGardenRunc() {
 		return "github.com/cloudfoundry-incubator/guardian/cmd/guardian"
 	}
-	return "code.cloudfoundry.org/guardian/cmd/guardian"
+	return "code.cloudfoundry.org/guardian/cmd/gdn"
 }
 
 func New(network, addr string, bin, binPath, rootFSPath, graphRoot string, argv ...string) *Runner {

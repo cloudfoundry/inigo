@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
+	"syscall"
 	"time"
 
 	auctioneerconfig "code.cloudfoundry.org/auctioneer/cmd/auctioneer/config"
@@ -246,6 +247,11 @@ func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 		gardenArgs = append(gardenArgs, "--privileged-image-plugin-extra-arg", maker.GardenConfig.GrootFSConfigPath+"/privileged-config.yml")
 	}
 
+	RootUserCredential := syscall.Credential{
+		Uid: 0,
+		Gid: 0,
+	}
+
 	return runner.NewGardenRunner(
 		maker.Artifacts.Executables["garden"],
 		filepath.Join(maker.GardenConfig.GardenBinPath, "init"),
@@ -256,6 +262,7 @@ func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 		filepath.Join(maker.GardenConfig.GardenBinPath, "tar"),
 		"tcp",
 		maker.Addresses.GardenLinux,
+		&RootUserCredential,
 		gardenArgs...,
 	)
 }
