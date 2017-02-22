@@ -31,7 +31,6 @@ import (
 	gardenconnection "code.cloudfoundry.org/garden/client/connection"
 	gorouterconfig "code.cloudfoundry.org/gorouter/config"
 	"code.cloudfoundry.org/guardian/gqt/runner"
-	"code.cloudfoundry.org/inigo/gardenrunner"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
@@ -229,10 +228,6 @@ func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 	gardenArgs = append(gardenArgs, "--allow-host-access", "")
 	gardenArgs = append(gardenArgs, "--mtu", "1432")
 	gardenArgs = append(gardenArgs, "--deny-network", "0.0.0.0/0")
-	if gardenrunner.UseOldGardenRunc() {
-		gardenArgs = append(gardenArgs, "--iodaemon-bin", maker.GardenConfig.GardenBinPath+"/iodaemon")
-		gardenArgs = append(gardenArgs, "--kawasaki-bin", maker.GardenConfig.GardenBinPath+"/kawasaki")
-	}
 
 	defaultRootFS := ""
 	if includeDefaultStack {

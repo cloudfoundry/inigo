@@ -37,23 +37,6 @@ type Runner struct {
 	graphPath string
 }
 
-func UseOldGardenRunc() bool {
-	// return true if we are using old garden-runc (i.e. version <= 0.4)
-	// we use the package name to distinguish them
-	oldGardenRuncPath := os.Getenv("GARDEN_GOPATH") + "/src/github.com/cloudfoundry-incubator/guardian"
-	if _, err := os.Stat(oldGardenRuncPath); os.IsNotExist(err) {
-		return false
-	}
-	return true
-}
-
-func GardenServerPackageName() string {
-	if UseOldGardenRunc() {
-		return "github.com/cloudfoundry-incubator/guardian/cmd/guardian"
-	}
-	return "code.cloudfoundry.org/guardian/cmd/gdn"
-}
-
 func New(network, addr string, bin, binPath, rootFSPath, graphRoot string, argv ...string) *Runner {
 	tmpDir := filepath.Join(
 		os.TempDir(),
@@ -123,11 +106,6 @@ func (r *Runner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	gardenArgs = appendDefaultFlag(gardenArgs, "--depot", depotPath)
 	gardenArgs = appendDefaultFlag(gardenArgs, "--graph", r.graphPath)
 	gardenArgs = appendDefaultFlag(gardenArgs, "--tag", strconv.Itoa(ginkgo.GinkgoParallelNode()))
-
-	if UseOldGardenRunc() {
-		gardenArgs = appendDefaultFlag(gardenArgs, "--iodaemon-bin", r.binPath+"/iodaemon")
-		gardenArgs = appendDefaultFlag(gardenArgs, "--kawasaki-bin", r.binPath+"/kawasaki")
-	}
 
 	gardenArgs = appendDefaultFlag(gardenArgs, "--init-bin", r.binPath+"/init")
 	gardenArgs = appendDefaultFlag(gardenArgs, "--dadoo-bin", r.binPath+"/dadoo")
