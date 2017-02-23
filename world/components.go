@@ -112,6 +112,7 @@ type ComponentMaker struct {
 	BbsSSL        SSLConfig
 	RepSSL        SSLConfig
 	AuctioneerSSL SSLConfig
+	SQLCACertFile string
 
 	VolmanDriverConfigDir string
 
@@ -286,6 +287,7 @@ func (maker ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig))
 		DatabaseConnectionString: maker.Addresses.SQL,
 		DatabaseDriver:           maker.DBDriverName,
 		AuctioneerRequireTLS:     true,
+		SQLCACertFile:            maker.SQLCACertFile,
 	}
 
 	for _, modifyConfig := range modifyConfigFuncs {

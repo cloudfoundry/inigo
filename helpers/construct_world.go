@@ -104,6 +104,9 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	caCert, err := filepath.Abs(assetsPath + "ca.crt")
 	Expect(err).NotTo(HaveOccurred())
 
+	sqlCACert, err := filepath.Abs(assetsPath + "sql-certs/server-ca.crt")
+	Expect(err).NotTo(HaveOccurred())
+
 	sslConfig := world.SSLConfig{
 		ServerCert: bbsServerCert,
 		ServerKey:  bbsServerKey,
@@ -153,6 +156,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		BbsSSL:                sslConfig,
 		RepSSL:                repSSLConfig,
 		AuctioneerSSL:         auctioneerSSLConfig,
+		SQLCACertFile:         sqlCACert,
 		VolmanDriverConfigDir: volmanConfigDir,
 
 		DBDriverName:           dbDriverName,
