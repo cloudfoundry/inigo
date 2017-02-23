@@ -2,9 +2,9 @@
 store_path: /mnt/btrfs/unprivileged
 drax_bin: /usr/local/bin/drax
 log_level: debug
-# uid_mappings:
-#     - "0:4294967294:1"
-#     - "1:1:4294967293"
-# gid_mappings:
-#     - "0:4294967294:1"
-#     - "1:1:4294967293"
+uid_mappings:
+    - "0:4294967294:1"
+    - "1:1:4294967293"
+gid_mappings:
+    - "0:4294967294:1"
+    - "1:1:4294967293"
