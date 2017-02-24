@@ -41,7 +41,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		dbBaseConnectionString = "postgres://diego:diego_pw@127.0.0.1/"
 	} else {
 		dbDriverName = "mysql"
-		dbBaseConnectionString = "diego:diego_password@/"
+		dbBaseConnectionString = "diego:diego_password@tcp(localhost:3306)/"
 	}
 
 	if gardenGraphPath == "" {

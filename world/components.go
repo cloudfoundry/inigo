@@ -1,6 +1,8 @@
 package world
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -39,7 +41,9 @@ import (
 	"code.cloudfoundry.org/volman"
 	volmanclient "code.cloudfoundry.org/volman/vollocal"
 	"github.com/cloudfoundry-incubator/candiedyaml"
+	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
@@ -142,20 +146,22 @@ func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
 func (maker ComponentMaker) SQL(argv ...string) ifrit.Runner {
 	return ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
 		defer ginkgo.GinkgoRecover()
+		dbConnectionString := appendExtraConnectionStringParam(maker.DBDriverName, maker.DBBaseConnectionString, maker.SQLCACertFile)
 
-		db, err := sql.Open(maker.DBDriverName, maker.DBBaseConnectionString)
+		db, err := sql.Open(maker.DBDriverName, dbConnectionString)
 		Expect(err).NotTo(HaveOccurred())
 		defer db.Close()
 
-		Eventually(db.Ping).ShouldNot(HaveOccurred())
+		Eventually(db.Ping).Should(Succeed())
 
 		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", ginkgo.GinkgoParallelNode()))
 		Expect(err).NotTo(HaveOccurred())
 
 		sqlDBName := fmt.Sprintf("diego_%d", ginkgo.GinkgoParallelNode())
-		db, err = sql.Open(maker.DBDriverName, fmt.Sprintf("%s%s", maker.DBBaseConnectionString, sqlDBName))
+		dbWithDatabaseNameConnectionString := appendExtraConnectionStringParam(maker.DBDriverName, fmt.Sprintf("%s%s", maker.DBBaseConnectionString, sqlDBName), maker.SQLCACertFile)
+		db, err = sql.Open(maker.DBDriverName, dbWithDatabaseNameConnectionString)
 		Expect(err).NotTo(HaveOccurred())
-		Eventually(db.Ping).ShouldNot(HaveOccurred())
+		Eventually(db.Ping).Should(Succeed())
 
 		Expect(db.Close()).To(Succeed())
 
@@ -163,7 +169,7 @@ func (maker ComponentMaker) SQL(argv ...string) ifrit.Runner {
 
 		select {
 		case <-signals:
-			db, err := sql.Open(maker.DBDriverName, maker.DBBaseConnectionString)
+			db, err := sql.Open(maker.DBDriverName, dbConnectionString)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(db.Ping).ShouldNot(HaveOccurred())
 
@@ -683,4 +689,43 @@ func (maker ComponentMaker) VolmanDriver(logger lager.Logger) (ifrit.Runner, vol
 // that it does not interfere with the ginkgo parallel node offest in the base port.
 func offsetPort(basePort, offset int) int {
 	return basePort + (10 * offset)
+}
+
+func appendExtraConnectionStringParam(driverName, databaseConnectionString, sqlCACertFile string) string {
+	switch driverName {
+	case "mysql":
+		cfg, err := mysql.ParseDSN(databaseConnectionString)
+		Expect(err).NotTo(HaveOccurred())
+
+		if sqlCACertFile != "" {
+			certBytes, err := ioutil.ReadFile(sqlCACertFile)
+			Expect(err).NotTo(HaveOccurred())
+
+			caCertPool := x509.NewCertPool()
+			Expect(caCertPool.AppendCertsFromPEM(certBytes)).To(BeTrue())
+
+			tlsConfig := &tls.Config{
+				InsecureSkipVerify: false,
+				RootCAs:            caCertPool,
+			}
+
+			mysql.RegisterTLSConfig("bbs-tls", tlsConfig)
+			cfg.TLSConfig = "bbs-tls"
+		}
+		cfg.Timeout = 10 * time.Minute
+		cfg.ReadTimeout = 10 * time.Minute
+		cfg.WriteTimeout = 10 * time.Minute
+		databaseConnectionString = cfg.FormatDSN()
+	case "postgres":
+		var err error
+		databaseConnectionString, err = pq.ParseURL(databaseConnectionString)
+		Expect(err).NotTo(HaveOccurred())
+		if sqlCACertFile == "" {
+			databaseConnectionString = databaseConnectionString + " sslmode=disable"
+		} else {
+			databaseConnectionString = fmt.Sprintf("%s sslmode=verify-ca sslrootcert=%s", databaseConnectionString, sqlCACertFile)
+		}
+	}
+
+	return databaseConnectionString
 }
