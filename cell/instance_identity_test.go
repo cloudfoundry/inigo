@@ -280,9 +280,16 @@ var _ = Describe("InstanceIdentity", func() {
 
 func getContainerInternalIP() string {
 	By("getting the internal ip address of the container")
-	body, code, err := helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses.Router, helpers.DefaultHost, "env")
-	Expect(err).NotTo(HaveOccurred())
-	Expect(code).To(Equal(http.StatusOK))
+	var (
+		body []byte
+		code int
+		err  error
+	)
+	Eventually(func() int {
+		body, code, err = helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses.Router, helpers.DefaultHost, "env")
+		Expect(err).NotTo(HaveOccurred())
+		return code
+	}).Should(Equal(http.StatusOK))
 	var ipAddress string
 	for _, line := range strings.Fields(string(body)) {
 		if strings.HasPrefix(line, "CF_INSTANCE_INTERNAL_IP=") {
