@@ -1,4 +1,0 @@
----
-store_path: /mnt/btrfs/privileged
-drax_bin: /usr/local/bin/drax
-log_level: debug

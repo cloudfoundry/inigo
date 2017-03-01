@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"time"
 
+	yaml "gopkg.in/yaml.v2"
+
 	auctioneerconfig "code.cloudfoundry.org/auctioneer/cmd/auctioneer/config"
 	"code.cloudfoundry.org/bbs"
 	bbsconfig "code.cloudfoundry.org/bbs/cmd/bbs/config"
@@ -40,7 +42,6 @@ import (
 	"code.cloudfoundry.org/voldriver/driverhttp"
 	"code.cloudfoundry.org/volman"
 	volmanclient "code.cloudfoundry.org/volman/vollocal"
-	"github.com/cloudfoundry-incubator/candiedyaml"
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/lib/pq"
@@ -81,9 +82,18 @@ type SSLConfig struct {
 }
 
 type GardenSettingsConfig struct {
-	GardenBinPath     string
-	GardenGraphPath   string
-	GrootFSConfigPath string
+	GardenBinPath             string
+	GardenGraphPath           string
+	UnprivilegedGrootfsConfig GrootFSConfig
+	PrivilegedGrootfsConfig   GrootFSConfig
+}
+
+type GrootFSConfig struct {
+	StorePath   string   `yaml:"store_path"`
+	DraxBin     string   `yaml:"drax_bin"`
+	LogLevel    string   `yaml:"log_level"`
+	UidMappings []string `yaml:"uid_mappings"`
+	GidMappings []string `yaml:"gid_mappings"`
 }
 
 type ComponentAddresses struct {
@@ -241,12 +251,28 @@ func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 	}
 
 	if os.Getenv("USE_GROOTFS") == "true" {
+		unprivilegedGrootfsConfig, err := ioutil.TempFile("", "unpriv-grootfs-config")
+		Expect(err).NotTo(HaveOccurred())
+		defer unprivilegedGrootfsConfig.Close()
+		data, err := yaml.Marshal(&maker.GardenConfig.UnprivilegedGrootfsConfig)
+		Expect(err).NotTo(HaveOccurred())
+		_, err = unprivilegedGrootfsConfig.Write(data)
+		Expect(err).NotTo(HaveOccurred())
+
+		privilegedGrootfsConfig, err := ioutil.TempFile("", "unpriv-grootfs-config")
+		Expect(err).NotTo(HaveOccurred())
+		defer privilegedGrootfsConfig.Close()
+		data, err = yaml.Marshal(&maker.GardenConfig.PrivilegedGrootfsConfig)
+		Expect(err).NotTo(HaveOccurred())
+		_, err = privilegedGrootfsConfig.Write(data)
+		Expect(err).NotTo(HaveOccurred())
+
 		gardenArgs = append(gardenArgs, "--image-plugin", maker.GardenConfig.GardenBinPath+"/grootfs")
 		gardenArgs = append(gardenArgs, "--image-plugin-extra-arg", `"--config"`)
-		gardenArgs = append(gardenArgs, "--image-plugin-extra-arg", maker.GardenConfig.GrootFSConfigPath+"/config.yml")
+		gardenArgs = append(gardenArgs, "--image-plugin-extra-arg", unprivilegedGrootfsConfig.Name())
 		gardenArgs = append(gardenArgs, "--privileged-image-plugin", maker.GardenConfig.GardenBinPath+"/grootfs")
 		gardenArgs = append(gardenArgs, "--privileged-image-plugin-extra-arg", `"--config"`)
-		gardenArgs = append(gardenArgs, "--privileged-image-plugin-extra-arg", maker.GardenConfig.GrootFSConfigPath+"/privileged-config.yml")
+		gardenArgs = append(gardenArgs, "--privileged-image-plugin-extra-arg", privilegedGrootfsConfig.Name())
 	}
 
 	return runner.NewGardenRunner(
@@ -547,10 +573,10 @@ func (maker ComponentMaker) Router() ifrit.Runner {
 
 	configFile, err := ioutil.TempFile(os.TempDir(), "router-config")
 	Expect(err).NotTo(HaveOccurred())
-
 	defer configFile.Close()
-
-	err = candiedyaml.NewEncoder(configFile).Encode(routerConfig)
+	data, err := yaml.Marshal(routerConfig)
+	Expect(err).NotTo(HaveOccurred())
+	_, err = configFile.Write(data)
 	Expect(err).NotTo(HaveOccurred())
 
 	return ginkgomon.New(ginkgomon.Config{

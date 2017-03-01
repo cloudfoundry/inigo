@@ -12,6 +12,7 @@ import (
 	"code.cloudfoundry.org/inigo/world"
 	"github.com/nu7hatch/gouuid"
 
+	"github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 
 	. "github.com/onsi/gomega"
@@ -22,10 +23,7 @@ var DefaultStack = PreloadedStacks[0]
 
 var addresses world.ComponentAddresses
 
-const (
-	assetsPath  = "../fixtures/certs/"
-	grootFSPath = "../fixtures/grootfs/"
-)
+const assetsPath = "../fixtures/certs/"
 
 func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) world.ComponentMaker {
 	gardenBinPath := os.Getenv("GARDEN_BINPATH")
@@ -132,9 +130,20 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	}
 
 	gardenConfig := world.GardenSettingsConfig{
-		GardenBinPath:     gardenBinPath,
-		GardenGraphPath:   gardenGraphPath,
-		GrootFSConfigPath: grootFSPath,
+		GardenBinPath:   gardenBinPath,
+		GardenGraphPath: gardenGraphPath,
+		UnprivilegedGrootfsConfig: world.GrootFSConfig{
+			StorePath:   fmt.Sprintf("/mnt/btrfs/unprivileged-%d", ginkgo.GinkgoParallelNode()),
+			DraxBin:     "/usr/local/bin/drax",
+			LogLevel:    "debug",
+			UidMappings: []string{"0:4294967294:1", "1:1:4294967293"},
+			GidMappings: []string{"0:4294967294:1", "1:1:4294967293"},
+		},
+		PrivilegedGrootfsConfig: world.GrootFSConfig{
+			StorePath: fmt.Sprintf("/mnt/btrfs/privileged-%d", ginkgo.GinkgoParallelNode()),
+			DraxBin:   "/usr/local/bin/drax",
+			LogLevel:  "debug",
+		},
 	}
 
 	guid, err := uuid.NewV4()
