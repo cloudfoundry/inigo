@@ -93,6 +93,21 @@ var _ = Describe("LRP", func() {
 			Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 		})
 
+		if os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_URI") != "" {
+			Context("when using a private image", func() {
+				BeforeEach(func() {
+					lrp.RootFs = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_URI")
+					lrp.ImageUsername = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_USERNAME")
+					lrp.ImagePassword = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_PASSWORD")
+				})
+
+				It("eventually runs", func() {
+					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+					Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
+				})
+			})
+		}
+
 		Context("when correct checksum information is provided", func() {
 			var checksumValue string
 

@@ -120,6 +120,46 @@ var _ = Describe("Tasks", func() {
 			Expect(task.Failed).To(BeFalse())
 		})
 
+		if os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_URI") != "" {
+			Context("when using a private image", func() {
+				It("eventually runs", func() {
+					expectedTask := helpers.TaskCreateRequest(
+						guid,
+						&models.RunAction{
+							User: "vcap",
+							Path: "sh",
+							Args: []string{"-c", `[ "$FOO" = NEW-BAR -a "$BAZ" = WIBBLE ]`},
+							Env: []*models.EnvironmentVariable{
+								{"FOO", "OLD-BAR"},
+								{"BAZ", "WIBBLE"},
+								{"FOO", "NEW-BAR"},
+							},
+						},
+					)
+					expectedTask.Privileged = true
+					expectedTask.RootFs = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_URI")
+					expectedTask.ImageUsername = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_USERNAME")
+					expectedTask.ImagePassword = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_PASSWORD")
+
+					err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+					Expect(err).NotTo(HaveOccurred())
+
+					var task *models.Task
+
+					Eventually(func() interface{} {
+						var err error
+
+						task, err = bbsClient.TaskByGuid(logger, guid)
+						Expect(err).NotTo(HaveOccurred())
+
+						return task.State
+					}).Should(Equal(models.Task_Completed))
+
+					Expect(task.Failed).To(BeFalse())
+				})
+			})
+		}
+
 		Context("when the command exceeds its memory limit", func() {
 			It("should fail the Task", func() {
 				expectedTask := helpers.TaskCreateRequestWithMemoryAndDisk(
