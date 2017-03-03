@@ -22,6 +22,7 @@ import (
 
 	"code.cloudfoundry.org/bbs"
 	bbsconfig "code.cloudfoundry.org/bbs/cmd/bbs/config"
+	"code.cloudfoundry.org/bbs/serviceclient"
 	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/inigo/inigo_announcement_server"
@@ -34,7 +35,7 @@ var (
 	plumbing, bbsProcess ifrit.Process
 	gardenClient         garden.Client
 	bbsClient            bbs.InternalClient
-	bbsServiceClient     bbs.ServiceClient
+	bbsServiceClient     serviceclient.ServiceClient
 	logger               lager.Logger
 )
 

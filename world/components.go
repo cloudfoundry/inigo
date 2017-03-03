@@ -22,6 +22,7 @@ import (
 	bbsconfig "code.cloudfoundry.org/bbs/cmd/bbs/config"
 	bbsrunner "code.cloudfoundry.org/bbs/cmd/bbs/testrunner"
 	"code.cloudfoundry.org/bbs/encryption"
+	"code.cloudfoundry.org/bbs/serviceclient"
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
@@ -37,6 +38,7 @@ import (
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
+	"code.cloudfoundry.org/rep/maintain"
 	routeemitterconfig "code.cloudfoundry.org/route-emitter/cmd/route-emitter/config"
 	"code.cloudfoundry.org/voldriver"
 	"code.cloudfoundry.org/voldriver/driverhttp"
@@ -669,11 +671,14 @@ func (maker ComponentMaker) BBSClient() bbs.InternalClient {
 	return client
 }
 
-func (maker ComponentMaker) BBSServiceClient(logger lager.Logger) bbs.ServiceClient {
+func (maker ComponentMaker) BBSServiceClient(logger lager.Logger) serviceclient.ServiceClient {
 	client, err := consuladapter.NewClientFromUrl(maker.ConsulCluster())
 	Expect(err).NotTo(HaveOccurred())
 
-	return bbs.NewServiceClient(client, clock.NewClock())
+	cellPresenceClient := maintain.NewCellPresenceClient(client, clock.NewClock())
+	locketClient := serviceclient.NewNoopLocketClient()
+
+	return serviceclient.NewServiceClient(cellPresenceClient, locketClient)
 }
 
 func (maker ComponentMaker) BBSURL() string {
