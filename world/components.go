@@ -91,11 +91,13 @@ type GardenSettingsConfig struct {
 }
 
 type GrootFSConfig struct {
-	StorePath   string   `yaml:"store_path"`
-	DraxBin     string   `yaml:"drax_bin"`
-	LogLevel    string   `yaml:"log_level"`
-	UidMappings []string `yaml:"uid_mappings"`
-	GidMappings []string `yaml:"gid_mappings"`
+	StorePath string `yaml:"store"`
+	DraxBin   string `yaml:"drax_bin"`
+	LogLevel  string `yaml:"log_level"`
+	Create    struct {
+		UidMappings []string `yaml:"uid_mappings"`
+		GidMappings []string `yaml:"gid_mappings"`
+	}
 }
 
 type ComponentAddresses struct {

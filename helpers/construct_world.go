@@ -129,21 +129,25 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		CACert:     caCert,
 	}
 
+	unprivilegedGrootfsConfig := world.GrootFSConfig{
+		StorePath: fmt.Sprintf("/mnt/btrfs/unprivileged-%d", ginkgo.GinkgoParallelNode()),
+		DraxBin:   "/usr/local/bin/drax",
+		LogLevel:  "debug",
+	}
+	unprivilegedGrootfsConfig.Create.UidMappings = []string{"0:4294967294:1", "1:1:4294967293"}
+	unprivilegedGrootfsConfig.Create.GidMappings = []string{"0:4294967294:1", "1:1:4294967293"}
+
+	privilegedGrootfsConfig := world.GrootFSConfig{
+		StorePath: fmt.Sprintf("/mnt/btrfs/privileged-%d", ginkgo.GinkgoParallelNode()),
+		DraxBin:   "/usr/local/bin/drax",
+		LogLevel:  "debug",
+	}
+
 	gardenConfig := world.GardenSettingsConfig{
-		GardenBinPath:   gardenBinPath,
-		GardenGraphPath: gardenGraphPath,
-		UnprivilegedGrootfsConfig: world.GrootFSConfig{
-			StorePath:   fmt.Sprintf("/mnt/btrfs/unprivileged-%d", ginkgo.GinkgoParallelNode()),
-			DraxBin:     "/usr/local/bin/drax",
-			LogLevel:    "debug",
-			UidMappings: []string{"0:4294967294:1", "1:1:4294967293"},
-			GidMappings: []string{"0:4294967294:1", "1:1:4294967293"},
-		},
-		PrivilegedGrootfsConfig: world.GrootFSConfig{
-			StorePath: fmt.Sprintf("/mnt/btrfs/privileged-%d", ginkgo.GinkgoParallelNode()),
-			DraxBin:   "/usr/local/bin/drax",
-			LogLevel:  "debug",
-		},
+		GardenBinPath:             gardenBinPath,
+		GardenGraphPath:           gardenGraphPath,
+		UnprivilegedGrootfsConfig: unprivilegedGrootfsConfig,
+		PrivilegedGrootfsConfig:   privilegedGrootfsConfig,
 	}
 
 	guid, err := uuid.NewV4()
