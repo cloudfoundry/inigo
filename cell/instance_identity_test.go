@@ -9,9 +9,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/localip"
@@ -31,6 +33,7 @@ import (
 var _ = Describe("InstanceIdentity", func() {
 	var (
 		credDir                                     string
+		validityPeriod                              time.Duration
 		cellProcess                                 ifrit.Process
 		fileServerStaticDir                         string
 		intermediateCACertPath, intermediateKeyPath string
@@ -64,10 +67,13 @@ var _ = Describe("InstanceIdentity", func() {
 		rootCAs = x509.NewCertPool()
 		rootCAs.AddCert(caCert)
 
+		validityPeriod = time.Minute
+
 		configRepCerts := func(cfg *config.RepConfig) {
 			cfg.InstanceIdentityCredDir = credDir
 			cfg.InstanceIdentityCAPath = intermediateCACertPath
 			cfg.InstanceIdentityPrivateKeyPath = intermediateKeyPath
+			cfg.InstanceIdentityValidityPeriod = durationjson.Duration(validityPeriod)
 		}
 
 		exportNetworkVars := func(config *config.RepConfig) {
@@ -149,6 +155,7 @@ var _ = Describe("InstanceIdentity", func() {
 		By("verify the certificate is signed properly")
 		cert := parseCertificate(containerCert, false)
 		Expect(cert.Subject.OrganizationalUnit).To(Equal(organizationalUnit))
+		Expect(cert.NotAfter.Sub(cert.NotBefore)).To(Equal(validityPeriod))
 
 		caCertContent, err := ioutil.ReadFile(intermediateCACertPath)
 		Expect(err).NotTo(HaveOccurred())

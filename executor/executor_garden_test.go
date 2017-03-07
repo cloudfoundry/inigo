@@ -11,6 +11,7 @@ import (
 
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/clock"
+	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/executor/gardenhealth"
 	executorinit "code.cloudfoundry.org/executor/initializer"
@@ -29,7 +30,7 @@ import (
 )
 
 var _ = Describe("Executor/Garden", func() {
-	const pruningInterval = executorinit.Duration(500 * time.Millisecond)
+	const pruningInterval = durationjson.Duration(500 * time.Millisecond)
 	var (
 		executorClient          executor.Client
 		process                 ifrit.Process
@@ -52,8 +53,8 @@ var _ = Describe("Executor/Garden", func() {
 		config.GardenAddr = componentMaker.Addresses.GardenLinux
 		config.ReservedExpirationTime = pruningInterval
 		config.ContainerReapInterval = pruningInterval
-		config.HealthyMonitoringInterval = executorinit.Duration(time.Second)
-		config.UnhealthyMonitoringInterval = executorinit.Duration(100 * time.Millisecond)
+		config.HealthyMonitoringInterval = durationjson.Duration(time.Second)
+		config.UnhealthyMonitoringInterval = durationjson.Duration(100 * time.Millisecond)
 		config.GardenHealthcheckProcessPath = "/bin/sh"
 		config.GardenHealthcheckProcessArgs = []string{"-c", "echo", "checking health"}
 		config.GardenHealthcheckProcessUser = "vcap"
@@ -223,8 +224,8 @@ var _ = Describe("Executor/Garden", func() {
 		Context("when an invalid rootFS is given for the garden healtcheck", func() {
 			BeforeEach(func() {
 				gardenHealthcheckRootFS = "/bad/path"
-				config.GardenHealthcheckInterval = executorinit.Duration(5 * time.Millisecond)
-				config.GardenHealthcheckCommandRetryPause = executorinit.Duration(5 * time.Millisecond)
+				config.GardenHealthcheckInterval = durationjson.Duration(5 * time.Millisecond)
+				config.GardenHealthcheckCommandRetryPause = durationjson.Duration(5 * time.Millisecond)
 			})
 
 			It("shuts down the executor", func() {
@@ -279,7 +280,7 @@ var _ = Describe("Executor/Garden", func() {
 
 			Context("garden fails then resolves the problem", func() {
 				BeforeEach(func() {
-					config.GardenHealthcheckInterval = executorinit.Duration(5 * time.Millisecond)
+					config.GardenHealthcheckInterval = durationjson.Duration(5 * time.Millisecond)
 				})
 
 				It("reports correctly", func() {

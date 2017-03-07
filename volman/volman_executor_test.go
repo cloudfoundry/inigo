@@ -13,6 +13,7 @@ import (
 
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/clock"
+	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/executor"
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/lager"
@@ -65,8 +66,8 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		config.VolmanDriverPaths = path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", ginkgoconfig.GinkgoConfig.ParallelNode))
 		config.GardenNetwork = "tcp"
 		config.GardenAddr = componentMaker.Addresses.GardenLinux
-		config.HealthyMonitoringInterval = executorinit.Duration(time.Second)
-		config.UnhealthyMonitoringInterval = executorinit.Duration(100 * time.Millisecond)
+		config.HealthyMonitoringInterval = durationjson.Duration(time.Second)
+		config.UnhealthyMonitoringInterval = durationjson.Duration(100 * time.Millisecond)
 		config.ContainerOwnerName = "executor" + generator.RandomName()
 		config.GardenHealthcheckProcessPath = "/bin/sh"
 		config.GardenHealthcheckProcessArgs = []string{"-c", "echo", "checking health"}
