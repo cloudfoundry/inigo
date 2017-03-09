@@ -2,10 +2,7 @@ package cell_test
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -44,10 +41,14 @@ func overrideConvergenceRepeatInterval(conf *bbsconfig.BBSConfig) {
 }
 
 var _ = SynchronizedBeforeSuite(func() []byte {
-	payload, err := json.Marshal(world.BuiltArtifacts{
-		Executables: CompileTestedExecutables(),
-		Lifecycles:  BuildLifecycles(),
-	})
+	artifacts := world.BuiltArtifacts{
+		Lifecycles: world.BuiltLifecycles{},
+	}
+
+	artifacts.Lifecycles.BuildLifecycles("dockerapplifecycle")
+	artifacts.Executables = CompileTestedExecutables()
+
+	payload, err := json.Marshal(artifacts)
 	Expect(err).NotTo(HaveOccurred())
 
 	return payload
@@ -142,42 +143,4 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	Expect(err).NotTo(HaveOccurred())
 
 	return builtExecutables
-}
-
-func BuildLifecycles() world.BuiltLifecycles {
-	builtLifecycles := world.BuiltLifecycles{}
-
-	builderPath, err := gexec.BuildIn(os.Getenv("BUILDPACK_APP_LIFECYCLE_GOPATH"), "code.cloudfoundry.org/buildpackapplifecycle/builder", "-race")
-	Expect(err).NotTo(HaveOccurred())
-
-	launcherPath, err := gexec.BuildIn(os.Getenv("BUILDPACK_APP_LIFECYCLE_GOPATH"), "code.cloudfoundry.org/buildpackapplifecycle/launcher", "-race")
-	Expect(err).NotTo(HaveOccurred())
-
-	healthcheckPath, err := gexec.Build("code.cloudfoundry.org/healthcheck/cmd/healthcheck", "-race")
-	Expect(err).NotTo(HaveOccurred())
-
-	lifecycleDir, err := ioutil.TempDir("", "lifecycle-dir")
-	Expect(err).NotTo(HaveOccurred())
-
-	err = os.Rename(builderPath, filepath.Join(lifecycleDir, "builder"))
-	Expect(err).NotTo(HaveOccurred())
-
-	err = os.Rename(healthcheckPath, filepath.Join(lifecycleDir, "healthcheck"))
-	Expect(err).NotTo(HaveOccurred())
-
-	err = os.Rename(launcherPath, filepath.Join(lifecycleDir, "launcher"))
-	Expect(err).NotTo(HaveOccurred())
-
-	cmd := exec.Command("tar", "-czf", "lifecycle.tar.gz", "builder", "launcher", "healthcheck")
-	cmd.Stderr = GinkgoWriter
-	cmd.Stdout = GinkgoWriter
-	cmd.Dir = lifecycleDir
-	err = cmd.Run()
-	Expect(err).NotTo(HaveOccurred())
-
-	for _, stack := range helpers.PreloadedStacks {
-		builtLifecycles[stack] = filepath.Join(lifecycleDir, "lifecycle.tar.gz")
-	}
-
-	return builtLifecycles
 }

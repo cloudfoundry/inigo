@@ -18,6 +18,7 @@ import (
 	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/inigo/inigo_announcement_server"
+	"code.cloudfoundry.org/inigo/world"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -120,45 +121,116 @@ var _ = Describe("Tasks", func() {
 			Expect(task.Failed).To(BeFalse())
 		})
 
-		if os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_URI") != "" {
-			Context("when using a private image", func() {
-				It("eventually runs", func() {
-					expectedTask := helpers.TaskCreateRequest(
-						guid,
-						&models.RunAction{
-							User: "vcap",
-							Path: "sh",
-							Args: []string{"-c", `[ "$FOO" = NEW-BAR -a "$BAZ" = WIBBLE ]`},
-							Env: []*models.EnvironmentVariable{
-								{"FOO", "OLD-BAR"},
-								{"BAZ", "WIBBLE"},
-								{"FOO", "NEW-BAR"},
-							},
-						},
-					)
-					expectedTask.Privileged = true
-					expectedTask.RootFs = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_URI")
-					expectedTask.ImageUsername = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_USERNAME")
-					expectedTask.ImagePassword = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_PASSWORD")
+		Context("when using a private image", func() {
+			var (
+				privateRef              string
+				privateDockerRootFSPath string
+				privateUser             string
+				privatePassword         string
+			)
+			BeforeEach(func() {
+				privateRef = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_REF")
+				privateDockerRootFSPath = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_ROOTFS_PATH")
+				privateUser = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_USERNAME")
+				privatePassword = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_PASSWORD")
+				if privateRef == "" {
+					Skip("no private docker image specified")
+				}
 
-					err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				dockerLifecycleTar := componentMaker.Artifacts.Lifecycles["dockerapplifecycle"]
+				helpers.Copy(dockerLifecycleTar, fileServerStaticDir)
+			})
+
+			It("fetches the metadata", func() {
+				expectedTask := helpers.TaskCreateRequest(
+					guid,
+					&models.RunAction{
+						User: "vcap",
+						Path: "/tmp/diego/dockerapplifecycle/builder",
+						Args: []string{"--dockerRef", privateRef, "--dockerUser", privateUser, "--dockerPassword", privatePassword, "--outputMetadataJSONFilename", "/tmp/result.json"},
+					},
+				)
+				expectedTask.CachedDependencies = []*models.CachedDependency{{
+					From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, world.LifecycleFilename),
+					To:        "/tmp/diego/dockerapplifecycle",
+					Name:      "docker app lifecycle",
+					CacheKey:  "docker-app-lifecycle",
+					LogSource: "docker-app-lifecycle",
+				}}
+				expectedTask.LegacyDownloadUser = "vcap"
+				expectedTask.Privileged = true
+				expectedTask.ResultFile = "/tmp/result.json"
+				expectedTask.EgressRules = []*models.SecurityGroupRule{
+					{
+						Protocol:     models.TCPProtocol,
+						Destinations: []string{"9.0.0.0-89.255.255.255", "90.0.0.0-94.0.0.0"},
+						Ports:        []uint32{80, 443},
+					},
+					{
+						Protocol:     models.UDPProtocol,
+						Destinations: []string{"0.0.0.0/0"},
+						PortRange: &models.PortRange{
+							Start: 53,
+							End:   53,
+						},
+					},
+				}
+
+				err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				Expect(err).NotTo(HaveOccurred())
+
+				var task *models.Task
+
+				Eventually(func() interface{} {
+					var err error
+
+					task, err = bbsClient.TaskByGuid(logger, guid)
 					Expect(err).NotTo(HaveOccurred())
 
-					var task *models.Task
+					return task.State
+				}).Should(Equal(models.Task_Completed))
 
-					Eventually(func() interface{} {
-						var err error
-
-						task, err = bbsClient.TaskByGuid(logger, guid)
-						Expect(err).NotTo(HaveOccurred())
-
-						return task.State
-					}).Should(Equal(models.Task_Completed))
-
-					Expect(task.Failed).To(BeFalse())
-				})
+				Expect(task.FailureReason).To(BeZero())
+				Expect(task.Failed).To(BeFalse())
+				Expect(task.Result).To(ContainSubstring(privateRef))
 			})
-		}
+
+			It("eventually runs", func() {
+				expectedTask := helpers.TaskCreateRequest(
+					guid,
+					&models.RunAction{
+						User: "vcap",
+						Path: "sh",
+						Args: []string{"-c", `[ "$FOO" = NEW-BAR -a "$BAZ" = WIBBLE ]`},
+						Env: []*models.EnvironmentVariable{
+							{"FOO", "OLD-BAR"},
+							{"BAZ", "WIBBLE"},
+							{"FOO", "NEW-BAR"},
+						},
+					},
+				)
+				expectedTask.Privileged = true
+				expectedTask.RootFs = privateDockerRootFSPath
+				expectedTask.ImageUsername = privateUser
+				expectedTask.ImagePassword = privatePassword
+
+				err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				Expect(err).NotTo(HaveOccurred())
+
+				var task *models.Task
+
+				Eventually(func() interface{} {
+					var err error
+
+					task, err = bbsClient.TaskByGuid(logger, guid)
+					Expect(err).NotTo(HaveOccurred())
+
+					return task.State
+				}).Should(Equal(models.Task_Completed))
+
+				Expect(task.Failed).To(BeFalse())
+			})
+		})
 
 		Context("when the command exceeds its memory limit", func() {
 			It("should fail the Task", func() {

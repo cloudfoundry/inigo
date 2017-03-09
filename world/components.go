@@ -49,8 +49,10 @@ import (
 	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 	"github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"golang.org/x/crypto/ssh"
@@ -60,7 +62,7 @@ type BuiltExecutables map[string]string
 type BuiltLifecycles map[string]string
 
 const (
-	LifecycleFilename = "some-lifecycle.tar.gz"
+	LifecycleFilename = "lifecycle.tar.gz"
 )
 
 type BuiltArtifacts struct {
@@ -136,6 +138,39 @@ type ComponentMaker struct {
 
 	DBDriverName           string
 	DBBaseConnectionString string
+}
+
+func (blc *BuiltLifecycles) BuildLifecycles(lifeCycle string) {
+	lifeCyclePath := filepath.Join("code.cloudfoundry.org", lifeCycle)
+
+	builderPath, err := gexec.BuildIn(os.Getenv("APP_LIFECYCLE_GOPATH"), filepath.Join(lifeCyclePath, "builder"), "-race")
+	Expect(err).NotTo(HaveOccurred())
+
+	launcherPath, err := gexec.BuildIn(os.Getenv("APP_LIFECYCLE_GOPATH"), filepath.Join(lifeCyclePath, "launcher"), "-race")
+	Expect(err).NotTo(HaveOccurred())
+
+	healthcheckPath, err := gexec.Build("code.cloudfoundry.org/healthcheck/cmd/healthcheck", "-race")
+	Expect(err).NotTo(HaveOccurred())
+
+	lifecycleDir, err := ioutil.TempDir("", lifeCycle)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = os.Rename(builderPath, filepath.Join(lifecycleDir, "builder"))
+	Expect(err).NotTo(HaveOccurred())
+
+	err = os.Rename(healthcheckPath, filepath.Join(lifecycleDir, "healthcheck"))
+
+	err = os.Rename(launcherPath, filepath.Join(lifecycleDir, "launcher"))
+	Expect(err).NotTo(HaveOccurred())
+
+	cmd := exec.Command("tar", "-czf", "lifecycle.tar.gz", "builder", "launcher", "healthcheck")
+	cmd.Stderr = GinkgoWriter
+	cmd.Stdout = GinkgoWriter
+	cmd.Dir = lifecycleDir
+	err = cmd.Run()
+	Expect(err).NotTo(HaveOccurred())
+
+	(*blc)[lifeCycle] = filepath.Join(lifecycleDir, LifecycleFilename)
 }
 
 func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
@@ -635,14 +670,6 @@ func (maker ComponentMaker) SSHProxy(argv ...string) ifrit.Runner {
 			}, argv...)...,
 		),
 	})
-}
-
-func (maker ComponentMaker) appendLifecycleArgs(args []string) []string {
-	for stack, _ := range maker.PreloadedStackPathMap {
-		args = append(args, "-lifecycle", fmt.Sprintf("buildpack/%s:%s", stack, LifecycleFilename))
-	}
-
-	return args
 }
 
 func (maker ComponentMaker) DefaultStack() string {
