@@ -10,13 +10,16 @@ import (
 	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/lager"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	routeemitterconfig "code.cloudfoundry.org/route-emitter/cmd/route-emitter/config"
+	routingapi "code.cloudfoundry.org/route-emitter/cmd/route-emitter/runners"
 	"code.cloudfoundry.org/routing-info/cfroutes"
+	"code.cloudfoundry.org/routing-info/tcp_routes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
@@ -31,6 +34,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 		archiveFiles                                 []archive_helper.ArchiveFile
 		fileServerStaticDir                          string
 		cellAID, cellBID, cellARepAddr, cellBRepAddr string
+		routeEmitterConfigs                          []func(*routeemitterconfig.RouteEmitterConfig)
 	)
 
 	BeforeEach(func() {
@@ -43,18 +47,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 		cellBID = "cell-b"
 
 		cellARepAddr = fmt.Sprintf("0.0.0.0:%d", 14200+GinkgoParallelNode())
-		repA := componentMaker.RepN(1, func(config *repconfig.RepConfig) {
-			config.CellID = cellAID
-			config.ListenAddr = cellARepAddr
-			config.EvacuationTimeout = durationjson.Duration(30 * time.Second)
-		})
-
 		cellBRepAddr = fmt.Sprintf("0.0.0.0:%d", 14400+GinkgoParallelNode())
-		repB := componentMaker.RepN(2, func(config *repconfig.RepConfig) {
-			config.CellID = cellBID
-			config.ListenAddr = cellBRepAddr
-			config.EvacuationTimeout = durationjson.Duration(30 * time.Second)
-		})
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},
@@ -62,20 +55,6 @@ var _ = Describe("LocalRouteEmitter", func() {
 			{"auctioneer", componentMaker.Auctioneer()},
 		}))
 
-		cellAProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"rep-a", repA},
-			{"route-emitter-a", componentMaker.RouteEmitterN(1, func(config *routeemitterconfig.RouteEmitterConfig) {
-				config.SyncInterval = durationjson.Duration(time.Hour)
-				config.CellID = cellAID
-			})},
-		}))
-		cellBProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"rep-b", repB},
-			{"route-emitter-b", componentMaker.RouteEmitterN(1, func(config *routeemitterconfig.RouteEmitterConfig) {
-				config.SyncInterval = durationjson.Duration(time.Hour)
-				config.CellID = cellBID
-			})},
-		}))
 		archiveFiles = fixtures.GoServerApp()
 	})
 
@@ -84,6 +63,35 @@ var _ = Describe("LocalRouteEmitter", func() {
 	})
 
 	JustBeforeEach(func() {
+		repA := componentMaker.RepN(1, func(config *repconfig.RepConfig) {
+			config.CellID = cellAID
+			config.ListenAddr = cellARepAddr
+			config.EvacuationTimeout = durationjson.Duration(30 * time.Second)
+		})
+
+		repB := componentMaker.RepN(2, func(config *repconfig.RepConfig) {
+			config.CellID = cellBID
+			config.ListenAddr = cellBRepAddr
+			config.EvacuationTimeout = durationjson.Duration(30 * time.Second)
+		})
+
+		routeEmitterAConfigs := append(routeEmitterConfigs, func(config *routeemitterconfig.RouteEmitterConfig) {
+			config.SyncInterval = durationjson.Duration(time.Hour)
+			config.CellID = cellAID
+		})
+		cellAProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+			{"rep-a", repA},
+			{"route-emitter-a", componentMaker.RouteEmitterN(1, routeEmitterAConfigs...)},
+		}))
+		routeEmitterBConfigs := append(routeEmitterConfigs, func(config *routeemitterconfig.RouteEmitterConfig) {
+			config.SyncInterval = durationjson.Duration(time.Hour)
+			config.CellID = cellBID
+		})
+		cellBProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+			{"rep-b", repB},
+			{"route-emitter-b", componentMaker.RouteEmitterN(1, routeEmitterBConfigs...)},
+		}))
+
 		archive_helper.CreateZipArchive(
 			filepath.Join(fileServerStaticDir, "lrp.zip"),
 			archiveFiles,
@@ -98,10 +106,10 @@ var _ = Describe("LocalRouteEmitter", func() {
 
 		BeforeEach(func() {
 			instances = 1
+			lrp = createDesiredLRP(processGuid)
 		})
 
 		JustBeforeEach(func() {
-			lrp = createDesiredLRP(processGuid)
 			lrp.Instances = instances
 			err := bbsClient.DesireLRP(logger, lrp)
 			Expect(err).NotTo(HaveOccurred())
@@ -114,6 +122,63 @@ var _ = Describe("LocalRouteEmitter", func() {
 				time.Second,
 				10*time.Millisecond,
 			).Should(Equal(http.StatusOK))
+		})
+
+		Context("when tcp route emitting is enabled", func() {
+			var (
+				routingAPI        *routingapi.RoutingAPIRunner
+				routingAPIProcess ifrit.Process
+				sqlProcess        ifrit.Process
+			)
+
+			BeforeEach(func() {
+				sqlRunner := test_helpers.NewSQLRunner(fmt.Sprintf("routingapi_%d", GinkgoParallelNode()))
+				sqlProcess = ginkgomon.Invoke(sqlRunner)
+				routingAPI = componentMaker.RoutingAPI()
+				routeEmitterConfigs = append(routeEmitterConfigs, func(cfg *routeemitterconfig.RouteEmitterConfig) {
+					cfg.EnableTCPEmitter = true
+					cfg.RoutingAPI = routeemitterconfig.RoutingAPIConfig{
+						URI:          "http://localhost",
+						Port:         routingAPI.Config.Port,
+						AuthDisabled: true,
+					}
+				})
+				routingAPIProcess = ginkgomon.Invoke(routingAPI)
+			})
+
+			AfterEach(func() {
+				ginkgomon.Interrupt(routingAPIProcess)
+				ginkgomon.Interrupt(sqlProcess)
+			})
+
+			Context("and the lrp has a tcp route", func() {
+				BeforeEach(func() {
+					routerGroupGUID, err := routingAPI.GetGUID()
+					Expect(err).NotTo(HaveOccurred())
+					tcpRoute := tcp_routes.TCPRoutes{
+						tcp_routes.TCPRoute{
+							RouterGroupGuid: routerGroupGUID,
+							ExternalPort:    1234,
+							ContainerPort:   8080,
+						},
+					}
+					lrp.Routes = tcpRoute.RoutingInfo()
+				})
+
+				It("emits the tcp route of the lrp", func() {
+					client := routingAPI.GetClient()
+					Eventually(func() error {
+						routes, err := client.TcpRouteMappings()
+						if err != nil {
+							return err
+						}
+						if len(routes) != 1 {
+							return fmt.Errorf("routes %#v does not have length 1", routes)
+						}
+						return nil
+					}, 2*time.Second).Should(Succeed())
+				})
+			})
 		})
 
 		Context("when there are 3 instances", func() {

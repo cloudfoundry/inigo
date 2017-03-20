@@ -40,6 +40,7 @@ import (
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	"code.cloudfoundry.org/rep/maintain"
 	routeemitterconfig "code.cloudfoundry.org/route-emitter/cmd/route-emitter/config"
+	routingapi "code.cloudfoundry.org/route-emitter/cmd/route-emitter/runners"
 	"code.cloudfoundry.org/voldriver"
 	"code.cloudfoundry.org/voldriver/driverhttp"
 	"code.cloudfoundry.org/volman"
@@ -329,6 +330,29 @@ func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 	)
 }
 
+func (maker ComponentMaker) RoutingAPI(modifyConfigFuncs ...func(*routingapi.Config)) *routingapi.RoutingAPIRunner {
+	binPath := maker.Artifacts.Executables["routing-api"]
+
+	sqlConfig := routingapi.SQLConfig{
+		DriverName: maker.DBDriverName,
+		DBName:     fmt.Sprintf("routingapi_%d", ginkgo.GinkgoParallelNode()),
+	}
+
+	if maker.DBDriverName == "mysql" {
+		sqlConfig.Port = 3306
+		sqlConfig.Username = "diego"
+		sqlConfig.Password = "diego_password"
+	} else {
+		sqlConfig.Port = 5432
+		sqlConfig.Username = "diego"
+		sqlConfig.Password = "diego_pw"
+	}
+
+	runner, err := routingapi.NewRoutingAPIRunner(binPath, maker.ConsulCluster(), sqlConfig, modifyConfigFuncs...)
+	Expect(err).NotTo(HaveOccurred())
+	return runner
+}
+
 func (maker ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig)) ifrit.Runner {
 	config := bbsconfig.BBSConfig{
 		AdvertiseURL:  maker.BBSURL(),
@@ -499,7 +523,7 @@ func (maker ComponentMaker) RouteEmitter() ifrit.Runner {
 	return maker.RouteEmitterN(0, func(*routeemitterconfig.RouteEmitterConfig) {})
 }
 
-func (maker ComponentMaker) RouteEmitterN(n int, f func(config *routeemitterconfig.RouteEmitterConfig)) ifrit.Runner {
+func (maker ComponentMaker) RouteEmitterN(n int, fs ...func(config *routeemitterconfig.RouteEmitterConfig)) ifrit.Runner {
 	name := "route-emitter-" + strconv.Itoa(n)
 
 	configFile, err := ioutil.TempFile("", "file-server-config")
@@ -517,7 +541,9 @@ func (maker ComponentMaker) RouteEmitterN(n int, f func(config *routeemitterconf
 		BBSCACertFile:     maker.BbsSSL.CACert,
 	}
 
-	f(&cfg)
+	for _, f := range fs {
+		f(&cfg)
+	}
 
 	encoder := json.NewEncoder(configFile)
 	err = encoder.Encode(&cfg)
