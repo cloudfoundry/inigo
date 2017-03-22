@@ -1,6 +1,7 @@
 package cell_test
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -81,6 +82,9 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 				"../fixtures/certs/ca.crt",
 			)
 			tlsFileServer.TLS = tlsConfig
+		})
+
+		JustBeforeEach(func() {
 			tlsFileServer.StartTLS()
 
 			lrp = helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
@@ -89,15 +93,28 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 				To:   "/tmp",
 				User: "vcap",
 			})
-		})
 
-		JustBeforeEach(func() {
 			err := bbsClient.DesireLRP(logger, lrp)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("eventually runs", func() {
 			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+		})
+
+		Context("when client keypair is not provided", func() {
+			BeforeEach(func() {
+				tlsFileServer.TLS.ClientAuth = tls.NoClientCert
+
+				cfgs = append(cfgs, func(cfg *config.RepConfig) {
+					cfg.PathToTLSCert = ""
+					cfg.PathToTLSKey = ""
+				})
+			})
+
+			It("eventually runs", func() {
+				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+			})
 		})
 
 		Context("when skip cert verify is set to true and the ca cert isn't set", func() {
