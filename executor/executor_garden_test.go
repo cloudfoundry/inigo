@@ -17,6 +17,7 @@ import (
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/loggregator_v2"
 	"github.com/cloudfoundry-incubator/cf-test-helpers/generator"
 	uuid "github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
@@ -77,7 +78,10 @@ var _ = Describe("Executor/Garden", func() {
 
 		logger = lagertest.NewTestLogger("test")
 		var executorMembers grouper.Members
-		executorClient, executorMembers, err = executorinit.Initialize(logger, config, gardenHealthcheckRootFS, clock.NewClock())
+		metronClient, err := loggregator_v2.NewClient(logger, loggregator_v2.MetronConfig{})
+		Expect(err).NotTo(HaveOccurred())
+
+		executorClient, executorMembers, err = executorinit.Initialize(logger, config, gardenHealthcheckRootFS, metronClient, clock.NewClock())
 		Expect(err).NotTo(HaveOccurred())
 		runner = grouper.NewParallel(os.Kill, executorMembers)
 

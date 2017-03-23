@@ -37,6 +37,7 @@ import (
 	"code.cloudfoundry.org/guardian/gqt/runner"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
+	"code.cloudfoundry.org/loggregator_v2"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	"code.cloudfoundry.org/rep/maintain"
 	routeemitterconfig "code.cloudfoundry.org/route-emitter/cmd/route-emitter/config"
@@ -748,7 +749,9 @@ func (maker ComponentMaker) VolmanClient(logger lager.Logger) (volman.Manager, i
 	driverConfig := volmanclient.NewDriverConfig()
 	driverConfig.DriverPaths = []string{path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode))}
 
-	return volmanclient.NewServer(logger, driverConfig)
+	metronClient, err := loggregator_v2.NewClient(logger, loggregator_v2.MetronConfig{})
+	Expect(err).NotTo(HaveOccurred())
+	return volmanclient.NewServer(logger, metronClient, driverConfig)
 }
 
 func (maker ComponentMaker) VolmanDriver(logger lager.Logger) (ifrit.Runner, voldriver.Driver) {

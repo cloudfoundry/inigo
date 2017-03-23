@@ -18,6 +18,7 @@ import (
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/loggregator_v2"
 	"code.cloudfoundry.org/voldriver"
 	"code.cloudfoundry.org/voldriver/driverhttp"
 	"github.com/cloudfoundry-incubator/cf-test-helpers/generator"
@@ -343,7 +344,9 @@ func initializeExecutor(logger lager.Logger, config executorinit.ExecutorConfig)
 	var err error
 	var executorClient executor.Client
 	defaultRootFS := ""
-	executorClient, executorMembers, err = executorinit.Initialize(logger, config, defaultRootFS, clock.NewClock())
+	metronClient, err := loggregator_v2.NewClient(logger, loggregator_v2.MetronConfig{})
+	Expect(err).NotTo(HaveOccurred())
+	executorClient, executorMembers, err = executorinit.Initialize(logger, config, defaultRootFS, metronClient, clock.NewClock())
 	Expect(err).NotTo(HaveOccurred())
 
 	return executorClient, grouper.NewParallel(os.Kill, executorMembers)
