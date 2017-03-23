@@ -343,7 +343,7 @@ func initializeExecutor(logger lager.Logger, config executorinit.ExecutorConfig)
 	var err error
 	var executorClient executor.Client
 	defaultRootFS := ""
-	executorClient, executorMembers, err = executorinit.Initialize(logger, config, defaultRootFS, clock.NewClock())
+	executorClient, executorMembers, err = executorinit.Initialize(logger, config, defaultRootFS, nil, clock.NewClock())
 	Expect(err).NotTo(HaveOccurred())
 
 	return executorClient, grouper.NewParallel(os.Kill, executorMembers)

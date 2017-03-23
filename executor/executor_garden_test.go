@@ -77,7 +77,7 @@ var _ = Describe("Executor/Garden", func() {
 
 		logger = lagertest.NewTestLogger("test")
 		var executorMembers grouper.Members
-		executorClient, executorMembers, err = executorinit.Initialize(logger, config, gardenHealthcheckRootFS, clock.NewClock())
+		executorClient, executorMembers, err = executorinit.Initialize(logger, config, gardenHealthcheckRootFS, nil, clock.NewClock())
 		Expect(err).NotTo(HaveOccurred())
 		runner = grouper.NewParallel(os.Kill, executorMembers)
 
