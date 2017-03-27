@@ -117,6 +117,27 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 			})
 		})
 
+		Context("when CaCertForDownload is present", func() {
+			BeforeEach(func() {
+				cfgs = append(cfgs, func(cfg *config.RepConfig) {
+					cfg.PathToCACertsForDownloads = "../fixtures/certs/ca.crt"
+				})
+			})
+			Context("when TLSCaCert is empty", func() {
+				BeforeEach(func() {
+					tlsFileServer.TLS.ClientAuth = tls.NoClientCert
+
+					cfgs = append(cfgs, func(cfg *config.RepConfig) {
+						cfg.PathToTLSCACert = ""
+					})
+				})
+
+				It("eventually runs", func() {
+					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+				})
+			})
+		})
+
 		Context("when skip cert verify is set to true and the ca cert isn't set", func() {
 			BeforeEach(func() {
 				cfgs = append(cfgs, func(cfg *config.RepConfig) {
