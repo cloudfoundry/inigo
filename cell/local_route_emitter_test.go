@@ -138,9 +138,9 @@ var _ = Describe("LocalRouteEmitter", func() {
 				routeEmitterConfigs = append(routeEmitterConfigs, func(cfg *routeemitterconfig.RouteEmitterConfig) {
 					cfg.EnableTCPEmitter = true
 					cfg.RoutingAPI = routeemitterconfig.RoutingAPIConfig{
-						URI:          "http://localhost",
-						Port:         routingAPI.Config.Port,
-						AuthDisabled: true,
+						URL:         "http://localhost",
+						Port:        routingAPI.Config.Port,
+						AuthEnabled: false,
 					}
 				})
 				routingAPIProcess = ginkgomon.Invoke(routingAPI)
