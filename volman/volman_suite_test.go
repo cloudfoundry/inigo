@@ -62,7 +62,12 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	Expect(err).NotTo(HaveOccurred())
 
 	componentMaker = helpers.MakeComponentMaker(builtArtifacts, localIP)
+	Expect(componentMaker.GrootfsInitStores()).To(Succeed())
 })
+
+var _ = SynchronizedAfterSuite(func() {
+	Expect(componentMaker.GrootfsDeleteStores()).To(Succeed())
+}, func() {})
 
 var _ = BeforeEach(func() {
 	logger = lagertest.NewTestLogger("volman-inigo-suite")
