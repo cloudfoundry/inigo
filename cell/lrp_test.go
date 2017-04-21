@@ -6,9 +6,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
+	"code.cloudfoundry.org/bbs/events"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
@@ -16,6 +18,7 @@ import (
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/routing-info/cfroutes"
+	. "code.cloudfoundry.org/vizzini/matchers"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -32,7 +35,17 @@ var _ = Describe("LRP", func() {
 
 		runtime         ifrit.Process
 		archiveFilePath string
+
+		lock        *sync.Mutex
+		eventSource events.EventSource
+		events      []models.Event
 	)
+
+	getEvents := func() []models.Event {
+		lock.Lock()
+		defer lock.Unlock()
+		return events
+	}
 
 	BeforeEach(func() {
 		processGuid = helpers.GenerateGuid()
@@ -48,13 +61,31 @@ var _ = Describe("LRP", func() {
 		}))
 
 		archiveFiles = fixtures.GoServerApp()
-	})
-
-	JustBeforeEach(func() {
 		archive_helper.CreateZipArchive(
 			filepath.Join(fileServerStaticDir, "lrp.zip"),
 			archiveFiles,
 		)
+
+		lock = &sync.Mutex{}
+	})
+
+	JustBeforeEach(func() {
+		var err error
+		eventSource, err = bbsClient.SubscribeToEvents(logger)
+		Expect(err).NotTo(HaveOccurred())
+		go func() {
+			defer GinkgoRecover()
+
+			for {
+				event, err := eventSource.Next()
+				if err != nil {
+					return
+				}
+				lock.Lock()
+				events = append(events, event)
+				lock.Unlock()
+			}
+		}()
 	})
 
 	AfterEach(func() {
@@ -91,6 +122,13 @@ var _ = Describe("LRP", func() {
 		It("eventually runs", func() {
 			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 			Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
+		})
+
+		It("should send events as the LRP goes through its lifecycle ", func() {
+			Eventually(getEvents).Should(ContainElement(MatchDesiredLRPCreatedEvent(processGuid)))
+			Eventually(getEvents).Should(ContainElement(MatchActualLRPCreatedEvent(processGuid, 0)))
+			Eventually(getEvents).Should(ContainElement(MatchActualLRPChangedEvent(processGuid, 0, models.ActualLRPStateClaimed)))
+			Eventually(getEvents).Should(ContainElement(MatchActualLRPChangedEvent(processGuid, 0, models.ActualLRPStateRunning)))
 		})
 
 		if os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_URI") != "" {
@@ -532,234 +570,224 @@ var _ = Describe("LRP", func() {
 			})
 		})
 	})
-})
 
-var _ = Describe("Crashing LRPs", func() {
-	var (
-		processGuid string
-		runtime     ifrit.Process
-	)
-
-	crashCount := func(guid string, index int) func() int32 {
-		return func() int32 {
-			actualGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, guid, index)
-			Expect(err).NotTo(HaveOccurred())
-			actual, _ := actualGroup.Resolve()
-			return actual.CrashCount
+	Context("Crashing LRPs", func() {
+		crashCount := func(guid string, index int) func() int32 {
+			return func() int32 {
+				actualGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, guid, index)
+				Expect(err).NotTo(HaveOccurred())
+				actual, _ := actualGroup.Resolve()
+				return actual.CrashCount
+			}
 		}
-	}
 
-	BeforeEach(func() {
-		fileServer, fileServerStaticDir := componentMaker.FileServer()
+		BeforeEach(func() {
+			By("restarting the bbs with smaller convergeRepeatInterval")
+			ginkgomon.Interrupt(bbsProcess)
+			bbsProcess = ginkgomon.Invoke(componentMaker.BBS(
+				overrideConvergenceRepeatInterval,
+			))
+		})
 
-		archiveFiles := fixtures.GoServerApp()
-		archive_helper.CreateZipArchive(
-			filepath.Join(fileServerStaticDir, "lrp.zip"),
-			archiveFiles,
-		)
+		Describe("crashing apps", func() {
+			Context("when an app flaps", func() {
+				var lrp *models.DesiredLRP
 
-		processGuid = helpers.GenerateGuid()
+				BeforeEach(func() {
+					lrp = helpers.CrashingLRPCreateRequest(processGuid)
+				})
 
-		By("restarting the bbs with smaller convergeRepeatInterval")
-		ginkgomon.Interrupt(bbsProcess)
-		bbsProcess = ginkgomon.Invoke(componentMaker.BBS(
-			overrideConvergenceRepeatInterval,
-		))
+				JustBeforeEach(func() {
+					err := bbsClient.DesireLRP(logger, lrp)
+					Expect(err).NotTo(HaveOccurred())
+				})
 
-		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"router", componentMaker.Router()},
-			{"file-server", fileServer},
-			{"rep", componentMaker.Rep()},
-			{"auctioneer", componentMaker.Auctioneer()},
-			{"route-emitter", componentMaker.RouteEmitter()},
-		}))
-	})
+				testAppRecovery := func(index int) {
+					It("imediately restarts the app 3 times", func() {
+						// the bbs immediately starts it 3 times
+						Eventually(crashCount(processGuid, index)).Should(BeEquivalentTo(3))
+						// then exponential backoff kicks in
+						Consistently(crashCount(processGuid, index), 15*time.Second).Should(BeEquivalentTo(3))
+						// eventually we cross the first backoff threshold (30 seconds)
+						Eventually(crashCount(processGuid, index), 30*time.Second).Should(BeEquivalentTo(4))
+					})
+				}
 
-	AfterEach(func() {
-		helpers.StopProcesses(runtime)
-	})
+				testAppRecovery(0)
 
-	Describe("crashing apps", func() {
-		Context("when an app flaps", func() {
+				Context("when the app has multiple indices", func() {
+					BeforeEach(func() {
+						lrp.Instances = 2
+					})
+
+					testAppRecovery(1)
+				})
+			})
+		})
+
+		Describe("disappearing containrs", func() {
+			Context("when a container is deleted unexpectedly", func() {
+				var (
+					group *models.ActualLRPGroup
+				)
+
+				BeforeEach(func() {
+					lrp := helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
+
+					err := bbsClient.DesireLRP(logger, lrp)
+					Expect(err).NotTo(HaveOccurred())
+
+					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+				})
+
+				JustBeforeEach(func() {
+					var err error
+					group, err = bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, processGuid, 0)
+					Expect(err).NotTo(HaveOccurred())
+
+					handle := rep.LRPContainerGuid(group.Instance.GetProcessGuid(), group.Instance.GetInstanceGuid())
+					err = gardenClient.Destroy(handle)
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("crashes the instance and restarts it", func() {
+					Eventually(crashCount(processGuid, 0)).Should(BeEquivalentTo(1))
+					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+				})
+
+				It("contains the instance guid and cell id", func() {
+					lrp, _ := group.Resolve()
+					Eventually(getEvents).Should(ContainElement(helpers.MatchActualLRPCrashedEvent(
+						processGuid,
+						lrp.InstanceGuid,
+						lrp.CellId,
+						0,
+					)))
+				})
+			})
+		})
+
+		Describe("failed checksum", func() {
 			var lrp *models.DesiredLRP
 
-			BeforeEach(func() {
-				lrp = helpers.CrashingLRPCreateRequest(processGuid)
-			})
-
-			JustBeforeEach(func() {
-				err := bbsClient.DesireLRP(logger, lrp)
-				Expect(err).NotTo(HaveOccurred())
-			})
-
-			testAppRecovery := func(index int) {
-				It("imediately restarts the app 3 times", func() {
-					// the bbs immediately starts it 3 times
-					Eventually(crashCount(processGuid, index)).Should(BeEquivalentTo(3))
-					// then exponential backoff kicks in
-					Consistently(crashCount(processGuid, index), 15*time.Second).Should(BeEquivalentTo(3))
-					// eventually we cross the first backoff threshold (30 seconds)
-					Eventually(crashCount(processGuid, index), 30*time.Second).Should(BeEquivalentTo(4))
+			desireLRPWithChecksum := func(algorithm string) {
+				lrp = helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
+				lrp.Setup = nil
+				lrp.CachedDependencies = []*models.CachedDependency{{
+					From:              fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+					To:                "/tmp/diego/lrp",
+					Name:              "lrp bits",
+					CacheKey:          "lrp-cache-key",
+					LogSource:         "APP",
+					ChecksumAlgorithm: algorithm,
+					ChecksumValue:     "incorrect_checksum",
+				}}
+				lrp.LegacyDownloadUser = "vcap"
+				lrp.Privileged = true
+				lrp.Action = models.WrapAction(&models.RunAction{
+					User: "vcap",
+					Path: "/tmp/diego/lrp/go-server",
+					Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
 				})
 			}
 
-			testAppRecovery(0)
-
-			Context("when the app has multiple indices", func() {
-				BeforeEach(func() {
-					lrp.Instances = 2
+			Context("for CachedDependencies", func() {
+				Context("with invalid algorithm", func() {
+					It("eventually crashes", func() {
+						desireLRPWithChecksum("invalid_algorithm")
+						err := bbsClient.DesireLRP(logger, lrp)
+						Expect(err).To(HaveOccurred())
+					})
 				})
 
-				testAppRecovery(1)
-			})
-		})
-	})
+				Context("when incorrect checksum value is provided", func() {
+					Context("with md5", func() {
+						BeforeEach(func() {
+							desireLRPWithChecksum("md5")
 
-	Describe("disappearing containrs", func() {
-		Context("when a container is deleted unexpectedly", func() {
-			BeforeEach(func() {
-				lrp := helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
+							err := bbsClient.DesireLRP(logger, lrp)
+							Expect(err).NotTo(HaveOccurred())
+						})
 
-				err := bbsClient.DesireLRP(logger, lrp)
-				Expect(err).NotTo(HaveOccurred())
+						It("eventually crashes", func() {
+							Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateCrashed))
+						})
+					})
 
-				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
-			})
+					Context("with sha1", func() {
+						BeforeEach(func() {
+							desireLRPWithChecksum("sha1")
 
-			It("crashes the instance and restarts it", func() {
-				group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, processGuid, 0)
-				Expect(err).NotTo(HaveOccurred())
+							err := bbsClient.DesireLRP(logger, lrp)
+							Expect(err).NotTo(HaveOccurred())
+						})
 
-				handle := rep.LRPContainerGuid(group.Instance.GetProcessGuid(), group.Instance.GetInstanceGuid())
-				err = gardenClient.Destroy(handle)
-				Expect(err).NotTo(HaveOccurred())
+						It("eventually crashes", func() {
+							Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateCrashed))
+						})
+					})
 
-				Eventually(crashCount(processGuid, 0)).Should(BeEquivalentTo(1))
-				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
-			})
-		})
-	})
+					Context("with sha256", func() {
+						BeforeEach(func() {
+							desireLRPWithChecksum("sha256")
 
-	Describe("failed checksum", func() {
-		var lrp *models.DesiredLRP
+							err := bbsClient.DesireLRP(logger, lrp)
+							Expect(err).NotTo(HaveOccurred())
+						})
 
-		desireLRPWithChecksum := func(algorithm string) {
-			lrp = helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
-			lrp.Setup = nil
-			lrp.CachedDependencies = []*models.CachedDependency{{
-				From:              fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
-				To:                "/tmp/diego/lrp",
-				Name:              "lrp bits",
-				CacheKey:          "lrp-cache-key",
-				LogSource:         "APP",
-				ChecksumAlgorithm: algorithm,
-				ChecksumValue:     "incorrect_checksum",
-			}}
-			lrp.LegacyDownloadUser = "vcap"
-			lrp.Privileged = true
-			lrp.Action = models.WrapAction(&models.RunAction{
-				User: "vcap",
-				Path: "/tmp/diego/lrp/go-server",
-				Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
-			})
-		}
-
-		Context("for CachedDependencies", func() {
-			Context("with invalid algorithm", func() {
-				It("eventually crashes", func() {
-					desireLRPWithChecksum("invalid_algorithm")
-					err := bbsClient.DesireLRP(logger, lrp)
-					Expect(err).To(HaveOccurred())
+						It("eventually crashes", func() {
+							Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateCrashed))
+						})
+					})
 				})
 			})
 
-			Context("when incorrect checksum value is provided", func() {
+			Context("for DownloadAction", func() {
+				createDownloadActionChecksum := func(algorithm string) {
+					desireLRPWithChecksum(algorithm)
+					lrp.Setup = models.WrapAction(&models.DownloadAction{
+						From:              fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+						To:                "/tmp",
+						User:              "vcap",
+						ChecksumAlgorithm: algorithm,
+						ChecksumValue:     "incorrect_checksum",
+					})
+				}
+
 				Context("with md5", func() {
 					BeforeEach(func() {
-						desireLRPWithChecksum("md5")
-
+						createDownloadActionChecksum("md5")
 						err := bbsClient.DesireLRP(logger, lrp)
 						Expect(err).NotTo(HaveOccurred())
 					})
 
-					It("eventually crashes", func() {
+					It("eventually desires the lrp", func() {
 						Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateCrashed))
 					})
 				})
 
 				Context("with sha1", func() {
 					BeforeEach(func() {
-						desireLRPWithChecksum("sha1")
-
+						createDownloadActionChecksum("sha1")
 						err := bbsClient.DesireLRP(logger, lrp)
 						Expect(err).NotTo(HaveOccurred())
 					})
 
-					It("eventually crashes", func() {
+					It("eventually desires the lrp", func() {
 						Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateCrashed))
 					})
 				})
 
 				Context("with sha256", func() {
 					BeforeEach(func() {
-						desireLRPWithChecksum("sha256")
-
+						createDownloadActionChecksum("sha256")
 						err := bbsClient.DesireLRP(logger, lrp)
 						Expect(err).NotTo(HaveOccurred())
 					})
 
-					It("eventually crashes", func() {
+					It("eventually desires the lrp", func() {
 						Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateCrashed))
 					})
-				})
-			})
-		})
-
-		Context("for DownloadAction", func() {
-			createDownloadActionChecksum := func(algorithm string) {
-				desireLRPWithChecksum(algorithm)
-				lrp.Setup = models.WrapAction(&models.DownloadAction{
-					From:              fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
-					To:                "/tmp",
-					User:              "vcap",
-					ChecksumAlgorithm: algorithm,
-					ChecksumValue:     "incorrect_checksum",
-				})
-			}
-
-			Context("with md5", func() {
-				BeforeEach(func() {
-					createDownloadActionChecksum("md5")
-					err := bbsClient.DesireLRP(logger, lrp)
-					Expect(err).NotTo(HaveOccurred())
-				})
-
-				It("eventually desires the lrp", func() {
-					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateCrashed))
-				})
-			})
-
-			Context("with sha1", func() {
-				BeforeEach(func() {
-					createDownloadActionChecksum("sha1")
-					err := bbsClient.DesireLRP(logger, lrp)
-					Expect(err).NotTo(HaveOccurred())
-				})
-
-				It("eventually desires the lrp", func() {
-					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateCrashed))
-				})
-			})
-
-			Context("with sha256", func() {
-				BeforeEach(func() {
-					createDownloadActionChecksum("sha256")
-					err := bbsClient.DesireLRP(logger, lrp)
-					Expect(err).NotTo(HaveOccurred())
-				})
-
-				It("eventually desires the lrp", func() {
-					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateCrashed))
 				})
 			})
 		})
