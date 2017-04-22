@@ -132,6 +132,7 @@ var _ = Describe("LRP", func() {
 					lrp.RootFs = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_URI")
 					lrp.ImageUsername = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_USERNAME")
 					lrp.ImagePassword = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_PASSWORD")
+					lrp.Monitor = nil
 				})
 
 				It("eventually runs", func() {
