@@ -96,7 +96,7 @@ var _ = Describe("Privileges", func() {
 			lrpRequest = helpers.DefaultLRPCreateRequest(helpers.GenerateGuid(), "log-guid", 1)
 			lrpRequest.Action = models.WrapAction(&models.RunAction{
 				User: "root",
-				Path: "/tmp/go-server",
+				Path: "/tmp/diego/go-server",
 				Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
 			})
 		})

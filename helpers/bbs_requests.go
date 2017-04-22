@@ -27,20 +27,27 @@ var defaultPorts = []uint32{8080}
 var defaultSetupFunc = func() *models.Action {
 	return models.WrapAction(&models.DownloadAction{
 		From: fmt.Sprintf("http://%s/v1/static/%s", addresses.FileServer, "lrp.zip"),
-		To:   "/tmp",
+		To:   "/tmp/diego",
 		User: "vcap",
 	})
 }
 
 var defaultAction = models.WrapAction(&models.RunAction{
 	User: "vcap",
-	Path: "/tmp/go-server",
+	Path: "/tmp/diego/go-server",
 	Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
 })
 
 var defaultMonitor = models.WrapAction(&models.RunAction{
 	User: "vcap",
-	Path: "true",
+	Path: "nc",
+	Args: []string{"-z", "localhost", "8080"},
+})
+
+var dockerMonitor = models.WrapAction(&models.RunAction{
+	User: "vcap",
+	Path: "sh",
+	Args: []string{"-c", "echo bogus | nc localhost 8080"},
 })
 
 func UpsertInigoDomain(logger lager.Logger, bbsClient bbs.InternalClient) {
@@ -93,7 +100,7 @@ func DockerLRPCreateRequest(processGuid string) *models.DesiredLRP {
 		Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
 	})
 
-	return lrpCreateRequest(processGuid, defaultLogGuid, dockerRootFS, 1, nil, action, defaultMonitor)
+	return lrpCreateRequest(processGuid, defaultLogGuid, dockerRootFS, 1, nil, action, dockerMonitor)
 }
 
 func CrashingLRPCreateRequest(processGuid string) *models.DesiredLRP {

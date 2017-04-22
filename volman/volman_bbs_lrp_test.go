@@ -94,6 +94,8 @@ var _ = Describe("LRPs with volume mounts", func() {
 
 			lrp = helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
 
+			lrp.Setup = nil
+
 			lrp.VolumeMounts = []*models.VolumeMount{
 				&models.VolumeMount{
 					Driver:       "localdriver",
@@ -108,7 +110,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 
 			lrp.CachedDependencies = []*models.CachedDependency{{
 				From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
-				To:        "/tmp/diego/lrp",
+				To:        "/tmp/diego",
 				Name:      "lrp bits",
 				CacheKey:  "lrp-cache-key",
 				LogSource: "APP",
@@ -119,7 +121,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 			lrp.LegacyDownloadUser = "vcap"
 			lrp.Action = models.WrapAction(&models.RunAction{
 				User: "vcap",
-				Path: "/tmp/diego/lrp/go-server",
+				Path: "/tmp/diego/go-server",
 				Env: []*models.EnvironmentVariable{
 					{"PORT", "8080"},
 					{"MOUNT_POINT_DIR", "/testmount"},

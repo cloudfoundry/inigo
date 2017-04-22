@@ -117,11 +117,11 @@ var _ = Describe("Network Environment Variables", func() {
 			lrp.Setup = models.WrapAction(&models.DownloadAction{
 				User: "vcap",
 				From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
-				To:   "/tmp",
+				To:   "/tmp/diego",
 			})
 			lrp.Action = models.WrapAction(&models.RunAction{
 				User: "vcap",
-				Path: "/tmp/go-server",
+				Path: "/tmp/diego/go-server",
 				Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
 			})
 

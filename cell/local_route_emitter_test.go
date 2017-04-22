@@ -336,7 +336,7 @@ func createDesiredLRP(processGuid string) *models.DesiredLRP {
 	lrp.Setup = nil
 	lrp.CachedDependencies = []*models.CachedDependency{{
 		From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
-		To:        "/tmp/diego/lrp",
+		To:        "/tmp/diego",
 		Name:      "lrp bits",
 		CacheKey:  "lrp-cache-key",
 		LogSource: "APP",
@@ -345,7 +345,7 @@ func createDesiredLRP(processGuid string) *models.DesiredLRP {
 	lrp.Privileged = true
 	lrp.Action = models.WrapAction(&models.RunAction{
 		User: "vcap",
-		Path: "/tmp/diego/lrp/go-server",
+		Path: "/tmp/diego/go-server",
 		Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
 	})
 	routes := cfroutes.CFRoutes{{Hostnames: []string{helpers.DefaultHost}, Port: 8080}}.RoutingInfo()

@@ -100,18 +100,13 @@ var _ = Describe("LRP", func() {
 			lrp.Setup = nil
 			lrp.CachedDependencies = []*models.CachedDependency{{
 				From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
-				To:        "/tmp/diego/lrp",
+				To:        "/tmp/diego",
 				Name:      "lrp bits",
 				CacheKey:  "lrp-cache-key",
 				LogSource: "APP",
 			}}
 			lrp.LegacyDownloadUser = "vcap"
 			lrp.Privileged = true
-			lrp.Action = models.WrapAction(&models.RunAction{
-				User: "vcap",
-				Path: "/tmp/diego/lrp/go-server",
-				Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
-			})
 		})
 
 		JustBeforeEach(func() {
@@ -204,9 +199,10 @@ var _ = Describe("LRP", func() {
 			Context("when validating checksum for download action", func() {
 				createDownloadActionChecksum := func(algorithm string) {
 					createChecksum(algorithm)
+					lrp.CachedDependencies = []*models.CachedDependency{}
 					lrp.Setup = models.WrapAction(&models.DownloadAction{
 						From:              fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
-						To:                "/tmp",
+						To:                "/tmp/diego",
 						User:              "vcap",
 						ChecksumAlgorithm: algorithm,
 						ChecksumValue:     checksumValue,
@@ -299,7 +295,7 @@ var _ = Describe("LRP", func() {
 
 				lrp.Action = models.WrapAction(&models.RunAction{
 					User: "vcap",
-					Path: "/tmp/diego/lrp/go-server",
+					Path: "/tmp/diego/go-server",
 					Env:  []*models.EnvironmentVariable{{"PORT", "8080 9080"}},
 				})
 			})
@@ -556,6 +552,8 @@ var _ = Describe("LRP", func() {
 			BeforeEach(func() {
 				// docker is supported
 				lrp = helpers.DockerLRPCreateRequest(processGuid)
+				lrp.Setup = nil
+				lrp.CachedDependencies = []*models.CachedDependency{}
 			})
 
 			It("runs", func() {
@@ -565,6 +563,7 @@ var _ = Describe("LRP", func() {
 					return lrps
 				}).Should(HaveLen(1))
 
+				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 				poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)
 				Eventually(poller).Should(ConsistOf([]string{"0"}))
 			})
@@ -675,7 +674,7 @@ var _ = Describe("LRP", func() {
 				lrp.Setup = nil
 				lrp.CachedDependencies = []*models.CachedDependency{{
 					From:              fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
-					To:                "/tmp/diego/lrp",
+					To:                "/tmp/diego",
 					Name:              "lrp bits",
 					CacheKey:          "lrp-cache-key",
 					LogSource:         "APP",
@@ -684,11 +683,6 @@ var _ = Describe("LRP", func() {
 				}}
 				lrp.LegacyDownloadUser = "vcap"
 				lrp.Privileged = true
-				lrp.Action = models.WrapAction(&models.RunAction{
-					User: "vcap",
-					Path: "/tmp/diego/lrp/go-server",
-					Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
-				})
 			}
 
 			Context("for CachedDependencies", func() {
@@ -747,7 +741,7 @@ var _ = Describe("LRP", func() {
 					desireLRPWithChecksum(algorithm)
 					lrp.Setup = models.WrapAction(&models.DownloadAction{
 						From:              fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
-						To:                "/tmp",
+						To:                "/tmp/diego",
 						User:              "vcap",
 						ChecksumAlgorithm: algorithm,
 						ChecksumValue:     "incorrect_checksum",

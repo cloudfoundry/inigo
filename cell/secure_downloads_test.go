@@ -88,12 +88,6 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 			tlsFileServer.StartTLS()
 
 			lrp = helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
-			lrp.Setup = models.WrapAction(&models.DownloadAction{
-				From: fmt.Sprintf("%s/v1/static/%s", tlsFileServer.URL, "lrp.zip"),
-				To:   "/tmp",
-				User: "vcap",
-			})
-
 			err := bbsClient.DesireLRP(logger, lrp)
 			Expect(err).NotTo(HaveOccurred())
 		})

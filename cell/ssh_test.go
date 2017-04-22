@@ -107,14 +107,14 @@ var _ = Describe("SSH", func() {
 				&models.DownloadAction{
 					Artifact: "sshd",
 					From:     fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "sshd.tgz"),
-					To:       "/tmp",
+					To:       "/tmp/diego",
 					CacheKey: "sshd",
 					User:     "root",
 				},
 				&models.DownloadAction{
 					Artifact: "go-server",
 					From:     fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
-					To:       "/tmp/diego/lrp",
+					To:       "/tmp/diego",
 					CacheKey: "lrp-cache-key",
 					User:     "root",
 				},
@@ -122,7 +122,7 @@ var _ = Describe("SSH", func() {
 			Action: models.WrapAction(models.Codependent(
 				&models.RunAction{
 					User: "root",
-					Path: "/tmp/sshd",
+					Path: "/tmp/diego/sshd",
 					Args: []string{
 						"-address=0.0.0.0:3456",
 						"-hostKey=" + componentMaker.SSHConfig.HostKeyPem,
@@ -132,7 +132,7 @@ var _ = Describe("SSH", func() {
 				},
 				&models.RunAction{
 					User: "root",
-					Path: "/tmp/diego/lrp/go-server",
+					Path: "/tmp/diego/go-server",
 					Env:  []*models.EnvironmentVariable{{"PORT", "9999"}},
 				},
 			)),

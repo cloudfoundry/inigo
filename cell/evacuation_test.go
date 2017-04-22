@@ -103,12 +103,12 @@ var _ = Describe("Evacuation", func() {
 		lrp := helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
 		lrp.Setup = models.WrapAction(&models.DownloadAction{
 			From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
-			To:   "/tmp",
+			To:   "/tmp/diego",
 			User: "vcap",
 		})
 		lrp.Action = models.WrapAction(&models.RunAction{
 			User: "vcap",
-			Path: "/tmp/go-server",
+			Path: "/tmp/diego/go-server",
 			Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
 		})
 
