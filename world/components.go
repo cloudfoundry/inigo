@@ -270,6 +270,70 @@ func (maker ComponentMaker) Consul(argv ...string) ifrit.Runner {
 	})
 }
 
+func (maker ComponentMaker) GrootfsInitStores() error {
+	if err := maker.grootfsInitStore(maker.GardenConfig.UnprivilegedGrootfsConfig); err != nil {
+		return err
+	}
+
+	if err := maker.grootfsInitStore(maker.GardenConfig.PrivilegedGrootfsConfig); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (maker ComponentMaker) GrootfsDeleteStores() error {
+	if err := maker.grootfsDeleteStore(maker.GardenConfig.UnprivilegedGrootfsConfig); err != nil {
+		return err
+	}
+
+	if err := maker.grootfsDeleteStore(maker.GardenConfig.PrivilegedGrootfsConfig); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (maker ComponentMaker) grootfsInitStore(grootfsConfig GrootFSConfig) error {
+	grootfsArgs := []string{}
+	grootfsArgs = append(grootfsArgs, "--config", maker.grootfsConfigPath(grootfsConfig))
+	grootfsArgs = append(grootfsArgs, "init-store")
+	for _, mapping := range grootfsConfig.Create.UidMappings {
+		grootfsArgs = append(grootfsArgs, "--uid-mapping", mapping)
+	}
+	for _, mapping := range grootfsConfig.Create.GidMappings {
+		grootfsArgs = append(grootfsArgs, "--gid-mapping", mapping)
+	}
+
+	return maker.grootfsRunner(grootfsArgs)
+}
+
+func (maker ComponentMaker) grootfsDeleteStore(grootfsConfig GrootFSConfig) error {
+	grootfsArgs := []string{}
+	grootfsArgs = append(grootfsArgs, "--config", maker.grootfsConfigPath(grootfsConfig))
+	grootfsArgs = append(grootfsArgs, "delete-store")
+	return maker.grootfsRunner(grootfsArgs)
+}
+
+func (maker ComponentMaker) grootfsRunner(args []string) error {
+	cmd := exec.Command(filepath.Join(maker.GardenConfig.GardenBinPath, "grootfs"), args...)
+	cmd.Stdout = ginkgo.GinkgoWriter
+	cmd.Stderr = ginkgo.GinkgoWriter
+	return cmd.Run()
+}
+
+func (maker ComponentMaker) grootfsConfigPath(grootfsConfig GrootFSConfig) string {
+	configFile, err := ioutil.TempFile("", "grootfs-config")
+	Expect(err).NotTo(HaveOccurred())
+	defer configFile.Close()
+	data, err := yaml.Marshal(&grootfsConfig)
+	Expect(err).NotTo(HaveOccurred())
+	_, err = configFile.Write(data)
+	Expect(err).NotTo(HaveOccurred())
+
+	return configFile.Name()
+}
+
 func (maker ComponentMaker) GardenWithoutDefaultStack() ifrit.Runner {
 	return maker.garden(false)
 }
@@ -292,28 +356,12 @@ func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 	}
 
 	if os.Getenv("USE_GROOTFS") == "true" {
-		unprivilegedGrootfsConfig, err := ioutil.TempFile("", "unpriv-grootfs-config")
-		Expect(err).NotTo(HaveOccurred())
-		defer unprivilegedGrootfsConfig.Close()
-		data, err := yaml.Marshal(&maker.GardenConfig.UnprivilegedGrootfsConfig)
-		Expect(err).NotTo(HaveOccurred())
-		_, err = unprivilegedGrootfsConfig.Write(data)
-		Expect(err).NotTo(HaveOccurred())
-
-		privilegedGrootfsConfig, err := ioutil.TempFile("", "unpriv-grootfs-config")
-		Expect(err).NotTo(HaveOccurred())
-		defer privilegedGrootfsConfig.Close()
-		data, err = yaml.Marshal(&maker.GardenConfig.PrivilegedGrootfsConfig)
-		Expect(err).NotTo(HaveOccurred())
-		_, err = privilegedGrootfsConfig.Write(data)
-		Expect(err).NotTo(HaveOccurred())
-
 		gardenArgs = append(gardenArgs, "--image-plugin", maker.GardenConfig.GardenBinPath+"/grootfs")
 		gardenArgs = append(gardenArgs, "--image-plugin-extra-arg", `"--config"`)
-		gardenArgs = append(gardenArgs, "--image-plugin-extra-arg", unprivilegedGrootfsConfig.Name())
+		gardenArgs = append(gardenArgs, "--image-plugin-extra-arg", maker.grootfsConfigPath(maker.GardenConfig.UnprivilegedGrootfsConfig))
 		gardenArgs = append(gardenArgs, "--privileged-image-plugin", maker.GardenConfig.GardenBinPath+"/grootfs")
 		gardenArgs = append(gardenArgs, "--privileged-image-plugin-extra-arg", `"--config"`)
-		gardenArgs = append(gardenArgs, "--privileged-image-plugin-extra-arg", privilegedGrootfsConfig.Name())
+		gardenArgs = append(gardenArgs, "--privileged-image-plugin-extra-arg", maker.grootfsConfigPath(maker.GardenConfig.PrivilegedGrootfsConfig))
 	}
 
 	return runner.NewGardenRunner(

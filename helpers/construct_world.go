@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
 	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
@@ -129,8 +130,9 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		CACert:     caCert,
 	}
 
+	storeTimestamp := time.Now().UnixNano
 	unprivilegedGrootfsConfig := world.GrootFSConfig{
-		StorePath: fmt.Sprintf("/mnt/btrfs/unprivileged-%d", ginkgo.GinkgoParallelNode()),
+		StorePath: fmt.Sprintf("/mnt/btrfs/unprivileged-%d-%d", ginkgo.GinkgoParallelNode(), storeTimestamp),
 		DraxBin:   "/usr/local/bin/drax",
 		LogLevel:  "debug",
 	}
@@ -138,7 +140,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	unprivilegedGrootfsConfig.Create.GidMappings = []string{"0:4294967294:1", "1:1:4294967293"}
 
 	privilegedGrootfsConfig := world.GrootFSConfig{
-		StorePath: fmt.Sprintf("/mnt/btrfs/privileged-%d", ginkgo.GinkgoParallelNode()),
+		StorePath: fmt.Sprintf("/mnt/btrfs/privileged-%d-%d", ginkgo.GinkgoParallelNode(), storeTimestamp),
 		DraxBin:   "/usr/local/bin/drax",
 		LogLevel:  "debug",
 	}
