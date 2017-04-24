@@ -33,6 +33,7 @@ import (
 	"code.cloudfoundry.org/garden"
 	gardenclient "code.cloudfoundry.org/garden/client"
 	gardenconnection "code.cloudfoundry.org/garden/client/connection"
+	"code.cloudfoundry.org/go-loggregator/loggregator_v2"
 	gorouterconfig "code.cloudfoundry.org/gorouter/config"
 	"code.cloudfoundry.org/guardian/gqt/runner"
 	"code.cloudfoundry.org/lager"
@@ -45,18 +46,17 @@ import (
 	"code.cloudfoundry.org/voldriver/driverhttp"
 	"code.cloudfoundry.org/volman"
 	volmanclient "code.cloudfoundry.org/volman/vollocal"
-	"code.cloudfoundry.org/go-loggregator/loggregator_v2"
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/lib/pq"
 	_ "github.com/lib/pq"
-	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
+	"github.com/tedsuo/ifrit/grouper"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -196,7 +196,7 @@ func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
 
 func (maker ComponentMaker) SQL(argv ...string) ifrit.Runner {
 	return ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
-		defer ginkgo.GinkgoRecover()
+		defer GinkgoRecover()
 		dbConnectionString := appendExtraConnectionStringParam(maker.DBDriverName, maker.DBBaseConnectionString, maker.SQLCACertFile)
 
 		db, err := sql.Open(maker.DBDriverName, dbConnectionString)
@@ -205,10 +205,10 @@ func (maker ComponentMaker) SQL(argv ...string) ifrit.Runner {
 
 		Eventually(db.Ping).Should(Succeed())
 
-		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", ginkgo.GinkgoParallelNode()))
+		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", GinkgoParallelNode()))
 		Expect(err).NotTo(HaveOccurred())
 
-		sqlDBName := fmt.Sprintf("diego_%d", ginkgo.GinkgoParallelNode())
+		sqlDBName := fmt.Sprintf("diego_%d", GinkgoParallelNode())
 		dbWithDatabaseNameConnectionString := appendExtraConnectionStringParam(maker.DBDriverName, fmt.Sprintf("%s%s", maker.DBBaseConnectionString, sqlDBName), maker.SQLCACertFile)
 		db, err = sql.Open(maker.DBDriverName, dbWithDatabaseNameConnectionString)
 		Expect(err).NotTo(HaveOccurred())
@@ -248,11 +248,11 @@ func (maker ComponentMaker) Consul(argv ...string) ifrit.Runner {
 		},
 	)
 	return ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
-		defer ginkgo.GinkgoRecover()
+		defer GinkgoRecover()
 
 		done := make(chan struct{})
 		go func() {
-			defer ginkgo.GinkgoRecover()
+			defer GinkgoRecover()
 			clusterRunner.Start()
 			close(done)
 		}()
@@ -268,6 +268,46 @@ func (maker ComponentMaker) Consul(argv ...string) ifrit.Runner {
 
 		return nil
 	})
+}
+
+func (maker ComponentMaker) grootfsInitStore(grootfsConfig GrootFSConfig) error {
+	grootfsArgs := []string{}
+	grootfsArgs = append(grootfsArgs, "--config", maker.grootfsConfigPath(grootfsConfig))
+	grootfsArgs = append(grootfsArgs, "init-store")
+	for _, mapping := range grootfsConfig.Create.UidMappings {
+		grootfsArgs = append(grootfsArgs, "--uid-mapping", mapping)
+	}
+	for _, mapping := range grootfsConfig.Create.GidMappings {
+		grootfsArgs = append(grootfsArgs, "--gid-mapping", mapping)
+	}
+
+	return maker.grootfsRunner(grootfsArgs)
+}
+
+func (maker ComponentMaker) grootfsDeleteStore(grootfsConfig GrootFSConfig) error {
+	grootfsArgs := []string{}
+	grootfsArgs = append(grootfsArgs, "--config", maker.grootfsConfigPath(grootfsConfig))
+	grootfsArgs = append(grootfsArgs, "delete-store")
+	return maker.grootfsRunner(grootfsArgs)
+}
+
+func (maker ComponentMaker) grootfsRunner(args []string) error {
+	cmd := exec.Command(filepath.Join(maker.GardenConfig.GardenBinPath, "grootfs"), args...)
+	cmd.Stderr = GinkgoWriter
+	cmd.Stdout = GinkgoWriter
+	return cmd.Run()
+}
+
+func (maker ComponentMaker) grootfsConfigPath(grootfsConfig GrootFSConfig) string {
+	configFile, err := ioutil.TempFile("", "grootfs-config")
+	Expect(err).NotTo(HaveOccurred())
+	defer configFile.Close()
+	data, err := yaml.Marshal(&grootfsConfig)
+	Expect(err).NotTo(HaveOccurred())
+	_, err = configFile.Write(data)
+	Expect(err).NotTo(HaveOccurred())
+
+	return configFile.Name()
 }
 
 func (maker ComponentMaker) GardenWithoutDefaultStack() ifrit.Runner {
@@ -291,32 +331,41 @@ func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 		defaultRootFS = maker.PreloadedStackPathMap[maker.DefaultStack()]
 	}
 
+	members := []grouper.Member{}
 	if os.Getenv("USE_GROOTFS") == "true" {
-		unprivilegedGrootfsConfig, err := ioutil.TempFile("", "unpriv-grootfs-config")
-		Expect(err).NotTo(HaveOccurred())
-		defer unprivilegedGrootfsConfig.Close()
-		data, err := yaml.Marshal(&maker.GardenConfig.UnprivilegedGrootfsConfig)
-		Expect(err).NotTo(HaveOccurred())
-		_, err = unprivilegedGrootfsConfig.Write(data)
-		Expect(err).NotTo(HaveOccurred())
-
-		privilegedGrootfsConfig, err := ioutil.TempFile("", "unpriv-grootfs-config")
-		Expect(err).NotTo(HaveOccurred())
-		defer privilegedGrootfsConfig.Close()
-		data, err = yaml.Marshal(&maker.GardenConfig.PrivilegedGrootfsConfig)
-		Expect(err).NotTo(HaveOccurred())
-		_, err = privilegedGrootfsConfig.Write(data)
-		Expect(err).NotTo(HaveOccurred())
-
 		gardenArgs = append(gardenArgs, "--image-plugin", maker.GardenConfig.GardenBinPath+"/grootfs")
 		gardenArgs = append(gardenArgs, "--image-plugin-extra-arg", `"--config"`)
-		gardenArgs = append(gardenArgs, "--image-plugin-extra-arg", unprivilegedGrootfsConfig.Name())
+		gardenArgs = append(gardenArgs, "--image-plugin-extra-arg", maker.grootfsConfigPath(maker.GardenConfig.UnprivilegedGrootfsConfig))
 		gardenArgs = append(gardenArgs, "--privileged-image-plugin", maker.GardenConfig.GardenBinPath+"/grootfs")
 		gardenArgs = append(gardenArgs, "--privileged-image-plugin-extra-arg", `"--config"`)
-		gardenArgs = append(gardenArgs, "--privileged-image-plugin-extra-arg", privilegedGrootfsConfig.Name())
+		gardenArgs = append(gardenArgs, "--privileged-image-plugin-extra-arg", maker.grootfsConfigPath(maker.GardenConfig.PrivilegedGrootfsConfig))
+
+		grootfsStoreSetupRunner := ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
+			if err := maker.grootfsInitStore(maker.GardenConfig.UnprivilegedGrootfsConfig); err != nil {
+				return err
+			}
+
+			if err := maker.grootfsInitStore(maker.GardenConfig.PrivilegedGrootfsConfig); err != nil {
+				return err
+			}
+
+			close(ready)
+			<-signals
+
+			if err := maker.grootfsDeleteStore(maker.GardenConfig.UnprivilegedGrootfsConfig); err != nil {
+				return err
+			}
+
+			if err := maker.grootfsDeleteStore(maker.GardenConfig.PrivilegedGrootfsConfig); err != nil {
+				return err
+			}
+
+			return nil
+		})
+		members = append(members, grouper.Member{"grootfs-store-setup", grootfsStoreSetupRunner})
 	}
 
-	return runner.NewGardenRunner(
+	gardenRunner := runner.NewGardenRunner(
 		maker.Artifacts.Executables["garden"],
 		filepath.Join(maker.GardenConfig.GardenBinPath, "init"),
 		filepath.Join(maker.GardenConfig.GardenBinPath, "nstar"),
@@ -329,6 +378,10 @@ func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 		nil,
 		gardenArgs...,
 	)
+
+	members = append(members, grouper.Member{"garden", gardenRunner})
+
+	return grouper.NewOrdered(os.Interrupt, members)
 }
 
 func (maker ComponentMaker) RoutingAPI(modifyConfigFuncs ...func(*routingapi.Config)) *routingapi.RoutingAPIRunner {
@@ -336,7 +389,7 @@ func (maker ComponentMaker) RoutingAPI(modifyConfigFuncs ...func(*routingapi.Con
 
 	sqlConfig := routingapi.SQLConfig{
 		DriverName: maker.DBDriverName,
-		DBName:     fmt.Sprintf("routingapi_%d", ginkgo.GinkgoParallelNode()),
+		DBName:     fmt.Sprintf("routingapi_%d", GinkgoParallelNode()),
 	}
 
 	if maker.DBDriverName == "mysql" {
@@ -418,7 +471,7 @@ func (maker ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.Rep
 		SupportedProviders:        []string{"docker"},
 		BBSAddress:                maker.BBSURL(),
 		ListenAddr:                fmt.Sprintf("%s:%d", host, offsetPort(port, n)),
-		CellID:                    "the-cell-id-" + strconv.Itoa(ginkgo.GinkgoParallelNode()) + "-" + strconv.Itoa(n),
+		CellID:                    "the-cell-id-" + strconv.Itoa(GinkgoParallelNode()) + "-" + strconv.Itoa(n),
 		PollingInterval:           durationjson.Duration(1 * time.Second),
 		EvacuationPollingInterval: durationjson.Duration(1 * time.Second),
 		EvacuationTimeout:         durationjson.Duration(1 * time.Second),
@@ -755,7 +808,7 @@ func (maker ComponentMaker) VolmanClient(logger lager.Logger) (volman.Manager, i
 }
 
 func (maker ComponentMaker) VolmanDriver(logger lager.Logger) (ifrit.Runner, voldriver.Driver) {
-	debugServerAddress := fmt.Sprintf("0.0.0.0:%d", 9850+ginkgo.GinkgoParallelNode())
+	debugServerAddress := fmt.Sprintf("0.0.0.0:%d", 9850+GinkgoParallelNode())
 	fakeDriverRunner := ginkgomon.New(ginkgomon.Config{
 		Name: "local-driver",
 		Command: exec.Command(
