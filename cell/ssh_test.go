@@ -198,7 +198,7 @@ var _ = Describe("SSH", func() {
 				Transport: &http.Transport{
 					Dial: client.Dial,
 				},
-				Timeout: 10 * time.Second,
+				Timeout: 20 * time.Second,
 			}
 
 			resp, err := httpClient.Get("http://localhost:9999/yo")
@@ -242,7 +242,7 @@ var _ = Describe("SSH", func() {
 					Path: "sh",
 					Args: []string{
 						"-c",
-						"echo -n '' | telnet localhost 3456 >/dev/null 2>&1 && true",
+						"echo -n '' | telnet localhost 3456 >/dev/null 2>&1 && echo -n '' | telnet localhost 9999 >/dev/null 2>&1 && true",
 					},
 				})
 			})
@@ -265,7 +265,7 @@ var _ = Describe("SSH", func() {
 					Transport: &http.Transport{
 						Dial: client.Dial,
 					},
-					Timeout: 10 * time.Second,
+					Timeout: 20 * time.Second,
 				}
 
 				resp, err := httpClient.Get("http://localhost:9999/yo")
