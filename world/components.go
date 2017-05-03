@@ -88,6 +88,7 @@ type SSLConfig struct {
 }
 
 type GardenSettingsConfig struct {
+	GrootFSBinPath            string
 	GardenBinPath             string
 	GardenGraphPath           string
 	UnprivilegedGrootfsConfig GrootFSConfig
@@ -99,6 +100,7 @@ type GrootFSConfig struct {
 	DraxBin   string `yaml:"drax_bin"`
 	LogLevel  string `yaml:"log_level"`
 	Create    struct {
+		JSON        bool     `yaml:"json"`
 		UidMappings []string `yaml:"uid_mappings"`
 		GidMappings []string `yaml:"gid_mappings"`
 	}
@@ -292,7 +294,7 @@ func (maker ComponentMaker) grootfsDeleteStore(grootfsConfig GrootFSConfig) erro
 }
 
 func (maker ComponentMaker) grootfsRunner(args []string) error {
-	cmd := exec.Command(filepath.Join(maker.GardenConfig.GardenBinPath, "grootfs"), args...)
+	cmd := exec.Command(filepath.Join(maker.GardenConfig.GrootFSBinPath, "grootfs"), args...)
 	cmd.Stderr = GinkgoWriter
 	cmd.Stdout = GinkgoWriter
 	return cmd.Run()
@@ -333,10 +335,10 @@ func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 
 	members := []grouper.Member{}
 	if os.Getenv("USE_GROOTFS") == "true" {
-		gardenArgs = append(gardenArgs, "--image-plugin", maker.GardenConfig.GardenBinPath+"/grootfs")
+		gardenArgs = append(gardenArgs, "--image-plugin", maker.GardenConfig.GrootFSBinPath+"/grootfs")
 		gardenArgs = append(gardenArgs, "--image-plugin-extra-arg", `"--config"`)
 		gardenArgs = append(gardenArgs, "--image-plugin-extra-arg", maker.grootfsConfigPath(maker.GardenConfig.UnprivilegedGrootfsConfig))
-		gardenArgs = append(gardenArgs, "--privileged-image-plugin", maker.GardenConfig.GardenBinPath+"/grootfs")
+		gardenArgs = append(gardenArgs, "--privileged-image-plugin", maker.GardenConfig.GrootFSBinPath+"/grootfs")
 		gardenArgs = append(gardenArgs, "--privileged-image-plugin-extra-arg", `"--config"`)
 		gardenArgs = append(gardenArgs, "--privileged-image-plugin-extra-arg", maker.grootfsConfigPath(maker.GardenConfig.PrivilegedGrootfsConfig))
 
@@ -370,7 +372,7 @@ func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 		filepath.Join(maker.GardenConfig.GardenBinPath, "init"),
 		filepath.Join(maker.GardenConfig.GardenBinPath, "nstar"),
 		filepath.Join(maker.GardenConfig.GardenBinPath, "dadoo"),
-		filepath.Join(maker.GardenConfig.GardenBinPath, "grootfs"),
+		filepath.Join(maker.GardenConfig.GrootFSBinPath, "grootfs"),
 		defaultRootFS,
 		filepath.Join(maker.GardenConfig.GardenBinPath, "tar"),
 		"tcp",

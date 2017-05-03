@@ -27,6 +27,7 @@ var addresses world.ComponentAddresses
 const assetsPath = "../fixtures/certs/"
 
 func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) world.ComponentMaker {
+	grootfsBinPath := os.Getenv("GROOTFS_BINPATH")
 	gardenBinPath := os.Getenv("GARDEN_BINPATH")
 	gardenRootFSPath := os.Getenv("GARDEN_ROOTFS")
 	gardenGraphPath := os.Getenv("GARDEN_GRAPH_PATH")
@@ -47,6 +48,9 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		gardenGraphPath = os.TempDir()
 	}
 
+	if os.Getenv("USE_GROOTFS") == "true" {
+		Expect(grootfsBinPath).NotTo(BeEmpty(), "must provide $GROOTFS_BINPATH")
+	}
 	Expect(gardenBinPath).NotTo(BeEmpty(), "must provide $GARDEN_BINPATH")
 	Expect(gardenRootFSPath).NotTo(BeEmpty(), "must provide $GARDEN_ROOTFS")
 	Expect(externalAddress).NotTo(BeEmpty(), "must provide $EXTERNAL_ADDRESS")
@@ -131,11 +135,13 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	}
 
 	storeTimestamp := time.Now().UnixNano
+
 	unprivilegedGrootfsConfig := world.GrootFSConfig{
 		StorePath: fmt.Sprintf("/mnt/btrfs/unprivileged-%d-%d", ginkgo.GinkgoParallelNode(), storeTimestamp),
 		DraxBin:   "/usr/local/bin/drax",
 		LogLevel:  "debug",
 	}
+	unprivilegedGrootfsConfig.Create.JSON = true
 	unprivilegedGrootfsConfig.Create.UidMappings = []string{"0:4294967294:1", "1:1:4294967293"}
 	unprivilegedGrootfsConfig.Create.GidMappings = []string{"0:4294967294:1", "1:1:4294967293"}
 
@@ -144,8 +150,10 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		DraxBin:   "/usr/local/bin/drax",
 		LogLevel:  "debug",
 	}
+	privilegedGrootfsConfig.Create.JSON = true
 
 	gardenConfig := world.GardenSettingsConfig{
+		GrootFSBinPath:            grootfsBinPath,
 		GardenBinPath:             gardenBinPath,
 		GardenGraphPath:           gardenGraphPath,
 		UnprivilegedGrootfsConfig: unprivilegedGrootfsConfig,
