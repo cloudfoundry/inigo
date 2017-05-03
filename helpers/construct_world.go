@@ -136,6 +136,8 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		DraxBin:   "/usr/local/bin/drax",
 		LogLevel:  "debug",
 	}
+
+	unprivilegedGrootfsConfig.Create.JSON = true
 	unprivilegedGrootfsConfig.Create.UidMappings = []string{"0:4294967294:1", "1:1:4294967293"}
 	unprivilegedGrootfsConfig.Create.GidMappings = []string{"0:4294967294:1", "1:1:4294967293"}
 
@@ -144,6 +146,8 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		DraxBin:   "/usr/local/bin/drax",
 		LogLevel:  "debug",
 	}
+
+	privilegedGrootfsConfig.Create.JSON = true
 
 	gardenConfig := world.GardenSettingsConfig{
 		GardenBinPath:             gardenBinPath,
