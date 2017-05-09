@@ -166,7 +166,7 @@ var _ = Describe("Network Environment Variables", func() {
 				netInfo := actualLRP.ActualLRPNetInfo
 				Expect(response).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_ADDR=%s:%d\n", netInfo.Address, netInfo.Ports[0].HostPort)))
 				Expect(response).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_IP=%s\n", componentMaker.ExternalAddress)))
-				Expect(response).To(ContainSubstring("CF_INSTANCE_INTERNAL_IP="))
+				Expect(response).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_INTERNAL_IP=%s\n", netInfo.InstanceAddress)))
 				Expect(response).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_PORT=%d\n", netInfo.Ports[0].HostPort)))
 
 				type portMapping struct {
