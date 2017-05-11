@@ -322,7 +322,7 @@ func (maker ComponentMaker) Garden() ifrit.Runner {
 
 func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 	gardenArgs := []string{}
-	gardenArgs = append(gardenArgs, "--runc-bin", filepath.Join(maker.GardenConfig.GardenBinPath, "runc"))
+	gardenArgs = append(gardenArgs, "--runtime-plugin", filepath.Join(maker.GardenConfig.GardenBinPath, "runc"))
 	gardenArgs = append(gardenArgs, "--port-pool-size", "1000")
 	gardenArgs = append(gardenArgs, "--allow-host-access", "")
 	gardenArgs = append(gardenArgs, "--mtu", "1432")
