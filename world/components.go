@@ -177,6 +177,18 @@ func (blc *BuiltLifecycles) BuildLifecycles(lifeCycle string) {
 	(*blc)[lifeCycle] = filepath.Join(lifecycleDir, LifecycleFilename)
 }
 
+func (maker ComponentMaker) Setup() {
+	if UseGrootFS() {
+		maker.GrootFSInitStore()
+	}
+}
+
+func (maker ComponentMaker) Teardown() {
+	if UseGrootFS() {
+		maker.GrootFSDeleteStore()
+	}
+}
+
 func (maker ComponentMaker) NATS(argv ...string) ifrit.Runner {
 	host, port, err := net.SplitHostPort(maker.Addresses.NATS)
 	Expect(err).NotTo(HaveOccurred())
@@ -272,6 +284,14 @@ func (maker ComponentMaker) Consul(argv ...string) ifrit.Runner {
 	})
 }
 
+func (maker ComponentMaker) GrootFSInitStore() {
+	err := maker.grootfsInitStore(maker.GardenConfig.UnprivilegedGrootfsConfig)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = maker.grootfsInitStore(maker.GardenConfig.PrivilegedGrootfsConfig)
+	Expect(err).NotTo(HaveOccurred())
+}
+
 func (maker ComponentMaker) grootfsInitStore(grootfsConfig GrootFSConfig) error {
 	grootfsArgs := []string{}
 	grootfsArgs = append(grootfsArgs, "--config", maker.grootfsConfigPath(grootfsConfig))
@@ -284,6 +304,14 @@ func (maker ComponentMaker) grootfsInitStore(grootfsConfig GrootFSConfig) error 
 	}
 
 	return maker.grootfsRunner(grootfsArgs)
+}
+
+func (maker ComponentMaker) GrootFSDeleteStore() {
+	err := maker.grootfsDeleteStore(maker.GardenConfig.UnprivilegedGrootfsConfig)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = maker.grootfsDeleteStore(maker.GardenConfig.PrivilegedGrootfsConfig)
+	Expect(err).NotTo(HaveOccurred())
 }
 
 func (maker ComponentMaker) grootfsDeleteStore(grootfsConfig GrootFSConfig) error {
@@ -334,37 +362,13 @@ func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 	}
 
 	members := []grouper.Member{}
-	if os.Getenv("USE_GROOTFS") == "true" {
+	if UseGrootFS() {
 		gardenArgs = append(gardenArgs, "--image-plugin", maker.GardenConfig.GrootFSBinPath+"/grootfs")
 		gardenArgs = append(gardenArgs, "--image-plugin-extra-arg", `"--config"`)
 		gardenArgs = append(gardenArgs, "--image-plugin-extra-arg", maker.grootfsConfigPath(maker.GardenConfig.UnprivilegedGrootfsConfig))
 		gardenArgs = append(gardenArgs, "--privileged-image-plugin", maker.GardenConfig.GrootFSBinPath+"/grootfs")
 		gardenArgs = append(gardenArgs, "--privileged-image-plugin-extra-arg", `"--config"`)
 		gardenArgs = append(gardenArgs, "--privileged-image-plugin-extra-arg", maker.grootfsConfigPath(maker.GardenConfig.PrivilegedGrootfsConfig))
-
-		grootfsStoreSetupRunner := ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
-			if err := maker.grootfsInitStore(maker.GardenConfig.UnprivilegedGrootfsConfig); err != nil {
-				return err
-			}
-
-			if err := maker.grootfsInitStore(maker.GardenConfig.PrivilegedGrootfsConfig); err != nil {
-				return err
-			}
-
-			close(ready)
-			<-signals
-
-			if err := maker.grootfsDeleteStore(maker.GardenConfig.UnprivilegedGrootfsConfig); err != nil {
-				return err
-			}
-
-			if err := maker.grootfsDeleteStore(maker.GardenConfig.PrivilegedGrootfsConfig); err != nil {
-				return err
-			}
-
-			return nil
-		})
-		members = append(members, grouper.Member{"grootfs-store-setup", grootfsStoreSetupRunner})
 	}
 
 	gardenRunner := runner.NewGardenRunner(
@@ -872,4 +876,8 @@ func appendExtraConnectionStringParam(driverName, databaseConnectionString, sqlC
 	}
 
 	return databaseConnectionString
+}
+
+func UseGrootFS() bool {
+	return os.Getenv("USE_GROOTFS") == "true"
 }

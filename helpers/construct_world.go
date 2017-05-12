@@ -48,7 +48,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		gardenGraphPath = os.TempDir()
 	}
 
-	if os.Getenv("USE_GROOTFS") == "true" {
+	if world.UseGrootFS() {
 		Expect(grootfsBinPath).NotTo(BeEmpty(), "must provide $GROOTFS_BINPATH")
 	}
 	Expect(gardenBinPath).NotTo(BeEmpty(), "must provide $GARDEN_BINPATH")

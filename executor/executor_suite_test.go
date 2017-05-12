@@ -42,6 +42,11 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	Expect(err).NotTo(HaveOccurred())
 
 	componentMaker = helpers.MakeComponentMaker(builtArtifacts, localIP)
+	componentMaker.Setup()
+})
+
+var _ = AfterSuite(func() {
+	componentMaker.Teardown()
 })
 
 var _ = BeforeEach(func() {
