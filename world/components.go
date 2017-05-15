@@ -33,7 +33,7 @@ import (
 	"code.cloudfoundry.org/garden"
 	gardenclient "code.cloudfoundry.org/garden/client"
 	gardenconnection "code.cloudfoundry.org/garden/client/connection"
-	"code.cloudfoundry.org/go-loggregator/loggregator_v2"
+	loggregator_v2 "code.cloudfoundry.org/go-loggregator"
 	gorouterconfig "code.cloudfoundry.org/gorouter/config"
 	"code.cloudfoundry.org/guardian/gqt/runner"
 	"code.cloudfoundry.org/lager"
@@ -804,7 +804,7 @@ func (maker ComponentMaker) VolmanClient(logger lager.Logger) (volman.Manager, i
 	driverConfig := volmanclient.NewDriverConfig()
 	driverConfig.DriverPaths = []string{path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode))}
 
-	metronClient, err := loggregator_v2.NewClient(logger, loggregator_v2.MetronConfig{})
+	metronClient, err := loggregator_v2.NewClient(loggregator_v2.Config{})
 	Expect(err).NotTo(HaveOccurred())
 	return volmanclient.NewServer(logger, metronClient, driverConfig)
 }
