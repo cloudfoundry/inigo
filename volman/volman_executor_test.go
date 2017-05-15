@@ -16,12 +16,12 @@ import (
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/executor"
 	executorinit "code.cloudfoundry.org/executor/initializer"
+	loggregator_v2 "code.cloudfoundry.org/go-loggregator"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/voldriver"
 	"code.cloudfoundry.org/voldriver/driverhttp"
 	"github.com/cloudfoundry-incubator/cf-test-helpers/generator"
-	"code.cloudfoundry.org/go-loggregator/loggregator_v2"
 	. "github.com/onsi/ginkgo"
 	ginkgoconfig "github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
@@ -344,7 +344,7 @@ func initializeExecutor(logger lager.Logger, config executorinit.ExecutorConfig)
 	var err error
 	var executorClient executor.Client
 	defaultRootFS := ""
-	metronClient, err := loggregator_v2.NewClient(logger, loggregator_v2.MetronConfig{})
+	metronClient, err := loggregator_v2.NewClient(loggregator_v2.Config{})
 	Expect(err).NotTo(HaveOccurred())
 	executorClient, executorMembers, err = executorinit.Initialize(logger, config, defaultRootFS, metronClient, clock.NewClock())
 	Expect(err).NotTo(HaveOccurred())
