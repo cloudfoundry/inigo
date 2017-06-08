@@ -68,6 +68,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		FileServer:          fmt.Sprintf("%s:%d", localIP, 17000+config.GinkgoConfig.ParallelNode),
 		Router:              fmt.Sprintf("127.0.0.1:%d", 18000+config.GinkgoConfig.ParallelNode),
 		BBS:                 fmt.Sprintf("127.0.0.1:%d", 20500+config.GinkgoConfig.ParallelNode*2),
+		Locket:              fmt.Sprintf("127.0.0.1:%d", 26500+config.GinkgoConfig.ParallelNode*2),
 		Health:              fmt.Sprintf("127.0.0.1:%d", 20500+config.GinkgoConfig.ParallelNode*2+1),
 		Auctioneer:          fmt.Sprintf("127.0.0.1:%d", 23000+config.GinkgoConfig.ParallelNode),
 		SSHProxy:            fmt.Sprintf("127.0.0.1:%d", 23500+config.GinkgoConfig.ParallelNode),
@@ -106,6 +107,12 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	Expect(err).NotTo(HaveOccurred())
 	caCert, err := filepath.Abs(assetsPath + "ca.crt")
 	Expect(err).NotTo(HaveOccurred())
+	locketClientCrt, err := filepath.Abs(assetsPath + "client.crt")
+	Expect(err).NotTo(HaveOccurred())
+	locketClientKey, err := filepath.Abs(assetsPath + "client.key")
+	Expect(err).NotTo(HaveOccurred())
+	locketCaCert, err := filepath.Abs(assetsPath + "ca.crt")
+	Expect(err).NotTo(HaveOccurred())
 
 	sqlCACert, err := filepath.Abs(assetsPath + "sql-certs/server-ca.crt")
 	Expect(err).NotTo(HaveOccurred())
@@ -116,6 +123,12 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		ClientCert: clientCrt,
 		ClientKey:  clientKey,
 		CACert:     caCert,
+	}
+
+	locketSSLConfig := world.SSLConfig{
+		ClientCert: locketClientCrt,
+		ClientKey:  locketClientKey,
+		CACert:     locketCaCert,
 	}
 
 	repSSLConfig := world.SSLConfig{
@@ -177,6 +190,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		GardenConfig:          gardenConfig,
 		SSHConfig:             sshKeys,
 		BbsSSL:                sslConfig,
+		LocketSSL:             locketSSLConfig,
 		RepSSL:                repSSLConfig,
 		AuctioneerSSL:         auctioneerSSLConfig,
 		SQLCACertFile:         sqlCACert,

@@ -38,6 +38,9 @@ import (
 	"code.cloudfoundry.org/guardian/gqt/runner"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
+	"code.cloudfoundry.org/locket"
+	locketconfig "code.cloudfoundry.org/locket/cmd/locket/config"
+	"code.cloudfoundry.org/locket/cmd/locket/testrunner"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	"code.cloudfoundry.org/rep/maintain"
 	routeemitterconfig "code.cloudfoundry.org/route-emitter/cmd/route-emitter/config"
@@ -110,6 +113,7 @@ type ComponentAddresses struct {
 	NATS                string
 	Consul              string
 	BBS                 string
+	Locket              string
 	Health              string
 	Rep                 string
 	FileServer          string
@@ -134,6 +138,7 @@ type ComponentMaker struct {
 
 	SSHConfig     SSHKeys
 	BbsSSL        SSLConfig
+	LocketSSL     SSLConfig
 	RepSSL        SSLConfig
 	AuctioneerSSL SSLConfig
 	SQLCACertFile string
@@ -414,6 +419,13 @@ func (maker ComponentMaker) RoutingAPI(modifyConfigFuncs ...func(*routingapi.Con
 }
 
 func (maker ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig)) ifrit.Runner {
+	locketConfig := locket.ClientLocketConfig{
+		LocketAddress:        maker.Addresses.Locket,
+		LocketCACertFile:     maker.LocketSSL.CACert,
+		LocketClientCertFile: maker.LocketSSL.ClientCert,
+		LocketClientKeyFile:  maker.LocketSSL.ClientKey,
+	}
+
 	config := bbsconfig.BBSConfig{
 		AdvertiseURL:  maker.BBSURL(),
 		ConsulCluster: maker.ConsulCluster(),
@@ -443,6 +455,7 @@ func (maker ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig))
 		DatabaseDriver:           maker.DBDriverName,
 		AuctioneerRequireTLS:     true,
 		SQLCACertFile:            maker.SQLCACertFile,
+		ClientLocketConfig:       locketConfig,
 	}
 
 	for _, modifyConfig := range modifyConfigFuncs {
@@ -453,6 +466,20 @@ func (maker ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig))
 	runner.AnsiColorCode = "32m"
 	runner.StartCheckTimeout = 10 * time.Second
 	return runner
+}
+
+func (maker ComponentMaker) Locket() ifrit.Runner {
+	locketBinPath, err := gexec.Build("code.cloudfoundry.org/locket/cmd/locket")
+	Expect(err).NotTo(HaveOccurred())
+
+	return testrunner.NewLocketRunner(locketBinPath, func(cfg *locketconfig.LocketConfig) {
+		cfg.CaFile = maker.LocketSSL.CACert
+		cfg.ListenAddress = maker.Addresses.Locket
+		cfg.ConsulCluster = maker.ConsulCluster()
+		cfg.DatabaseDriver = maker.DBDriverName
+		cfg.DatabaseConnectionString = maker.DBBaseConnectionString
+	})
+
 }
 
 func (maker ComponentMaker) Rep(modifyConfigFuncs ...func(*repconfig.RepConfig)) *ginkgomon.Runner {
@@ -541,6 +568,12 @@ func (maker ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.Rep
 }
 
 func (maker ComponentMaker) Auctioneer() ifrit.Runner {
+	locketConfig := locket.ClientLocketConfig{
+		LocketAddress:        maker.Addresses.Locket,
+		LocketCACertFile:     maker.LocketSSL.CACert,
+		LocketClientCertFile: maker.LocketSSL.ClientCert,
+		LocketClientKeyFile:  maker.LocketSSL.ClientKey,
+	}
 	auctioneerConfig := auctioneerconfig.AuctioneerConfig{
 		BBSAddress:              maker.BBSURL(),
 		ListenAddress:           maker.Addresses.Auctioneer,
@@ -559,6 +592,7 @@ func (maker ComponentMaker) Auctioneer() ifrit.Runner {
 		LagerConfig: lagerflags.LagerConfig{
 			LogLevel: "debug",
 		},
+		ClientLocketConfig: locketConfig,
 	}
 
 	configFile, err := ioutil.TempFile(os.TempDir(), "auctioneer-config")

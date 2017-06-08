@@ -74,6 +74,7 @@ var _ = BeforeEach(func() {
 		{"sql", componentMaker.SQL()},
 		{"nats", componentMaker.NATS()},
 		{"consul", componentMaker.Consul()},
+		{"locket", componentMaker.Locket()},
 		{"garden", componentMaker.Garden()},
 	}))
 	bbsProcess = ginkgomon.Invoke(componentMaker.BBS())
@@ -143,6 +144,9 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["ssh-proxy"], err = gexec.Build("code.cloudfoundry.org/diego-ssh/cmd/ssh-proxy", "-race")
+	Expect(err).NotTo(HaveOccurred())
+
+	builtExecutables["locket"], err = gexec.BuildIn(os.Getenv("BBS_GOPATH"), "code.cloudfoundry.org/locket/cmd/locket", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	os.Setenv("CGO_ENABLED", "0")
