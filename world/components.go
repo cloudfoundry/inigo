@@ -38,6 +38,9 @@ import (
 	"code.cloudfoundry.org/guardian/gqt/runner"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
+	"code.cloudfoundry.org/locket"
+	locketconfig "code.cloudfoundry.org/locket/cmd/locket/config"
+	locketrunner "code.cloudfoundry.org/locket/cmd/locket/testrunner"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	"code.cloudfoundry.org/rep/maintain"
 	routeemitterconfig "code.cloudfoundry.org/route-emitter/cmd/route-emitter/config"
@@ -119,6 +122,7 @@ type ComponentAddresses struct {
 	SSHProxy            string
 	SSHProxyHealthCheck string
 	FakeVolmanDriver    string
+	Locket              string
 	SQL                 string
 }
 
@@ -134,6 +138,7 @@ type ComponentMaker struct {
 
 	SSHConfig     SSHKeys
 	BbsSSL        SSLConfig
+	LocketSSL     SSLConfig
 	RepSSL        SSLConfig
 	AuctioneerSSL SSLConfig
 	SQLCACertFile string
@@ -443,6 +448,7 @@ func (maker ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig))
 		DatabaseDriver:           maker.DBDriverName,
 		AuctioneerRequireTLS:     true,
 		SQLCACertFile:            maker.SQLCACertFile,
+		ClientLocketConfig:       maker.locketClientConfig(),
 	}
 
 	for _, modifyConfig := range modifyConfigFuncs {
@@ -453,6 +459,25 @@ func (maker ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig))
 	runner.AnsiColorCode = "32m"
 	runner.StartCheckTimeout = 10 * time.Second
 	return runner
+}
+
+func (maker ComponentMaker) Locket(modifyConfigFuncs ...func(*locketconfig.LocketConfig)) ifrit.Runner {
+	return locketrunner.NewLocketRunner(maker.Artifacts.Executables["locket"], func(cfg *locketconfig.LocketConfig) {
+		cfg.CertFile = maker.LocketSSL.ServerCert
+		cfg.KeyFile = maker.LocketSSL.ServerKey
+		cfg.CaFile = maker.LocketSSL.CACert
+		cfg.ConsulCluster = maker.ConsulCluster()
+		cfg.DatabaseConnectionString = maker.Addresses.SQL
+		cfg.DatabaseDriver = maker.DBDriverName
+		cfg.ListenAddress = maker.Addresses.Locket
+		cfg.LagerConfig = lagerflags.LagerConfig{
+			LogLevel: "debug",
+		}
+
+		for _, modifyConfig := range modifyConfigFuncs {
+			modifyConfig(cfg)
+		}
+	})
 }
 
 func (maker ComponentMaker) Rep(modifyConfigFuncs ...func(*repconfig.RepConfig)) *ginkgomon.Runner {
@@ -559,6 +584,7 @@ func (maker ComponentMaker) Auctioneer() ifrit.Runner {
 		LagerConfig: lagerflags.LagerConfig{
 			LogLevel: "debug",
 		},
+		ClientLocketConfig: maker.locketClientConfig(),
 	}
 
 	configFile, err := ioutil.TempFile(os.TempDir(), "auctioneer-config")
@@ -831,6 +857,15 @@ func (maker ComponentMaker) VolmanDriver(logger lager.Logger) (ifrit.Runner, vol
 	Expect(err).NotTo(HaveOccurred())
 
 	return fakeDriverRunner, client
+}
+
+func (maker ComponentMaker) locketClientConfig() locket.ClientLocketConfig {
+	return locket.ClientLocketConfig{
+		LocketAddress:        maker.Addresses.Locket,
+		LocketCACertFile:     maker.LocketSSL.CACert,
+		LocketClientCertFile: maker.LocketSSL.ClientCert,
+		LocketClientKeyFile:  maker.LocketSSL.ClientKey,
+	}
 }
 
 // offsetPort retuns a new port offest by a given number in such a way

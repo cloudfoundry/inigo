@@ -42,6 +42,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 				{"nats", componentMaker.NATS()},
 				{"consul", componentMaker.Consul()},
 			})},
+			{"locket", componentMaker.Locket()},
 			{"bbs", componentMaker.BBS()},
 		}))
 

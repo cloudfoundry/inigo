@@ -36,6 +36,7 @@ var _ = Describe("Tasks", func() {
 				{"sql", componentMaker.SQL()},
 				{"consul", componentMaker.Consul()},
 			})},
+			{"locket", componentMaker.Locket()},
 			{"bbs", componentMaker.BBS()},
 		}))
 

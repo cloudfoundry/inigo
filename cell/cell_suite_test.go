@@ -70,11 +70,14 @@ var _ = AfterSuite(func() {
 })
 
 var _ = BeforeEach(func() {
-	plumbing = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-		{"sql", componentMaker.SQL()},
-		{"nats", componentMaker.NATS()},
-		{"consul", componentMaker.Consul()},
-		{"garden", componentMaker.Garden()},
+	plumbing = ginkgomon.Invoke(grouper.NewOrdered(os.Kill, grouper.Members{
+		{"initial-services", grouper.NewParallel(os.Kill, grouper.Members{
+			{"sql", componentMaker.SQL()},
+			{"nats", componentMaker.NATS()},
+			{"consul", componentMaker.Consul()},
+			{"garden", componentMaker.Garden()},
+		})},
+		{"locket", componentMaker.Locket()},
 	}))
 	bbsProcess = ginkgomon.Invoke(componentMaker.BBS())
 
@@ -94,6 +97,7 @@ var _ = AfterEach(func() {
 
 	destroyContainerErrors := helpers.CleanupGarden(gardenClient)
 
+	helpers.StopProcesses(bbsProcess)
 	helpers.StopProcesses(plumbing)
 
 	Expect(destroyContainerErrors).To(
@@ -128,6 +132,9 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["bbs"], err = gexec.BuildIn(os.Getenv("BBS_GOPATH"), "code.cloudfoundry.org/bbs/cmd/bbs", "-race")
+	Expect(err).NotTo(HaveOccurred())
+
+	builtExecutables["locket"], err = gexec.BuildIn(os.Getenv("LOCKET_GOPATH"), "code.cloudfoundry.org/locket/cmd/locket", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["file-server"], err = gexec.BuildIn(os.Getenv("FILE_SERVER_GOPATH"), "code.cloudfoundry.org/fileserver/cmd/file-server", "-race")
