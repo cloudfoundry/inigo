@@ -150,7 +150,6 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 		var (
 			guid       string
 			server     *httptest.Server
-			uploadAddr string
 			gotRequest chan struct{}
 		)
 
@@ -159,7 +158,7 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 
 			gotRequest = make(chan struct{})
 
-			server, uploadAddr = helpers.Callback(componentMaker.ExternalAddress, ghttp.CombineHandlers(
+			server, _ = helpers.Callback(componentMaker.ExternalAddress, ghttp.CombineHandlers(
 				ghttp.VerifyRequest("POST", "/thingy"),
 				func(w http.ResponseWriter, r *http.Request) {
 					contents, err := ioutil.ReadAll(r.Body)
