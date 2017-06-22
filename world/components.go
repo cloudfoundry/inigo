@@ -470,6 +470,7 @@ func (maker ComponentMaker) Locket(modifyConfigFuncs ...func(*locketconfig.Locke
 		cfg.DatabaseConnectionString = maker.Addresses.SQL
 		cfg.DatabaseDriver = maker.DBDriverName
 		cfg.ListenAddress = maker.Addresses.Locket
+		cfg.SQLCACertFile = maker.SQLCACertFile
 		cfg.LagerConfig = lagerflags.LagerConfig{
 			LogLevel: "debug",
 		}
