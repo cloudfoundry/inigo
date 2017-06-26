@@ -15,7 +15,7 @@ import (
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/executor/gardenhealth"
 	executorinit "code.cloudfoundry.org/executor/initializer"
-	loggregator_v2 "code.cloudfoundry.org/go-loggregator"
+	loggregator_v2 "code.cloudfoundry.org/go-loggregator/compatibility"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	"github.com/cloudfoundry-incubator/cf-test-helpers/generator"
@@ -78,7 +78,7 @@ var _ = Describe("Executor/Garden", func() {
 
 		logger = lagertest.NewTestLogger("test")
 		var executorMembers grouper.Members
-		metronClient, err := loggregator_v2.NewClient(loggregator_v2.Config{})
+		metronClient, err := loggregator_v2.NewIngressClient(loggregator_v2.Config{})
 		Expect(err).NotTo(HaveOccurred())
 
 		executorClient, executorMembers, err = executorinit.Initialize(logger, config, gardenHealthcheckRootFS, metronClient, clock.NewClock())
