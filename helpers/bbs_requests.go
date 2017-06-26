@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"fmt"
+	"time"
 
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
@@ -44,6 +45,16 @@ var defaultMonitor = models.WrapAction(&models.RunAction{
 	Args: []string{"-z", "localhost", "8080"},
 })
 
+var defaultDeclartiveMonitor = &models.CheckDefinition{
+	Checks: []*models.Check{
+		{
+			TcpCheck: &models.TCPCheck{
+				Port: 8080,
+			},
+		},
+	},
+}
+
 var dockerMonitor = models.WrapAction(&models.RunAction{
 	User: "vcap",
 	Path: "sh",
@@ -83,6 +94,13 @@ func lrpCreateRequest(
 
 func DefaultLRPCreateRequest(processGuid, logGuid string, numInstances int) *models.DesiredLRP {
 	return lrpCreateRequest(processGuid, logGuid, defaultPreloadedRootFS, numInstances, nil, defaultAction, defaultMonitor)
+}
+
+func DefaultDeclaritiveHealthcheckLRPCreateRequest(processGuid, logGuid string, numInstances int) *models.DesiredLRP {
+	request := lrpCreateRequest(processGuid, logGuid, defaultPreloadedRootFS, numInstances, nil, defaultAction, nil)
+	request.CheckDefinition = defaultDeclartiveMonitor
+	request.StartTimeoutMs = int64(time.Minute / time.Millisecond)
+	return request
 }
 
 func LRPCreateRequestWithPlacementTag(processGuid string, tags []string) *models.DesiredLRP {

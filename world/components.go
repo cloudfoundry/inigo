@@ -73,6 +73,7 @@ const (
 type BuiltArtifacts struct {
 	Executables BuiltExecutables
 	Lifecycles  BuiltLifecycles
+	Healthcheck string
 }
 
 type SSHKeys struct {

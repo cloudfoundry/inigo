@@ -2,7 +2,9 @@ package cell_test
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -47,6 +49,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	artifacts.Lifecycles.BuildLifecycles("dockerapplifecycle")
 	artifacts.Executables = CompileTestedExecutables()
+	artifacts.Healthcheck = CompileHealthcheckExecutable()
 
 	payload, err := json.Marshal(artifacts)
 	Expect(err).NotTo(HaveOccurred())
@@ -115,6 +118,19 @@ func TestCell(t *testing.T) {
 	RunSpecsWithDefaultAndCustomReporters(t, "Cell Integration Suite", []Reporter{
 		ginkgoreporter.New(GinkgoWriter),
 	})
+}
+
+func CompileHealthcheckExecutable() string {
+	healthcheckDir, err := ioutil.TempDir("", "healthcheck")
+	Expect(err).NotTo(HaveOccurred())
+
+	healthcheckPath, err := gexec.Build("code.cloudfoundry.org/healthcheck/cmd/healthcheck", "-race")
+	Expect(err).NotTo(HaveOccurred())
+
+	err = os.Rename(healthcheckPath, filepath.Join(healthcheckDir, "healthcheck"))
+	Expect(err).NotTo(HaveOccurred())
+
+	return healthcheckDir
 }
 
 func CompileTestedExecutables() world.BuiltExecutables {
