@@ -691,7 +691,7 @@ var _ = Describe("Executor/Garden", func() {
 
 							container := getContainer(guid)
 							Expect(container.RunResult.Failed).To(BeTrue())
-							Expect(container.RunResult.FailureReason).To(Equal("Exit status 1"))
+							Expect(container.RunResult.FailureReason).To(Equal("Exited with status 1"))
 						})
 
 						Context("when listening for events", func() {
@@ -702,7 +702,7 @@ var _ = Describe("Executor/Garden", func() {
 								completeEvent := event.(executor.ContainerCompleteEvent)
 								Expect(completeEvent.Container().State).To(Equal(executor.StateCompleted))
 								Expect(completeEvent.Container().RunResult.Failed).To(BeTrue())
-								Expect(completeEvent.Container().RunResult.FailureReason).To(Equal("Exit status 1"))
+								Expect(completeEvent.Container().RunResult.FailureReason).To(Equal("Exited with status 1"))
 							})
 						})
 					})
