@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,6 +19,10 @@ import (
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/localip"
+	"code.cloudfoundry.org/rep/cmd/rep/config"
+	"github.com/cloudfoundry/sonde-go/events"
+	"github.com/gogo/protobuf/proto"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -59,22 +64,75 @@ var _ = Describe("SSH", func() {
 	)
 
 	BeforeEach(func() {
+		port, err := localip.LocalPort()
+		Expect(err).NotTo(HaveOccurred())
+		addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", port))
+		Expect(err).NotTo(HaveOccurred())
+		udpConn, err := net.ListenUDP("udp", addr)
+		Expect(err).NotTo(HaveOccurred())
+
+		metronAgent := ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
+			logger := logger.Session("metron-agent")
+			close(ready)
+			logger.Info("starting", lager.Data{"port": addr.Port})
+			msgs := make(chan []byte)
+			errCh := make(chan error)
+			go func() {
+				for {
+					bs := make([]byte, 102400)
+					n, _, err := udpConn.ReadFromUDP(bs)
+					if err != nil {
+						errCh <- err
+						return
+					}
+					msgs <- bs[:n]
+				}
+			}()
+		loop:
+			for {
+				select {
+				case <-signals:
+					logger.Info("signaled")
+					break loop
+				case err := <-errCh:
+					return err
+				case msg := <-msgs:
+					var envelope events.Envelope
+					err := proto.Unmarshal(msg, &envelope)
+					if err != nil {
+						logger.Error("error-parsing-message", err)
+						continue
+					}
+					if envelope.GetEventType() != events.Envelope_LogMessage {
+						continue
+					}
+					logger.Info("received-data", lager.Data{"message": string(envelope.GetLogMessage().GetMessage())})
+				}
+			}
+			udpConn.Close()
+			return nil
+		})
+
 		processGuid = helpers.GenerateGuid()
 		address = componentMaker.Addresses.SSHProxy
 
 		var fileServer ifrit.Runner
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
+		repConfig := func(cfg *config.RepConfig) {
+			cfg.DropsondePort = addr.Port
+		}
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
-			{"rep", componentMaker.Rep()},
+			{"metron-agent", metronAgent},
+			{"rep", componentMaker.Rep(repConfig)},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 			{"ssh-proxy", componentMaker.SSHProxy()},
 		}))
 
 		tgCompressor := compressor.NewTgz()
-		err := tgCompressor.Compress(componentMaker.Artifacts.Executables["sshd"], filepath.Join(fileServerStaticDir, "sshd.tgz"))
+		err = tgCompressor.Compress(componentMaker.Artifacts.Executables["sshd"], filepath.Join(fileServerStaticDir, "sshd.tgz"))
 		Expect(err).NotTo(HaveOccurred())
 
 		archive_helper.CreateZipArchive(
@@ -98,6 +156,7 @@ var _ = Describe("SSH", func() {
 		}
 
 		lrp = models.DesiredLRP{
+			LogGuid:            processGuid,
 			ProcessGuid:        processGuid,
 			Domain:             "inigo",
 			Instances:          2,
@@ -128,6 +187,7 @@ var _ = Describe("SSH", func() {
 						"-hostKey=" + componentMaker.SSHConfig.HostKeyPem,
 						"-authorizedKey=" + componentMaker.SSHConfig.AuthorizedKey,
 						"-inheritDaemonEnv",
+						"-logLevel=debug",
 					},
 				},
 				&models.RunAction{
@@ -198,10 +258,10 @@ var _ = Describe("SSH", func() {
 				Transport: &http.Transport{
 					Dial: client.Dial,
 				},
-				Timeout: 20 * time.Second,
+				Timeout: 5 * time.Second,
 			}
 
-			resp, err := httpClient.Get("http://localhost:9999/yo")
+			resp, err := httpClient.Get("http://127.0.0.1:9999/yo")
 			Expect(err).NotTo(HaveOccurred())
 			defer resp.Body.Close()
 			Expect(resp.StatusCode).To(Equal(http.StatusOK))
@@ -265,10 +325,10 @@ var _ = Describe("SSH", func() {
 					Transport: &http.Transport{
 						Dial: client.Dial,
 					},
-					Timeout: 20 * time.Second,
+					Timeout: 5 * time.Second,
 				}
 
-				resp, err := httpClient.Get("http://localhost:9999/yo")
+				resp, err := httpClient.Get("http://127.0.0.1:9999/yo")
 				Expect(err).NotTo(HaveOccurred())
 				defer resp.Body.Close()
 				Expect(resp.StatusCode).To(Equal(http.StatusOK))
