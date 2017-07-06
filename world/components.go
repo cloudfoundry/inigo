@@ -355,41 +355,54 @@ func (maker ComponentMaker) Garden() ifrit.Runner {
 }
 
 func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
-	gardenArgs := []string{}
-	gardenArgs = append(gardenArgs, "--runtime-plugin", filepath.Join(maker.GardenConfig.GardenBinPath, "runc"))
-	gardenArgs = append(gardenArgs, "--port-pool-size", "1000")
-	gardenArgs = append(gardenArgs, "--allow-host-access", "")
-	gardenArgs = append(gardenArgs, "--mtu", "1432")
-	gardenArgs = append(gardenArgs, "--deny-network", "0.0.0.0/0")
-
 	defaultRootFS := ""
 	if includeDefaultStack {
 		defaultRootFS = maker.PreloadedStackPathMap[maker.DefaultStack()]
 	}
 
 	members := []grouper.Member{}
+
+	config := runner.DefaultGdnRunnerConfig()
+
+	config.GdnBin = maker.Artifacts.Executables["garden"]
+	config.TarBin = filepath.Join(maker.GardenConfig.GardenBinPath, "tar")
+	config.InitBin = filepath.Join(maker.GardenConfig.GardenBinPath, "init")
+	config.ExecRunnerBin = filepath.Join(maker.GardenConfig.GardenBinPath, "dadoo")
+	config.NSTarBin = filepath.Join(maker.GardenConfig.GardenBinPath, "nstar")
+	config.RuntimePluginBin = filepath.Join(maker.GardenConfig.GardenBinPath, "runc")
+
+	config.DefaultRootFS = defaultRootFS
+
+	config.AllowHostAccess = boolPtr(true)
+
+	config.DenyNetworks = []string{"0.0.0.0/0"}
+
+	host, port, err := net.SplitHostPort(maker.Addresses.GardenLinux)
+	Expect(err).NotTo(HaveOccurred())
+
+	config.BindSocket = ""
+	config.BindIP = host
+
+	intPort, err := strconv.Atoi(port)
+	Expect(err).NotTo(HaveOccurred())
+	config.BindPort = intPtr(intPort)
+
 	if UseGrootFS() {
-		gardenArgs = append(gardenArgs, "--image-plugin", maker.GardenConfig.GrootFSBinPath+"/grootfs")
-		gardenArgs = append(gardenArgs, "--image-plugin-extra-arg", `"--config"`)
-		gardenArgs = append(gardenArgs, "--image-plugin-extra-arg", maker.grootfsConfigPath(maker.GardenConfig.UnprivilegedGrootfsConfig))
-		gardenArgs = append(gardenArgs, "--privileged-image-plugin", maker.GardenConfig.GrootFSBinPath+"/grootfs")
-		gardenArgs = append(gardenArgs, "--privileged-image-plugin-extra-arg", `"--config"`)
-		gardenArgs = append(gardenArgs, "--privileged-image-plugin-extra-arg", maker.grootfsConfigPath(maker.GardenConfig.PrivilegedGrootfsConfig))
+		config.ImagePluginBin = filepath.Join(maker.GardenConfig.GrootFSBinPath, "grootfs")
+		config.PrivilegedImagePluginBin = filepath.Join(maker.GardenConfig.GrootFSBinPath, "grootfs")
+
+		config.ImagePluginExtraArgs = []string{
+			"\"--config\"",
+			maker.grootfsConfigPath(maker.GardenConfig.UnprivilegedGrootfsConfig),
+		}
+
+		config.PrivilegedImagePluginExtraArgs = []string{
+			"\"--config\"",
+			maker.grootfsConfigPath(maker.GardenConfig.PrivilegedGrootfsConfig),
+		}
 	}
 
-	gardenRunner := runner.NewGardenRunner(
-		maker.Artifacts.Executables["garden"],
-		filepath.Join(maker.GardenConfig.GardenBinPath, "init"),
-		filepath.Join(maker.GardenConfig.GardenBinPath, "nstar"),
-		filepath.Join(maker.GardenConfig.GardenBinPath, "dadoo"),
-		filepath.Join(maker.GardenConfig.GrootFSBinPath, "grootfs"),
-		defaultRootFS,
-		filepath.Join(maker.GardenConfig.GardenBinPath, "tar"),
-		"tcp",
-		maker.Addresses.GardenLinux,
-		nil,
-		gardenArgs...,
-	)
+	gardenRunner := runner.NewGardenRunner(config)
 
 	members = append(members, grouper.Member{"garden", gardenRunner})
 
@@ -917,4 +930,12 @@ func appendExtraConnectionStringParam(driverName, databaseConnectionString, sqlC
 
 func UseGrootFS() bool {
 	return os.Getenv("USE_GROOTFS") == "true"
+}
+
+func intPtr(i int) *int {
+	return &i
+}
+
+func boolPtr(b bool) *bool {
+	return &b
 }
