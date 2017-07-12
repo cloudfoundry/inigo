@@ -463,6 +463,7 @@ func (maker ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig))
 		AuctioneerRequireTLS:     true,
 		SQLCACertFile:            maker.SQLCACertFile,
 		ClientLocketConfig:       maker.locketClientConfig(),
+		UUID:                     "bbs-inigo-lock-owner",
 	}
 
 	for _, modifyConfig := range modifyConfigFuncs {
@@ -600,6 +601,7 @@ func (maker ComponentMaker) Auctioneer() ifrit.Runner {
 			LogLevel: "debug",
 		},
 		ClientLocketConfig: maker.locketClientConfig(),
+		UUID:               "auctioneer-inigo-lock-owner",
 	}
 
 	configFile, err := ioutil.TempFile(os.TempDir(), "auctioneer-config")
