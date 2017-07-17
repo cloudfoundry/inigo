@@ -273,10 +273,10 @@ var _ = Describe("LocalRouteEmitter", func() {
 
 					It("eventually not accessible using its route within a second", func() {
 						Eventually(
-							helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost),
+							helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost),
 							time.Second,
 							10*time.Millisecond,
-						).Should(BeEmpty())
+						).Should(Equal(404))
 					})
 				})
 			})
