@@ -16,7 +16,6 @@ import (
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
-	"code.cloudfoundry.org/rep"
 	"code.cloudfoundry.org/routing-info/cfroutes"
 	. "code.cloudfoundry.org/vizzini/matchers"
 	"github.com/tedsuo/ifrit"
@@ -259,7 +258,7 @@ var _ = Describe("LRP", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				actualLRP := lrps[0].Instance
-				containerHandle := rep.LRPContainerGuid(actualLRP.ProcessGuid, actualLRP.InstanceGuid)
+				containerHandle := actualLRP.InstanceGuid
 
 				container, err := gardenClient.Lookup(containerHandle)
 				Expect(err).NotTo(HaveOccurred())
@@ -651,8 +650,7 @@ var _ = Describe("LRP", func() {
 					group, err = bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, processGuid, 0)
 					Expect(err).NotTo(HaveOccurred())
 
-					handle := rep.LRPContainerGuid(group.Instance.GetProcessGuid(), group.Instance.GetInstanceGuid())
-					err = gardenClient.Destroy(handle)
+					err = gardenClient.Destroy(group.Instance.GetInstanceGuid())
 					Expect(err).NotTo(HaveOccurred())
 				})
 
