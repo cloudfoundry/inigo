@@ -113,7 +113,7 @@ var _ = Describe("Privileges", func() {
 			})
 
 			It("succeeds", func() {
-				Expect(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost, "privileged")()).To(Equal(http.StatusOK))
+				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost, "privileged")).Should(Equal(http.StatusOK))
 			})
 		})
 
