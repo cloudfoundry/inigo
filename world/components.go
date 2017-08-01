@@ -34,7 +34,6 @@ import (
 	gardenclient "code.cloudfoundry.org/garden/client"
 	gardenconnection "code.cloudfoundry.org/garden/client/connection"
 	loggregator_v2 "code.cloudfoundry.org/go-loggregator/compatibility"
-	gorouterconfig "code.cloudfoundry.org/gorouter/config"
 	"code.cloudfoundry.org/guardian/gqt/runner"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
@@ -718,33 +717,83 @@ func (maker ComponentMaker) Router() ifrit.Runner {
 	natsPortInt, err := strconv.Atoi(natsPort)
 	Expect(err).NotTo(HaveOccurred())
 
-	routerConfig := &gorouterconfig.Config{
-		Port: uint16(routerPortInt),
-
-		PruneStaleDropletsInterval: 5 * time.Second,
-		DropletStaleThreshold:      10 * time.Second,
-		PublishActiveAppsInterval:  0 * time.Second,
-		StartResponseDelayInterval: 1 * time.Second,
-
-		Nats: []gorouterconfig.NatsConfig{
-			{
-				Host: natsHost,
-				Port: uint16(natsPortInt),
-			},
-		},
-		Logging: gorouterconfig.LoggingConfig{
-			File:          "/dev/stdout",
-			Level:         "info",
-			MetronAddress: "127.0.0.1:65534", // nonsense to make dropsonde happy
-		},
-	}
+	routerConfig := `
+status:
+  port: 0
+  user: ""
+  pass: ""
+nats:
+- host: %s
+  port: %d
+  user: ""
+  pass: ""
+logging:
+  file: /dev/stdout
+  syslog: ""
+  level: info
+  loggregator_enabled: false
+  metron_address: 127.0.0.1:65534
+port: %d
+index: 0
+zone: ""
+tracing:
+  enable_zipkin: false
+trace_key: ""
+access_log:
+  file: ""
+  enable_streaming: false
+enable_access_log_streaming: false
+debug_addr: ""
+enable_proxy: false
+enable_ssl: false
+ssl_port: 0
+ssl_cert_path: ""
+ssl_key_path: ""
+sslcertificate:
+  certificate: []
+  privatekey: null
+  ocspstaple: []
+  signedcertificatetimestamps: []
+  leaf: null
+skip_ssl_validation: false
+cipher_suites: ""
+ciphersuites: []
+load_balancer_healthy_threshold: 0s
+publish_start_message_interval: 0s
+suspend_pruning_if_nats_unavailable: false
+prune_stale_droplets_interval: 5s
+droplet_stale_threshold: 10s
+publish_active_apps_interval: 0s
+start_response_delay_interval: 1s
+endpoint_timeout: 0s
+route_services_timeout: 0s
+secure_cookies: false
+oauth:
+  token_endpoint: ""
+  port: 0
+  skip_ssl_validation: false
+  client_name: ""
+  client_secret: ""
+  ca_certs: ""
+routing_api:
+  uri: ""
+  port: 0
+  auth_disabled: false
+route_services_secret: ""
+route_services_secret_decrypt_only: ""
+route_services_recommend_https: false
+extra_headers_to_log: []
+token_fetcher_max_retries: 0
+token_fetcher_retry_interval: 0s
+token_fetcher_expiration_buffer_time: 0
+pid_file: ""
+`
+	routerConfig = fmt.Sprintf(routerConfig, natsHost, uint16(natsPortInt), uint16(routerPortInt))
 
 	configFile, err := ioutil.TempFile(os.TempDir(), "router-config")
 	Expect(err).NotTo(HaveOccurred())
 	defer configFile.Close()
-	data, err := yaml.Marshal(routerConfig)
-	Expect(err).NotTo(HaveOccurred())
-	_, err = configFile.Write(data)
+	_, err = configFile.Write([]byte(routerConfig))
 	Expect(err).NotTo(HaveOccurred())
 
 	return ginkgomon.New(ginkgomon.Config{
