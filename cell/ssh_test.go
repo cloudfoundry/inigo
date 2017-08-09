@@ -35,8 +35,9 @@ import (
 var _ = Describe("SSH", func() {
 	verifySSH := func(address, processGuid string, index int) {
 		clientConfig := &ssh.ClientConfig{
-			User: fmt.Sprintf("diego:%s/%d", processGuid, index),
-			Auth: []ssh.AuthMethod{ssh.Password("")},
+			User:            fmt.Sprintf("diego:%s/%d", processGuid, index),
+			Auth:            []ssh.AuthMethod{ssh.Password("")},
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		}
 
 		client, err := ssh.Dial("tcp", address, clientConfig)
@@ -247,8 +248,9 @@ var _ = Describe("SSH", func() {
 
 		It("supports local port fowarding", func() {
 			clientConfig := &ssh.ClientConfig{
-				User: fmt.Sprintf("diego:%s/%d", processGuid, 0),
-				Auth: []ssh.AuthMethod{ssh.Password("")},
+				User:            fmt.Sprintf("diego:%s/%d", processGuid, 0),
+				Auth:            []ssh.AuthMethod{ssh.Password("")},
+				HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 			}
 
 			client, err := ssh.Dial("tcp", address, clientConfig)
@@ -314,8 +316,9 @@ var _ = Describe("SSH", func() {
 
 			It("supports local port fowarding", func() {
 				clientConfig := &ssh.ClientConfig{
-					User: fmt.Sprintf("diego:%s/%d", processGuid, 0),
-					Auth: []ssh.AuthMethod{ssh.Password("")},
+					User:            fmt.Sprintf("diego:%s/%d", processGuid, 0),
+					Auth:            []ssh.AuthMethod{ssh.Password("")},
+					HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 				}
 
 				client, err := ssh.Dial("tcp", address, clientConfig)
