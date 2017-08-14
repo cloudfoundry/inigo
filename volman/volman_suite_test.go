@@ -32,13 +32,16 @@ var (
 	gardenProcess ifrit.Process
 	gardenClient  garden.Client
 
-	volmanClient        volman.Manager
-	driverSyncer        ifrit.Runner
-	driverSyncerProcess ifrit.Process
-	localDriverRunner   ifrit.Runner
-	localDriverProcess  ifrit.Process
+	volmanClient           volman.Manager
+	driverSyncer           ifrit.Runner
+	driverSyncerProcess    ifrit.Process
+	localDriverRunner      ifrit.Runner
+	localNodePluginRunner  ifrit.Runner
+	localDriverProcess     ifrit.Process
+	localNodePluginProcess ifrit.Process
 
-	driverClient voldriver.Driver
+	driverClient    voldriver.Driver
+	localNodeClient volman.Plugin
 
 	logger lager.Logger
 
@@ -78,19 +81,21 @@ var _ = BeforeEach(func() {
 	localDriverRunner, driverClient = componentMaker.VolmanDriver(logger)
 	localDriverProcess = ginkgomon.Invoke(localDriverRunner)
 
+	localNodePluginRunner/*, localNodeClient */= componentMaker.CsiLocalNodePlugin(logger)
+	localNodePluginProcess = ginkgomon.Invoke(localNodePluginRunner)
+
 	// make a dummy spec file not corresponding to a running driver just to make sure volman ignores it
 	driverPluginsPath = path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode))
 	voldriver.WriteDriverSpec(logger, driverPluginsPath, "deaddriver", "json", []byte(`{"Name":"deaddriver","Addr":"https://127.0.0.1:1111"}`))
 
 	volmanClient, driverSyncer = componentMaker.VolmanClient(logger)
 	driverSyncerProcess = ginkgomon.Invoke(driverSyncer)
-
 })
 
 var _ = AfterEach(func() {
 	destroyContainerErrors := helpers.CleanupGarden(gardenClient)
 
-	helpers.StopProcesses(gardenProcess, driverSyncerProcess, localDriverProcess)
+	helpers.StopProcesses(gardenProcess, driverSyncerProcess, localDriverProcess, localNodePluginProcess)
 
 	Expect(destroyContainerErrors).To(
 		BeEmpty(),
@@ -120,6 +125,9 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["local-driver"], err = gexec.Build("code.cloudfoundry.org/localdriver/cmd/localdriver", "-race")
+	Expect(err).NotTo(HaveOccurred())
+
+	builtExecutables["local-node-plugin"], err = gexec.Build("github.com/jeffpak/local-node-plugin/cmd/localnodeplugin", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["auctioneer"], err = gexec.BuildIn(os.Getenv("AUCTIONEER_GOPATH"), "code.cloudfoundry.org/auctioneer/cmd/auctioneer", "-race")

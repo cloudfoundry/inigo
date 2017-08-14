@@ -73,6 +73,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		SSHProxy:            fmt.Sprintf("127.0.0.1:%d", 23500+config.GinkgoConfig.ParallelNode),
 		SSHProxyHealthCheck: fmt.Sprintf("127.0.0.1:%d", 24500+config.GinkgoConfig.ParallelNode),
 		FakeVolmanDriver:    fmt.Sprintf("127.0.0.1:%d", 25500+config.GinkgoConfig.ParallelNode),
+		LocalNodePlugin:     fmt.Sprintf("127.0.0.1:%d", 25550+config.GinkgoConfig.ParallelNode),
 		Locket:              fmt.Sprintf("127.0.0.1:%d", 26500+config.GinkgoConfig.ParallelNode),
 		SQL:                 fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, config.GinkgoConfig.ParallelNode),
 	}
