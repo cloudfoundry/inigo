@@ -18,6 +18,7 @@ import (
 	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/voldriver"
 	"code.cloudfoundry.org/volman"
+	"github.com/Kaixiang/csiplugin"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
@@ -81,12 +82,20 @@ var _ = BeforeEach(func() {
 	localDriverRunner, driverClient = componentMaker.VolmanDriver(logger)
 	localDriverProcess = ginkgomon.Invoke(localDriverRunner)
 
-	localNodePluginRunner/*, localNodeClient */= componentMaker.CsiLocalNodePlugin(logger)
+	localNodePluginRunner /*, localNodeClient */ = componentMaker.CsiLocalNodePlugin(logger)
 	localNodePluginProcess = ginkgomon.Invoke(localNodePluginRunner)
 
 	// make a dummy spec file not corresponding to a running driver just to make sure volman ignores it
 	driverPluginsPath = path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode))
 	voldriver.WriteDriverSpec(logger, driverPluginsPath, "deaddriver", "json", []byte(`{"Name":"deaddriver","Addr":"https://127.0.0.1:1111"}`))
+
+	// make a dummy spec file not corresponding to a running node plugin just to make sure volman ignores it
+	driverPluginsPath = path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("local-node-plugin-%d", config.GinkgoConfig.ParallelNode))
+	csiSpec := csiplugin.CsiPluginSpec{
+		Name:    "dead-csi-plugin",
+		Address: "127.0.0.1:2222",
+	}
+	csiplugin.WriteSpec(logger, driverPluginsPath, csiSpec)
 
 	volmanClient, driverSyncer = componentMaker.VolmanClient(logger)
 	driverSyncerProcess = ginkgomon.Invoke(driverSyncer)
