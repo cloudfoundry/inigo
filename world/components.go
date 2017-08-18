@@ -404,7 +404,7 @@ func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 
 	gardenRunner := runner.NewGardenRunner(config)
 
-	members = append(members, grouper.Member{"garden", gardenRunner})
+	members = append(members, grouper.Member{Name: "garden", Runner: gardenRunner})
 
 	return grouper.NewOrdered(os.Interrupt, members)
 }
@@ -902,6 +902,7 @@ func (maker ComponentMaker) VolmanClient(logger lager.Logger) (volman.Manager, i
 	driverConfig := volmanclient.NewDriverConfig()
 	driverConfig.DriverPaths = []string{path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode))}
 	driverConfig.CsiPaths = []string{path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("local-node-plugins-%d", config.GinkgoConfig.ParallelNode))}
+	driverConfig.CsiMountRootDir = path.Join(maker.VolmanDriverConfigDir, "local-node-plugin-mount")
 
 	metronClient, err := loggregator_v2.NewIngressClient(loggregator_v2.Config{})
 	Expect(err).NotTo(HaveOccurred())
@@ -928,13 +929,14 @@ func (maker ComponentMaker) VolmanDriver(logger lager.Logger) (ifrit.Runner, vol
 	return fakeDriverRunner, client
 }
 
-func (maker ComponentMaker) CsiLocalNodePlugin(logger lager.Logger) (ifrit.Runner) {
+func (maker ComponentMaker) CsiLocalNodePlugin(logger lager.Logger) ifrit.Runner {
 	localNodePluginRunner := ginkgomon.New(ginkgomon.Config{
 		Name: "local-node-plugin",
 		Command: exec.Command(
 			maker.Artifacts.Executables["local-node-plugin"],
 			"-listenAddr", maker.Addresses.LocalNodePlugin,
 			"-pluginsPath", path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("local-node-plugins-%d", config.GinkgoConfig.ParallelNode)),
+			"-volumesRoot", path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("local-node-volumes-%d", config.GinkgoConfig.ParallelNode)),
 		),
 		StartCheck: "local-node-plugin.started",
 	})
