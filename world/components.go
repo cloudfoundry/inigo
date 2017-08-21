@@ -26,6 +26,7 @@ import (
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
+	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	sshproxyconfig "code.cloudfoundry.org/diego-ssh/cmd/ssh-proxy/config"
 	"code.cloudfoundry.org/durationjson"
 	executorinit "code.cloudfoundry.org/executor/initializer"
@@ -33,7 +34,6 @@ import (
 	"code.cloudfoundry.org/garden"
 	gardenclient "code.cloudfoundry.org/garden/client"
 	gardenconnection "code.cloudfoundry.org/garden/client/connection"
-	loggregator_v2 "code.cloudfoundry.org/go-loggregator/compatibility"
 	"code.cloudfoundry.org/guardian/gqt/runner"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
@@ -901,7 +901,7 @@ func (maker ComponentMaker) VolmanClient(logger lager.Logger) (volman.Manager, i
 	driverConfig := volmanclient.NewDriverConfig()
 	driverConfig.DriverPaths = []string{path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode))}
 
-	metronClient, err := loggregator_v2.NewIngressClient(loggregator_v2.Config{})
+	metronClient, err := loggingclient.NewIngressClient(loggingclient.Config{})
 	Expect(err).NotTo(HaveOccurred())
 	return volmanclient.NewServer(logger, metronClient, driverConfig)
 }
