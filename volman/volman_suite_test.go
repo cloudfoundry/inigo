@@ -47,6 +47,7 @@ var (
 	logger lager.Logger
 
 	driverPluginsPath string
+	csiPluginsPath    string
 )
 
 var _ = SynchronizedBeforeSuite(func() []byte {
@@ -90,12 +91,12 @@ var _ = BeforeEach(func() {
 	voldriver.WriteDriverSpec(logger, driverPluginsPath, "deaddriver", "json", []byte(`{"Name":"deaddriver","Addr":"https://127.0.0.1:1111"}`))
 
 	// make a dummy spec file not corresponding to a running node plugin just to make sure volman ignores it
-	driverPluginsPath = path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("local-node-plugin-%d", config.GinkgoConfig.ParallelNode))
+	csiPluginsPath = path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("local-node-plugin-%d", config.GinkgoConfig.ParallelNode))
 	csiSpec := csiplugin.CsiPluginSpec{
 		Name:    "dead-csi-plugin",
 		Address: "127.0.0.1:2222",
 	}
-	csiplugin.WriteSpec(logger, driverPluginsPath, csiSpec)
+	csiplugin.WriteSpec(logger, csiPluginsPath, csiSpec)
 
 	volmanClient, driverSyncer = componentMaker.VolmanClient(logger)
 	driverSyncerProcess = ginkgomon.Invoke(driverSyncer)
@@ -113,6 +114,7 @@ var _ = AfterEach(func() {
 	)
 
 	os.Remove(filepath.Join(driverPluginsPath, "deaddriver.json"))
+	os.Remove(filepath.Join(csiPluginsPath, "dead-csi-plugin.json"))
 })
 
 func TestVolman(t *testing.T) {
