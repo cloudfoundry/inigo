@@ -14,10 +14,10 @@ import (
 
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/clock"
+	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/executor"
 	executorinit "code.cloudfoundry.org/executor/initializer"
-	loggregator_v2 "code.cloudfoundry.org/go-loggregator/compatibility"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/voldriver"
@@ -445,7 +445,7 @@ func initializeExecutor(logger lager.Logger, config executorinit.ExecutorConfig)
 	var err error
 	var executorClient executor.Client
 	defaultRootFS := ""
-	metronClient, err := loggregator_v2.NewIngressClient(loggregator_v2.Config{})
+	metronClient, err := loggingclient.NewIngressClient(loggingclient.Config{})
 	Expect(err).NotTo(HaveOccurred())
 	executorClient, executorMembers, err = executorinit.Initialize(logger, config, defaultRootFS, metronClient, clock.NewClock())
 	Expect(err).NotTo(HaveOccurred())
