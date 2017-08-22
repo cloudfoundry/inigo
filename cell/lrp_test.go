@@ -500,13 +500,18 @@ var _ = Describe("LRP", func() {
 
 				It("allows outbound tcp traffic", func() {
 					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
-					bytes, statusCode, err := helpers.ResponseBodyAndStatusCodeFromHost(
-						componentMaker.Addresses.Router,
-						helpers.DefaultHost,
-						"curl",
-					)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(statusCode).To(Equal(http.StatusOK))
+					var bytes []byte
+					Eventually(func() int {
+						var statusCode int
+						var err error
+						bytes, statusCode, err = helpers.ResponseBodyAndStatusCodeFromHost(
+							componentMaker.Addresses.Router,
+							helpers.DefaultHost,
+							"curl",
+						)
+						Expect(err).NotTo(HaveOccurred())
+						return statusCode
+					}).Should(Equal(http.StatusOK))
 					Expect(string(bytes)).To(Equal("0"))
 				})
 			})
