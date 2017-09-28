@@ -92,12 +92,12 @@ var _ = Describe("Executor/Garden", func() {
 	})
 
 	AfterEach(func() {
-		if executorClient != nil {
-			executorClient.Cleanup(logger)
-		}
-
 		if process != nil {
 			ginkgomon.Interrupt(process)
+		}
+
+		if executorClient != nil {
+			executorClient.Cleanup(logger)
 		}
 
 		os.RemoveAll(cachePath)
