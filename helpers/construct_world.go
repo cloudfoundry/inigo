@@ -11,6 +11,7 @@ import (
 	"code.cloudfoundry.org/consuladapter/consulrunner"
 	"code.cloudfoundry.org/diego-ssh/keys"
 	"code.cloudfoundry.org/inigo/world"
+	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	"github.com/nu7hatch/gouuid"
 
 	"github.com/onsi/ginkgo"
@@ -55,9 +56,12 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	Expect(gardenRootFSPath).NotTo(BeEmpty(), "must provide $GARDEN_ROOTFS")
 	Expect(externalAddress).NotTo(BeEmpty(), "must provide $EXTERNAL_ADDRESS")
 
-	stackPathMap := map[string]string{}
-	for _, stack := range PreloadedStacks {
-		stackPathMap[stack] = gardenRootFSPath
+	stackPathMap := make(repconfig.RootFSes, len(PreloadedStacks))
+	for i, stack := range PreloadedStacks {
+		stackPathMap[i] = repconfig.RootFS{
+			Name: stack,
+			Path: gardenRootFSPath,
+		}
 	}
 
 	addresses = world.ComponentAddresses{
@@ -180,7 +184,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		Artifacts: builtArtifacts,
 		Addresses: addresses,
 
-		PreloadedStackPathMap: stackPathMap,
+		RootFSes: stackPathMap,
 
 		ExternalAddress: externalAddress,
 

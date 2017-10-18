@@ -133,7 +133,7 @@ type ComponentMaker struct {
 
 	ExternalAddress string
 
-	PreloadedStackPathMap map[string]string
+	RootFSes repconfig.RootFSes
 
 	GardenConfig GardenSettingsConfig
 
@@ -357,7 +357,7 @@ func (maker ComponentMaker) Garden() ifrit.Runner {
 func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 	defaultRootFS := ""
 	if includeDefaultStack {
-		defaultRootFS = maker.PreloadedStackPathMap[maker.DefaultStack()]
+		defaultRootFS = maker.RootFSes.StackPathMap()[maker.DefaultStack()]
 	}
 
 	members := []grouper.Member{}
@@ -535,7 +535,7 @@ func (maker ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.Rep
 		RequireTLS:                true,
 		EnableLegacyAPIServer:     false,
 		ListenAddrSecurable:       fmt.Sprintf("%s:%d", host, offsetPort(port+100, n)),
-		PreloadedRootFS:           maker.PreloadedStackPathMap,
+		PreloadedRootFS:           maker.RootFSes,
 		ExecutorConfig: executorinit.ExecutorConfig{
 			GardenNetwork:         "tcp",
 			GardenAddr:            maker.Addresses.GardenLinux,
@@ -853,15 +853,8 @@ func (maker ComponentMaker) SSHProxy(argv ...string) ifrit.Runner {
 }
 
 func (maker ComponentMaker) DefaultStack() string {
-	Expect(maker.PreloadedStackPathMap).NotTo(BeEmpty())
-
-	var defaultStack string
-	for stack, _ := range maker.PreloadedStackPathMap {
-		defaultStack = stack
-		break
-	}
-
-	return defaultStack
+	Expect(maker.RootFSes).NotTo(BeEmpty())
+	return maker.RootFSes.Names()[0]
 }
 
 func (maker ComponentMaker) GardenClient() garden.Client {
