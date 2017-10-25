@@ -50,6 +50,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	artifacts.Lifecycles.BuildLifecycles("dockerapplifecycle")
 	artifacts.Executables = CompileTestedExecutables()
 	artifacts.Healthcheck = CompileHealthcheckExecutable()
+	CompileLdsListenerExecutable()
 
 	payload, err := json.Marshal(artifacts)
 	Expect(err).NotTo(HaveOccurred())
@@ -131,6 +132,18 @@ func CompileHealthcheckExecutable() string {
 	Expect(err).NotTo(HaveOccurred())
 
 	return healthcheckDir
+}
+
+func CompileLdsListenerExecutable() string {
+	envoyPath := os.Getenv("ENVOY_PATH")
+
+	ldsListenerPath, err := gexec.Build("code.cloudfoundry.org/rep/lds/cmd/lds", "-race")
+	Expect(err).NotTo(HaveOccurred())
+
+	err = os.Rename(ldsListenerPath, filepath.Join(envoyPath, "lds"))
+	Expect(err).NotTo(HaveOccurred())
+
+	return envoyPath
 }
 
 func CompileTestedExecutables() world.BuiltExecutables {

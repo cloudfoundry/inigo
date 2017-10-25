@@ -2,6 +2,7 @@ package cell_test
 
 import (
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -42,6 +43,7 @@ var _ = Describe("InstanceIdentity", func() {
 		lrp                                         *models.DesiredLRP
 		processGUID                                 string
 		organizationalUnit                          []string
+		rep, fileServer                             ifrit.Runner
 	)
 
 	BeforeEach(func() {
@@ -112,7 +114,6 @@ var _ = Describe("InstanceIdentity", func() {
 			OrganizationalUnit: organizationalUnit,
 		}
 
-		var fileServer ifrit.Runner
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
 		archiveFiles := fixtures.GoServerApp()
 		archive_helper.CreateZipArchive(
@@ -120,10 +121,14 @@ var _ = Describe("InstanceIdentity", func() {
 			archiveFiles,
 		)
 
+		rep = componentMaker.Rep(configRepCerts, exportNetworkVars)
+	})
+
+	JustBeforeEach(func() {
 		cellGroup := grouper.Members{
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
-			{"rep", componentMaker.Rep(configRepCerts, exportNetworkVars)},
+			{"rep", rep},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 		}
@@ -211,7 +216,7 @@ var _ = Describe("InstanceIdentity", func() {
 	Context("lrps", func() {
 		var ipAddress string
 
-		BeforeEach(func() {
+		JustBeforeEach(func() {
 			err := bbsClient.DesireLRP(logger, lrp)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
@@ -222,12 +227,20 @@ var _ = Describe("InstanceIdentity", func() {
 		It("should add instance identity certificate and key in the right location", func() {
 			verifyCertAndKeyArePresentForLRP(ipAddress, organizationalUnit)
 		})
+
+		It("does not write container proxy config files", func() {
+			resp, err := client.Get(fmt.Sprintf("https://%s:8081/cat?file=/etc/cf-assets/envoy_config/envoy.json", ipAddress))
+			Expect(err).NotTo(HaveOccurred())
+			defer resp.Body.Close()
+
+			Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
+		})
 	})
 
 	Context("when a server uses the provided cert and key", func() {
 		var ipAddress string
 
-		BeforeEach(func() {
+		JustBeforeEach(func() {
 			err := bbsClient.DesireLRP(logger, lrp)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
@@ -253,7 +266,7 @@ var _ = Describe("InstanceIdentity", func() {
 			url string
 		)
 
-		BeforeEach(func() {
+		JustBeforeEach(func() {
 			server := ghttp.NewUnstartedServer()
 			server.HTTPTestServer.TLS = &tls.Config{
 				ClientCAs:  rootCAs,
@@ -274,12 +287,88 @@ var _ = Describe("InstanceIdentity", func() {
 				output string
 			)
 
-			BeforeEach(func() {
+			JustBeforeEach(func() {
 				output = runTaskAndGetCommandOutput(fmt.Sprintf("curl --silent -k --cert /etc/cf-instance-credentials/instance.crt --key /etc/cf-instance-credentials/instance.key https://%s", url), []string{})
 			})
 
 			It("successfully connects", func() {
 				Expect(output).To(ContainSubstring("hello world"))
+			})
+		})
+	})
+
+	Context("when running with envoy proxy", func() {
+		var ipAddress string
+		var configRepCerts func(cfg *config.RepConfig)
+		var exportNetworkVars func(cfg *config.RepConfig)
+		var enableContainerProxy func(cfg *config.RepConfig)
+
+		BeforeEach(func() {
+			configRepCerts = func(cfg *config.RepConfig) {
+				cfg.InstanceIdentityCredDir = credDir
+				cfg.InstanceIdentityCAPath = intermediateCACertPath
+				cfg.InstanceIdentityPrivateKeyPath = intermediateKeyPath
+				cfg.InstanceIdentityValidityPeriod = durationjson.Duration(validityPeriod)
+			}
+
+			exportNetworkVars = func(config *config.RepConfig) {
+				config.ExportNetworkEnvVars = true
+			}
+
+			enableContainerProxy = func(config *config.RepConfig) {
+				config.EnableContainerProxy = true
+				config.EnvoyConfigRefreshDelay = durationjson.Duration(time.Second)
+				config.ContainerProxyPath = os.Getenv("ENVOY_PATH")
+
+				tmpdir, err := ioutil.TempDir("", "envoy_config")
+				Expect(err).NotTo(HaveOccurred())
+
+				config.ContainerProxyConfigPath = tmpdir
+			}
+
+			rep = componentMaker.Rep(configRepCerts, exportNetworkVars, enableContainerProxy)
+		})
+
+		JustBeforeEach(func() {
+			err := bbsClient.DesireLRP(logger, lrp)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
+
+			ipAddress = getContainerInternalIP()
+		})
+
+		connect := func() error {
+			resp, err := client.Get(fmt.Sprintf("https://%s:61001/env", ipAddress))
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				return errors.New("not statusok")
+			}
+
+			return nil
+		}
+
+		It("should have a container with envoy enabled on it", func() {
+			Eventually(connect).Should(Succeed())
+		})
+
+		Context("when certs are rotated", func() {
+			var credRotationPeriod = 64 * time.Second
+
+			BeforeEach(func() {
+				alterCredRotation := func(config *config.RepConfig) {
+					config.InstanceIdentityValidityPeriod = durationjson.Duration(credRotationPeriod)
+				}
+
+				rep = componentMaker.Rep(configRepCerts, exportNetworkVars, enableContainerProxy, alterCredRotation)
+			})
+
+			It("should be able to reconnect with the updated certs", func() {
+				Eventually(connect).Should(Succeed())
+				fmt.Println("NOW: " + time.Now().String())
+				Consistently(connect, 90*time.Second).Should(Succeed())
 			})
 		})
 	})

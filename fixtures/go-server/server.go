@@ -19,6 +19,7 @@ func main() {
 	http.HandleFunc("/privileged", privileged)
 	http.HandleFunc("/cf-instance-cert", cfInstanceCert)
 	http.HandleFunc("/cf-instance-key", cfInstanceKey)
+	http.HandleFunc("/cat", catFile)
 
 	fmt.Println("listening...")
 
@@ -137,6 +138,25 @@ func cfInstanceKey(res http.ResponseWriter, req *http.Request) {
 	path := os.Getenv("CF_INSTANCE_KEY")
 
 	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	res.Write(data)
+	return
+}
+
+func catFile(res http.ResponseWriter, req *http.Request) {
+	param := req.URL.Query()
+	fileToCat := param["file"][0]
+
+	data, err := ioutil.ReadFile(fileToCat)
+	if os.IsNotExist(err) {
+		res.WriteHeader(http.StatusNotFound)
+		return
+	}
+
 	if err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
 		return
