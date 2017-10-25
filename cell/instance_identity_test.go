@@ -42,6 +42,7 @@ var _ = Describe("InstanceIdentity", func() {
 		lrp                                         *models.DesiredLRP
 		processGUID                                 string
 		organizationalUnit                          []string
+		rep, fileServer                             ifrit.Runner
 	)
 
 	BeforeEach(func() {
@@ -112,7 +113,6 @@ var _ = Describe("InstanceIdentity", func() {
 			OrganizationalUnit: organizationalUnit,
 		}
 
-		var fileServer ifrit.Runner
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
 		archiveFiles := fixtures.GoServerApp()
 		archive_helper.CreateZipArchive(
@@ -120,10 +120,14 @@ var _ = Describe("InstanceIdentity", func() {
 			archiveFiles,
 		)
 
+		rep = componentMaker.Rep(configRepCerts, exportNetworkVars)
+	})
+
+	JustBeforeEach(func() {
 		cellGroup := grouper.Members{
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
-			{"rep", componentMaker.Rep(configRepCerts, exportNetworkVars)},
+			{"rep", rep},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 		}
@@ -211,7 +215,7 @@ var _ = Describe("InstanceIdentity", func() {
 	Context("lrps", func() {
 		var ipAddress string
 
-		BeforeEach(func() {
+		JustBeforeEach(func() {
 			err := bbsClient.DesireLRP(logger, lrp)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
@@ -227,7 +231,7 @@ var _ = Describe("InstanceIdentity", func() {
 	Context("when a server uses the provided cert and key", func() {
 		var ipAddress string
 
-		BeforeEach(func() {
+		JustBeforeEach(func() {
 			err := bbsClient.DesireLRP(logger, lrp)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
@@ -253,7 +257,7 @@ var _ = Describe("InstanceIdentity", func() {
 			url string
 		)
 
-		BeforeEach(func() {
+		JustBeforeEach(func() {
 			server := ghttp.NewUnstartedServer()
 			server.HTTPTestServer.TLS = &tls.Config{
 				ClientCAs:  rootCAs,
@@ -274,7 +278,7 @@ var _ = Describe("InstanceIdentity", func() {
 				output string
 			)
 
-			BeforeEach(func() {
+			JustBeforeEach(func() {
 				output = runTaskAndGetCommandOutput(fmt.Sprintf("curl --silent -k --cert /etc/cf-instance-credentials/instance.crt --key /etc/cf-instance-credentials/instance.key https://%s", url), []string{})
 			})
 
@@ -282,6 +286,51 @@ var _ = Describe("InstanceIdentity", func() {
 				Expect(output).To(ContainSubstring("hello world"))
 			})
 		})
+	})
+
+	FContext("when running with envoy proxy", func() {
+		var ipAddress string
+
+		BeforeEach(func() {
+			configRepCerts := func(cfg *config.RepConfig) {
+				cfg.InstanceIdentityCredDir = credDir
+				cfg.InstanceIdentityCAPath = intermediateCACertPath
+				cfg.InstanceIdentityPrivateKeyPath = intermediateKeyPath
+				cfg.InstanceIdentityValidityPeriod = durationjson.Duration(validityPeriod)
+			}
+
+			exportNetworkVars := func(config *config.RepConfig) {
+				config.ExportNetworkEnvVars = true
+			}
+
+			enableContainerProxy := func(config *config.RepConfig) {
+				config.EnableContainerProxy = true
+				config.ContainerProxyPath = os.Getenv("ENVOY_PATH")
+				config.ContainerProxyConfigPath = "../fixtures/proxy/config.json"
+			}
+
+			rep = componentMaker.Rep(configRepCerts, exportNetworkVars, enableContainerProxy)
+		})
+
+		JustBeforeEach(func() {
+			err := bbsClient.DesireLRP(logger, lrp)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
+
+			ipAddress = getContainerInternalIP()
+		})
+
+		It("should have a container with envoy enabled on it", func() {
+			resp, err := client.Get(fmt.Sprintf("https://%s:8081/env", ipAddress))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(http.StatusOK))
+			defer resp.Body.Close()
+			body, err := ioutil.ReadAll(resp.Body)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(body)).To(ContainSubstring("CF_INSTANCE_INTERNAL_IP=" + ipAddress))
+			println(string(body))
+		})
+
 	})
 })
 
