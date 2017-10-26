@@ -290,23 +290,26 @@ var _ = Describe("InstanceIdentity", func() {
 
 	FContext("when running with envoy proxy", func() {
 		var ipAddress string
+		var configRepCerts func(cfg *config.RepConfig)
+		var exportNetworkVars func(cfg *config.RepConfig)
+		var enableContainerProxy func(cfg *config.RepConfig)
 
 		BeforeEach(func() {
-			configRepCerts := func(cfg *config.RepConfig) {
+			configRepCerts = func(cfg *config.RepConfig) {
 				cfg.InstanceIdentityCredDir = credDir
 				cfg.InstanceIdentityCAPath = intermediateCACertPath
 				cfg.InstanceIdentityPrivateKeyPath = intermediateKeyPath
 				cfg.InstanceIdentityValidityPeriod = durationjson.Duration(validityPeriod)
 			}
 
-			exportNetworkVars := func(config *config.RepConfig) {
+			exportNetworkVars = func(config *config.RepConfig) {
 				config.ExportNetworkEnvVars = true
 			}
 
-			enableContainerProxy := func(config *config.RepConfig) {
+			enableContainerProxy = func(config *config.RepConfig) {
 				config.EnableContainerProxy = true
 				config.ContainerProxyPath = os.Getenv("ENVOY_PATH")
-				config.ContainerProxyConfigPath = "../fixtures/proxy/config.json"
+				config.ContainerProxyConfigPath = os.Getenv("ENVOY_PATH")
 			}
 
 			rep = componentMaker.Rep(configRepCerts, exportNetworkVars, enableContainerProxy)
@@ -321,14 +324,37 @@ var _ = Describe("InstanceIdentity", func() {
 		})
 
 		It("should have a container with envoy enabled on it", func() {
-			resp, err := client.Get(fmt.Sprintf("https://%s:8081/env", ipAddress))
+			resp, err := client.Get(fmt.Sprintf("https://%s:61001/env", ipAddress))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.StatusCode).To(Equal(http.StatusOK))
 			defer resp.Body.Close()
 			body, err := ioutil.ReadAll(resp.Body)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(body)).To(ContainSubstring("CF_INSTANCE_INTERNAL_IP=" + ipAddress))
-			println(string(body))
+		})
+
+		Context("when certs are rotated", func() {
+			var credRotationPeriod = 2 * time.Second
+
+			BeforeEach(func() {
+				alterCredRotation := func(config *config.RepConfig) {
+					config.InstanceIdentityValidityPeriod = durationjson.Duration(credRotationPeriod)
+				}
+
+				rep = componentMaker.Rep(configRepCerts, exportNetworkVars, enableContainerProxy, alterCredRotation)
+			})
+
+			It("should be able to reconnect with the updated certs", func() {
+				// the right client needs to be configured here
+				// to use the old certs and the new certs for contacting
+				// the app. right now we are using the RootCA but the
+				// generated CAs should be used for the client before and after the rotation
+				resp, err := client.Get(fmt.Sprintf("https://%s:61001/env", ipAddress))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusOK))
+				// wait for the rotation to happen before trying a new client
+				time.Sleep(credRotationPeriod)
+			})
 		})
 
 	})
