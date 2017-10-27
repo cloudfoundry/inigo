@@ -73,6 +73,7 @@ type BuiltArtifacts struct {
 	Executables BuiltExecutables
 	Lifecycles  BuiltLifecycles
 	Healthcheck string
+	LdsListener string
 }
 
 type SSHKeys struct {
@@ -537,11 +538,12 @@ func (maker ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.Rep
 		ListenAddrSecurable:       fmt.Sprintf("%s:%d", host, offsetPort(port+100, n)),
 		PreloadedRootFS:           maker.RootFSes,
 		ExecutorConfig: executorinit.ExecutorConfig{
-			GardenNetwork:         "tcp",
-			GardenAddr:            maker.Addresses.GardenLinux,
-			ContainerMaxCpuShares: 1024,
-			CachePath:             cachePath,
-			TempDir:               tmpDir,
+			GardenNetwork:                 "tcp",
+			GardenAddr:                    maker.Addresses.GardenLinux,
+			ContainerMaxCpuShares:         1024,
+			CachePath:                     cachePath,
+			TempDir:                       tmpDir,
+			LDSListenerBinaryPath:         maker.Artifacts.LdsListener,
 			GardenHealthcheckProcessPath:  "/bin/sh",
 			GardenHealthcheckProcessArgs:  []string{"-c", "echo", "foo"},
 			GardenHealthcheckProcessUser:  "vcap",

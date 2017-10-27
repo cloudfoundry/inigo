@@ -2,6 +2,7 @@ package cell_test
 
 import (
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -309,7 +310,11 @@ var _ = Describe("InstanceIdentity", func() {
 			enableContainerProxy = func(config *config.RepConfig) {
 				config.EnableContainerProxy = true
 				config.ContainerProxyPath = os.Getenv("ENVOY_PATH")
-				config.ContainerProxyConfigPath = os.Getenv("ENVOY_PATH")
+
+				tmpdir, err := ioutil.TempDir("", "envoy_config")
+				Expect(err).NotTo(HaveOccurred())
+
+				config.ContainerProxyConfigPath = tmpdir
 			}
 
 			rep = componentMaker.Rep(configRepCerts, exportNetworkVars, enableContainerProxy)
@@ -333,7 +338,7 @@ var _ = Describe("InstanceIdentity", func() {
 			Expect(string(body)).To(ContainSubstring("CF_INSTANCE_INTERNAL_IP=" + ipAddress))
 		})
 
-		Context("when certs are rotated", func() {
+		FContext("when certs are rotated", func() {
 			var credRotationPeriod = 2 * time.Second
 
 			BeforeEach(func() {
@@ -349,11 +354,16 @@ var _ = Describe("InstanceIdentity", func() {
 				// to use the old certs and the new certs for contacting
 				// the app. right now we are using the RootCA but the
 				// generated CAs should be used for the client before and after the rotation
-				resp, err := client.Get(fmt.Sprintf("https://%s:61001/env", ipAddress))
-				Expect(err).NotTo(HaveOccurred())
-				Expect(resp.StatusCode).To(Equal(http.StatusOK))
-				// wait for the rotation to happen before trying a new client
-				time.Sleep(credRotationPeriod)
+				Consistently(func() error {
+					resp, err := client.Get(fmt.Sprintf("https://%s:61001/env", ipAddress))
+					if err != nil {
+						return err
+					}
+					if resp.StatusCode != http.StatusOK {
+						return errors.New("not statusok")
+					}
+					return nil
+				}).Should(Succeed())
 			})
 		})
 
