@@ -100,6 +100,7 @@ type GardenSettingsConfig struct {
 
 type GrootFSConfig struct {
 	StorePath string `yaml:"store"`
+	FSDriver  string `yaml:"driver"`
 	DraxBin   string `yaml:"drax_bin"`
 	LogLevel  string `yaml:"log_level"`
 	Create    struct {

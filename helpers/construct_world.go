@@ -152,6 +152,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 
 	unprivilegedGrootfsConfig := world.GrootFSConfig{
 		StorePath: fmt.Sprintf("/mnt/btrfs/unprivileged-%d-%d", ginkgo.GinkgoParallelNode(), storeTimestamp),
+		FSDriver:  "btrfs",
 		DraxBin:   "/usr/local/bin/drax",
 		LogLevel:  "debug",
 	}
@@ -161,6 +162,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 
 	privilegedGrootfsConfig := world.GrootFSConfig{
 		StorePath: fmt.Sprintf("/mnt/btrfs/privileged-%d-%d", ginkgo.GinkgoParallelNode(), storeTimestamp),
+		FSDriver:  "btrfs",
 		DraxBin:   "/usr/local/bin/drax",
 		LogLevel:  "debug",
 	}
