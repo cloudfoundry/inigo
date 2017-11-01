@@ -418,6 +418,8 @@ func (maker ComponentMaker) RoutingAPI(modifyConfigFuncs ...func(*routingapi.Con
 		DBName:     fmt.Sprintf("routingapi_%d", GinkgoParallelNode()),
 	}
 
+	adminPort := 20000 + GinkgoParallelNode()
+
 	if maker.DBDriverName == "mysql" {
 		sqlConfig.Port = 3306
 		sqlConfig.Username = "diego"
@@ -428,7 +430,7 @@ func (maker ComponentMaker) RoutingAPI(modifyConfigFuncs ...func(*routingapi.Con
 		sqlConfig.Password = "diego_pw"
 	}
 
-	runner, err := routingapi.NewRoutingAPIRunner(binPath, maker.ConsulCluster(), sqlConfig, modifyConfigFuncs...)
+	runner, err := routingapi.NewRoutingAPIRunner(binPath, maker.ConsulCluster(), adminPort, sqlConfig, modifyConfigFuncs...)
 	Expect(err).NotTo(HaveOccurred())
 	return runner
 }
