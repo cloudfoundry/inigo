@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
@@ -30,6 +31,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
+	"github.com/onsi/gomega/matchers"
+	"github.com/onsi/gomega/types"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -104,6 +107,7 @@ var _ = Describe("InstanceIdentity", func() {
 			CacheKey:  "lrp-cache-key",
 			LogSource: "APP",
 		}}
+		lrp.MetricsGuid = processGUID
 		lrp.LegacyDownloadUser = "vcap"
 		lrp.Privileged = true
 		lrp.Action = models.WrapAction(&models.RunAction{
@@ -392,6 +396,7 @@ var _ = Describe("InstanceIdentity", func() {
 			var (
 				container                garden.Container
 				setProxyMemoryAllocation func(cfg *config.RepConfig)
+				containerMutex           sync.Mutex
 			)
 
 			BeforeEach(func() {
@@ -412,6 +417,8 @@ var _ = Describe("InstanceIdentity", func() {
 				actualLRP := lrps[0].Instance
 				containerHandle := actualLRP.InstanceGuid
 
+				containerMutex.Lock()
+				defer containerMutex.Unlock()
 				container, err = gardenClient.Lookup(containerHandle)
 				Expect(err).NotTo(HaveOccurred())
 			})
@@ -431,9 +438,15 @@ var _ = Describe("InstanceIdentity", func() {
 			// })
 
 			Context("when emitting app metrics", func() {
-				var metricsChan chan events.ContainerMetric
+				var (
+					metricsChan chan map[string]uint64
+					memoryLimit uint64
+				)
 
 				BeforeEach(func() {
+					metricsChan = make(chan map[string]uint64, 10)
+					memoryLimit = uint64(lrp.MemoryMb)
+
 					port, err := localip.LocalPort()
 					Expect(err).NotTo(HaveOccurred())
 					addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", port))
@@ -441,8 +454,10 @@ var _ = Describe("InstanceIdentity", func() {
 					udpConn, err := net.ListenUDP("udp", addr)
 					Expect(err).NotTo(HaveOccurred())
 
-					metricsChan = make(chan events.ContainerMetric, 10)
 					metronAgent = ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
+						defer GinkgoRecover()
+						defer udpConn.Close()
+
 						logger := logger.Session("metron-agent")
 						close(ready)
 						logger.Info("starting", lager.Data{"port": addr.Port})
@@ -463,31 +478,46 @@ var _ = Describe("InstanceIdentity", func() {
 							select {
 							case <-signals:
 								logger.Info("signaled")
-								break
+								return nil
 							case err := <-errCh:
 								return err
 							case msg := <-msgs:
-								println(">>>>>message received")
 								var envelope events.Envelope
 								err := proto.Unmarshal(msg, &envelope)
 								if err != nil {
-									logger.Error("error-parsing-message", err)
 									continue
 								}
-								fmt.Printf(">>>>>>>>>>>>>>>> Envelope %#v", envelope.GetEventType())
-								if envelope.GetEventType() != events.Envelope_ContainerMetric {
+								metric := envelope.GetContainerMetric()
+								if metric == nil {
 									continue
 								}
-								metric := *envelope.GetContainerMetric()
-								fmt.Printf(">>>>>>>>>>>>>>>> %d", metric.MemoryBytes)
-								metricsChan <- metric //*envelope.GetContainerMetric()
+
+								containerMutex.Lock()
+								c := container
+								containerMutex.Unlock()
+								if c == nil {
+									// container can be nil if we get a container metric while
+									// the JustBeforeEach is still getting the actual lrp and
+									// container infromation
+									continue
+								}
+
+								metrics, err := c.Metrics()
+								if err != nil {
+									return err
+								}
+								stats := metrics.MemoryStat
+								actualMemoryUsage := stats.TotalRss + stats.TotalCache - stats.TotalInactiveFile
+
+								metricsChan <- map[string]uint64{
+									"memory":        metric.GetMemoryBytes(),
+									"actual_memory": actualMemoryUsage,
+									"memory_quota":  metric.GetMemoryBytesQuota(),
+								}
 							}
 						}
-						udpConn.Close()
-						return nil
 					})
 
-					fmt.Printf("inigo metron %#v \n", metronAgent)
 					dropsondeConfig := func(cfg *config.RepConfig) {
 						cfg.DropsondePort = addr.Port
 						cfg.ContainerMetricsReportInterval = durationjson.Duration(5 * time.Second)
@@ -500,18 +530,48 @@ var _ = Describe("InstanceIdentity", func() {
 					)
 				})
 
-				FIt("should receive rescaled component metrics", func() {
-					Eventually(metricsChan).Should(Receive())
-					// Eventually(func() bool {
-					// 	println("listening on the metrics channel")
-					// 	metric := <-metricsChan
-					// 	return (*metric.MemoryBytes <= memoryInBytes(20) && *metric.MemoryBytesQuota == memoryInBytes(20))
-					// }).Should(BeTrue())
+				It("should receive rescaled memory usage", func() {
+					Eventually(metricsChan, 10*time.Second).Should(Receive(ScaledDownMemory(memoryLimit, 5)))
+				})
+
+				It("should receive rescaled memory limit", func() {
+					Eventually(metricsChan, 10*time.Second).Should(Receive(HaveKeyWithValue("memory_quota", memoryInBytes(memoryLimit))))
+				})
+
+				Context("when the lrp is using docker rootfs", func() {
+					BeforeEach(func() {
+						lrp = helpers.DockerLRPCreateRequest(processGUID)
+						lrp.MetricsGuid = processGUID
+						lrp.MemoryMb = int32(memoryLimit)
+					})
+
+					It("should not receive rescaled memory limit", func() {
+						Eventually(metricsChan, 10*time.Second).Should(Receive(UnscaledDownMemory()))
+					})
+
+					It("should not receive rescaled memory usage", func() {
+						Eventually(metricsChan, 10*time.Second).Should(Receive(HaveKeyWithValue("memory_quota", memoryInBytes(memoryLimit))))
+					})
 				})
 			})
 		})
 	})
 })
+
+func UnscaledDownMemory() types.GomegaMatcher {
+	someNonZeroValue := uint64(1) // otherwise the ScaledDownMemory will attempt to divide by 0
+	return ScaledDownMemory(someNonZeroValue, 0)
+}
+
+func ScaledDownMemory(memoryLimit, proxyAllocatedMemory uint64) types.GomegaMatcher {
+	return And(
+		HaveKey("memory"),
+		HaveKey("actual_memory"),
+		matchers.NewWithTransformMatcher(func(m map[string]uint64) uint64 {
+			return m["memory"] - m["actual_memory"]*memoryLimit/(memoryLimit+proxyAllocatedMemory)
+		}, BeNumerically("~", 0, 1024)),
+	)
+}
 
 func memoryInBytes(memoryMb uint64) uint64 {
 	return memoryMb * 1024 * 1024
