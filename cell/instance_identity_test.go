@@ -15,14 +15,18 @@ import (
 	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/durationjson"
+	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
 
 	"crypto/tls"
 	"crypto/x509"
 
+	"github.com/cloudfoundry/sonde-go/events"
+	"github.com/gogo/protobuf/proto"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
@@ -43,7 +47,7 @@ var _ = Describe("InstanceIdentity", func() {
 		lrp                                         *models.DesiredLRP
 		processGUID                                 string
 		organizationalUnit                          []string
-		rep, fileServer                             ifrit.Runner
+		rep, fileServer, metronAgent                ifrit.Runner
 	)
 
 	BeforeEach(func() {
@@ -122,11 +126,24 @@ var _ = Describe("InstanceIdentity", func() {
 		)
 
 		rep = componentMaker.Rep(configRepCerts, exportNetworkVars)
+		metronAgent = ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
+			close(ready)
+		loop:
+			for {
+				select {
+				case <-signals:
+					logger.Info("signaled")
+					break loop
+				}
+			}
+			return nil
+		})
 	})
 
 	JustBeforeEach(func() {
 		cellGroup := grouper.Members{
 			{"router", componentMaker.Router()},
+			{"metron-agent", metronAgent},
 			{"file-server", fileServer},
 			{"rep", rep},
 			{"auctioneer", componentMaker.Auctioneer()},
@@ -371,8 +388,135 @@ var _ = Describe("InstanceIdentity", func() {
 				Consistently(connect, 90*time.Second).Should(Succeed())
 			})
 		})
+
+		Context("when the additional memory allocation is defined", func() {
+			var (
+				container                garden.Container
+				setProxyMemoryAllocation func(cfg *config.RepConfig)
+			)
+
+			BeforeEach(func() {
+				lrp.MemoryMb = 32
+				setProxyMemoryAllocation = func(config *config.RepConfig) {
+					config.ProxyMemoryAllocationMB = 5
+				}
+
+				rep = componentMaker.Rep(configRepCerts, exportNetworkVars, enableContainerProxy, setProxyMemoryAllocation)
+			})
+
+			JustBeforeEach(func() {
+				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
+
+				lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGUID)
+				Expect(err).NotTo(HaveOccurred())
+
+				actualLRP := lrps[0].Instance
+				containerHandle := actualLRP.InstanceGuid
+
+				container, err = gardenClient.Lookup(containerHandle)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("passes them to garden", func() {
+				memLimit, err := container.CurrentMemoryLimits()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(memoryInBytes(37)).To(Equal(memLimit.LimitInBytes))
+			})
+
+			// It("has the memory usage on the container scaled properly", func() {
+			// 	metrics, err := container.Metrics()
+			// 	Expect(err).NotTo(HaveOccurred())
+
+			// 	Expect(metrics.MemoryStat.TotalUsageTowardLimit).To(BeNumerically(">=", 0))
+			// 	Expect(metrics.MemoryStat.TotalUsageTowardLimit).To(BeNumerically("<=", 20))
+			// })
+
+			Context("when emitting app metrics", func() {
+				var metricsChan chan events.ContainerMetric
+
+				BeforeEach(func() {
+					port, err := localip.LocalPort()
+					Expect(err).NotTo(HaveOccurred())
+					addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", port))
+					Expect(err).NotTo(HaveOccurred())
+					udpConn, err := net.ListenUDP("udp", addr)
+					Expect(err).NotTo(HaveOccurred())
+
+					metricsChan = make(chan events.ContainerMetric, 10)
+					metronAgent = ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
+						logger := logger.Session("metron-agent")
+						close(ready)
+						logger.Info("starting", lager.Data{"port": addr.Port})
+						msgs := make(chan []byte)
+						errCh := make(chan error)
+						go func() {
+							for {
+								bs := make([]byte, 102400)
+								n, _, err := udpConn.ReadFromUDP(bs)
+								if err != nil {
+									errCh <- err
+									return
+								}
+								msgs <- bs[:n]
+							}
+						}()
+						for {
+							select {
+							case <-signals:
+								logger.Info("signaled")
+								break
+							case err := <-errCh:
+								return err
+							case msg := <-msgs:
+								println(">>>>>message received")
+								var envelope events.Envelope
+								err := proto.Unmarshal(msg, &envelope)
+								if err != nil {
+									logger.Error("error-parsing-message", err)
+									continue
+								}
+								fmt.Printf(">>>>>>>>>>>>>>>> Envelope %#v", envelope.GetEventType())
+								if envelope.GetEventType() != events.Envelope_ContainerMetric {
+									continue
+								}
+								metric := *envelope.GetContainerMetric()
+								fmt.Printf(">>>>>>>>>>>>>>>> %d", metric.MemoryBytes)
+								metricsChan <- metric //*envelope.GetContainerMetric()
+							}
+						}
+						udpConn.Close()
+						return nil
+					})
+
+					fmt.Printf("inigo metron %#v \n", metronAgent)
+					dropsondeConfig := func(cfg *config.RepConfig) {
+						cfg.DropsondePort = addr.Port
+						cfg.ContainerMetricsReportInterval = durationjson.Duration(5 * time.Second)
+					}
+
+					rep = componentMaker.Rep(
+						configRepCerts, exportNetworkVars,
+						enableContainerProxy, setProxyMemoryAllocation,
+						dropsondeConfig,
+					)
+				})
+
+				FIt("should receive rescaled component metrics", func() {
+					Eventually(metricsChan).Should(Receive())
+					// Eventually(func() bool {
+					// 	println("listening on the metrics channel")
+					// 	metric := <-metricsChan
+					// 	return (*metric.MemoryBytes <= memoryInBytes(20) && *metric.MemoryBytesQuota == memoryInBytes(20))
+					// }).Should(BeTrue())
+				})
+			})
+		})
 	})
 })
+
+func memoryInBytes(memoryMb uint64) uint64 {
+	return memoryMb * 1024 * 1024
+}
 
 func getContainerInternalIP() string {
 	By("getting the internal ip address of the container")
