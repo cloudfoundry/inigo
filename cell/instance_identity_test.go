@@ -400,7 +400,11 @@ var _ = Describe("InstanceIdentity", func() {
 			)
 
 			BeforeEach(func() {
-				lrp.MemoryMb = 32
+				containerMutex.Lock()
+				defer containerMutex.Unlock()
+				container = nil
+
+				lrp.MemoryMb = 64
 				setProxyMemoryAllocation = func(config *config.RepConfig) {
 					config.ProxyMemoryAllocationMB = 5
 				}
@@ -490,7 +494,8 @@ var _ = Describe("InstanceIdentity", func() {
 
 								metrics, err := c.Metrics()
 								if err != nil {
-									return err
+									// do not return the error since garden will initially
+									continue
 								}
 								stats := metrics.MemoryStat
 								actualMemoryUsage := stats.TotalRss + stats.TotalCache - stats.TotalInactiveFile
