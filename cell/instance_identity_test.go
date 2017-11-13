@@ -429,14 +429,6 @@ var _ = Describe("InstanceIdentity", func() {
 				Expect(memoryInBytes(37)).To(Equal(memLimit.LimitInBytes))
 			})
 
-			// It("has the memory usage on the container scaled properly", func() {
-			// 	metrics, err := container.Metrics()
-			// 	Expect(err).NotTo(HaveOccurred())
-
-			// 	Expect(metrics.MemoryStat.TotalUsageTowardLimit).To(BeNumerically(">=", 0))
-			// 	Expect(metrics.MemoryStat.TotalUsageTowardLimit).To(BeNumerically("<=", 20))
-			// })
-
 			Context("when emitting app metrics", func() {
 				var (
 					metricsChan chan map[string]uint64
