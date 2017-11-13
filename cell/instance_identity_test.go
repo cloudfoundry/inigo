@@ -423,12 +423,6 @@ var _ = Describe("InstanceIdentity", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("passes them to garden", func() {
-				memLimit, err := container.CurrentMemoryLimits()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(memoryInBytes(37)).To(Equal(memLimit.LimitInBytes))
-			})
-
 			Context("when emitting app metrics", func() {
 				var (
 					metricsChan chan map[string]uint64
