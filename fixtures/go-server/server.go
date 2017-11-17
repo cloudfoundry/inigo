@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -8,6 +9,11 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
+)
+
+var (
+	memoryAllocated = flag.Uint("allocate-memory-b", 0, "allocate this much memory (in mb) on the heap and do not release it")
+	someGarbage     []uint8
 )
 
 func main() {
@@ -20,6 +26,10 @@ func main() {
 	http.HandleFunc("/cf-instance-cert", cfInstanceCert)
 	http.HandleFunc("/cf-instance-key", cfInstanceKey)
 	http.HandleFunc("/cat", catFile)
+
+	if memoryAllocated != nil {
+		someGarbage = make([]uint8, *memoryAllocated*1024*1024)
+	}
 
 	fmt.Println("listening...")
 
