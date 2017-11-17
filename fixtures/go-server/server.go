@@ -62,10 +62,6 @@ func main() {
 	}
 }
 
-type VCAPApplication struct {
-	InstanceIndex int `json:"instance_index"`
-}
-
 func hello(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(res, "%s", os.Getenv("INSTANCE_INDEX"))
 }
@@ -89,7 +85,6 @@ func write(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	res.Write(body)
-	return
 }
 
 func env(res http.ResponseWriter, req *http.Request) {
@@ -141,7 +136,6 @@ func cfInstanceCert(res http.ResponseWriter, req *http.Request) {
 	}
 
 	res.Write(data)
-	return
 }
 
 func cfInstanceKey(res http.ResponseWriter, req *http.Request) {
@@ -154,7 +148,6 @@ func cfInstanceKey(res http.ResponseWriter, req *http.Request) {
 	}
 
 	res.Write(data)
-	return
 }
 
 func catFile(res http.ResponseWriter, req *http.Request) {
@@ -173,5 +166,4 @@ func catFile(res http.ResponseWriter, req *http.Request) {
 	}
 
 	res.Write(data)
-	return
 }
