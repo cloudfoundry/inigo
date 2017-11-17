@@ -437,9 +437,7 @@ var _ = Describe("InstanceIdentity", func() {
 					metricsChan = make(chan map[string]uint64, 10)
 					memoryLimit = uint64(lrp.MemoryMb)
 
-					port, err := localip.LocalPort()
-					Expect(err).NotTo(HaveOccurred())
-					addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", port))
+					addr, err := net.ResolveUDPAddr("udp", ":0")
 					Expect(err).NotTo(HaveOccurred())
 					udpConn, err := net.ListenUDP("udp", addr)
 					Expect(err).NotTo(HaveOccurred())
@@ -510,7 +508,7 @@ var _ = Describe("InstanceIdentity", func() {
 					})
 
 					dropsondeConfig := func(cfg *config.RepConfig) {
-						cfg.DropsondePort = addr.Port
+						cfg.DropsondePort = udpConn.LocalAddr().(*net.UDPAddr).Port
 						cfg.ContainerMetricsReportInterval = durationjson.Duration(5 * time.Second)
 					}
 
