@@ -556,8 +556,8 @@ func ScaledDownMemory(memoryLimit, proxyAllocatedMemory uint64) types.GomegaMatc
 	return And(
 		HaveKey("memory"),
 		HaveKey("actual_memory"),
-		matchers.NewWithTransformMatcher(func(m map[string]uint64) uint64 {
-			return m["memory"] - m["actual_memory"]*memoryLimit/(memoryLimit+proxyAllocatedMemory)
+		matchers.NewWithTransformMatcher(func(m map[string]uint64) int64 {
+			return int64(m["memory"]) - int64(m["actual_memory"]*memoryLimit/(memoryLimit+proxyAllocatedMemory))
 		}, BeNumerically("~", 0, 1024)),
 	)
 }
