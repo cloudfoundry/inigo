@@ -517,6 +517,8 @@ var _ = Describe("InstanceIdentity", func() {
 						enableContainerProxy, setProxyMemoryAllocation,
 						dropsondeConfig,
 					)
+
+					lrp.Action.RunAction.Args = []string{"-allocate-memory-mb=30"}
 				})
 
 				It("should receive rescaled memory usage", func() {
@@ -558,7 +560,7 @@ func ScaledDownMemory(memoryLimit, proxyAllocatedMemory uint64) types.GomegaMatc
 		HaveKey("actual_memory"),
 		matchers.NewWithTransformMatcher(func(m map[string]uint64) int64 {
 			return int64(m["memory"]) - int64(m["actual_memory"]*memoryLimit/(memoryLimit+proxyAllocatedMemory))
-		}, BeNumerically("~", 0, 1024)),
+		}, BeNumerically("~", 0, 102400)),
 	)
 }
 
