@@ -159,6 +159,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	unprivilegedGrootfsConfig.Create.JSON = true
 	unprivilegedGrootfsConfig.Create.UidMappings = []string{"0:4294967294:1", "1:1:4294967293"}
 	unprivilegedGrootfsConfig.Create.GidMappings = []string{"0:4294967294:1", "1:1:4294967293"}
+	unprivilegedGrootfsConfig.Create.SkipLayerValidation = true
 
 	privilegedGrootfsConfig := world.GrootFSConfig{
 		StorePath: fmt.Sprintf("/mnt/btrfs/privileged-%d-%d", ginkgo.GinkgoParallelNode(), storeTimestamp),
@@ -167,6 +168,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 		LogLevel:  "debug",
 	}
 	privilegedGrootfsConfig.Create.JSON = true
+	privilegedGrootfsConfig.Create.SkipLayerValidation = true
 
 	gardenConfig := world.GardenSettingsConfig{
 		GrootFSBinPath:            grootfsBinPath,

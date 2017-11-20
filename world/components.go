@@ -104,9 +104,10 @@ type GrootFSConfig struct {
 	DraxBin   string `yaml:"drax_bin"`
 	LogLevel  string `yaml:"log_level"`
 	Create    struct {
-		JSON        bool     `yaml:"json"`
-		UidMappings []string `yaml:"uid_mappings"`
-		GidMappings []string `yaml:"gid_mappings"`
+		JSON                bool     `yaml:"json"`
+		UidMappings         []string `yaml:"uid_mappings"`
+		GidMappings         []string `yaml:"gid_mappings"`
+		SkipLayerValidation bool     `yaml:"skip_layer_validation"`
 	}
 }
 

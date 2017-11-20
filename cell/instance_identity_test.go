@@ -19,6 +19,7 @@ import (
 	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
+	"code.cloudfoundry.org/inigo/world"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
@@ -124,6 +125,7 @@ var _ = Describe("InstanceIdentity", func() {
 
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
 		archiveFiles := fixtures.GoServerApp()
+		archive_helper.CreateTarGZArchive(filepath.Join(fileServerStaticDir, "lrp.tgz"), archiveFiles)
 		archive_helper.CreateZipArchive(
 			filepath.Join(fileServerStaticDir, "lrp.zip"),
 			archiveFiles,
@@ -373,6 +375,30 @@ var _ = Describe("InstanceIdentity", func() {
 
 		It("should have a container with envoy enabled on it", func() {
 			Eventually(connect).Should(Succeed())
+		})
+
+		Context("when the container uses OCI preloaded rootfs", func() {
+			BeforeEach(func() {
+				if !world.UseGrootFS() {
+					Skip("Not using grootfs")
+				}
+
+				lrp.CachedDependencies = nil
+				layer := fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.tgz")
+				lrp.RootFs = "preloaded+layer:" + helpers.DefaultStack + "?layer=" + layer + "&layer_path=/" + "&layer_digest="
+				lrp.Action = models.WrapAction(&models.RunAction{
+					User: "vcap",
+					Path: "/go-server",
+					Env: []*models.EnvironmentVariable{
+						{"PORT", "8080"},
+						{"HTTPS_PORT", "8081"},
+					},
+				})
+			})
+
+			It("should have a container with envoy enabled on it", func() {
+				Eventually(connect).Should(Succeed())
+			})
 		})
 
 		Context("when certs are rotated", func() {
