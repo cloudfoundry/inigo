@@ -23,6 +23,7 @@ import (
 	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
 
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 
@@ -124,6 +125,7 @@ var _ = Describe("InstanceIdentity", func() {
 
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
 		archiveFiles := fixtures.GoServerApp()
+		archive_helper.CreateTarGZArchive(filepath.Join(fileServerStaticDir, "lrp.tgz"), archiveFiles)
 		archive_helper.CreateZipArchive(
 			filepath.Join(fileServerStaticDir, "lrp.zip"),
 			archiveFiles,
@@ -373,6 +375,24 @@ var _ = Describe("InstanceIdentity", func() {
 
 		It("should have a container with envoy enabled on it", func() {
 			Eventually(connect).Should(Succeed())
+		})
+
+		FContext("when the container uses OCI preloaded rootfs", func() {
+			BeforeEach(func() {
+				lrp.CachedDependencies = nil
+				content, err := ioutil.ReadFile(filepath.Join(fileServerStaticDir, "lrp.tgz"))
+				Expect(err).NotTo(HaveOccurred())
+				algo := sha256.New()
+				_, err = algo.Write(content)
+				Expect(err).NotTo(HaveOccurred())
+				digest := fmt.Sprintf("%x", algo.Sum(nil))
+				layer := fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.tgz")
+				lrp.RootFs = "preloaded+layer:" + helpers.DefaultStack + "?layer=" + layer + "&layer_path=/tmp/diego" + "&layer_digest=" + digest
+			})
+
+			It("should have a container with envoy enabled on it", func() {
+				Eventually(connect).Should(Succeed())
+			})
 		})
 
 		Context("when certs are rotated", func() {
