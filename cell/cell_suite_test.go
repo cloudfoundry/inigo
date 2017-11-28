@@ -125,6 +125,9 @@ func CompileHealthcheckExecutable() string {
 	healthcheckDir, err := ioutil.TempDir("", "healthcheck")
 	Expect(err).NotTo(HaveOccurred())
 
+	err = os.Chmod(healthcheckDir, 0777)
+	Expect(err).NotTo(HaveOccurred())
+
 	healthcheckPath, err := gexec.Build("code.cloudfoundry.org/healthcheck/cmd/healthcheck", "-race")
 	Expect(err).NotTo(HaveOccurred())
 

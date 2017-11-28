@@ -91,16 +91,6 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 
 		BeforeEach(func() {
 			lrp = helpers.DefaultDeclaritiveHealthcheckLRPCreateRequest(processGuid, "log-guid", 1)
-			lrp.Setup = nil
-			lrp.CachedDependencies = []*models.CachedDependency{{
-				From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
-				To:        "/tmp/diego",
-				Name:      "lrp bits",
-				CacheKey:  "lrp-cache-key",
-				LogSource: "APP",
-			}}
-			lrp.LegacyDownloadUser = "vcap"
-			lrp.Privileged = true
 		})
 
 		JustBeforeEach(func() {

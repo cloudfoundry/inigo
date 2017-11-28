@@ -516,6 +516,9 @@ func (maker ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.Rep
 	tmpDir, err := ioutil.TempDir(os.TempDir(), "executor")
 	Expect(err).NotTo(HaveOccurred())
 
+	err = os.Chmod(tmpDir, 0777)
+	Expect(err).NotTo(HaveOccurred())
+
 	cachePath := path.Join(tmpDir, "cache")
 
 	repConfig := repconfig.RepConfig{
