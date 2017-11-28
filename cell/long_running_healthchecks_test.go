@@ -2,6 +2,7 @@ package cell_test
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"sync"
@@ -11,7 +12,10 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
+	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
+	logevents "github.com/cloudfoundry/sonde-go/events"
 	"github.com/gogo/protobuf/proto"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -46,10 +50,64 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 			cfg.HealthCheckWorkPoolSize = 1
 		}
 
+		port, err := localip.LocalPort()
+		Expect(err).NotTo(HaveOccurred())
+		addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", port))
+		Expect(err).NotTo(HaveOccurred())
+		udpConn, err := net.ListenUDP("udp", addr)
+		Expect(err).NotTo(HaveOccurred())
+
+		metronAgent := ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
+			logger := logger.Session("metron-agent")
+			close(ready)
+			logger.Info("starting", lager.Data{"port": addr.Port})
+			msgs := make(chan []byte)
+			errCh := make(chan error)
+			go func() {
+				for {
+					bs := make([]byte, 102400)
+					n, _, err := udpConn.ReadFromUDP(bs)
+					if err != nil {
+						errCh <- err
+						return
+					}
+					msgs <- bs[:n]
+				}
+			}()
+		loop:
+			for {
+				select {
+				case <-signals:
+					logger.Info("signaled")
+					break loop
+				case err := <-errCh:
+					return err
+				case msg := <-msgs:
+					var envelope logevents.Envelope
+					err := proto.Unmarshal(msg, &envelope)
+					if err != nil {
+						logger.Error("error-parsing-message", err)
+						continue
+					}
+					if envelope.GetEventType() != logevents.Envelope_LogMessage {
+						continue
+					}
+					logger.Info("received-data", lager.Data{"message": string(envelope.GetLogMessage().GetMessage())})
+				}
+			}
+			udpConn.Close()
+			return nil
+		})
+
+		dropsondeListener := func(cfg *config.RepConfig) {
+			cfg.DropsondePort = addr.Port
+		}
+
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
-			{"rep", componentMaker.Rep(turnOnLongRunningHealthchecks)},
+			{"metron-agent", metronAgent},
+			{"rep", componentMaker.Rep(turnOnLongRunningHealthchecks, dropsondeListener)},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 		}))
