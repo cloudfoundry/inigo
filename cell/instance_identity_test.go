@@ -109,7 +109,7 @@ var _ = Describe("InstanceIdentity", func() {
 		}}
 		lrp.MetricsGuid = processGUID
 		lrp.LegacyDownloadUser = "vcap"
-		lrp.Privileged = true
+		lrp.Ports = []uint32{8080, 8081}
 		lrp.Action = models.WrapAction(&models.RunAction{
 			User: "vcap",
 			Path: "/tmp/diego/go-server",
@@ -347,7 +347,6 @@ var _ = Describe("InstanceIdentity", func() {
 				config.ContainerProxyPath = os.Getenv("ENVOY_PATH")
 
 				tmpdir := world.TempDir("envoy_config")
-				Expect(err).NotTo(HaveOccurred())
 
 				config.ContainerProxyConfigPath = tmpdir
 			}
@@ -428,7 +427,17 @@ var _ = Describe("InstanceIdentity", func() {
 		}
 
 		It("should have a container with envoy enabled on it", func() {
-			Eventually(connect).Should(Succeed())
+			Eventually(connect, 10*time.Second).Should(Succeed())
+		})
+
+		Context("when the container uses a docker image", func() {
+			BeforeEach(func() {
+				lrp = helpers.DockerLRPCreateRequest(processGUID)
+			})
+
+			It("should have a container with envoy enabled on it", func() {
+				Eventually(connect, 10*time.Second).Should(Succeed())
+			})
 		})
 
 		Context("when the container uses OCI preloaded rootfs", func() {
@@ -617,10 +626,10 @@ var _ = Describe("InstanceIdentity", func() {
 					})
 
 					It("should not receive rescaled memory limit", func() {
-						Eventually(metricsChan, 10*time.Second).Should(Receive(UnscaledDownMemory()))
+						Eventually(metricsChan, 10*time.Second).Should(Receive(ScaledDownMemory(memoryLimit, 5)))
 					})
 
-					It("should not receive rescaled memory usage", func() {
+					It("should receive the rescaled memory usage", func() {
 						Eventually(metricsChan, 10*time.Second).Should(Receive(HaveKeyWithValue("memory_quota", memoryInBytes(memoryLimit))))
 					})
 				})
@@ -628,11 +637,6 @@ var _ = Describe("InstanceIdentity", func() {
 		})
 	})
 })
-
-func UnscaledDownMemory() types.GomegaMatcher {
-	someNonZeroValue := uint64(1) // otherwise the ScaledDownMemory will attempt to divide by 0
-	return ScaledDownMemory(someNonZeroValue, 0)
-}
 
 func ScaledDownMemory(memoryLimit, proxyAllocatedMemory uint64) types.GomegaMatcher {
 	return And(
@@ -663,7 +667,7 @@ func getContainerInternalAddress(client bbs.Client, processGuid string, port uin
 			return address + ":" + strconv.Itoa(int(mapping.ContainerPort))
 		}
 	}
-	Fail("cannot find port mapping for port 8080")
+	Fail("cannot find port mapping for port "+strconv.Itoa(int(port)), 1)
 	panic("unreachable")
 }
 
