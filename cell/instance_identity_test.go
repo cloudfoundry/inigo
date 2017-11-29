@@ -9,11 +9,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
+	"strconv"
 	"sync"
 	"time"
 
 	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
+	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/garden"
@@ -347,7 +348,58 @@ var _ = Describe("InstanceIdentity", func() {
 				config.ContainerProxyConfigPath = tmpdir
 			}
 
-			rep = componentMaker.Rep(configRepCerts, exportNetworkVars, enableContainerProxy)
+			addr, err := net.ResolveUDPAddr("udp", ":0")
+			Expect(err).NotTo(HaveOccurred())
+
+			udpConn, err := net.ListenUDP("udp", addr)
+			Expect(err).NotTo(HaveOccurred())
+
+			dropsondeConfig := func(cfg *config.RepConfig) {
+				cfg.DropsondePort = udpConn.LocalAddr().(*net.UDPAddr).Port
+				cfg.ContainerMetricsReportInterval = durationjson.Duration(5 * time.Second)
+			}
+
+			rep = componentMaker.Rep(configRepCerts, exportNetworkVars, enableContainerProxy, dropsondeConfig)
+
+			metronAgent = ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
+				defer GinkgoRecover()
+				defer udpConn.Close()
+
+				logger := logger.Session("metron-agent")
+				close(ready)
+				logger.Info("starting", lager.Data{"port": addr.Port})
+				msgs := make(chan []byte)
+				errCh := make(chan error)
+				go func() {
+					for {
+						bs := make([]byte, 102400)
+						n, _, err := udpConn.ReadFromUDP(bs)
+						if err != nil {
+							errCh <- err
+							return
+						}
+						msgs <- bs[:n]
+					}
+				}()
+				for {
+					select {
+					case <-signals:
+						logger.Info("signaled")
+						return nil
+					case err := <-errCh:
+						return err
+					case msg := <-msgs:
+						var envelope events.Envelope
+						err := proto.Unmarshal(msg, &envelope)
+						if err != nil {
+							continue
+						}
+						if x := envelope.GetLogMessage(); x != nil {
+							logger.Info("received-data", lager.Data{"message": string(x.GetMessage())})
+						}
+					}
+				}
+			})
 		})
 
 		JustBeforeEach(func() {
