@@ -61,9 +61,7 @@ var _ = Describe("InstanceIdentity", func() {
 		organizationalUnit = []string{"jim:radical"}
 
 		var err error
-		credDir, err = ioutil.TempDir(os.TempDir(), "instance-creds")
-		Expect(err).NotTo(HaveOccurred())
-		Expect(os.Chmod(credDir, 0755)).To(Succeed())
+		credDir = world.TempDir("instance-creds")
 
 		caCertPath, err := filepath.Abs("../fixtures/certs/ca-with-no-max-path-length.crt")
 		Expect(err).NotTo(HaveOccurred())
@@ -343,7 +341,7 @@ var _ = Describe("InstanceIdentity", func() {
 				config.EnvoyConfigRefreshDelay = durationjson.Duration(time.Second)
 				config.ContainerProxyPath = os.Getenv("ENVOY_PATH")
 
-				tmpdir, err := ioutil.TempDir("", "envoy_config")
+				tmpdir := world.TempDir("envoy_config")
 				Expect(err).NotTo(HaveOccurred())
 
 				config.ContainerProxyConfigPath = tmpdir

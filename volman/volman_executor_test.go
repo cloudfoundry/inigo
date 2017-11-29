@@ -3,7 +3,6 @@ package volman_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -18,6 +17,7 @@ import (
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/executor"
 	executorinit "code.cloudfoundry.org/executor/initializer"
+	"code.cloudfoundry.org/inigo/world"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/voldriver"
@@ -61,8 +61,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		ctx := context.TODO()
 		env = driverhttp.NewHttpDriverEnv(logger, ctx)
 
-		cachePath, err = ioutil.TempDir("", "executor-tmp")
-		Expect(err).NotTo(HaveOccurred())
+		cachePath = world.TempDir("executor-tmp")
 
 		config = executorinit.DefaultConfiguration
 		config.VolmanDriverPaths = path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", ginkgoconfig.GinkgoConfig.ParallelNode))

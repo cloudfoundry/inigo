@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -181,8 +180,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 	guid, err := uuid.NewV4()
 	Expect(err).NotTo(HaveOccurred())
 
-	volmanConfigDir, err := ioutil.TempDir(os.TempDir(), guid.String())
-	Expect(err).NotTo(HaveOccurred())
+	volmanConfigDir := world.TempDir(guid.String())
 
 	return world.ComponentMaker{
 		Artifacts: builtArtifacts,

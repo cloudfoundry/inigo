@@ -2,7 +2,6 @@ package cell_test
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -122,12 +121,7 @@ func TestCell(t *testing.T) {
 }
 
 func CompileHealthcheckExecutable() string {
-	healthcheckDir, err := ioutil.TempDir("", "healthcheck")
-	Expect(err).NotTo(HaveOccurred())
-
-	err = os.Chmod(healthcheckDir, 0777)
-	Expect(err).NotTo(HaveOccurred())
-
+	healthcheckDir := world.TempDir("healthcheck")
 	healthcheckPath, err := gexec.Build("code.cloudfoundry.org/healthcheck/cmd/healthcheck", "-race")
 	Expect(err).NotTo(HaveOccurred())
 

@@ -16,6 +16,7 @@ import (
 	"code.cloudfoundry.org/executor"
 	"code.cloudfoundry.org/executor/gardenhealth"
 	executorinit "code.cloudfoundry.org/executor/initializer"
+	"code.cloudfoundry.org/inigo/world"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	"github.com/cloudfoundry-incubator/cf-test-helpers/generator"
@@ -61,9 +62,7 @@ var _ = Describe("Executor/Garden", func() {
 		config.GardenHealthcheckProcessUser = "vcap"
 		config.MaxCacheSizeInBytes = 1 * 1024 * 1024
 
-		var err error
-		cachePath, err = ioutil.TempDir("", "executor-tmp")
-		Expect(err).NotTo(HaveOccurred())
+		cachePath = world.TempDir("executor-tmp")
 
 		ownerName = "executor" + generator.RandomName()
 

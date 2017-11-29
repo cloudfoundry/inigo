@@ -164,8 +164,7 @@ func (blc *BuiltLifecycles) BuildLifecycles(lifeCycle string) {
 	healthcheckPath, err := gexec.Build("code.cloudfoundry.org/healthcheck/cmd/healthcheck", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	lifecycleDir, err := ioutil.TempDir("", lifeCycle)
-	Expect(err).NotTo(HaveOccurred())
+	lifecycleDir := TempDir(lifeCycle)
 
 	err = os.Rename(builderPath, filepath.Join(lifecycleDir, "builder"))
 	Expect(err).NotTo(HaveOccurred())
@@ -513,12 +512,7 @@ func (maker ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.Rep
 
 	name := "rep-" + strconv.Itoa(n)
 
-	tmpDir, err := ioutil.TempDir(os.TempDir(), "executor")
-	Expect(err).NotTo(HaveOccurred())
-
-	err = os.Chmod(tmpDir, 0777)
-	Expect(err).NotTo(HaveOccurred())
-
+	tmpDir := TempDir("executor")
 	cachePath := path.Join(tmpDir, "cache")
 
 	repConfig := repconfig.RepConfig{
@@ -677,8 +671,7 @@ func (maker ComponentMaker) RouteEmitterN(n int, fs ...func(config *routeemitter
 }
 
 func (maker ComponentMaker) FileServer() (ifrit.Runner, string) {
-	servedFilesDir, err := ioutil.TempDir("", "file-server-files")
-	Expect(err).NotTo(HaveOccurred())
+	servedFilesDir := TempDir("file-server-files")
 
 	configFile, err := ioutil.TempFile("", "file-server-config")
 	Expect(err).NotTo(HaveOccurred())
