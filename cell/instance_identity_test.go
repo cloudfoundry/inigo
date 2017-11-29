@@ -236,14 +236,16 @@ var _ = Describe("InstanceIdentity", func() {
 	})
 
 	Context("lrps", func() {
-		var ipAddress string
+		var address, ipAddress string
 
 		JustBeforeEach(func() {
 			err := bbsClient.DesireLRP(logger, lrp)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
 
-			ipAddress = getContainerInternalIP()
+			address = getContainerInternalAddress(bbsClient, processGUID, 8081, false)
+			ipAddress, _, err = net.SplitHostPort(address)
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should add instance identity certificate and key in the right location", func() {
@@ -260,23 +262,25 @@ var _ = Describe("InstanceIdentity", func() {
 	})
 
 	Context("when a server uses the provided cert and key", func() {
-		var ipAddress string
+		var address string
 
 		JustBeforeEach(func() {
 			err := bbsClient.DesireLRP(logger, lrp)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
 
-			ipAddress = getContainerInternalIP()
+			address = getContainerInternalAddress(bbsClient, processGUID, 8081, false)
 		})
 
 		Context("and a client app tries to connect using the root ca cert", func() {
 			It("successfully connects and verify the sever identity", func() {
-				resp, err := client.Get(fmt.Sprintf("https://%s:8081/env", ipAddress))
+				resp, err := client.Get(fmt.Sprintf("https://%s/env", address))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusOK))
 				defer resp.Body.Close()
 				body, err := ioutil.ReadAll(resp.Body)
+				Expect(err).NotTo(HaveOccurred())
+				ipAddress, _, err := net.SplitHostPort(address)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(string(body)).To(ContainSubstring("CF_INSTANCE_INTERNAL_IP=" + ipAddress))
 			})
@@ -320,7 +324,7 @@ var _ = Describe("InstanceIdentity", func() {
 	})
 
 	Context("when running with envoy proxy", func() {
-		var ipAddress string
+		var address string
 		var configRepCerts func(cfg *config.RepConfig)
 		var exportNetworkVars func(cfg *config.RepConfig)
 		var enableContainerProxy func(cfg *config.RepConfig)
@@ -407,11 +411,11 @@ var _ = Describe("InstanceIdentity", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
 
-			ipAddress = getContainerInternalIP()
+			address = getContainerInternalAddress(bbsClient, processGUID, 8080, true)
 		})
 
 		connect := func() error {
-			resp, err := client.Get(fmt.Sprintf("https://%s:61001/env", ipAddress))
+			resp, err := client.Get(fmt.Sprintf("https://%s/env", address))
 			if err != nil {
 				return err
 			}
@@ -644,25 +648,23 @@ func memoryInBytes(memoryMb uint64) uint64 {
 	return memoryMb * 1024 * 1024
 }
 
-func getContainerInternalIP() string {
+func getContainerInternalAddress(client bbs.Client, processGuid string, port uint32, tls bool) string {
 	By("getting the internal ip address of the container")
-	var (
-		body []byte
-		code int
-		err  error
-	)
-	Eventually(func() int {
-		body, code, err = helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses.Router, helpers.DefaultHost, "env")
-		Expect(err).NotTo(HaveOccurred())
-		return code
-	}).Should(Equal(http.StatusOK))
-	var ipAddress string
-	for _, line := range strings.Fields(string(body)) {
-		if strings.HasPrefix(line, "CF_INSTANCE_INTERNAL_IP=") {
-			ipAddress = strings.Split(line, "=")[1]
+	lrpGroups, err := client.ActualLRPGroupsByProcessGuid(logger, processGuid)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(lrpGroups).To(HaveLen(1))
+	netInfo := lrpGroups[0].Instance.ActualLRPNetInfo
+	address := netInfo.InstanceAddress
+	for _, mapping := range netInfo.Ports {
+		if mapping.ContainerPort == port {
+			if tls {
+				return address + ":" + strconv.Itoa(int(mapping.ContainerTlsProxyPort))
+			}
+			return address + ":" + strconv.Itoa(int(mapping.ContainerPort))
 		}
 	}
-	return ipAddress
+	Fail("cannot find port mapping for port 8080")
+	panic("unreachable")
 }
 
 func runTaskAndGetCommandOutput(command string, organizationalUnits []string) string {
