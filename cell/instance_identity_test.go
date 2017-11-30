@@ -440,6 +440,16 @@ var _ = Describe("InstanceIdentity", func() {
 			})
 		})
 
+		Context("when the container is privileged", func() {
+			BeforeEach(func() {
+				lrp.Privileged = true
+			})
+
+			It("should have a container with envoy enabled on it", func() {
+				Eventually(connect, 10*time.Second).Should(Succeed())
+			})
+		})
+
 		Context("when the container uses OCI preloaded rootfs", func() {
 			BeforeEach(func() {
 				if !world.UseGrootFS() {
@@ -460,7 +470,7 @@ var _ = Describe("InstanceIdentity", func() {
 			})
 
 			It("should have a container with envoy enabled on it", func() {
-				Eventually(connect).Should(Succeed())
+				Eventually(connect, 10*time.Second).Should(Succeed())
 			})
 		})
 
