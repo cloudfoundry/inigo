@@ -758,7 +758,7 @@ sslcertificate:
   signedcertificatetimestamps: []
   leaf: null
 skip_ssl_validation: false
-cipher_suites: ""
+cipher_suites: "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256"
 ciphersuites: []
 load_balancer_healthy_threshold: 0s
 publish_start_message_interval: 0s

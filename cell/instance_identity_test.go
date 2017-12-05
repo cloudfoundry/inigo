@@ -416,7 +416,7 @@ var _ = Describe("InstanceIdentity", func() {
 		connect := func() error {
 			resp, err := client.Get(fmt.Sprintf("https://%s/env", address))
 			if err != nil {
-				return err
+				return fmt.Errorf("Get returned error: %s", err.Error())
 			}
 			defer resp.Body.Close()
 			if resp.StatusCode != http.StatusOK {
@@ -425,6 +425,22 @@ var _ = Describe("InstanceIdentity", func() {
 
 			return nil
 		}
+
+		Context("when an invalid cipher is used", func() {
+			BeforeEach(func() {
+				client.Transport = &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: false,
+						RootCAs:            rootCAs,
+						CipherSuites:       []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256},
+					},
+				}
+			})
+
+			It("should fail", func() {
+				Eventually(connect, 10*time.Second).Should(MatchError(ContainSubstring("tls: handshake failure")))
+			})
+		})
 
 		It("should have a container with envoy enabled on it", func() {
 			Eventually(connect, 10*time.Second).Should(Succeed())
