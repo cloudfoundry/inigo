@@ -13,7 +13,6 @@ import (
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
 	logevents "github.com/cloudfoundry/sonde-go/events"
 	"github.com/gogo/protobuf/proto"
@@ -50,7 +49,7 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 			cfg.HealthCheckWorkPoolSize = 1
 		}
 
-		port, err := localip.LocalPort()
+		port, err := componentMaker.PortAllocator.ClaimPorts(1)
 		Expect(err).NotTo(HaveOccurred())
 		addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", port))
 		Expect(err).NotTo(HaveOccurred())

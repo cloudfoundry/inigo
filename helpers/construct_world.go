@@ -9,6 +9,7 @@ import (
 	"code.cloudfoundry.org/bbs/test_helpers"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
 	"code.cloudfoundry.org/diego-ssh/keys"
+	"code.cloudfoundry.org/inigo/helpers/portauthority"
 	"code.cloudfoundry.org/inigo/world"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	"github.com/nu7hatch/gouuid"
@@ -182,6 +183,14 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 
 	volmanConfigDir := world.TempDir(guid.String())
 
+	node := ginkgo.GinkgoParallelNode()
+	startPort := 1000 * node
+	portRange := 1000
+	endPort := startPort + portRange*(node+1)
+
+	portAllocator, err := portauthority.New(startPort, endPort)
+	Expect(err).NotTo(HaveOccurred())
+
 	return world.ComponentMaker{
 		Artifacts: builtArtifacts,
 		Addresses: addresses,
@@ -201,5 +210,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 
 		DBDriverName:           dbDriverName,
 		DBBaseConnectionString: dbBaseConnectionString,
+
+		PortAllocator: portAllocator,
 	}
 }

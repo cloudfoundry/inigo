@@ -35,6 +35,7 @@ import (
 	gardenclient "code.cloudfoundry.org/garden/client"
 	gardenconnection "code.cloudfoundry.org/garden/client/connection"
 	"code.cloudfoundry.org/guardian/gqt/runner"
+	"code.cloudfoundry.org/inigo/helpers/portauthority"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/locket"
@@ -150,6 +151,8 @@ type ComponentMaker struct {
 
 	DBDriverName           string
 	DBBaseConnectionString string
+
+	PortAllocator portauthority.PortAllocator
 }
 
 func (blc *BuiltLifecycles) BuildLifecycles(lifeCycle string) {
@@ -418,7 +421,8 @@ func (maker ComponentMaker) RoutingAPI(modifyConfigFuncs ...func(*routingapi.Con
 		DBName:     fmt.Sprintf("routingapi_%d", GinkgoParallelNode()),
 	}
 
-	adminPort := 20000 + GinkgoParallelNode()
+	port, err := maker.PortAllocator.ClaimPorts(2)
+	Expect(err).NotTo(HaveOccurred())
 
 	if maker.DBDriverName == "mysql" {
 		sqlConfig.Port = 3306
@@ -430,7 +434,7 @@ func (maker ComponentMaker) RoutingAPI(modifyConfigFuncs ...func(*routingapi.Con
 		sqlConfig.Password = "diego_pw"
 	}
 
-	runner, err := routingapi.NewRoutingAPIRunner(binPath, maker.ConsulCluster(), adminPort, sqlConfig, modifyConfigFuncs...)
+	runner, err := routingapi.NewRoutingAPIRunner(binPath, maker.ConsulCluster(), int(port), int(port+1), sqlConfig, modifyConfigFuncs...)
 	Expect(err).NotTo(HaveOccurred())
 	return runner
 }
@@ -903,7 +907,9 @@ func (maker ComponentMaker) VolmanClient(logger lager.Logger) (volman.Manager, i
 }
 
 func (maker ComponentMaker) VolmanDriver(logger lager.Logger) (ifrit.Runner, voldriver.Driver) {
-	debugServerAddress := fmt.Sprintf("0.0.0.0:%d", 9850+GinkgoParallelNode())
+	debugServerPort, err := maker.PortAllocator.ClaimPorts(1)
+	Expect(err).NotTo(HaveOccurred())
+	debugServerAddress := fmt.Sprintf("0.0.0.0:%d", debugServerPort)
 	fakeDriverRunner := ginkgomon.New(ginkgomon.Config{
 		Name: "local-driver",
 		Command: exec.Command(

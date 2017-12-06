@@ -63,10 +63,13 @@ var _ = Describe("Evacuation", func() {
 		cellAID = "cell-a"
 		cellBID = "cell-b"
 
-		cellARepAddr = fmt.Sprintf("0.0.0.0:%d", 14200+GinkgoParallelNode())
-		cellARepSecureAddr = fmt.Sprintf("0.0.0.0:%d", 14300+GinkgoParallelNode())
-		cellBRepAddr = fmt.Sprintf("0.0.0.0:%d", 14400+GinkgoParallelNode())
-		cellBRepSecureAddr = fmt.Sprintf("0.0.0.0:%d", 14500+GinkgoParallelNode())
+		cellARepPort, err := componentMaker.PortAllocator.ClaimPorts(4)
+		Expect(err).NotTo(HaveOccurred())
+
+		cellARepAddr = fmt.Sprintf("0.0.0.0:%d", cellARepPort)
+		cellARepSecureAddr = fmt.Sprintf("0.0.0.0:%d", cellARepPort+1)
+		cellBRepAddr = fmt.Sprintf("0.0.0.0:%d", cellARepPort+2)
+		cellBRepSecureAddr = fmt.Sprintf("0.0.0.0:%d", cellARepPort+3)
 
 		cellARepRunner = componentMaker.RepN(0,
 			func(config *repconfig.RepConfig) {

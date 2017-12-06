@@ -46,8 +46,11 @@ var _ = Describe("LocalRouteEmitter", func() {
 		cellAID = "cell-a"
 		cellBID = "cell-b"
 
-		cellARepAddr = fmt.Sprintf("0.0.0.0:%d", 14200+GinkgoParallelNode())
-		cellBRepAddr = fmt.Sprintf("0.0.0.0:%d", 14400+GinkgoParallelNode())
+		cellRepPort, err := componentMaker.PortAllocator.ClaimPorts(2)
+		Expect(err).NotTo(HaveOccurred())
+
+		cellARepAddr = fmt.Sprintf("0.0.0.0:%d", cellRepPort)
+		cellBRepAddr = fmt.Sprintf("0.0.0.0:%d", cellRepPort+1)
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},

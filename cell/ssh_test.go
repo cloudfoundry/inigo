@@ -19,7 +19,6 @@ import (
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
-	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
 	"github.com/cloudfoundry/sonde-go/events"
 	"github.com/gogo/protobuf/proto"
@@ -65,7 +64,7 @@ var _ = Describe("SSH", func() {
 	)
 
 	BeforeEach(func() {
-		port, err := localip.LocalPort()
+		port, err := componentMaker.PortAllocator.ClaimPorts(1)
 		Expect(err).NotTo(HaveOccurred())
 		addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", port))
 		Expect(err).NotTo(HaveOccurred())
