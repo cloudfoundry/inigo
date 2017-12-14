@@ -544,8 +544,9 @@ var _ = Describe("InstanceIdentity", func() {
 
 			Context("when emitting app metrics", func() {
 				var (
-					metricsChan chan map[string]uint64
-					memoryLimit uint64
+					metricsChan     chan map[string]uint64
+					dropsondeConfig func(cfg *config.RepConfig)
+					memoryLimit     uint64
 				)
 
 				BeforeEach(func() {
@@ -622,7 +623,7 @@ var _ = Describe("InstanceIdentity", func() {
 						}
 					})
 
-					dropsondeConfig := func(cfg *config.RepConfig) {
+					dropsondeConfig = func(cfg *config.RepConfig) {
 						cfg.DropsondePort = udpConn.LocalAddr().(*net.UDPAddr).Port
 						cfg.ContainerMetricsReportInterval = durationjson.Duration(5 * time.Second)
 					}
@@ -637,11 +638,33 @@ var _ = Describe("InstanceIdentity", func() {
 				})
 
 				It("should receive rescaled memory usage", func() {
-					Eventually(metricsChan, 10*time.Second).Should(Receive(ScaledDownMemory(memoryLimit, 5)))
+					Eventually(metricsChan, 10*time.Second).Should(Receive(scaledDownMemory(memoryLimit, 5)))
 				})
 
 				It("should receive rescaled memory limit", func() {
 					Eventually(metricsChan, 10*time.Second).Should(Receive(HaveKeyWithValue("memory_quota", memoryInBytes(memoryLimit))))
+				})
+
+				Context("when additional memory is set but container proxy is not enabled", func() {
+					BeforeEach(func() {
+						rep = componentMaker.Rep(
+							configRepCerts, exportNetworkVars,
+							setProxyMemoryAllocation,
+							dropsondeConfig,
+						)
+
+						lrp = helpers.DockerLRPCreateRequest(processGUID)
+						lrp.MetricsGuid = processGUID
+						lrp.MemoryMb = int32(memoryLimit)
+					})
+
+					It("should rescale the memory usage", func() {
+						Eventually(metricsChan, 10*time.Second).Should(Receive(unscaledDownMemory()))
+					})
+
+					It("should receive the right memory limit", func() {
+						Eventually(metricsChan, 10*time.Second).Should(Receive(HaveKeyWithValue("memory_quota", memoryInBytes(memoryLimit))))
+					})
 				})
 
 				Context("when the lrp is using docker rootfs", func() {
@@ -651,8 +674,8 @@ var _ = Describe("InstanceIdentity", func() {
 						lrp.MemoryMb = int32(memoryLimit)
 					})
 
-					It("should not receive rescaled memory limit", func() {
-						Eventually(metricsChan, 10*time.Second).Should(Receive(ScaledDownMemory(memoryLimit, 5)))
+					It("should receive rescaled memory limit", func() {
+						Eventually(metricsChan, 10*time.Second).Should(Receive(scaledDownMemory(memoryLimit, 5)))
 					})
 
 					It("should receive the rescaled memory usage", func() {
@@ -664,7 +687,12 @@ var _ = Describe("InstanceIdentity", func() {
 	})
 })
 
-func ScaledDownMemory(memoryLimit, proxyAllocatedMemory uint64) types.GomegaMatcher {
+func unscaledDownMemory() types.GomegaMatcher {
+	someNonZeroValue := uint64(1) // otherwise the scaledDownMemory will attempt to divide by 0
+	return scaledDownMemory(someNonZeroValue, 0)
+}
+
+func scaledDownMemory(memoryLimit, proxyAllocatedMemory uint64) types.GomegaMatcher {
 	return And(
 		HaveKey("memory"),
 		HaveKey("actual_memory"),
