@@ -40,6 +40,8 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 )
 
+const GraceBusyboxImageURL = "docker:///onsi/grace-busybox"
+
 var _ = Describe("InstanceIdentity", func() {
 	var (
 		credDir                                     string
@@ -453,6 +455,31 @@ var _ = Describe("InstanceIdentity", func() {
 
 			It("should have a container with envoy enabled on it", func() {
 				Eventually(connect, 10*time.Second).Should(Succeed())
+			})
+
+			Context("and the app ignores SIGTERM", func() {
+				BeforeEach(func() {
+					lrp.RootFs = GraceBusyboxImageURL
+					lrp.Setup = nil //note: we copy nothing in, the docker image on its own should cause this failure
+					lrp.Action = models.WrapAction(&models.RunAction{
+						Path: "/grace",
+						User: "vcap",
+						Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
+						Args: []string{"-catchTerminate"},
+					})
+				})
+
+				Context("and is killed", func() {
+					JustBeforeEach(func() {
+						Eventually(connect, 10*time.Second).Should(Succeed())
+						err := bbsClient.RemoveDesiredLRP(logger, lrp.ProcessGuid)
+						Expect(err).NotTo(HaveOccurred())
+					})
+
+					FIt("continues to serve traffic", func() {
+						Consistently(connect, 5*time.Second).Should(Succeed())
+					})
+				})
 			})
 		})
 
