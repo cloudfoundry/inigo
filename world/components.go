@@ -374,6 +374,12 @@ func (maker ComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
 	config.ExecRunnerBin = filepath.Join(maker.GardenConfig.GardenBinPath, "dadoo")
 	config.NSTarBin = filepath.Join(maker.GardenConfig.GardenBinPath, "nstar")
 	config.RuntimePluginBin = filepath.Join(maker.GardenConfig.GardenBinPath, "runc")
+	ports, err := maker.PortAllocator.ClaimPorts(10)
+	startPort := int(ports)
+	poolSize := 10
+	Expect(err).NotTo(HaveOccurred())
+	config.PortPoolStart = &startPort
+	config.PortPoolSize = &poolSize
 
 	config.DefaultRootFS = defaultRootFS
 
