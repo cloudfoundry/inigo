@@ -185,7 +185,7 @@ func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) wor
 
 	node := ginkgo.GinkgoParallelNode()
 	startPort := 1000 * node
-	portRange := 1000
+	portRange := 200
 	endPort := startPort + portRange*(node+1)
 
 	portAllocator, err := portauthority.New(startPort, endPort)
