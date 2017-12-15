@@ -9,7 +9,6 @@ import (
 
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/ginkgoreporter"
 	"code.cloudfoundry.org/localip"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -115,9 +114,7 @@ func TestCell(t *testing.T) {
 
 	RegisterFailHandler(Fail)
 
-	RunSpecsWithDefaultAndCustomReporters(t, "Cell Integration Suite", []Reporter{
-		ginkgoreporter.New(GinkgoWriter),
-	})
+	RunSpecs(t, "Cell Integration Suite")
 }
 
 func CompileHealthcheckExecutable() string {

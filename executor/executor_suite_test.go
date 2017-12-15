@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"code.cloudfoundry.org/lager/ginkgoreporter"
 	"code.cloudfoundry.org/localip"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -71,9 +70,7 @@ func TestExecutor(t *testing.T) {
 
 	RegisterFailHandler(Fail)
 
-	RunSpecsWithDefaultAndCustomReporters(t, "Executor Integration Suite", []Reporter{
-		ginkgoreporter.New(GinkgoWriter),
-	})
+	RunSpecs(t, "Executor Integration Suite")
 }
 
 func CompileTestedExecutables() world.BuiltExecutables {
