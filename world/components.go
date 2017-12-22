@@ -167,17 +167,26 @@ func (blc *BuiltLifecycles) BuildLifecycles(lifeCycle string) {
 	healthcheckPath, err := gexec.Build("code.cloudfoundry.org/healthcheck/cmd/healthcheck", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
+	os.Setenv("CGO_ENABLED", "0")
+	diegoSSHPath, err := gexec.Build("code.cloudfoundry.org/diego-ssh/cmd/sshd", "-a", "-installsuffix", "static")
+	os.Unsetenv("CGO_ENABLED")
+	Expect(err).NotTo(HaveOccurred())
+
 	lifecycleDir := TempDir(lifeCycle)
 
 	err = os.Rename(builderPath, filepath.Join(lifecycleDir, "builder"))
 	Expect(err).NotTo(HaveOccurred())
 
 	err = os.Rename(healthcheckPath, filepath.Join(lifecycleDir, "healthcheck"))
+	Expect(err).NotTo(HaveOccurred())
 
 	err = os.Rename(launcherPath, filepath.Join(lifecycleDir, "launcher"))
 	Expect(err).NotTo(HaveOccurred())
 
-	cmd := exec.Command("tar", "-czf", "lifecycle.tar.gz", "builder", "launcher", "healthcheck")
+	err = os.Rename(diegoSSHPath, filepath.Join(lifecycleDir, "diego-sshd"))
+	Expect(err).NotTo(HaveOccurred())
+
+	cmd := exec.Command("tar", "-czf", "lifecycle.tar.gz", "builder", "launcher", "healthcheck", "diego-sshd")
 	cmd.Stderr = GinkgoWriter
 	cmd.Stdout = GinkgoWriter
 	cmd.Dir = lifecycleDir

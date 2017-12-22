@@ -66,7 +66,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	localIP, err := localip.LocalIP()
 	Expect(err).NotTo(HaveOccurred())
 
-	componentMaker = helpers.MakeComponentMaker(builtArtifacts, localIP)
+	componentMaker = helpers.MakeComponentMaker(helpers.AssetsPath, builtArtifacts, localIP)
 	componentMaker.Setup()
 })
 

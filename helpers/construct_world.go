@@ -20,14 +20,14 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var PreloadedStacks = []string{"red-stack", "blue-stack"}
+var PreloadedStacks = []string{"red-stack", "blue-stack", "cflinuxfs2"}
 var DefaultStack = PreloadedStacks[0]
 
 var addresses world.ComponentAddresses
 
-const assetsPath = "../fixtures/certs/"
+const AssetsPath = "../fixtures/certs/"
 
-func MakeComponentMaker(builtArtifacts world.BuiltArtifacts, localIP string) world.ComponentMaker {
+func MakeComponentMaker(assetsPath string, builtArtifacts world.BuiltArtifacts, localIP string) world.ComponentMaker {
 	grootfsBinPath := os.Getenv("GROOTFS_BINPATH")
 	gardenBinPath := os.Getenv("GARDEN_BINPATH")
 	gardenRootFSPath := os.Getenv("GARDEN_ROOTFS")
