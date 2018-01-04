@@ -4,6 +4,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -33,6 +34,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
+	"github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/matchers"
 	"github.com/onsi/gomega/types"
 	"github.com/tedsuo/ifrit"
@@ -330,6 +332,7 @@ var _ = Describe("InstanceIdentity", func() {
 		var configRepCerts func(cfg *config.RepConfig)
 		var exportNetworkVars func(cfg *config.RepConfig)
 		var enableContainerProxy func(cfg *config.RepConfig)
+		var dropsondeConfig func(cfg *config.RepConfig)
 
 		BeforeEach(func() {
 			configRepCerts = func(cfg *config.RepConfig) {
@@ -359,7 +362,7 @@ var _ = Describe("InstanceIdentity", func() {
 			udpConn, err := net.ListenUDP("udp", addr)
 			Expect(err).NotTo(HaveOccurred())
 
-			dropsondeConfig := func(cfg *config.RepConfig) {
+			dropsondeConfig = func(cfg *config.RepConfig) {
 				cfg.DropsondePort = udpConn.LocalAddr().(*net.UDPAddr).Port
 				cfg.ContainerMetricsReportInterval = durationjson.Duration(5 * time.Second)
 			}
@@ -372,7 +375,7 @@ var _ = Describe("InstanceIdentity", func() {
 
 				logger := logger.Session("metron-agent")
 				close(ready)
-				logger.Info("starting", lager.Data{"port": addr.Port})
+				logger.Info("starting", lager.Data{"port": udpConn.LocalAddr().(*net.UDPAddr).Port})
 				msgs := make(chan []byte)
 				errCh := make(chan error)
 				go func() {
@@ -407,14 +410,6 @@ var _ = Describe("InstanceIdentity", func() {
 			})
 		})
 
-		JustBeforeEach(func() {
-			err := bbsClient.DesireLRP(logger, lrp)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
-
-			address = getContainerInternalAddress(bbsClient, processGUID, 8080, true)
-		})
-
 		connect := func() error {
 			resp, err := client.Get(fmt.Sprintf("https://%s/env", address))
 			if err != nil {
@@ -428,288 +423,362 @@ var _ = Describe("InstanceIdentity", func() {
 			return nil
 		}
 
-		Context("when an invalid cipher is used", func() {
-			BeforeEach(func() {
-				client.Transport = &http.Transport{
-					TLSClientConfig: &tls.Config{
-						InsecureSkipVerify: false,
-						RootCAs:            rootCAs,
-						CipherSuites:       []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256},
-					},
-				}
-			})
-
-			It("should fail", func() {
-				Eventually(connect, 10*time.Second).Should(MatchError(ContainSubstring("tls: handshake failure")))
-			})
-		})
-
-		It("should have a container with envoy enabled on it", func() {
-			Eventually(connect, 10*time.Second).Should(Succeed())
-		})
-
-		Context("when the container uses a docker image", func() {
-			BeforeEach(func() {
-				lrp = helpers.DockerLRPCreateRequest(processGUID)
-			})
-
-			It("should have a container with envoy enabled on it", func() {
-				Eventually(connect, 10*time.Second).Should(Succeed())
-			})
-
-			Context("and the app ignores SIGTERM", func() {
-				BeforeEach(func() {
-					lrp.RootFs = GraceBusyboxImageURL
-					lrp.Monitor = nil
-					lrp.Setup = nil
-					lrp.Action = models.WrapAction(&models.RunAction{
-						Path: "/grace",
-						User: "root",
-						Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
-						Args: []string{"-catchTerminate"},
-					})
-				})
-
-				Context("and is killed", func() {
-					JustBeforeEach(func() {
-						Eventually(connect, 10*time.Second).Should(Succeed())
-						err := bbsClient.RemoveDesiredLRP(logger, lrp.ProcessGuid)
-						Expect(err).NotTo(HaveOccurred())
-					})
-
-					It("continues to serve traffic", func() {
-						Consistently(connect, 5*time.Second).Should(Succeed())
-					})
-				})
-			})
-		})
-
-		Context("when the container is privileged", func() {
-			BeforeEach(func() {
-				lrp.Privileged = true
-			})
-
-			It("should have a container with envoy enabled on it", func() {
-				Eventually(connect, 10*time.Second).Should(Succeed())
-			})
-		})
-
-		Context("when the container uses OCI preloaded rootfs", func() {
-			BeforeEach(func() {
-				if !world.UseGrootFS() {
-					Skip("Not using grootfs")
-				}
-
-				lrp.CachedDependencies = nil
-				layer := fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.tgz")
-				lrp.RootFs = "preloaded+layer:" + helpers.DefaultStack + "?layer=" + layer + "&layer_path=/" + "&layer_digest="
-				lrp.Action = models.WrapAction(&models.RunAction{
-					User: "vcap",
-					Path: "/go-server",
-					Env: []*models.EnvironmentVariable{
-						{"PORT", "8080"},
-						{"HTTPS_PORT", "8081"},
-					},
-				})
-			})
-
-			It("should have a container with envoy enabled on it", func() {
-				Eventually(connect, 10*time.Second).Should(Succeed())
-			})
-		})
-
-		Context("when certs are rotated", func() {
-			var credRotationPeriod = 64 * time.Second
-
-			BeforeEach(func() {
-				alterCredRotation := func(config *config.RepConfig) {
-					config.InstanceIdentityValidityPeriod = durationjson.Duration(credRotationPeriod)
-				}
-
-				rep = componentMaker.Rep(configRepCerts, exportNetworkVars, enableContainerProxy, alterCredRotation)
-			})
-
-			It("should be able to reconnect with the updated certs", func() {
-				Eventually(connect).Should(Succeed())
-				Consistently(connect, 90*time.Second).Should(Succeed())
-			})
-		})
-
-		Context("when the additional memory allocation is defined", func() {
-			var (
-				container                garden.Container
-				setProxyMemoryAllocation func(cfg *config.RepConfig)
-				containerMutex           sync.Mutex
-			)
-
-			BeforeEach(func() {
-				containerMutex.Lock()
-				defer containerMutex.Unlock()
-				container = nil
-
-				lrp.MemoryMb = 64
-				setProxyMemoryAllocation = func(config *config.RepConfig) {
-					config.ProxyMemoryAllocationMB = 5
-				}
-
-				rep = componentMaker.Rep(configRepCerts, exportNetworkVars, enableContainerProxy, setProxyMemoryAllocation)
-			})
-
+		Context("and the app starts successfully", func() {
 			JustBeforeEach(func() {
+				err := bbsClient.DesireLRP(logger, lrp)
+				Expect(err).NotTo(HaveOccurred())
 				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
 
-				lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGUID)
-				Expect(err).NotTo(HaveOccurred())
-
-				actualLRP := lrps[0].Instance
-				containerHandle := actualLRP.InstanceGuid
-
-				containerMutex.Lock()
-				defer containerMutex.Unlock()
-				container, err = gardenClient.Lookup(containerHandle)
-				Expect(err).NotTo(HaveOccurred())
+				address = getContainerInternalAddress(bbsClient, processGUID, 8080, true)
 			})
 
-			Context("when emitting app metrics", func() {
+			Context("when an invalid cipher is used", func() {
+				BeforeEach(func() {
+					client.Transport = &http.Transport{
+						TLSClientConfig: &tls.Config{
+							InsecureSkipVerify: false,
+							RootCAs:            rootCAs,
+							CipherSuites:       []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256},
+						},
+					}
+				})
+
+				It("should fail", func() {
+					Eventually(connect, 10*time.Second).Should(MatchError(ContainSubstring("tls: handshake failure")))
+				})
+			})
+
+			It("should have a container with envoy enabled on it", func() {
+				Eventually(connect, 10*time.Second).Should(Succeed())
+			})
+
+			Context("when the container uses a docker image", func() {
+				BeforeEach(func() {
+					lrp = helpers.DockerLRPCreateRequest(processGUID)
+				})
+
+				It("should have a container with envoy enabled on it", func() {
+					Eventually(connect, 10*time.Second).Should(Succeed())
+				})
+
+				Context("and the app ignores SIGTERM", func() {
+					BeforeEach(func() {
+						lrp.RootFs = GraceBusyboxImageURL
+						lrp.Monitor = nil
+						lrp.Setup = nil
+						lrp.Action = models.WrapAction(&models.RunAction{
+							Path: "/grace",
+							User: "root",
+							Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
+							Args: []string{"-catchTerminate"},
+						})
+					})
+
+					Context("and is killed", func() {
+						JustBeforeEach(func() {
+							Eventually(connect, 10*time.Second).Should(Succeed())
+							err := bbsClient.RemoveDesiredLRP(logger, lrp.ProcessGuid)
+							Expect(err).NotTo(HaveOccurred())
+						})
+
+						It("continues to serve traffic", func() {
+							Consistently(connect, 5*time.Second).Should(Succeed())
+						})
+					})
+				})
+			})
+
+			Context("when the container is privileged", func() {
+				BeforeEach(func() {
+					lrp.Privileged = true
+				})
+
+				It("should have a container with envoy enabled on it", func() {
+					Eventually(connect, 10*time.Second).Should(Succeed())
+				})
+			})
+
+			Context("when the container uses OCI preloaded rootfs", func() {
+				BeforeEach(func() {
+					if !world.UseGrootFS() {
+						Skip("Not using grootfs")
+					}
+
+					lrp.CachedDependencies = nil
+					layer := fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.tgz")
+					lrp.RootFs = "preloaded+layer:" + helpers.DefaultStack + "?layer=" + layer + "&layer_path=/" + "&layer_digest="
+					lrp.Action = models.WrapAction(&models.RunAction{
+						User: "vcap",
+						Path: "/go-server",
+						Env: []*models.EnvironmentVariable{
+							{"PORT", "8080"},
+							{"HTTPS_PORT", "8081"},
+						},
+					})
+				})
+
+				It("should have a container with envoy enabled on it", func() {
+					Eventually(connect, 10*time.Second).Should(Succeed())
+				})
+			})
+
+			Context("when certs are rotated", func() {
+				var credRotationPeriod = 64 * time.Second
+
+				BeforeEach(func() {
+					alterCredRotation := func(config *config.RepConfig) {
+						config.InstanceIdentityValidityPeriod = durationjson.Duration(credRotationPeriod)
+					}
+
+					rep = componentMaker.Rep(configRepCerts, exportNetworkVars, enableContainerProxy, dropsondeConfig, alterCredRotation)
+				})
+
+				It("should be able to reconnect with the updated certs", func() {
+					Eventually(connect).Should(Succeed())
+					Consistently(connect, 90*time.Second).Should(Succeed())
+				})
+			})
+
+			Context("when the additional memory allocation is defined", func() {
 				var (
-					metricsChan     chan map[string]uint64
-					dropsondeConfig func(cfg *config.RepConfig)
-					memoryLimit     uint64
+					container                garden.Container
+					setProxyMemoryAllocation func(cfg *config.RepConfig)
+					containerMutex           sync.Mutex
 				)
 
 				BeforeEach(func() {
-					metricsChan = make(chan map[string]uint64, 10)
-					memoryLimit = uint64(lrp.MemoryMb)
+					containerMutex.Lock()
+					defer containerMutex.Unlock()
+					container = nil
 
-					addr, err := net.ResolveUDPAddr("udp", ":0")
-					Expect(err).NotTo(HaveOccurred())
-					udpConn, err := net.ListenUDP("udp", addr)
-					Expect(err).NotTo(HaveOccurred())
-
-					metronAgent = ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
-						defer GinkgoRecover()
-						defer udpConn.Close()
-
-						logger := logger.Session("metron-agent")
-						close(ready)
-						logger.Info("starting", lager.Data{"port": addr.Port})
-						msgs := make(chan []byte)
-						errCh := make(chan error)
-						go func() {
-							for {
-								bs := make([]byte, 102400)
-								n, _, err := udpConn.ReadFromUDP(bs)
-								if err != nil {
-									errCh <- err
-									return
-								}
-								msgs <- bs[:n]
-							}
-						}()
-						for {
-							select {
-							case <-signals:
-								logger.Info("signaled")
-								return nil
-							case err := <-errCh:
-								return err
-							case msg := <-msgs:
-								var envelope events.Envelope
-								err := proto.Unmarshal(msg, &envelope)
-								if err != nil {
-									continue
-								}
-								metric := envelope.GetContainerMetric()
-								if metric == nil {
-									continue
-								}
-
-								containerMutex.Lock()
-								c := container
-								containerMutex.Unlock()
-								if c == nil {
-									// container can be nil if we get a container metric while
-									// the JustBeforeEach is still getting the actual lrp and
-									// container infromation
-									continue
-								}
-
-								metrics, err := c.Metrics()
-								if err != nil {
-									// do not return the error since garden will initially
-									continue
-								}
-								stats := metrics.MemoryStat
-								actualMemoryUsage := stats.TotalRss + stats.TotalCache - stats.TotalInactiveFile
-
-								metricsChan <- map[string]uint64{
-									"memory":        metric.GetMemoryBytes(),
-									"actual_memory": actualMemoryUsage,
-									"memory_quota":  metric.GetMemoryBytesQuota(),
-								}
-							}
-						}
-					})
-
-					dropsondeConfig = func(cfg *config.RepConfig) {
-						cfg.DropsondePort = udpConn.LocalAddr().(*net.UDPAddr).Port
-						cfg.ContainerMetricsReportInterval = durationjson.Duration(5 * time.Second)
+					lrp.MemoryMb = 64
+					setProxyMemoryAllocation = func(config *config.RepConfig) {
+						config.ProxyMemoryAllocationMB = 5
 					}
 
-					rep = componentMaker.Rep(
-						configRepCerts, exportNetworkVars,
-						enableContainerProxy, setProxyMemoryAllocation,
-						dropsondeConfig,
+					rep = componentMaker.Rep(configRepCerts, exportNetworkVars, enableContainerProxy, setProxyMemoryAllocation)
+				})
+
+				JustBeforeEach(func() {
+					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
+
+					lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGUID)
+					Expect(err).NotTo(HaveOccurred())
+
+					actualLRP := lrps[0].Instance
+					containerHandle := actualLRP.InstanceGuid
+
+					containerMutex.Lock()
+					defer containerMutex.Unlock()
+					container, err = gardenClient.Lookup(containerHandle)
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				Context("when emitting app metrics", func() {
+					var (
+						metricsChan     chan map[string]uint64
+						dropsondeConfig func(cfg *config.RepConfig)
+						memoryLimit     uint64
 					)
 
-					lrp.Action.RunAction.Args = []string{"-allocate-memory-mb=30"}
-				})
-
-				It("should receive rescaled memory usage", func() {
-					Eventually(metricsChan, 10*time.Second).Should(Receive(scaledDownMemory(memoryLimit, 5)))
-				})
-
-				It("should receive rescaled memory limit", func() {
-					Eventually(metricsChan, 10*time.Second).Should(Receive(HaveKeyWithValue("memory_quota", memoryInBytes(memoryLimit))))
-				})
-
-				Context("when additional memory is set but container proxy is not enabled", func() {
 					BeforeEach(func() {
+						metricsChan = make(chan map[string]uint64, 10)
+						memoryLimit = uint64(lrp.MemoryMb)
+
+						addr, err := net.ResolveUDPAddr("udp", ":0")
+						Expect(err).NotTo(HaveOccurred())
+						udpConn, err := net.ListenUDP("udp", addr)
+						Expect(err).NotTo(HaveOccurred())
+
+						metronAgent = ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
+							defer GinkgoRecover()
+							defer udpConn.Close()
+
+							logger := logger.Session("metron-agent")
+							close(ready)
+							logger.Info("starting", lager.Data{"port": addr.Port})
+							msgs := make(chan []byte)
+							errCh := make(chan error)
+							go func() {
+								for {
+									bs := make([]byte, 102400)
+									n, _, err := udpConn.ReadFromUDP(bs)
+									if err != nil {
+										errCh <- err
+										return
+									}
+									msgs <- bs[:n]
+								}
+							}()
+							for {
+								select {
+								case <-signals:
+									logger.Info("signaled")
+									return nil
+								case err := <-errCh:
+									return err
+								case msg := <-msgs:
+									var envelope events.Envelope
+									err := proto.Unmarshal(msg, &envelope)
+									if err != nil {
+										continue
+									}
+									metric := envelope.GetContainerMetric()
+									if metric == nil {
+										continue
+									}
+
+									containerMutex.Lock()
+									c := container
+									containerMutex.Unlock()
+									if c == nil {
+										// container can be nil if we get a container metric while
+										// the JustBeforeEach is still getting the actual lrp and
+										// container infromation
+										continue
+									}
+
+									metrics, err := c.Metrics()
+									if err != nil {
+										// do not return the error since garden will initially
+										continue
+									}
+									stats := metrics.MemoryStat
+									actualMemoryUsage := stats.TotalRss + stats.TotalCache - stats.TotalInactiveFile
+
+									metricsChan <- map[string]uint64{
+										"memory":        metric.GetMemoryBytes(),
+										"actual_memory": actualMemoryUsage,
+										"memory_quota":  metric.GetMemoryBytesQuota(),
+									}
+								}
+							}
+						})
+
+						dropsondeConfig = func(cfg *config.RepConfig) {
+							cfg.DropsondePort = udpConn.LocalAddr().(*net.UDPAddr).Port
+							cfg.ContainerMetricsReportInterval = durationjson.Duration(5 * time.Second)
+						}
+
 						rep = componentMaker.Rep(
 							configRepCerts, exportNetworkVars,
-							setProxyMemoryAllocation,
+							enableContainerProxy, setProxyMemoryAllocation,
 							dropsondeConfig,
 						)
 
-						lrp = helpers.DockerLRPCreateRequest(processGUID)
-						lrp.MetricsGuid = processGUID
-						lrp.MemoryMb = int32(memoryLimit)
+						lrp.Action.RunAction.Args = []string{"-allocate-memory-mb=30"}
 					})
 
-					It("should rescale the memory usage", func() {
-						Eventually(metricsChan, 10*time.Second).Should(Receive(unscaledDownMemory()))
-					})
-
-					It("should receive the right memory limit", func() {
-						Eventually(metricsChan, 10*time.Second).Should(Receive(HaveKeyWithValue("memory_quota", memoryInBytes(memoryLimit))))
-					})
-				})
-
-				Context("when the lrp is using docker rootfs", func() {
-					BeforeEach(func() {
-						lrp = helpers.DockerLRPCreateRequest(processGUID)
-						lrp.MetricsGuid = processGUID
-						lrp.MemoryMb = int32(memoryLimit)
-					})
-
-					It("should receive rescaled memory limit", func() {
+					It("should receive rescaled memory usage", func() {
 						Eventually(metricsChan, 10*time.Second).Should(Receive(scaledDownMemory(memoryLimit, 5)))
 					})
 
-					It("should receive the rescaled memory usage", func() {
+					It("should receive rescaled memory limit", func() {
 						Eventually(metricsChan, 10*time.Second).Should(Receive(HaveKeyWithValue("memory_quota", memoryInBytes(memoryLimit))))
 					})
+
+					Context("when additional memory is set but container proxy is not enabled", func() {
+						BeforeEach(func() {
+							rep = componentMaker.Rep(
+								configRepCerts, exportNetworkVars,
+								setProxyMemoryAllocation,
+								dropsondeConfig,
+							)
+
+							lrp = helpers.DockerLRPCreateRequest(processGUID)
+							lrp.MetricsGuid = processGUID
+							lrp.MemoryMb = int32(memoryLimit)
+						})
+
+						It("should rescale the memory usage", func() {
+							Eventually(metricsChan, 10*time.Second).Should(Receive(unscaledDownMemory()))
+						})
+
+						It("should receive the right memory limit", func() {
+							Eventually(metricsChan, 10*time.Second).Should(Receive(HaveKeyWithValue("memory_quota", memoryInBytes(memoryLimit))))
+						})
+					})
+
+					Context("when the lrp is using docker rootfs", func() {
+						BeforeEach(func() {
+							lrp = helpers.DockerLRPCreateRequest(processGUID)
+							lrp.MetricsGuid = processGUID
+							lrp.MemoryMb = int32(memoryLimit)
+						})
+
+						It("should receive rescaled memory limit", func() {
+							Eventually(metricsChan, 10*time.Second).Should(Receive(scaledDownMemory(memoryLimit, 5)))
+						})
+
+						It("should receive the rescaled memory usage", func() {
+							Eventually(metricsChan, 10*time.Second).Should(Receive(HaveKeyWithValue("memory_quota", memoryInBytes(memoryLimit))))
+						})
+					})
 				})
+			})
+		})
+
+		Context("and envoy takes longer to start", func() {
+			BeforeEach(func() {
+				dir := createSleepyEnvoy()
+
+				enableContainerProxy = func(config *config.RepConfig) {
+					config.EnableContainerProxy = true
+					config.EnvoyConfigRefreshDelay = durationjson.Duration(time.Second)
+					config.ContainerProxyPath = dir
+
+					tmpdir := world.TempDir("envoy_config")
+
+					config.ContainerProxyConfigPath = tmpdir
+				}
+
+				enableDeclarativeHealthChecks := func(config *config.RepConfig) {
+					config.EnableDeclarativeHealthcheck = true
+					config.DeclarativeHealthcheckPath = componentMaker.Artifacts.Healthcheck
+					config.HealthCheckWorkPoolSize = 1
+				}
+
+				rep = componentMaker.Rep(configRepCerts, exportNetworkVars, enableContainerProxy, dropsondeConfig, enableDeclarativeHealthChecks)
+			})
+
+			JustBeforeEach(func() {
+				err := bbsClient.DesireLRP(logger, lrp)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			envoyIsHealthChecked := func() {
+				It("should be marked running only when both envoy and the app are available", func() {
+					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
+					address = getContainerInternalAddress(bbsClient, processGUID, 8080, true)
+
+					Consistently(connect).Should(Succeed())
+				})
+
+				Context("and envoy startup time exceeds the start timeout", func() {
+					BeforeEach(func() {
+						lrp.StartTimeoutMs = 3000
+					})
+
+					It("crashes the lrp with a descriptive error", func() {
+						Eventually(func() *models.ActualLRP {
+							group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, processGUID, 0)
+							Expect(err).NotTo(HaveOccurred())
+							return group.Instance
+						}).Should(gstruct.PointTo(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
+							"CrashReason": ContainSubstring("Instance never healthy after 3s: instance proxy failed to start"),
+						})))
+					})
+				})
+			}
+
+			envoyIsHealthChecked()
+
+			Context("when the lrp uses declarative healthchecks", func() {
+				BeforeEach(func() {
+					lrp = helpers.DefaultDeclaritiveHealthcheckLRPCreateRequest(processGUID, "log-guid", 1)
+				})
+
+				envoyIsHealthChecked()
 			})
 		})
 	})
@@ -808,4 +877,35 @@ func verifyCertificateIsSignedBy(cert, parentCert *x509.Certificate) {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(certs).To(HaveLen(1))
 	Expect(certs[0]).To(ContainElement(parentCert))
+}
+
+func createSleepyEnvoy() string {
+	envoyPath := filepath.Join(os.Getenv("ENVOY_PATH"), "envoy")
+	ldsPath := filepath.Join(os.Getenv("ENVOY_PATH"), "lds")
+
+	dir := world.TempDir("envoy")
+
+	copyFile := func(dst, src string) {
+		dstFile, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+		Expect(err).NotTo(HaveOccurred())
+		defer dstFile.Close()
+		srcFile, err := os.Open(src)
+		Expect(err).NotTo(HaveOccurred())
+		defer srcFile.Close()
+		_, err = io.Copy(dstFile, srcFile)
+		Expect(err).NotTo(HaveOccurred())
+	}
+
+	copyFile(filepath.Join(dir, "orig_envoy"), envoyPath)
+	copyFile(filepath.Join(dir, "lds"), ldsPath)
+
+	newEnvoy, err := os.OpenFile(filepath.Join(dir, "envoy"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+	Expect(err).NotTo(HaveOccurred())
+	defer newEnvoy.Close()
+	fmt.Fprintf(newEnvoy, `#!/usr/bin/env bash
+sleep 5
+dir=$(dirname $0)
+exec $dir/orig_envoy "$@"
+`)
+	return dir
 }
