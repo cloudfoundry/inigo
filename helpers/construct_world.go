@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/test_helpers"
-	"code.cloudfoundry.org/consuladapter/consulrunner"
 	"code.cloudfoundry.org/diego-ssh/keys"
 	"code.cloudfoundry.org/inigo/helpers/portauthority"
 	"code.cloudfoundry.org/inigo/world"
@@ -15,7 +14,6 @@ import (
 	"github.com/nu7hatch/gouuid"
 
 	"github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/config"
 
 	. "github.com/onsi/gomega"
 )
@@ -23,17 +21,9 @@ import (
 var PreloadedStacks = []string{"red-stack", "blue-stack", "cflinuxfs2"}
 var DefaultStack = PreloadedStacks[0]
 
-var addresses world.ComponentAddresses
-
 const AssetsPath = "../fixtures/certs/"
 
-func MakeComponentMaker(assetsPath string, builtArtifacts world.BuiltArtifacts, localIP string) world.ComponentMaker {
-	grootfsBinPath := os.Getenv("GROOTFS_BINPATH")
-	gardenBinPath := os.Getenv("GARDEN_BINPATH")
-	gardenRootFSPath := os.Getenv("GARDEN_ROOTFS")
-	gardenGraphPath := os.Getenv("GARDEN_GRAPH_PATH")
-	externalAddress := os.Getenv("EXTERNAL_ADDRESS")
-
+func DBInfo() (string, string) {
 	var dbBaseConnectionString string
 	var dbDriverName string
 
@@ -44,6 +34,16 @@ func MakeComponentMaker(assetsPath string, builtArtifacts world.BuiltArtifacts, 
 		dbDriverName = "mysql"
 		dbBaseConnectionString = "diego:diego_password@tcp(localhost:3306)/"
 	}
+
+	return dbDriverName, dbBaseConnectionString
+}
+
+func MakeComponentMaker(assetsPath string, builtArtifacts world.BuiltArtifacts, worldAddresses world.ComponentAddresses) world.ComponentMaker {
+	grootfsBinPath := os.Getenv("GROOTFS_BINPATH")
+	gardenBinPath := os.Getenv("GARDEN_BINPATH")
+	gardenRootFSPath := os.Getenv("GARDEN_ROOTFS")
+	gardenGraphPath := os.Getenv("GARDEN_GRAPH_PATH")
+	externalAddress := os.Getenv("EXTERNAL_ADDRESS")
 
 	if gardenGraphPath == "" {
 		gardenGraphPath = os.TempDir()
@@ -62,24 +62,6 @@ func MakeComponentMaker(assetsPath string, builtArtifacts world.BuiltArtifacts, 
 			Name: stack,
 			Path: gardenRootFSPath,
 		}
-	}
-
-	addresses = world.ComponentAddresses{
-		GardenLinux:         fmt.Sprintf("127.0.0.1:%d", 10000+config.GinkgoConfig.ParallelNode),
-		NATS:                fmt.Sprintf("127.0.0.1:%d", 11000+config.GinkgoConfig.ParallelNode),
-		Consul:              fmt.Sprintf("127.0.0.1:%d", 12750+config.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength),
-		Rep:                 fmt.Sprintf("127.0.0.1:%d", 14000+config.GinkgoConfig.ParallelNode),
-		FileServer:          fmt.Sprintf("%s:%d", localIP, 17000+config.GinkgoConfig.ParallelNode),
-		Router:              fmt.Sprintf("127.0.0.1:%d", 18000+config.GinkgoConfig.ParallelNode),
-		BBS:                 fmt.Sprintf("127.0.0.1:%d", 20500+config.GinkgoConfig.ParallelNode*2),
-		Health:              fmt.Sprintf("127.0.0.1:%d", 20500+config.GinkgoConfig.ParallelNode*2+1),
-		Auctioneer:          fmt.Sprintf("127.0.0.1:%d", 23000+config.GinkgoConfig.ParallelNode),
-		SSHProxy:            fmt.Sprintf("127.0.0.1:%d", 23500+config.GinkgoConfig.ParallelNode),
-		SSHProxyHealthCheck: fmt.Sprintf("127.0.0.1:%d", 24500+config.GinkgoConfig.ParallelNode),
-		FakeVolmanDriver:    fmt.Sprintf("127.0.0.1:%d", 25500+config.GinkgoConfig.ParallelNode),
-		LocalNodePlugin:     fmt.Sprintf("127.0.0.1:%d", 25550+config.GinkgoConfig.ParallelNode),
-		Locket:              fmt.Sprintf("127.0.0.1:%d", 26500+config.GinkgoConfig.ParallelNode),
-		SQL:                 fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, config.GinkgoConfig.ParallelNode),
 	}
 
 	hostKeyPair, err := keys.RSAKeyPairFactory.NewKeyPair(1024)
@@ -191,9 +173,11 @@ func MakeComponentMaker(assetsPath string, builtArtifacts world.BuiltArtifacts, 
 	portAllocator, err := portauthority.New(startPort, endPort)
 	Expect(err).NotTo(HaveOccurred())
 
+	dbDriverName, dbBaseConnectionString := DBInfo()
+
 	return world.ComponentMaker{
 		Artifacts: builtArtifacts,
-		Addresses: addresses,
+		Addresses: worldAddresses,
 
 		RootFSes: stackPathMap,
 

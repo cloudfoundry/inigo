@@ -93,7 +93,7 @@ var _ = Describe("Privileges", func() {
 		var lrpRequest *models.DesiredLRP
 
 		BeforeEach(func() {
-			lrpRequest = helpers.DefaultLRPCreateRequest(helpers.GenerateGuid(), "log-guid", 1)
+			lrpRequest = helpers.DefaultLRPCreateRequest(componentMaker.Addresses, helpers.GenerateGuid(), "log-guid", 1)
 			lrpRequest.Action = models.WrapAction(&models.RunAction{
 				User: "root",
 				Path: "/tmp/diego/go-server",

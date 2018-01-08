@@ -499,6 +499,43 @@ func (maker ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig))
 	return runner
 }
 
+func (maker ComponentMaker) LegacyBBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig)) *ginkgomon.Runner {
+	args := []string{
+		"-activeKeyLabel", "secure-key-1",
+		"-advertiseURL", maker.BBSURL(),
+		"-auctioneerAddress", "http://" + maker.Addresses.Auctioneer,
+		"-caFile", maker.BbsSSL.CACert,
+		"-certFile", maker.BbsSSL.ServerCert,
+		"-consulCluster", maker.ConsulCluster(),
+		"-databaseConnectionString", maker.Addresses.SQL,
+		"-databaseDriver", maker.DBDriverName,
+		"-encryptionKey", "secure-key-1:secure-passphrase",
+		"-etcdCaFile", "",
+		"-etcdCertFile", "",
+		"-etcdCluster", "",
+		"-etcdKeyFile", "",
+		"-healthAddress", maker.Addresses.Health,
+		"-keyFile", maker.BbsSSL.ServerKey,
+		"-listenAddress", maker.Addresses.BBS,
+		"-logLevel", "debug",
+		"-repCACert", maker.RepSSL.CACert,
+		"-repClientCert", maker.RepSSL.ClientCert,
+		"-repClientKey", maker.RepSSL.ClientKey,
+		"-requireSSL",
+	}
+
+	return ginkgomon.New(ginkgomon.Config{
+		Name:              "bbs",
+		AnsiColorCode:     "32m",
+		StartCheck:        "bbs.started",
+		StartCheckTimeout: 10 * time.Second,
+		Command: exec.Command(
+			maker.Artifacts.Executables["bbs"],
+			args...,
+		),
+	})
+}
+
 func (maker ComponentMaker) Locket(modifyConfigFuncs ...func(*locketconfig.LocketConfig)) ifrit.Runner {
 	return locketrunner.NewLocketRunner(maker.Artifacts.Executables["locket"], func(cfg *locketconfig.LocketConfig) {
 		cfg.CertFile = maker.LocketSSL.ServerCert
@@ -602,7 +639,72 @@ func (maker ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.Rep
 	})
 }
 
-func (maker ComponentMaker) Auctioneer() ifrit.Runner {
+func (maker ComponentMaker) LegacyRepN(n int) *ginkgomon.Runner {
+	host, portString, err := net.SplitHostPort(maker.Addresses.Rep)
+	Expect(err).NotTo(HaveOccurred())
+	port, err := strconv.Atoi(portString)
+	Expect(err).NotTo(HaveOccurred())
+
+	name := "rep-" + strconv.Itoa(n)
+
+	tmpDir := TempDir("executor")
+	cachePath := path.Join(tmpDir, "cache")
+
+	args := []string{
+		"-sessionName", name,
+		"-bbsAddress", maker.BBSURL(),
+		"-bbsCACert", maker.BbsSSL.CACert,
+		"-bbsClientCert", maker.BbsSSL.ClientCert,
+		"-bbsClientKey", maker.BbsSSL.ClientKey,
+		"-caFile", maker.RepSSL.CACert,
+		"-cachePath", cachePath,
+		"-cellID", "the-cell-id-" + strconv.Itoa(GinkgoParallelNode()) + "-" + strconv.Itoa(n),
+		"-certFile", maker.RepSSL.ServerCert,
+		"-consulCluster", maker.ConsulCluster(),
+		"-containerMaxCpuShares", "1024",
+		"-enableLegacyApiServer=false",
+		"-evacuationPollingInterval", "1s",
+		"-evacuationTimeout", "10s",
+		"-gardenAddr", maker.Addresses.GardenLinux,
+		"-gardenHealthcheckProcessPath", "/bin/sh",
+		"-gardenHealthcheckProcessArgs", "-c,echo,foo",
+		"-gardenHealthcheckProcessUser", "vcap",
+		"-gardenNetwork", "tcp",
+		"-keyFile", maker.RepSSL.ServerKey,
+		"-listenAddr", fmt.Sprintf("%s:%d", host, offsetPort(port, n)),
+		"-listenAddrSecurable", fmt.Sprintf("%s:%d", host, offsetPort(port+100, n)),
+		"-lockRetryInterval", "1s",
+		"-lockTTL", "10s",
+		"-logLevel", "debug",
+		"-pollingInterval", "1s",
+		"-requireTLS=true",
+		"-rootFSProvider", "docker",
+		"-tempDir", tmpDir,
+		"-volmanDriverPaths", path.Join(maker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
+	}
+
+	for _, rootfs := range maker.RootFSes {
+		args = append(args, "-preloadedRootFS", fmt.Sprintf("%s:%s", rootfs.Name, rootfs.Path))
+	}
+
+	return ginkgomon.New(ginkgomon.Config{
+		Name:          name,
+		AnsiColorCode: "33m",
+		StartCheck:    `"` + name + `.started"`,
+		// rep is not started until it can ping an executor and run a healthcheck
+		// container on garden; this can take a bit to start, so account for it
+		StartCheckTimeout: 2 * time.Minute,
+		Command: exec.Command(
+			maker.Artifacts.Executables["rep"],
+			args...,
+		),
+		Cleanup: func() {
+			os.RemoveAll(tmpDir)
+		},
+	})
+}
+
+func (maker ComponentMaker) Auctioneer(modifyConfigFuncs ...func(cfg *auctioneerconfig.AuctioneerConfig)) ifrit.Runner {
 	auctioneerConfig := auctioneerconfig.AuctioneerConfig{
 		BBSAddress:              maker.BBSURL(),
 		ListenAddress:           maker.Addresses.Auctioneer,
@@ -625,6 +727,10 @@ func (maker ComponentMaker) Auctioneer() ifrit.Runner {
 		UUID:               "auctioneer-inigo-lock-owner",
 	}
 
+	for _, modifyConfig := range modifyConfigFuncs {
+		modifyConfig(&auctioneerConfig)
+	}
+
 	configFile, err := ioutil.TempFile(os.TempDir(), "auctioneer-config")
 	Expect(err).NotTo(HaveOccurred())
 
@@ -639,6 +745,34 @@ func (maker ComponentMaker) Auctioneer() ifrit.Runner {
 		Command: exec.Command(
 			maker.Artifacts.Executables["auctioneer"],
 			"-config", configFile.Name(),
+		),
+	})
+}
+
+func (maker ComponentMaker) LegacyAuctioneer() *ginkgomon.Runner {
+	args := []string{
+		"-bbsAddress", maker.BBSURL(),
+		"-bbsCACert", maker.BbsSSL.CACert,
+		"-bbsClientCert", maker.BbsSSL.ClientCert,
+		"-bbsClientKey", maker.BbsSSL.ClientKey,
+		"-consulCluster", maker.ConsulCluster(),
+		"-listenAddr", maker.Addresses.Auctioneer,
+		"-lockRetryInterval", "1s",
+		"-logLevel", "debug",
+		"-repCACert", maker.RepSSL.CACert,
+		"-repClientCert", maker.RepSSL.ClientCert,
+		"-repClientKey", maker.RepSSL.ClientKey,
+		"-startingContainerWeight", "0.33",
+	}
+
+	return ginkgomon.New(ginkgomon.Config{
+		Name:              "auctioneer",
+		AnsiColorCode:     "35m",
+		StartCheck:        `"auctioneer.started"`,
+		StartCheckTimeout: 10 * time.Second,
+		Command: exec.Command(
+			maker.Artifacts.Executables["auctioneer"],
+			args...,
 		),
 	})
 }
@@ -689,6 +823,28 @@ func (maker ComponentMaker) RouteEmitterN(n int, fs ...func(config *routeemitter
 	})
 }
 
+func (maker ComponentMaker) LegacyRouteEmitter() ifrit.Runner {
+	return ginkgomon.New(ginkgomon.Config{
+		Name:              "route-emitter",
+		AnsiColorCode:     "36m",
+		StartCheck:        `"route-emitter.started"`,
+		StartCheckTimeout: 10 * time.Second,
+		Command: exec.Command(
+			maker.Artifacts.Executables["route-emitter"],
+			[]string{
+				"-natsAddresses", maker.Addresses.NATS,
+				"-bbsAddress", maker.BBSURL(),
+				"-lockRetryInterval", "1s",
+				"-consulCluster", maker.ConsulCluster(),
+				"-logLevel", "debug",
+				"-bbsClientCert", maker.BbsSSL.ClientCert,
+				"-bbsClientKey", maker.BbsSSL.ClientKey,
+				"-bbsCACert", maker.BbsSSL.CACert,
+			}...,
+		),
+	})
+}
+
 func (maker ComponentMaker) FileServer() (ifrit.Runner, string) {
 	servedFilesDir := TempDir("file-server-files")
 
@@ -720,6 +876,30 @@ func (maker ComponentMaker) FileServer() (ifrit.Runner, string) {
 			Expect(err).NotTo(HaveOccurred())
 			configFile.Close()
 			err = os.RemoveAll(configFile.Name())
+			Expect(err).NotTo(HaveOccurred())
+		},
+	}), servedFilesDir
+}
+
+func (maker ComponentMaker) LegacyFileServer() (ifrit.Runner, string) {
+	servedFilesDir := TempDir("file-server-files")
+
+	return ginkgomon.New(ginkgomon.Config{
+		Name:              "file-server",
+		AnsiColorCode:     "92m",
+		StartCheck:        `"file-server.ready"`,
+		StartCheckTimeout: 10 * time.Second,
+		Command: exec.Command(
+			maker.Artifacts.Executables["file-server"],
+			[]string{
+				"-address", maker.Addresses.FileServer,
+				"-consulCluster", maker.ConsulCluster(),
+				"-logLevel", "debug",
+				"-staticDirectory", servedFilesDir,
+			}...,
+		),
+		Cleanup: func() {
+			err := os.RemoveAll(servedFilesDir)
 			Expect(err).NotTo(HaveOccurred())
 		},
 	}), servedFilesDir

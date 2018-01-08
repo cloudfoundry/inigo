@@ -40,7 +40,7 @@ var _ = Describe("Tasks", func() {
 			{"bbs", componentMaker.BBS()},
 		}))
 
-		helpers.ConsulWaitUntilReady()
+		helpers.ConsulWaitUntilReady(componentMaker.Addresses)
 
 		cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, grouper.Members{
 			{"file-server", fileServerRunner},

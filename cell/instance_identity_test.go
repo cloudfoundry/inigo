@@ -102,7 +102,7 @@ var _ = Describe("InstanceIdentity", func() {
 		}
 
 		processGUID = helpers.GenerateGuid()
-		lrp = helpers.DefaultLRPCreateRequest(processGUID, "log-guid", 1)
+		lrp = helpers.DefaultLRPCreateRequest(componentMaker.Addresses, processGUID, "log-guid", 1)
 		lrp.Setup = nil
 		lrp.CachedDependencies = []*models.CachedDependency{{
 			From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
@@ -454,7 +454,7 @@ var _ = Describe("InstanceIdentity", func() {
 
 			Context("when the container uses a docker image", func() {
 				BeforeEach(func() {
-					lrp = helpers.DockerLRPCreateRequest(processGUID)
+					lrp = helpers.DockerLRPCreateRequest(componentMaker.Addresses, processGUID)
 				})
 
 				It("should have a container with envoy enabled on it", func() {
@@ -685,7 +685,7 @@ var _ = Describe("InstanceIdentity", func() {
 								dropsondeConfig,
 							)
 
-							lrp = helpers.DockerLRPCreateRequest(processGUID)
+							lrp = helpers.DockerLRPCreateRequest(componentMaker.Addresses, processGUID)
 							lrp.MetricsGuid = processGUID
 							lrp.MemoryMb = int32(memoryLimit)
 						})
@@ -701,7 +701,7 @@ var _ = Describe("InstanceIdentity", func() {
 
 					Context("when the lrp is using docker rootfs", func() {
 						BeforeEach(func() {
-							lrp = helpers.DockerLRPCreateRequest(processGUID)
+							lrp = helpers.DockerLRPCreateRequest(componentMaker.Addresses, processGUID)
 							lrp.MetricsGuid = processGUID
 							lrp.MemoryMb = int32(memoryLimit)
 						})
@@ -775,7 +775,7 @@ var _ = Describe("InstanceIdentity", func() {
 
 			Context("when the lrp uses declarative healthchecks", func() {
 				BeforeEach(func() {
-					lrp = helpers.DefaultDeclaritiveHealthcheckLRPCreateRequest(processGUID, "log-guid", 1)
+					lrp = helpers.DefaultDeclaritiveHealthcheckLRPCreateRequest(componentMaker.Addresses, processGUID, "log-guid", 1)
 				})
 
 				envoyIsHealthChecked()

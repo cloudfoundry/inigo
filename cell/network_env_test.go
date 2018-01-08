@@ -113,7 +113,7 @@ var _ = Describe("Network Environment Variables", func() {
 		})
 
 		JustBeforeEach(func() {
-			lrp := helpers.DefaultLRPCreateRequest(guid, guid, 1)
+			lrp := helpers.DefaultLRPCreateRequest(componentMaker.Addresses, guid, guid, 1)
 			lrp.Setup = models.WrapAction(&models.DownloadAction{
 				User: "vcap",
 				From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),

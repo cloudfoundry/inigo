@@ -7,10 +7,11 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/consuladapter/consulrunner"
+	"code.cloudfoundry.org/inigo/world"
 	. "github.com/onsi/gomega"
 )
 
-func ConsulWaitUntilReady() {
+func ConsulWaitUntilReady(addresses world.ComponentAddresses) {
 	_, port, err := net.SplitHostPort(addresses.Consul)
 	Expect(err).NotTo(HaveOccurred())
 	httpPort, err := strconv.Atoi(port)

@@ -2,15 +2,18 @@ package cell_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"code.cloudfoundry.org/consuladapter/consulrunner"
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/localip"
 	. "github.com/onsi/ginkgo"
+	ginkgoconfig "github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
@@ -60,10 +63,30 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	err := json.Unmarshal(encodedBuiltArtifacts, &builtArtifacts)
 	Expect(err).NotTo(HaveOccurred())
 
+	_, dbBaseConnectionString := helpers.DBInfo()
+
 	localIP, err := localip.LocalIP()
 	Expect(err).NotTo(HaveOccurred())
 
-	componentMaker = helpers.MakeComponentMaker(helpers.AssetsPath, builtArtifacts, localIP)
+	addresses := world.ComponentAddresses{
+		GardenLinux:         fmt.Sprintf("127.0.0.1:%d", 10000+ginkgoconfig.GinkgoConfig.ParallelNode),
+		NATS:                fmt.Sprintf("127.0.0.1:%d", 11000+ginkgoconfig.GinkgoConfig.ParallelNode),
+		Consul:              fmt.Sprintf("127.0.0.1:%d", 12750+ginkgoconfig.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength),
+		Rep:                 fmt.Sprintf("127.0.0.1:%d", 14000+ginkgoconfig.GinkgoConfig.ParallelNode),
+		FileServer:          fmt.Sprintf("%s:%d", localIP, 17000+ginkgoconfig.GinkgoConfig.ParallelNode),
+		Router:              fmt.Sprintf("127.0.0.1:%d", 18000+ginkgoconfig.GinkgoConfig.ParallelNode),
+		BBS:                 fmt.Sprintf("127.0.0.1:%d", 20500+ginkgoconfig.GinkgoConfig.ParallelNode*2),
+		Health:              fmt.Sprintf("127.0.0.1:%d", 20500+ginkgoconfig.GinkgoConfig.ParallelNode*2+1),
+		Auctioneer:          fmt.Sprintf("127.0.0.1:%d", 23000+ginkgoconfig.GinkgoConfig.ParallelNode),
+		SSHProxy:            fmt.Sprintf("127.0.0.1:%d", 23500+ginkgoconfig.GinkgoConfig.ParallelNode),
+		SSHProxyHealthCheck: fmt.Sprintf("127.0.0.1:%d", 24500+ginkgoconfig.GinkgoConfig.ParallelNode),
+		FakeVolmanDriver:    fmt.Sprintf("127.0.0.1:%d", 25500+ginkgoconfig.GinkgoConfig.ParallelNode),
+		LocalNodePlugin:     fmt.Sprintf("127.0.0.1:%d", 25550+ginkgoconfig.GinkgoConfig.ParallelNode),
+		Locket:              fmt.Sprintf("127.0.0.1:%d", 26500+ginkgoconfig.GinkgoConfig.ParallelNode),
+		SQL:                 fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, ginkgoconfig.GinkgoConfig.ParallelNode),
+	}
+
+	componentMaker = helpers.MakeComponentMaker(helpers.AssetsPath, builtArtifacts, addresses)
 	componentMaker.Setup()
 })
 
@@ -83,7 +106,7 @@ var _ = BeforeEach(func() {
 	}))
 	bbsProcess = ginkgomon.Invoke(componentMaker.BBS())
 
-	helpers.ConsulWaitUntilReady()
+	helpers.ConsulWaitUntilReady(componentMaker.Addresses)
 	logger = lager.NewLogger("test")
 	logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 

@@ -75,7 +75,7 @@ var _ = Describe("Placement Tags", func() {
 
 		Context("when the desired LRP matches the required tags", func() {
 			BeforeEach(func() {
-				lrp = helpers.LRPCreateRequestWithPlacementTag(guid, []string{"inigo-tag"})
+				lrp = helpers.LRPCreateRequestWithPlacementTag(componentMaker.Addresses, guid, []string{"inigo-tag"})
 			})
 
 			It("succeeds and is running on correct cell", func() {
@@ -96,7 +96,7 @@ var _ = Describe("Placement Tags", func() {
 
 		Context("when the desired LRP matches the required and optional tags", func() {
 			BeforeEach(func() {
-				lrp = helpers.LRPCreateRequestWithPlacementTag(guid, []string{"inigo-tag", "inigo-optional-tag"})
+				lrp = helpers.LRPCreateRequestWithPlacementTag(componentMaker.Addresses, guid, []string{"inigo-tag", "inigo-optional-tag"})
 			})
 
 			It("succeeds and is running on correct cell", func() {
@@ -117,7 +117,7 @@ var _ = Describe("Placement Tags", func() {
 
 		Context("when no cells are advertising the placement tags", func() {
 			BeforeEach(func() {
-				lrp = helpers.LRPCreateRequestWithPlacementTag(guid, []string{""})
+				lrp = helpers.LRPCreateRequestWithPlacementTag(componentMaker.Addresses, guid, []string{""})
 			})
 
 			It("fails and sets a placement error", func() {

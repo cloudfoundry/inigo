@@ -147,7 +147,7 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 		var lrp *models.DesiredLRP
 
 		BeforeEach(func() {
-			lrp = helpers.DefaultDeclaritiveHealthcheckLRPCreateRequest(processGuid, "log-guid", 1)
+			lrp = helpers.DefaultDeclaritiveHealthcheckLRPCreateRequest(componentMaker.Addresses, processGuid, "log-guid", 1)
 		})
 
 		JustBeforeEach(func() {

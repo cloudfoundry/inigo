@@ -103,7 +103,7 @@ var _ = Describe("Evacuation", func() {
 
 	It("handles evacuation", func() {
 		By("desiring an LRP")
-		lrp := helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
+		lrp := helpers.DefaultLRPCreateRequest(componentMaker.Addresses, processGuid, "log-guid", 1)
 		lrp.Setup = models.WrapAction(&models.DownloadAction{
 			From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
 			To:   "/tmp/diego",

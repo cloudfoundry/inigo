@@ -335,7 +335,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 })
 
 func createDesiredLRP(processGuid string) *models.DesiredLRP {
-	lrp := helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
+	lrp := helpers.DefaultLRPCreateRequest(componentMaker.Addresses, processGuid, "log-guid", 1)
 	lrp.Setup = nil
 	lrp.CachedDependencies = []*models.CachedDependency{{
 		From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),

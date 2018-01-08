@@ -87,7 +87,7 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 		JustBeforeEach(func() {
 			tlsFileServer.StartTLS()
 
-			lrp = helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
+			lrp = helpers.DefaultLRPCreateRequest(componentMaker.Addresses, processGuid, "log-guid", 1)
 			err := bbsClient.DesireLRP(logger, lrp)
 			Expect(err).NotTo(HaveOccurred())
 		})

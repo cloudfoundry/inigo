@@ -95,7 +95,7 @@ var _ = Describe("LRP", func() {
 		var lrp *models.DesiredLRP
 
 		BeforeEach(func() {
-			lrp = helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
+			lrp = helpers.DefaultLRPCreateRequest(componentMaker.Addresses, processGuid, "log-guid", 1)
 			lrp.Setup = nil
 			lrp.CachedDependencies = []*models.CachedDependency{{
 				From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
@@ -519,7 +519,7 @@ var _ = Describe("LRP", func() {
 
 		Context("Unsupported preloaded rootfs is requested", func() {
 			BeforeEach(func() {
-				lrp = helpers.LRPCreateRequestWithRootFS(processGuid, helpers.BogusPreloadedRootFS)
+				lrp = helpers.LRPCreateRequestWithRootFS(componentMaker.Addresses, processGuid, helpers.BogusPreloadedRootFS)
 			})
 
 			It("fails and sets a placement error", func() {
@@ -540,7 +540,7 @@ var _ = Describe("LRP", func() {
 
 		Context("Unsupported arbitrary rootfs is requested", func() {
 			BeforeEach(func() {
-				lrp = helpers.LRPCreateRequestWithRootFS(processGuid, "socker://hello")
+				lrp = helpers.LRPCreateRequestWithRootFS(componentMaker.Addresses, processGuid, "socker://hello")
 			})
 
 			It("fails and sets a placement error", func() {
@@ -562,7 +562,7 @@ var _ = Describe("LRP", func() {
 		Context("Supported arbitrary rootfs scheme (viz., docker) is requested", func() {
 			BeforeEach(func() {
 				// docker is supported
-				lrp = helpers.DockerLRPCreateRequest(processGuid)
+				lrp = helpers.DockerLRPCreateRequest(componentMaker.Addresses, processGuid)
 				lrp.Setup = nil
 				lrp.CachedDependencies = []*models.CachedDependency{}
 			})
@@ -604,7 +604,7 @@ var _ = Describe("LRP", func() {
 				var lrp *models.DesiredLRP
 
 				BeforeEach(func() {
-					lrp = helpers.CrashingLRPCreateRequest(processGuid)
+					lrp = helpers.CrashingLRPCreateRequest(componentMaker.Addresses, processGuid)
 				})
 
 				JustBeforeEach(func() {
@@ -642,7 +642,7 @@ var _ = Describe("LRP", func() {
 				)
 
 				BeforeEach(func() {
-					lrp := helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
+					lrp := helpers.DefaultLRPCreateRequest(componentMaker.Addresses, processGuid, "log-guid", 1)
 
 					err := bbsClient.DesireLRP(logger, lrp)
 					Expect(err).NotTo(HaveOccurred())
@@ -680,7 +680,7 @@ var _ = Describe("LRP", func() {
 			var lrp *models.DesiredLRP
 
 			desireLRPWithChecksum := func(algorithm string) {
-				lrp = helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
+				lrp = helpers.DefaultLRPCreateRequest(componentMaker.Addresses, processGuid, "log-guid", 1)
 				lrp.Setup = nil
 				lrp.CachedDependencies = []*models.CachedDependency{{
 					From:              fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),

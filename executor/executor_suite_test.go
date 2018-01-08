@@ -2,11 +2,14 @@ package executor_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 
+	"code.cloudfoundry.org/consuladapter/consulrunner"
 	"code.cloudfoundry.org/localip"
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
@@ -37,10 +40,30 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	err := json.Unmarshal(encodedBuiltArtifacts, &builtArtifacts)
 	Expect(err).NotTo(HaveOccurred())
 
+	_, dbBaseConnectionString := helpers.DBInfo()
+
 	localIP, err := localip.LocalIP()
 	Expect(err).NotTo(HaveOccurred())
 
-	componentMaker = helpers.MakeComponentMaker(helpers.AssetsPath, builtArtifacts, localIP)
+	addresses := world.ComponentAddresses{
+		GardenLinux:         fmt.Sprintf("127.0.0.1:%d", 10000+config.GinkgoConfig.ParallelNode),
+		NATS:                fmt.Sprintf("127.0.0.1:%d", 11000+config.GinkgoConfig.ParallelNode),
+		Consul:              fmt.Sprintf("127.0.0.1:%d", 12750+config.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength),
+		Rep:                 fmt.Sprintf("127.0.0.1:%d", 14000+config.GinkgoConfig.ParallelNode),
+		FileServer:          fmt.Sprintf("%s:%d", localIP, 17000+config.GinkgoConfig.ParallelNode),
+		Router:              fmt.Sprintf("127.0.0.1:%d", 18000+config.GinkgoConfig.ParallelNode),
+		BBS:                 fmt.Sprintf("127.0.0.1:%d", 20500+config.GinkgoConfig.ParallelNode*2),
+		Health:              fmt.Sprintf("127.0.0.1:%d", 20500+config.GinkgoConfig.ParallelNode*2+1),
+		Auctioneer:          fmt.Sprintf("127.0.0.1:%d", 23000+config.GinkgoConfig.ParallelNode),
+		SSHProxy:            fmt.Sprintf("127.0.0.1:%d", 23500+config.GinkgoConfig.ParallelNode),
+		SSHProxyHealthCheck: fmt.Sprintf("127.0.0.1:%d", 24500+config.GinkgoConfig.ParallelNode),
+		FakeVolmanDriver:    fmt.Sprintf("127.0.0.1:%d", 25500+config.GinkgoConfig.ParallelNode),
+		LocalNodePlugin:     fmt.Sprintf("127.0.0.1:%d", 25550+config.GinkgoConfig.ParallelNode),
+		Locket:              fmt.Sprintf("127.0.0.1:%d", 26500+config.GinkgoConfig.ParallelNode),
+		SQL:                 fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, config.GinkgoConfig.ParallelNode),
+	}
+
+	componentMaker = helpers.MakeComponentMaker(helpers.AssetsPath, builtArtifacts, addresses)
 	componentMaker.Setup()
 })
 

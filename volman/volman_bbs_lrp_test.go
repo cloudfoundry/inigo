@@ -46,7 +46,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 			{"bbs", componentMaker.BBS()},
 		}))
 
-		helpers.ConsulWaitUntilReady()
+		helpers.ConsulWaitUntilReady(componentMaker.Addresses)
 		logger = lager.NewLogger("test")
 		logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 
@@ -93,7 +93,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 			jsonSomeConfig, err := json.Marshal(someConfig)
 			Expect(err).NotTo(HaveOccurred())
 
-			lrp = helpers.DefaultLRPCreateRequest(processGuid, "log-guid", 1)
+			lrp = helpers.DefaultLRPCreateRequest(componentMaker.Addresses, processGuid, "log-guid", 1)
 
 			lrp.Setup = nil
 

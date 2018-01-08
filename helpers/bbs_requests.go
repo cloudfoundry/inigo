@@ -6,6 +6,7 @@ import (
 
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/inigo/world"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/routing-info/cfroutes"
 	. "github.com/onsi/gomega"
@@ -25,7 +26,7 @@ const DefaultHost = "lrp-route"
 var defaultRoutes = cfroutes.CFRoutes{{Hostnames: []string{DefaultHost}, Port: 8080}}.RoutingInfo()
 var defaultPorts = []uint32{8080}
 
-var defaultSetupFunc = func() *models.Action {
+func defaultSetup(addresses world.ComponentAddresses) *models.Action {
 	return models.WrapAction(&models.DownloadAction{
 		From: fmt.Sprintf("http://%s/v1/static/%s", addresses.FileServer, "lrp.zip"),
 		To:   "/tmp/diego",
@@ -67,6 +68,7 @@ func UpsertInigoDomain(logger lager.Logger, bbsClient bbs.InternalClient) {
 }
 
 func lrpCreateRequest(
+	addresses world.ComponentAddresses,
 	processGuid,
 	logGuid,
 	rootfs string,
@@ -85,48 +87,48 @@ func lrpCreateRequest(
 		Routes: &defaultRoutes,
 		Ports:  defaultPorts,
 
-		Setup:         defaultSetupFunc(),
+		Setup:         defaultSetup(addresses),
 		Action:        action,
 		Monitor:       monitor,
 		PlacementTags: placementTags,
 	}
 }
 
-func DefaultLRPCreateRequest(processGuid, logGuid string, numInstances int) *models.DesiredLRP {
-	return lrpCreateRequest(processGuid, logGuid, defaultPreloadedRootFS, numInstances, nil, defaultAction, defaultMonitor)
+func DefaultLRPCreateRequest(addresses world.ComponentAddresses, processGuid, logGuid string, numInstances int) *models.DesiredLRP {
+	return lrpCreateRequest(addresses, processGuid, logGuid, defaultPreloadedRootFS, numInstances, nil, defaultAction, defaultMonitor)
 }
 
-func DefaultDeclaritiveHealthcheckLRPCreateRequest(processGuid, logGuid string, numInstances int) *models.DesiredLRP {
-	request := lrpCreateRequest(processGuid, logGuid, defaultPreloadedRootFS, numInstances, nil, defaultAction, nil)
+func DefaultDeclaritiveHealthcheckLRPCreateRequest(addresses world.ComponentAddresses, processGuid, logGuid string, numInstances int) *models.DesiredLRP {
+	request := lrpCreateRequest(addresses, processGuid, logGuid, defaultPreloadedRootFS, numInstances, nil, defaultAction, nil)
 	request.CheckDefinition = defaultDeclartiveMonitor
 	request.StartTimeoutMs = int64(time.Minute / time.Millisecond)
 	return request
 }
 
-func LRPCreateRequestWithPlacementTag(processGuid string, tags []string) *models.DesiredLRP {
-	return lrpCreateRequest(processGuid, defaultLogGuid, defaultPreloadedRootFS, 1, tags, defaultAction, defaultMonitor)
+func LRPCreateRequestWithPlacementTag(addresses world.ComponentAddresses, processGuid string, tags []string) *models.DesiredLRP {
+	return lrpCreateRequest(addresses, processGuid, defaultLogGuid, defaultPreloadedRootFS, 1, tags, defaultAction, defaultMonitor)
 }
 
-func LRPCreateRequestWithRootFS(processGuid, rootfs string) *models.DesiredLRP {
-	return lrpCreateRequest(processGuid, defaultLogGuid, rootfs, 1, nil, defaultAction, defaultMonitor)
+func LRPCreateRequestWithRootFS(addresses world.ComponentAddresses, processGuid, rootfs string) *models.DesiredLRP {
+	return lrpCreateRequest(addresses, processGuid, defaultLogGuid, rootfs, 1, nil, defaultAction, defaultMonitor)
 }
 
-func DockerLRPCreateRequest(processGuid string) *models.DesiredLRP {
+func DockerLRPCreateRequest(addresses world.ComponentAddresses, processGuid string) *models.DesiredLRP {
 	action := models.WrapAction(&models.RunAction{
 		User: "vcap",
 		Path: "dockerapp",
 		Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
 	})
 
-	return lrpCreateRequest(processGuid, defaultLogGuid, dockerRootFS, 1, nil, action, dockerMonitor)
+	return lrpCreateRequest(addresses, processGuid, defaultLogGuid, dockerRootFS, 1, nil, action, dockerMonitor)
 }
 
-func CrashingLRPCreateRequest(processGuid string) *models.DesiredLRP {
+func CrashingLRPCreateRequest(addresses world.ComponentAddresses, processGuid string) *models.DesiredLRP {
 	action := models.WrapAction(&models.RunAction{User: "vcap", Path: "false"})
-	return lrpCreateRequest(processGuid, defaultLogGuid, defaultPreloadedRootFS, 1, nil, action, defaultMonitor)
+	return lrpCreateRequest(addresses, processGuid, defaultLogGuid, defaultPreloadedRootFS, 1, nil, action, defaultMonitor)
 }
 
-func LightweightLRPCreateRequest(processGuid string) *models.DesiredLRP {
+func LightweightLRPCreateRequest(addresses world.ComponentAddresses, processGuid string) *models.DesiredLRP {
 	action := models.WrapAction(&models.RunAction{
 		User: "vcap",
 		Path: "sh",
@@ -142,7 +144,7 @@ func LightweightLRPCreateRequest(processGuid string) *models.DesiredLRP {
 		Args: []string{"-c", "echo all good"},
 	})
 
-	lrp := lrpCreateRequest(processGuid, defaultLogGuid, defaultPreloadedRootFS, 1, nil, action, monitor)
+	lrp := lrpCreateRequest(addresses, processGuid, defaultLogGuid, defaultPreloadedRootFS, 1, nil, action, monitor)
 	lrp.MemoryMb = 128
 	lrp.DiskMb = 1024
 	return lrp
