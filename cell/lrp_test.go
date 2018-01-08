@@ -95,10 +95,10 @@ var _ = Describe("LRP", func() {
 		var lrp *models.DesiredLRP
 
 		BeforeEach(func() {
-			lrp = helpers.DefaultLRPCreateRequest(componentMaker.Addresses, processGuid, "log-guid", 1)
+			lrp = helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, "log-guid", 1)
 			lrp.Setup = nil
 			lrp.CachedDependencies = []*models.CachedDependency{{
-				From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+				From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses().FileServer, "lrp.zip"),
 				To:        "/tmp/diego",
 				Name:      "lrp bits",
 				CacheKey:  "lrp-cache-key",
@@ -115,7 +115,7 @@ var _ = Describe("LRP", func() {
 
 		It("eventually runs", func() {
 			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
-			Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
+			Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 		})
 
 		It("should send events as the LRP goes through its lifecycle ", func() {
@@ -136,7 +136,7 @@ var _ = Describe("LRP", func() {
 
 				It("eventually runs", func() {
 					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
-					Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
+					Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 				})
 			})
 		}
@@ -161,7 +161,7 @@ var _ = Describe("LRP", func() {
 
 			validateLRPDesired := func() {
 				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
-				Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
+				Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 			}
 
 			Context("for CachedDependency", func() {
@@ -201,7 +201,7 @@ var _ = Describe("LRP", func() {
 					createChecksum(algorithm)
 					lrp.CachedDependencies = []*models.CachedDependency{}
 					lrp.Setup = models.WrapAction(&models.DownloadAction{
-						From:              fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+						From:              fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses().FileServer, "lrp.zip"),
 						To:                "/tmp/diego",
 						User:              "vcap",
 						ChecksumAlgorithm: algorithm,
@@ -301,9 +301,9 @@ var _ = Describe("LRP", func() {
 			})
 
 			It("can not access container ports without routes", func() {
-				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route-8080")).Should(Equal(http.StatusOK))
-				Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route-8080")).Should(Equal(http.StatusOK))
-				Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route-9080")).Should(Equal(http.StatusNotFound))
+				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, "lrp-route-8080")).Should(Equal(http.StatusOK))
+				Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, "lrp-route-8080")).Should(Equal(http.StatusOK))
+				Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, "lrp-route-9080")).Should(Equal(http.StatusNotFound))
 			})
 
 			Context("when adding a route", func() {
@@ -332,11 +332,11 @@ var _ = Describe("LRP", func() {
 				})
 
 				It("can immediately access the container port with the associated routes", func() {
-					Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route-8080")).Should(Equal(http.StatusOK))
-					Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route-8080")).Should(Equal(http.StatusOK))
+					Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, "lrp-route-8080")).Should(Equal(http.StatusOK))
+					Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, "lrp-route-8080")).Should(Equal(http.StatusOK))
 
-					Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route-9080")).Should(Equal(http.StatusOK))
-					Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, "lrp-route-9080")).Should(Equal(http.StatusOK))
+					Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, "lrp-route-9080")).Should(Equal(http.StatusOK))
+					Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, "lrp-route-9080")).Should(Equal(http.StatusOK))
 				})
 			})
 		})
@@ -353,7 +353,7 @@ var _ = Describe("LRP", func() {
 
 					return lrps
 				}).Should(HaveLen(2))
-				Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0", "1"}))
+				Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0", "1"}))
 			})
 
 			Describe("changing the instances", func() {
@@ -383,7 +383,7 @@ var _ = Describe("LRP", func() {
 							return lrps
 						}).Should(HaveLen(3))
 
-						Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0", "1", "2"}))
+						Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0", "1", "2"}))
 					})
 				})
 
@@ -400,7 +400,7 @@ var _ = Describe("LRP", func() {
 							return lrps
 						}).Should(HaveLen(1))
 
-						Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
+						Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 					})
 				})
 
@@ -417,7 +417,7 @@ var _ = Describe("LRP", func() {
 							return lrps
 						}).Should(BeEmpty())
 
-						Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(BeEmpty())
+						Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(BeEmpty())
 					})
 
 					It("can be scaled back up", func() {
@@ -434,7 +434,7 @@ var _ = Describe("LRP", func() {
 							return lrps
 						}).Should(HaveLen(1))
 
-						Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
+						Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 					})
 				})
 			})
@@ -453,7 +453,7 @@ var _ = Describe("LRP", func() {
 						return lrps
 					}).Should(BeEmpty())
 
-					Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(BeEmpty())
+					Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(BeEmpty())
 				})
 			})
 		})
@@ -468,7 +468,7 @@ var _ = Describe("LRP", func() {
 						var statusCode int
 						var err error
 						bytes, statusCode, err = helpers.ResponseBodyAndStatusCodeFromHost(
-							componentMaker.Addresses.Router,
+							componentMaker.Addresses().Router,
 							helpers.DefaultHost,
 							"curl",
 						)
@@ -505,7 +505,7 @@ var _ = Describe("LRP", func() {
 						var statusCode int
 						var err error
 						bytes, statusCode, err = helpers.ResponseBodyAndStatusCodeFromHost(
-							componentMaker.Addresses.Router,
+							componentMaker.Addresses().Router,
 							helpers.DefaultHost,
 							"curl",
 						)
@@ -519,7 +519,7 @@ var _ = Describe("LRP", func() {
 
 		Context("Unsupported preloaded rootfs is requested", func() {
 			BeforeEach(func() {
-				lrp = helpers.LRPCreateRequestWithRootFS(componentMaker.Addresses, processGuid, helpers.BogusPreloadedRootFS)
+				lrp = helpers.LRPCreateRequestWithRootFS(componentMaker.Addresses(), processGuid, helpers.BogusPreloadedRootFS)
 			})
 
 			It("fails and sets a placement error", func() {
@@ -540,7 +540,7 @@ var _ = Describe("LRP", func() {
 
 		Context("Unsupported arbitrary rootfs is requested", func() {
 			BeforeEach(func() {
-				lrp = helpers.LRPCreateRequestWithRootFS(componentMaker.Addresses, processGuid, "socker://hello")
+				lrp = helpers.LRPCreateRequestWithRootFS(componentMaker.Addresses(), processGuid, "socker://hello")
 			})
 
 			It("fails and sets a placement error", func() {
@@ -562,7 +562,7 @@ var _ = Describe("LRP", func() {
 		Context("Supported arbitrary rootfs scheme (viz., docker) is requested", func() {
 			BeforeEach(func() {
 				// docker is supported
-				lrp = helpers.DockerLRPCreateRequest(componentMaker.Addresses, processGuid)
+				lrp = helpers.DockerLRPCreateRequest(componentMaker.Addresses(), processGuid)
 				lrp.Setup = nil
 				lrp.CachedDependencies = []*models.CachedDependency{}
 			})
@@ -575,7 +575,7 @@ var _ = Describe("LRP", func() {
 				}).Should(HaveLen(1))
 
 				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
-				poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)
+				poller := helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)
 				Eventually(poller).Should(ConsistOf([]string{"0"}))
 			})
 		})
@@ -604,7 +604,7 @@ var _ = Describe("LRP", func() {
 				var lrp *models.DesiredLRP
 
 				BeforeEach(func() {
-					lrp = helpers.CrashingLRPCreateRequest(componentMaker.Addresses, processGuid)
+					lrp = helpers.CrashingLRPCreateRequest(componentMaker.Addresses(), processGuid)
 				})
 
 				JustBeforeEach(func() {
@@ -642,7 +642,7 @@ var _ = Describe("LRP", func() {
 				)
 
 				BeforeEach(func() {
-					lrp := helpers.DefaultLRPCreateRequest(componentMaker.Addresses, processGuid, "log-guid", 1)
+					lrp := helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, "log-guid", 1)
 
 					err := bbsClient.DesireLRP(logger, lrp)
 					Expect(err).NotTo(HaveOccurred())
@@ -680,10 +680,10 @@ var _ = Describe("LRP", func() {
 			var lrp *models.DesiredLRP
 
 			desireLRPWithChecksum := func(algorithm string) {
-				lrp = helpers.DefaultLRPCreateRequest(componentMaker.Addresses, processGuid, "log-guid", 1)
+				lrp = helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, "log-guid", 1)
 				lrp.Setup = nil
 				lrp.CachedDependencies = []*models.CachedDependency{{
-					From:              fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+					From:              fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses().FileServer, "lrp.zip"),
 					To:                "/tmp/diego",
 					Name:              "lrp bits",
 					CacheKey:          "lrp-cache-key",
@@ -750,7 +750,7 @@ var _ = Describe("LRP", func() {
 				createDownloadActionChecksum := func(algorithm string) {
 					desireLRPWithChecksum(algorithm)
 					lrp.Setup = models.WrapAction(&models.DownloadAction{
-						From:              fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+						From:              fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses().FileServer, "lrp.zip"),
 						To:                "/tmp/diego",
 						User:              "vcap",
 						ChecksumAlgorithm: algorithm,

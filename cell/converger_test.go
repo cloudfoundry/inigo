@@ -51,7 +51,7 @@ var _ = Describe("Convergence to desired state", func() {
 			return helpers.ActiveActualLRPs(logger, bbsClient, processGuid)
 		}
 
-		helloWorldInstancePoller = helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)
+		helloWorldInstancePoller = helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)
 	})
 
 	AfterEach(func() {
@@ -78,7 +78,7 @@ var _ = Describe("Convergence to desired state", func() {
 				var initialInstanceGuids []string
 
 				BeforeEach(func() {
-					err := bbsClient.DesireLRP(logger, helpers.DefaultLRPCreateRequest(componentMaker.Addresses, processGuid, appId, 2))
+					err := bbsClient.DesireLRP(logger, helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, appId, 2))
 					Expect(err).NotTo(HaveOccurred())
 
 					Eventually(runningLRPsPoller).Should(HaveLen(2))
@@ -156,7 +156,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
-					err := bbsClient.DesireLRP(logger, helpers.DefaultLRPCreateRequest(componentMaker.Addresses, processGuid, appId, 1))
+					err := bbsClient.DesireLRP(logger, helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, appId, 1))
 					Expect(err).NotTo(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
@@ -193,7 +193,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
-					err := bbsClient.DesireLRP(logger, helpers.DefaultLRPCreateRequest(componentMaker.Addresses, processGuid, appId, 1))
+					err := bbsClient.DesireLRP(logger, helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, appId, 1))
 					Expect(err).NotTo(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
@@ -220,7 +220,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
-					err := bbsClient.DesireLRP(logger, helpers.DefaultLRPCreateRequest(componentMaker.Addresses, processGuid, appId, 1))
+					err := bbsClient.DesireLRP(logger, helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, appId, 1))
 					Expect(err).NotTo(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())

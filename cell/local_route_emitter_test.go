@@ -46,7 +46,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 		cellAID = "cell-a"
 		cellBID = "cell-b"
 
-		cellRepPort, err := componentMaker.PortAllocator.ClaimPorts(2)
+		cellRepPort, err := componentMaker.PortAllocator().ClaimPorts(2)
 		Expect(err).NotTo(HaveOccurred())
 
 		cellARepAddr = fmt.Sprintf("0.0.0.0:%d", cellRepPort)
@@ -121,7 +121,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 
 		It("eventually is accessible through the router within a second", func() {
 			Eventually(
-				helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost),
+				helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, helpers.DefaultHost),
 				time.Second,
 				10*time.Millisecond,
 			).Should(Equal(http.StatusOK))
@@ -202,7 +202,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 
 				It("eventually should make the new lrp routable within a second", func() {
 					Eventually(
-						helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost),
+						helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost),
 						time.Second,
 						10*time.Millisecond,
 					).Should(ConsistOf([]string{"0", "1", "2"}))
@@ -217,7 +217,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 
 				It("eventually is not accessible through the router within a second", func() {
 					Eventually(
-						helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost),
+						helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost),
 						time.Second,
 						10*time.Millisecond,
 					).Should(BeEmpty())
@@ -246,7 +246,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 
 					It("eventually extra routes are removed within a second", func() {
 						Eventually(
-							helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost),
+							helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost),
 							time.Second,
 							10*time.Millisecond,
 						).Should(ConsistOf([]string{"0"}))
@@ -261,7 +261,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 
 					It("eventually is accessible using the new route within a second", func() {
 						Eventually(
-							helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, "some-other-route"),
+							helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, "some-other-route"),
 							time.Second,
 							10*time.Millisecond,
 						).Should(ConsistOf([]string{"0", "1", "2"}))
@@ -276,7 +276,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 
 					It("eventually not accessible using its route within a second", func() {
 						Eventually(
-							helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost),
+							helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, helpers.DefaultHost),
 							time.Second,
 							10*time.Millisecond,
 						).Should(Equal(404))
@@ -310,7 +310,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 
 				It("eventually is accessible through the router within a second", func() {
 					Eventually(
-						helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost),
+						helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost),
 						time.Second,
 						10*time.Millisecond,
 					).Should(ConsistOf([]string{"0", "1", "2"}))
@@ -324,7 +324,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 
 				It("eventually is not accessible through the router within a second", func() {
 					Eventually(
-						helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost),
+						helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost),
 						time.Second,
 						10*time.Millisecond,
 					).Should(BeEmpty())
@@ -335,10 +335,10 @@ var _ = Describe("LocalRouteEmitter", func() {
 })
 
 func createDesiredLRP(processGuid string) *models.DesiredLRP {
-	lrp := helpers.DefaultLRPCreateRequest(componentMaker.Addresses, processGuid, "log-guid", 1)
+	lrp := helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, "log-guid", 1)
 	lrp.Setup = nil
 	lrp.CachedDependencies = []*models.CachedDependency{{
-		From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+		From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses().FileServer, "lrp.zip"),
 		To:        "/tmp/diego",
 		Name:      "lrp bits",
 		CacheKey:  "lrp-cache-key",

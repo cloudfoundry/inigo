@@ -46,7 +46,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 			{"bbs", componentMaker.BBS()},
 		}))
 
-		helpers.ConsulWaitUntilReady(componentMaker.Addresses)
+		helpers.ConsulWaitUntilReady(componentMaker.Addresses())
 		logger = lager.NewLogger("test")
 		logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 
@@ -93,7 +93,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 			jsonSomeConfig, err := json.Marshal(someConfig)
 			Expect(err).NotTo(HaveOccurred())
 
-			lrp = helpers.DefaultLRPCreateRequest(componentMaker.Addresses, processGuid, "log-guid", 1)
+			lrp = helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, "log-guid", 1)
 
 			lrp.Setup = nil
 
@@ -110,7 +110,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 			}
 
 			lrp.CachedDependencies = []*models.CachedDependency{{
-				From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+				From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses().FileServer, "lrp.zip"),
 				To:        "/tmp/diego",
 				Name:      "lrp bits",
 				CacheKey:  "lrp-cache-key",
@@ -137,8 +137,8 @@ var _ = Describe("LRPs with volume mounts", func() {
 
 		It("can write to a file on the mounted volume", func() {
 			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
-			Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
-			body, statusCode, err := helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses.Router, helpers.DefaultHost, "write")
+			Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
+			body, statusCode, err := helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses().Router, helpers.DefaultHost, "write")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(body)).To(Equal("Hello Persistant World!\n"))
 			Expect(statusCode).To(Equal(200))

@@ -63,7 +63,7 @@ var _ = Describe("Evacuation", func() {
 		cellAID = "cell-a"
 		cellBID = "cell-b"
 
-		cellARepPort, err := componentMaker.PortAllocator.ClaimPorts(4)
+		cellARepPort, err := componentMaker.PortAllocator().ClaimPorts(4)
 		Expect(err).NotTo(HaveOccurred())
 
 		cellARepAddr = fmt.Sprintf("0.0.0.0:%d", cellARepPort)
@@ -103,9 +103,9 @@ var _ = Describe("Evacuation", func() {
 
 	It("handles evacuation", func() {
 		By("desiring an LRP")
-		lrp := helpers.DefaultLRPCreateRequest(componentMaker.Addresses, processGuid, "log-guid", 1)
+		lrp := helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, "log-guid", 1)
 		lrp.Setup = models.WrapAction(&models.DownloadAction{
-			From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+			From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses().FileServer, "lrp.zip"),
 			To:   "/tmp/diego",
 			User: "vcap",
 		})
@@ -139,7 +139,7 @@ var _ = Describe("Evacuation", func() {
 
 		By("running an actual LRP instance")
 		Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
-		Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
+		Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 
 		actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, processGuid, 0)
 		Expect(err).NotTo(HaveOccurred())
@@ -169,12 +169,12 @@ var _ = Describe("Evacuation", func() {
 
 		By("staying routable so long as its rep is alive")
 		Eventually(func() int {
-			Expect(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)()).To(Equal(http.StatusOK))
+			Expect(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, helpers.DefaultHost)()).To(Equal(http.StatusOK))
 			return evacuatingRepRunner.ExitCode()
 		}).Should(Equal(0))
 
 		By("running immediately after the rep exits and is routable")
 		Expect(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)()).To(Equal(models.ActualLRPStateRunning))
-		Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
+		Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 	})
 })

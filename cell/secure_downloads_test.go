@@ -70,7 +70,7 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 		var lrp *models.DesiredLRP
 
 		BeforeEach(func() {
-			fileServerURL, err := url.Parse(fmt.Sprintf("http://%s", componentMaker.Addresses.FileServer))
+			fileServerURL, err := url.Parse(fmt.Sprintf("http://%s", componentMaker.Addresses().FileServer))
 			Expect(err).NotTo(HaveOccurred())
 			proxy := httputil.NewSingleHostReverseProxy(fileServerURL)
 			tlsFileServer = httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -87,7 +87,7 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 		JustBeforeEach(func() {
 			tlsFileServer.StartTLS()
 
-			lrp = helpers.DefaultLRPCreateRequest(componentMaker.Addresses, processGuid, "log-guid", 1)
+			lrp = helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, "log-guid", 1)
 			err := bbsClient.DesireLRP(logger, lrp)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -158,7 +158,7 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 
 			gotRequest = make(chan struct{})
 
-			server, _ = helpers.Callback(componentMaker.ExternalAddress, ghttp.CombineHandlers(
+			server, _ = helpers.Callback(os.Getenv("EXTERNAL_ADDRESS"), ghttp.CombineHandlers(
 				ghttp.VerifyRequest("POST", "/thingy"),
 				func(w http.ResponseWriter, r *http.Request) {
 					contents, err := ioutil.ReadAll(r.Body)

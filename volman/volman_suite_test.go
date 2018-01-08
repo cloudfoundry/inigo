@@ -64,7 +64,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	err := json.Unmarshal(encodedBuiltArtifacts, &builtArtifacts)
 	Expect(err).NotTo(HaveOccurred())
 
-	_, dbBaseConnectionString := helpers.DBInfo()
+	_, dbBaseConnectionString := world.DBInfo()
 
 	localIP, err := localip.LocalIP()
 	Expect(err).NotTo(HaveOccurred())
@@ -87,7 +87,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		SQL:                 fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, config.GinkgoConfig.ParallelNode),
 	}
 
-	componentMaker = helpers.MakeComponentMaker(helpers.AssetsPath, builtArtifacts, addresses)
+	componentMaker = world.MakeComponentMaker(helpers.AssetsPath, builtArtifacts, addresses)
 	componentMaker.Setup()
 })
 
@@ -108,11 +108,11 @@ var _ = BeforeEach(func() {
 	localNodePluginProcess = ginkgomon.Invoke(localNodePluginRunner)
 
 	// make a dummy spec file not corresponding to a running driver just to make sure volman ignores it
-	driverPluginsPath = path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode))
+	driverPluginsPath = path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode))
 	voldriver.WriteDriverSpec(logger, driverPluginsPath, "deaddriver", "json", []byte(`{"Name":"deaddriver","Addr":"https://127.0.0.1:1111"}`))
 
 	// make a dummy spec file not corresponding to a running node plugin just to make sure volman ignores it
-	csiPluginsPath = path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("local-node-plugin-%d", config.GinkgoConfig.ParallelNode))
+	csiPluginsPath = path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("local-node-plugin-%d", config.GinkgoConfig.ParallelNode))
 	csiSpec := csiplugin.CsiPluginSpec{
 		Name:    "dead-csi-plugin",
 		Address: "127.0.0.1:2222",

@@ -44,7 +44,7 @@ var _ = Describe("Given volman and a local-node-plugin", func() {
 			volumeName = "someVolume"
 			csiMountRootDir = "local-node-plugin-mount"
 			volumeConfig = map[string]interface{}{"volume_id": volumeName}
-			expectedMountPath = path.Join(componentMaker.VolmanDriverConfigDir, csiMountRootDir, node.NODE_PLUGIN_ID, volumeName)
+			expectedMountPath = path.Join(componentMaker.VolmanDriverConfigDir(), csiMountRootDir, node.NODE_PLUGIN_ID, volumeName)
 		})
 
 		JustBeforeEach(func() {
@@ -70,7 +70,7 @@ var _ = Describe("Given volman and a local-node-plugin", func() {
 		BeforeEach(func() {
 			volumeName = "someVolume"
 			volumeConfig = map[string]interface{}{"volume_id": volumeName}
-			expectedMountPath = path.Join(componentMaker.VolmanDriverConfigDir, localdriver.MountsRootDir, volumeName)
+			expectedMountPath = path.Join(componentMaker.VolmanDriverConfigDir(), localdriver.MountsRootDir, volumeName)
 		})
 
 		JustBeforeEach(func() {

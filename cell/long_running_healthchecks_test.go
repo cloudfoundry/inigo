@@ -45,11 +45,11 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 
 		turnOnLongRunningHealthchecks := func(cfg *config.RepConfig) {
 			cfg.EnableDeclarativeHealthcheck = true
-			cfg.DeclarativeHealthcheckPath = componentMaker.Artifacts.Healthcheck
+			cfg.DeclarativeHealthcheckPath = componentMaker.Artifacts().Healthcheck
 			cfg.HealthCheckWorkPoolSize = 1
 		}
 
-		port, err := componentMaker.PortAllocator.ClaimPorts(1)
+		port, err := componentMaker.PortAllocator().ClaimPorts(1)
 		Expect(err).NotTo(HaveOccurred())
 		addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", port))
 		Expect(err).NotTo(HaveOccurred())
@@ -147,7 +147,7 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 		var lrp *models.DesiredLRP
 
 		BeforeEach(func() {
-			lrp = helpers.DefaultDeclaritiveHealthcheckLRPCreateRequest(componentMaker.Addresses, processGuid, "log-guid", 1)
+			lrp = helpers.DefaultDeclaritiveHealthcheckLRPCreateRequest(componentMaker.Addresses(), processGuid, "log-guid", 1)
 		})
 
 		JustBeforeEach(func() {
@@ -157,7 +157,7 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 
 		It("eventually runs", func() {
 			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
-			Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
+			Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 		})
 
 		Context("the container is privileged", func() {
@@ -167,7 +167,7 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 
 			It("eventually runs", func() {
 				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
-				Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
+				Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 			})
 		})
 
@@ -180,7 +180,7 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 			})
 
 			It("eventually runs", func() {
-				Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0", "1"}))
+				Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0", "1"}))
 			})
 		})
 
@@ -191,7 +191,7 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 
 			It("eventually runs", func() {
 				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
-				Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
+				Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 			})
 		})
 	})

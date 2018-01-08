@@ -40,7 +40,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	err := json.Unmarshal(encodedBuiltArtifacts, &builtArtifacts)
 	Expect(err).NotTo(HaveOccurred())
 
-	_, dbBaseConnectionString := helpers.DBInfo()
+	_, dbBaseConnectionString := world.DBInfo()
 
 	localIP, err := localip.LocalIP()
 	Expect(err).NotTo(HaveOccurred())
@@ -63,7 +63,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		SQL:                 fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, config.GinkgoConfig.ParallelNode),
 	}
 
-	componentMaker = helpers.MakeComponentMaker(helpers.AssetsPath, builtArtifacts, addresses)
+	componentMaker = world.MakeComponentMaker(helpers.AssetsPath, builtArtifacts, addresses)
 	componentMaker.Setup()
 })
 

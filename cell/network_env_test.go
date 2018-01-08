@@ -95,7 +95,7 @@ var _ = Describe("Network Environment Variables", func() {
 				Expect(task.Result).To(ContainSubstring("CF_INSTANCE_ADDR=\n"))
 				Expect(task.Result).To(ContainSubstring("CF_INSTANCE_PORT=\n"))
 				Expect(task.Result).To(ContainSubstring("CF_INSTANCE_PORTS=[]\n"))
-				Expect(task.Result).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_IP=%s\n", componentMaker.ExternalAddress)))
+				Expect(task.Result).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_IP=%s\n", os.Getenv("EXTERNAL_ADDRESS"))))
 				Expect(task.Result).To(ContainSubstring("CF_INSTANCE_INTERNAL_IP="))
 			})
 		})
@@ -113,10 +113,10 @@ var _ = Describe("Network Environment Variables", func() {
 		})
 
 		JustBeforeEach(func() {
-			lrp := helpers.DefaultLRPCreateRequest(componentMaker.Addresses, guid, guid, 1)
+			lrp := helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), guid, guid, 1)
 			lrp.Setup = models.WrapAction(&models.DownloadAction{
 				User: "vcap",
-				From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+				From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses().FileServer, "lrp.zip"),
 				To:   "/tmp/diego",
 			})
 			lrp.Action = models.WrapAction(&models.RunAction{
@@ -129,7 +129,7 @@ var _ = Describe("Network Environment Variables", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(helpers.LRPStatePoller(logger, bbsClient, guid, nil)).Should(Equal(models.ActualLRPStateRunning))
-			Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
+			Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 
 			lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, guid)
 			Expect(err).NotTo(HaveOccurred())
@@ -138,7 +138,7 @@ var _ = Describe("Network Environment Variables", func() {
 			actualLRP = lrps[0].Instance
 
 			var status int
-			response, status, err = helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses.Router, helpers.DefaultHost, "env")
+			response, status, err = helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses().Router, helpers.DefaultHost, "env")
 			Expect(status).To(Equal(http.StatusOK))
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -165,7 +165,7 @@ var _ = Describe("Network Environment Variables", func() {
 			It("sets the networking environment variables", func() {
 				netInfo := actualLRP.ActualLRPNetInfo
 				Expect(response).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_ADDR=%s:%d\n", netInfo.Address, netInfo.Ports[0].HostPort)))
-				Expect(response).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_IP=%s\n", componentMaker.ExternalAddress)))
+				Expect(response).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_IP=%s\n", os.Getenv("EXTERNAL_ADDRESS"))))
 				Expect(response).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_INTERNAL_IP=%s\n", netInfo.InstanceAddress)))
 				Expect(response).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_PORT=%d\n", netInfo.Ports[0].HostPort)))
 

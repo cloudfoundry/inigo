@@ -93,7 +93,7 @@ var _ = Describe("Privileges", func() {
 		var lrpRequest *models.DesiredLRP
 
 		BeforeEach(func() {
-			lrpRequest = helpers.DefaultLRPCreateRequest(componentMaker.Addresses, helpers.GenerateGuid(), "log-guid", 1)
+			lrpRequest = helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), helpers.GenerateGuid(), "log-guid", 1)
 			lrpRequest.Action = models.WrapAction(&models.RunAction{
 				User: "root",
 				Path: "/tmp/diego/go-server",
@@ -113,7 +113,7 @@ var _ = Describe("Privileges", func() {
 			})
 
 			It("succeeds", func() {
-				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost, "privileged")).Should(Equal(http.StatusOK))
+				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, helpers.DefaultHost, "privileged")).Should(Equal(http.StatusOK))
 			})
 		})
 
@@ -123,7 +123,7 @@ var _ = Describe("Privileges", func() {
 			})
 
 			It("fails", func() {
-				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses.Router, helpers.DefaultHost, "privileged")).Should(Equal(http.StatusInternalServerError))
+				Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, helpers.DefaultHost, "privileged")).Should(Equal(http.StatusInternalServerError))
 			})
 		})
 	})

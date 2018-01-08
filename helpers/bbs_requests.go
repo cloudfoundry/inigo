@@ -15,8 +15,8 @@ import (
 const defaultDomain = "inigo"
 const defaultLogGuid = "logGuid"
 
-var defaultPreloadedRootFS = "preloaded:" + DefaultStack
-var SecondaryPreloadedRootFS = "preloaded:" + PreloadedStacks[1]
+var defaultPreloadedRootFS = "preloaded:" + world.DefaultStack
+var SecondaryPreloadedRootFS = "preloaded:" + world.PreloadedStacks[1]
 
 const BogusPreloadedRootFS = "preloaded:bogus-rootfs"
 const dockerRootFS = "docker:///cloudfoundry/diego-docker-app#latest"

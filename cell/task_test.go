@@ -18,7 +18,6 @@ import (
 	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/inigo/inigo_announcement_server"
-	"code.cloudfoundry.org/inigo/world"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -136,9 +135,6 @@ var _ = Describe("Tasks", func() {
 				if privateRef == "" {
 					Skip("no private docker image specified")
 				}
-
-				dockerLifecycleTar := componentMaker.Artifacts.Lifecycles["dockerapplifecycle"]
-				helpers.Copy(dockerLifecycleTar, fileServerStaticDir)
 			})
 
 			It("fetches the metadata", func() {
@@ -151,7 +147,7 @@ var _ = Describe("Tasks", func() {
 					},
 				)
 				expectedTask.CachedDependencies = []*models.CachedDependency{{
-					From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, world.LifecycleFilename),
+					From:      fmt.Sprintf("http://%s/v1/static/docker_app_lifecycle/docker_app_lifecycle.tgz", componentMaker.Addresses().FileServer),
 					To:        "/tmp/diego/dockerapplifecycle",
 					Name:      "docker app lifecycle",
 					CacheKey:  "docker-app-lifecycle",
@@ -455,7 +451,7 @@ echo should have died by now
 
 			BeforeEach(func() {
 				downloadAction = &models.DownloadAction{
-					From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "announce.tar.gz"),
+					From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses().FileServer, "announce.tar.gz"),
 					To:   "/home/vcap/app",
 					User: "vcap",
 				}
@@ -571,7 +567,7 @@ echo should have died by now
 			BeforeEach(func() {
 				cachedDependency = &models.CachedDependency{
 					Name:      "Announce Tar",
-					From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "announce.tar.gz"),
+					From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses().FileServer, "announce.tar.gz"),
 					To:        "/home/vcap/app",
 					CacheKey:  "announce-tar",
 					LogSource: "announce-tar",
@@ -701,7 +697,7 @@ echo should have died by now
 
 			gotRequest = make(chan struct{})
 
-			server, uploadAddr = helpers.Callback(componentMaker.ExternalAddress, ghttp.CombineHandlers(
+			server, uploadAddr = helpers.Callback(os.Getenv("EXTERNAL_ADDRESS"), ghttp.CombineHandlers(
 				ghttp.VerifyRequest("POST", "/thingy"),
 				func(w http.ResponseWriter, r *http.Request) {
 					contents, err := ioutil.ReadAll(r.Body)

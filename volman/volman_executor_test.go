@@ -64,10 +64,10 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		cachePath = world.TempDir("executor-tmp")
 
 		config = executorinit.DefaultConfiguration
-		config.VolmanDriverPaths = path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("node-%d", ginkgoconfig.GinkgoConfig.ParallelNode))
-		config.CsiPaths = []string{path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("local-node-plugin-%d", ginkgoconfig.GinkgoConfig.ParallelNode))}
+		config.VolmanDriverPaths = path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("node-%d", ginkgoconfig.GinkgoConfig.ParallelNode))
+		config.CsiPaths = []string{path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("local-node-plugin-%d", ginkgoconfig.GinkgoConfig.ParallelNode))}
 		config.GardenNetwork = "tcp"
-		config.GardenAddr = componentMaker.Addresses.GardenLinux
+		config.GardenAddr = componentMaker.Addresses().GardenLinux
 		config.HealthyMonitoringInterval = durationjson.Duration(time.Second)
 		config.UnhealthyMonitoringInterval = durationjson.Duration(100 * time.Millisecond)
 		config.ContainerOwnerName = "executor" + generator.RandomName()
@@ -274,17 +274,17 @@ var _ = Describe("Executor/Garden/Volman", func() {
 							err := executorClient.DeleteContainer(logger, guid)
 							Expect(err).NotTo(HaveOccurred())
 
-							err = os.RemoveAll(path.Join(componentMaker.VolmanDriverConfigDir, "_volumes", volumeId))
+							err = os.RemoveAll(path.Join(componentMaker.VolmanDriverConfigDir(), "_volumes", volumeId))
 							Expect(err).ToNot(HaveOccurred())
 
-							files, err := filepath.Glob(path.Join(componentMaker.VolmanDriverConfigDir, "_volumes", volumeId, fileName))
+							files, err := filepath.Glob(path.Join(componentMaker.VolmanDriverConfigDir(), "_volumes", volumeId, fileName))
 							Expect(err).ToNot(HaveOccurred())
 							Expect(len(files)).To(Equal(0))
 						})
 
 						It("can write files to the mounted volume", func() {
 							By("we expect the file it wrote to be available outside of the container")
-							volmanPath := path.Join(componentMaker.VolmanDriverConfigDir, "_volumes", volumeId, fileName)
+							volmanPath := path.Join(componentMaker.VolmanDriverConfigDir(), "_volumes", volumeId, fileName)
 							files, err := filepath.Glob(volmanPath)
 							Expect(err).ToNot(HaveOccurred())
 							Expect(len(files)).To(Equal(1))
@@ -326,7 +326,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 								Expect(err).NotTo(HaveOccurred())
 							})
 							It("can still read files on the mounted volume for the first container", func() {
-								volmanPath := path.Join(componentMaker.VolmanDriverConfigDir, "_volumes", volumeId, fileName)
+								volmanPath := path.Join(componentMaker.VolmanDriverConfigDir(), "_volumes", volumeId, fileName)
 								files, err := filepath.Glob(volmanPath)
 								Expect(err).ToNot(HaveOccurred())
 								Expect(len(files)).To(Equal(1))
@@ -372,17 +372,17 @@ var _ = Describe("Executor/Garden/Volman", func() {
 							err := executorClient.DeleteContainer(logger, guid)
 							Expect(err).NotTo(HaveOccurred())
 
-							err = os.RemoveAll(path.Join(componentMaker.VolmanDriverConfigDir, "_volumes", volumeId))
+							err = os.RemoveAll(path.Join(componentMaker.VolmanDriverConfigDir(), "_volumes", volumeId))
 							Expect(err).ToNot(HaveOccurred())
 
-							files, err := filepath.Glob(path.Join(componentMaker.VolmanDriverConfigDir, "_volumes", volumeId, fileName))
+							files, err := filepath.Glob(path.Join(componentMaker.VolmanDriverConfigDir(), "_volumes", volumeId, fileName))
 							Expect(err).ToNot(HaveOccurred())
 							Expect(len(files)).To(Equal(0))
 						})
 
 						It("can write files to the mounted volume", func() {
 							By("we expect the file it wrote to be available outside of the container")
-							volmanPath := path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("local-node-volumes-%d", ginkgoconfig.GinkgoConfig.ParallelNode), volumeId, fileName)
+							volmanPath := path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("local-node-volumes-%d", ginkgoconfig.GinkgoConfig.ParallelNode), volumeId, fileName)
 							files, err := filepath.Glob(volmanPath)
 							Expect(err).ToNot(HaveOccurred())
 							Expect(len(files)).To(Equal(1))
@@ -424,7 +424,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 								Expect(err).NotTo(HaveOccurred())
 							})
 							It("can still read files on the mounted volume for the first container", func() {
-								volmanPath := path.Join(componentMaker.VolmanDriverConfigDir, fmt.Sprintf("local-node-volumes-%d", ginkgoconfig.GinkgoConfig.ParallelNode), volumeId, fileName)
+								volmanPath := path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("local-node-volumes-%d", ginkgoconfig.GinkgoConfig.ParallelNode), volumeId, fileName)
 								files, err := filepath.Glob(volmanPath)
 								Expect(err).ToNot(HaveOccurred())
 								Expect(len(files)).To(Equal(1))

@@ -63,7 +63,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	err := json.Unmarshal(encodedBuiltArtifacts, &builtArtifacts)
 	Expect(err).NotTo(HaveOccurred())
 
-	_, dbBaseConnectionString := helpers.DBInfo()
+	_, dbBaseConnectionString := world.DBInfo()
 
 	localIP, err := localip.LocalIP()
 	Expect(err).NotTo(HaveOccurred())
@@ -86,7 +86,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		SQL:                 fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, ginkgoconfig.GinkgoConfig.ParallelNode),
 	}
 
-	componentMaker = helpers.MakeComponentMaker(helpers.AssetsPath, builtArtifacts, addresses)
+	componentMaker = world.MakeComponentMaker(helpers.AssetsPath, builtArtifacts, addresses)
 	componentMaker.Setup()
 })
 
@@ -106,7 +106,7 @@ var _ = BeforeEach(func() {
 	}))
 	bbsProcess = ginkgomon.Invoke(componentMaker.BBS())
 
-	helpers.ConsulWaitUntilReady(componentMaker.Addresses)
+	helpers.ConsulWaitUntilReady(componentMaker.Addresses())
 	logger = lager.NewLogger("test")
 	logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 
@@ -114,7 +114,7 @@ var _ = BeforeEach(func() {
 	bbsClient = componentMaker.BBSClient()
 	bbsServiceClient = componentMaker.BBSServiceClient(logger)
 
-	inigo_announcement_server.Start(componentMaker.ExternalAddress)
+	inigo_announcement_server.Start(os.Getenv("EXTERNAL_ADDRESS"))
 })
 
 var _ = AfterEach(func() {

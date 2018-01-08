@@ -17,6 +17,7 @@ import (
 	"code.cloudfoundry.org/diego-ssh/routes"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
+	"code.cloudfoundry.org/inigo/world"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
@@ -64,7 +65,7 @@ var _ = Describe("SSH", func() {
 	)
 
 	BeforeEach(func() {
-		port, err := componentMaker.PortAllocator.ClaimPorts(1)
+		port, err := componentMaker.PortAllocator().ClaimPorts(1)
 		Expect(err).NotTo(HaveOccurred())
 		addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", port))
 		Expect(err).NotTo(HaveOccurred())
@@ -114,7 +115,7 @@ var _ = Describe("SSH", func() {
 		})
 
 		processGuid = helpers.GenerateGuid()
-		address = componentMaker.Addresses.SSHProxy
+		address = componentMaker.Addresses().SSHProxy
 
 		var fileServer ifrit.Runner
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
@@ -132,7 +133,7 @@ var _ = Describe("SSH", func() {
 		}))
 
 		tgCompressor := compressor.NewTgz()
-		err = tgCompressor.Compress(componentMaker.Artifacts.Executables["sshd"], filepath.Join(fileServerStaticDir, "sshd.tgz"))
+		err = tgCompressor.Compress(componentMaker.Artifacts().Executables["sshd"], filepath.Join(fileServerStaticDir, "sshd.tgz"))
 		Expect(err).NotTo(HaveOccurred())
 
 		archive_helper.CreateZipArchive(
@@ -142,8 +143,8 @@ var _ = Describe("SSH", func() {
 
 		sshRoute := routes.SSHRoute{
 			ContainerPort:   3456,
-			PrivateKey:      componentMaker.SSHConfig.PrivateKeyPem,
-			HostFingerprint: ssh_helpers.MD5Fingerprint(componentMaker.SSHConfig.HostKey.PublicKey()),
+			PrivateKey:      componentMaker.SSHConfig().PrivateKeyPem,
+			HostFingerprint: ssh_helpers.MD5Fingerprint(componentMaker.SSHConfig().HostKey.PublicKey()),
 		}
 
 		sshRoutePayload, err := json.Marshal(sshRoute)
@@ -165,14 +166,14 @@ var _ = Describe("SSH", func() {
 			Setup: models.WrapAction(models.Serial(
 				&models.DownloadAction{
 					Artifact: "sshd",
-					From:     fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "sshd.tgz"),
+					From:     fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses().FileServer, "sshd.tgz"),
 					To:       "/tmp/diego",
 					CacheKey: "sshd",
 					User:     "root",
 				},
 				&models.DownloadAction{
 					Artifact: "go-server",
-					From:     fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses.FileServer, "lrp.zip"),
+					From:     fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses().FileServer, "lrp.zip"),
 					To:       "/tmp/diego",
 					CacheKey: "lrp-cache-key",
 					User:     "root",
@@ -184,8 +185,8 @@ var _ = Describe("SSH", func() {
 					Path: "/tmp/diego/sshd",
 					Args: []string{
 						"-address=0.0.0.0:3456",
-						"-hostKey=" + componentMaker.SSHConfig.HostKeyPem,
-						"-authorizedKey=" + componentMaker.SSHConfig.AuthorizedKey,
+						"-hostKey=" + componentMaker.SSHConfig().HostKeyPem,
+						"-authorizedKey=" + componentMaker.SSHConfig().AuthorizedKey,
 						"-inheritDaemonEnv",
 						"-logLevel=debug",
 					},
@@ -202,7 +203,7 @@ var _ = Describe("SSH", func() {
 				Args: []string{"-z", "127.0.0.1", "3456"},
 			}),
 			StartTimeoutMs: 60000,
-			RootFs:         "preloaded:" + helpers.PreloadedStacks[0],
+			RootFs:         "preloaded:" + world.PreloadedStacks[0],
 			MemoryMb:       128,
 			DiskMb:         128,
 			Ports:          []uint32{3456},
