@@ -42,7 +42,7 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 )
 
-const GraceBusyboxImageURL = "docker:///onsi/grace-busybox"
+const GraceBusyboxImageURL = "docker:///cfdiegodocker/grace"
 
 var _ = Describe("InstanceIdentity", func() {
 	var (
