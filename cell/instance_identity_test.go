@@ -500,10 +500,6 @@ var _ = Describe("InstanceIdentity", func() {
 
 			Context("when the container uses OCI preloaded rootfs", func() {
 				BeforeEach(func() {
-					if !world.UseGrootFS() {
-						Skip("Not using grootfs")
-					}
-
 					lrp.CachedDependencies = nil
 					layer := fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses().FileServer, "lrp.tgz")
 					lrp.RootFs = "preloaded+layer:" + world.DefaultStack + "?layer=" + layer + "&layer_path=/" + "&layer_digest="

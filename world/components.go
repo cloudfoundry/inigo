@@ -165,9 +165,7 @@ func makeCommonComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, 
 		gardenGraphPath = os.TempDir()
 	}
 
-	if UseGrootFS() {
-		Expect(grootfsBinPath).NotTo(BeEmpty(), "must provide $GROOTFS_BINPATH")
-	}
+	Expect(grootfsBinPath).NotTo(BeEmpty(), "must provide $GROOTFS_BINPATH")
 	Expect(gardenBinPath).NotTo(BeEmpty(), "must provide $GARDEN_BINPATH")
 	Expect(gardenRootFSPath).NotTo(BeEmpty(), "must provide $GARDEN_ROOTFS")
 
@@ -401,15 +399,11 @@ func (maker commonComponentMaker) BBSSSLConfig() SSLConfig {
 }
 
 func (maker commonComponentMaker) Setup() {
-	if UseGrootFS() {
-		maker.GrootFSInitStore()
-	}
+	maker.GrootFSInitStore()
 }
 
 func (maker commonComponentMaker) Teardown() {
-	if UseGrootFS() {
-		maker.GrootFSDeleteStore()
-	}
+	maker.GrootFSDeleteStore()
 }
 
 func (maker commonComponentMaker) NATS(argv ...string) ifrit.Runner {
@@ -612,19 +606,21 @@ func (maker commonComponentMaker) garden(includeDefaultStack bool) ifrit.Runner 
 	Expect(err).NotTo(HaveOccurred())
 	config.BindPort = intPtr(intPort)
 
-	if UseGrootFS() {
-		config.ImagePluginBin = filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs")
-		config.PrivilegedImagePluginBin = filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs")
+	config.ImagePluginBin = filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs")
+	config.PrivilegedImagePluginBin = filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs")
 
-		config.ImagePluginExtraArgs = []string{
-			"\"--config\"",
-			maker.grootfsConfigPath(maker.gardenConfig.UnprivilegedGrootfsConfig),
-		}
+	// TODO: this is overriding the guardian runner args, which is fine since we
+	// don't use tardis (tardis is only required for overlay+xfs)
+	config.ImagePluginExtraArgs = []string{
+		"\"--config\"",
+		maker.grootfsConfigPath(maker.gardenConfig.UnprivilegedGrootfsConfig),
+	}
 
-		config.PrivilegedImagePluginExtraArgs = []string{
-			"\"--config\"",
-			maker.grootfsConfigPath(maker.gardenConfig.PrivilegedGrootfsConfig),
-		}
+	// TODO: this is overriding the guardian runner args, which is fine since we
+	// don't use tardis (tardis is only required for overlay+xfs)
+	config.PrivilegedImagePluginExtraArgs = []string{
+		"\"--config\"",
+		maker.grootfsConfigPath(maker.gardenConfig.PrivilegedGrootfsConfig),
 	}
 
 	gardenRunner := runner.NewGardenRunner(config)
@@ -1473,10 +1469,6 @@ func appendExtraConnectionStringParam(driverName, databaseConnectionString, sqlC
 	}
 
 	return databaseConnectionString
-}
-
-func UseGrootFS() bool {
-	return os.Getenv("USE_GROOTFS") == "true"
 }
 
 func intPtr(i int) *int {
