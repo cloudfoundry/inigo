@@ -579,7 +579,9 @@ func (maker commonComponentMaker) garden(includeDefaultStack bool) ifrit.Runner 
 
 	members := []grouper.Member{}
 
-	config := runner.DefaultGdnRunnerConfig()
+	config := runner.DefaultGdnRunnerConfig(runner.Binaries{
+		Tardis: filepath.Join(maker.gardenConfig.GardenBinPath, "tardis"),
+	})
 
 	config.GdnBin = maker.artifacts.Executables["garden"]
 	config.TarBin = filepath.Join(maker.gardenConfig.GardenBinPath, "tar")
