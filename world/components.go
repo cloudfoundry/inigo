@@ -1153,6 +1153,7 @@ func (maker v0ComponentMaker) RepN(n int, _ ...func(*repconfig.RepConfig)) *gink
 
 	tmpDir := TempDir("executor")
 	cachePath := path.Join(tmpDir, "cache")
+	Expect(os.Mkdir(cachePath, 0777)).To(Succeed())
 
 	args := []string{
 		"-sessionName", name,
@@ -1169,6 +1170,7 @@ func (maker v0ComponentMaker) RepN(n int, _ ...func(*repconfig.RepConfig)) *gink
 		"-enableLegacyApiServer=false",
 		"-evacuationPollingInterval", "1s",
 		"-evacuationTimeout", "10s",
+		"-exportNetworkEnvVars=true",
 		"-gardenAddr", maker.addresses.GardenLinux,
 		"-gardenHealthcheckProcessPath", "/bin/sh",
 		"-gardenHealthcheckProcessArgs", "-c,echo,foo",
