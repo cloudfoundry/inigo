@@ -111,7 +111,6 @@ type GardenSettingsConfig struct {
 
 type GrootFSConfig struct {
 	StorePath string `yaml:"store"`
-	FSDriver  string `yaml:"driver"`
 	DraxBin   string `yaml:"drax_bin"`
 	LogLevel  string `yaml:"log_level"`
 	Create    struct {
@@ -249,8 +248,7 @@ func makeCommonComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, 
 	storeTimestamp := time.Now().UnixNano
 
 	unprivilegedGrootfsConfig := GrootFSConfig{
-		StorePath: fmt.Sprintf("/mnt/btrfs/unprivileged-%d-%d", GinkgoParallelNode(), storeTimestamp),
-		FSDriver:  "btrfs",
+		StorePath: fmt.Sprintf("/mnt/garden-storage/unprivileged-%d-%d", GinkgoParallelNode(), storeTimestamp),
 		DraxBin:   "/usr/local/bin/drax",
 		LogLevel:  "debug",
 	}
@@ -260,8 +258,7 @@ func makeCommonComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, 
 	unprivilegedGrootfsConfig.Create.SkipLayerValidation = true
 
 	privilegedGrootfsConfig := GrootFSConfig{
-		StorePath: fmt.Sprintf("/mnt/btrfs/privileged-%d-%d", GinkgoParallelNode(), storeTimestamp),
-		FSDriver:  "btrfs",
+		StorePath: fmt.Sprintf("/mnt/garden-storage/privileged-%d-%d", GinkgoParallelNode(), storeTimestamp),
 		DraxBin:   "/usr/local/bin/drax",
 		LogLevel:  "debug",
 	}
@@ -519,6 +516,8 @@ func (maker commonComponentMaker) grootfsInitStore(grootfsConfig GrootFSConfig) 
 	for _, mapping := range grootfsConfig.Create.GidMappings {
 		grootfsArgs = append(grootfsArgs, "--gid-mapping", mapping)
 	}
+
+	grootfsArgs = append(grootfsArgs, "--store-size-bytes", "8589934592")
 
 	return maker.grootfsRunner(grootfsArgs)
 }
