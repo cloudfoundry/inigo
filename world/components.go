@@ -517,8 +517,6 @@ func (maker commonComponentMaker) grootfsInitStore(grootfsConfig GrootFSConfig) 
 		grootfsArgs = append(grootfsArgs, "--gid-mapping", mapping)
 	}
 
-	grootfsArgs = append(grootfsArgs, "--store-size-bytes", "8589934592")
-
 	return maker.grootfsRunner(grootfsArgs)
 }
 
