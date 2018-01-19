@@ -255,7 +255,7 @@ exit 0
 			Context("default networking", func() {
 				It("rejects outbound tcp traffic", func() {
 					// Failed to connect to host
-					pollTaskStatus(taskGuid, "28\n")
+					pollTaskStatus(taskGuid, "7\n")
 				})
 			})
 

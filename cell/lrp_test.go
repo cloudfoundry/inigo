@@ -475,7 +475,7 @@ var _ = Describe("LRP", func() {
 						Expect(err).NotTo(HaveOccurred())
 						return statusCode
 					}).Should(Equal(http.StatusOK))
-					Expect(string(bytes)).To(Equal("28"))
+					Expect(string(bytes)).To(Equal("7"))
 				})
 			})
 
