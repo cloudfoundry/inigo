@@ -877,7 +877,6 @@ func verifyCertificateIsSignedBy(cert, parentCert *x509.Certificate) {
 
 func createSleepyEnvoy() string {
 	envoyPath := filepath.Join(os.Getenv("ENVOY_PATH"), "envoy")
-	ldsPath := filepath.Join(os.Getenv("ENVOY_PATH"), "lds")
 
 	dir := world.TempDir("envoy")
 
@@ -893,7 +892,6 @@ func createSleepyEnvoy() string {
 	}
 
 	copyFile(filepath.Join(dir, "orig_envoy"), envoyPath)
-	copyFile(filepath.Join(dir, "lds"), ldsPath)
 
 	newEnvoy, err := os.OpenFile(filepath.Join(dir, "envoy"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
 	Expect(err).NotTo(HaveOccurred())
