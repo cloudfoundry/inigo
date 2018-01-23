@@ -957,8 +957,8 @@ func (maker commonComponentMaker) ConsulCluster() string {
 func (maker commonComponentMaker) VolmanClient(logger lager.Logger) (volman.Manager, ifrit.Runner) {
 	driverConfig := volmanclient.NewDriverConfig()
 	driverConfig.DriverPaths = []string{path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode))}
-	driverConfig.CsiPaths = []string{path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("local-node-plugin-%d", config.GinkgoConfig.ParallelNode))}
-	driverConfig.CsiMountRootDir = path.Join(maker.volmanDriverConfigDir, "local-node-plugin-mount")
+	driverConfig.CSIPaths = []string{path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("local-node-plugin-%d", config.GinkgoConfig.ParallelNode))}
+	driverConfig.CSIMountRootDir = path.Join(maker.volmanDriverConfigDir, "local-node-plugin-mount")
 
 	metronClient, err := loggingclient.NewIngressClient(loggingclient.Config{})
 	Expect(err).NotTo(HaveOccurred())

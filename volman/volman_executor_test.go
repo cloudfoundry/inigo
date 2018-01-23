@@ -65,7 +65,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 		config = executorinit.DefaultConfiguration
 		config.VolmanDriverPaths = path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("node-%d", ginkgoconfig.GinkgoConfig.ParallelNode))
-		config.CsiPaths = []string{path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("local-node-plugin-%d", ginkgoconfig.GinkgoConfig.ParallelNode))}
+		config.CSIPaths = []string{path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("local-node-plugin-%d", ginkgoconfig.GinkgoConfig.ParallelNode))}
 		config.GardenNetwork = "tcp"
 		config.GardenAddr = componentMaker.Addresses().GardenLinux
 		config.HealthyMonitoringInterval = durationjson.Duration(time.Second)
