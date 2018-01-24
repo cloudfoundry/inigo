@@ -795,7 +795,7 @@ nats:
 logging:
   file: /dev/stdout
   syslog: ""
-  level: info
+  level: debug
   loggregator_enabled: false
   metron_address: 127.0.0.1:65534
 port: %d
@@ -805,7 +805,7 @@ tracing:
   enable_zipkin: false
 trace_key: ""
 access_log:
-  file: ""
+  file: "/dev/stdout"
   enable_streaming: false
 enable_access_log_streaming: false
 debug_addr: ""
