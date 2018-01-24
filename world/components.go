@@ -680,6 +680,7 @@ func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routee
 	Expect(err).NotTo(HaveOccurred())
 
 	cfg := routeemitterconfig.RouteEmitterConfig{
+		ConsulEnabled:     true,
 		ConsulSessionName: name,
 		NATSAddresses:     maker.addresses.NATS,
 		BBSAddress:        maker.BBSURL(),
