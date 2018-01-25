@@ -17,6 +17,7 @@ import (
 var _ = Describe("Given volman and a local-node-plugin", func() {
 	var (
 		volumeName          string
+		csiVolume           string
 		csiMountRootDir     string
 		expectedMountPath   string
 		volumeConfig        map[string]interface{}
@@ -42,8 +43,9 @@ var _ = Describe("Given volman and a local-node-plugin", func() {
 	Context("when running mount and unmount", func() {
 		BeforeEach(func() {
 			volumeName = "someVolume"
+			csiVolume = "csiVolume"
 			csiMountRootDir = "local-node-plugin-mount"
-			volumeConfig = map[string]interface{}{"volume_id": volumeName}
+			volumeConfig = map[string]interface{}{"id": csiVolume, "attributes": map[string]string{}}
 			expectedMountPath = path.Join(componentMaker.VolmanDriverConfigDir(), csiMountRootDir, node.NODE_PLUGIN_ID, volumeName)
 		})
 
@@ -69,7 +71,8 @@ var _ = Describe("Given volman and a local-node-plugin", func() {
 	Context("when volman client restarted", func() {
 		BeforeEach(func() {
 			volumeName = "someVolume"
-			volumeConfig = map[string]interface{}{"volume_id": volumeName}
+			csiVolume = "csiVolume"
+			volumeConfig = map[string]interface{}{"id": csiVolume, "attributes": map[string]string{}}
 			expectedMountPath = path.Join(componentMaker.VolmanDriverConfigDir(), localdriver.MountsRootDir, volumeName)
 		})
 

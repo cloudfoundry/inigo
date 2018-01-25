@@ -338,6 +338,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 				Context("when running the container with csi driver", func() {
 					var (
 						runReq       executor.RunRequest
+						csiVolume    string
 						volumeId     string
 						fileName     string
 						volumeMounts []executor.VolumeMount
@@ -346,7 +347,8 @@ var _ = Describe("Executor/Garden/Volman", func() {
 					BeforeEach(func() {
 						fileName = fmt.Sprintf("testfile-%d.txt", time.Now().UnixNano())
 						volumeId = fmt.Sprintf("some-volumeID-%d", time.Now().UnixNano())
-						someConfig := map[string]interface{}{"volume_id": volumeId}
+						csiVolume = fmt.Sprintf("csi-volumeID-%d", time.Now().UnixNano())
+						someConfig := map[string]interface{}{"id": csiVolume, "attributes": map[string]string{}}
 						volumeMounts = []executor.VolumeMount{executor.VolumeMount{ContainerPath: "/testmount", Driver: node.NODE_PLUGIN_ID, VolumeId: volumeId, Config: someConfig, Mode: executor.BindMountModeRW}}
 						runInfo := executor.RunInfo{
 							VolumeMounts: volumeMounts,
@@ -382,7 +384,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 						It("can write files to the mounted volume", func() {
 							By("we expect the file it wrote to be available outside of the container")
-							volmanPath := path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("local-node-volumes-%d", ginkgoconfig.GinkgoConfig.ParallelNode), volumeId, fileName)
+							volmanPath := path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("local-node-volumes-%d", ginkgoconfig.GinkgoConfig.ParallelNode), csiVolume, fileName)
 							files, err := filepath.Glob(volmanPath)
 							Expect(err).ToNot(HaveOccurred())
 							Expect(len(files)).To(Equal(1))
@@ -424,7 +426,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 								Expect(err).NotTo(HaveOccurred())
 							})
 							It("can still read files on the mounted volume for the first container", func() {
-								volmanPath := path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("local-node-volumes-%d", ginkgoconfig.GinkgoConfig.ParallelNode), volumeId, fileName)
+								volmanPath := path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("local-node-volumes-%d", ginkgoconfig.GinkgoConfig.ParallelNode), csiVolume, fileName)
 								files, err := filepath.Glob(volmanPath)
 								Expect(err).ToNot(HaveOccurred())
 								Expect(len(files)).To(Equal(1))
