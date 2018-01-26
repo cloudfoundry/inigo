@@ -977,6 +977,7 @@ func (maker commonComponentMaker) VolmanDriver(logger lager.Logger) (ifrit.Runne
 			"-listenAddr", maker.addresses.FakeVolmanDriver,
 			"-debugAddr", debugServerAddress,
 			"-mountDir", maker.volmanDriverConfigDir,
+			"-logLevel", "debug",
 			"-driversPath", path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
 		),
 		StartCheck: "local-driver-server.started",
