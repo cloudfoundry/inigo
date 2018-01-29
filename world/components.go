@@ -1269,6 +1269,7 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 
 	tmpDir := TempDir("executor")
 	cachePath := path.Join(tmpDir, "cache")
+	Expect(os.Mkdir(cachePath, 0777)).To(Succeed())
 
 	repConfig := repconfig.RepConfig{
 		SessionName:               name,
