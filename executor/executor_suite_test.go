@@ -17,6 +17,7 @@ import (
 
 	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/inigo/helpers"
+	"code.cloudfoundry.org/inigo/helpers/portauthority"
 	"code.cloudfoundry.org/inigo/world"
 )
 
@@ -63,7 +64,15 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		SQL:                 fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, config.GinkgoConfig.ParallelNode),
 	}
 
-	componentMaker = world.MakeComponentMaker(helpers.AssetsPath, builtArtifacts, addresses)
+	node := GinkgoParallelNode()
+	startPort := 1000 * node
+	portRange := 200
+	endPort := startPort + portRange*(node+1)
+
+	allocator, err := portauthority.New(startPort, endPort)
+	Expect(err).NotTo(HaveOccurred())
+
+	componentMaker = world.MakeComponentMaker(helpers.AssetsPath, builtArtifacts, addresses, allocator)
 	componentMaker.Setup()
 })
 

@@ -154,7 +154,7 @@ func DBInfo() (string, string) {
 	return dbDriverName, dbBaseConnectionString
 }
 
-func makeCommonComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, worldAddresses ComponentAddresses) commonComponentMaker {
+func makeCommonComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, worldAddresses ComponentAddresses, allocator portauthority.PortAllocator) commonComponentMaker {
 	grootfsBinPath := os.Getenv("GROOTFS_BINPATH")
 	gardenBinPath := os.Getenv("GARDEN_BINPATH")
 	gardenRootFSPath := os.Getenv("GARDEN_ROOTFS")
@@ -278,14 +278,6 @@ func makeCommonComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, 
 
 	volmanConfigDir := TempDir(guid.String())
 
-	node := GinkgoParallelNode()
-	startPort := 1000 * node
-	portRange := 200
-	endPort := startPort + portRange*(node+1)
-
-	portAllocator, err := portauthority.New(startPort, endPort)
-	Expect(err).NotTo(HaveOccurred())
-
 	dbDriverName, dbBaseConnectionString := DBInfo()
 	return commonComponentMaker{
 		artifacts: builtArtifacts,
@@ -304,16 +296,16 @@ func makeCommonComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, 
 		dbDriverName:           dbDriverName,
 		dbBaseConnectionString: dbBaseConnectionString,
 
-		portAllocator: portAllocator,
+		portAllocator: allocator,
 	}
 }
 
-func MakeV0ComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, worldAddresses ComponentAddresses) ComponentMaker {
-	return v0ComponentMaker{commonComponentMaker: makeCommonComponentMaker(assetsPath, builtArtifacts, worldAddresses)}
+func MakeV0ComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, worldAddresses ComponentAddresses, allocator portauthority.PortAllocator) ComponentMaker {
+	return v0ComponentMaker{commonComponentMaker: makeCommonComponentMaker(assetsPath, builtArtifacts, worldAddresses, allocator)}
 }
 
-func MakeComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, worldAddresses ComponentAddresses) ComponentMaker {
-	return v1ComponentMaker{commonComponentMaker: makeCommonComponentMaker(assetsPath, builtArtifacts, worldAddresses)}
+func MakeComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, worldAddresses ComponentAddresses, allocator portauthority.PortAllocator) ComponentMaker {
+	return v1ComponentMaker{commonComponentMaker: makeCommonComponentMaker(assetsPath, builtArtifacts, worldAddresses, allocator)}
 }
 
 type ComponentMaker interface {
