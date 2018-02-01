@@ -53,6 +53,26 @@ var _ = Describe("Given volman and a local-node-plugin", func() {
 			mountResponse, err = volmanClient.Mount(logger, node.NODE_PLUGIN_ID, volumeName, volumeConfig)
 		})
 
+		Context("when volumeConfig doesn't have any attributes", func() {
+			BeforeEach(func() {
+				volumeConfig = map[string]interface{}{"id": csiVolume}
+			})
+
+			It("should be able to mount volume", func() {
+				Expect(err).NotTo(HaveOccurred())
+				mountPoint := mountResponse.Path
+				Expect(mountPoint).To(Equal(expectedMountPath))
+				Expect(expectedMountPath).To(BeAnExistingFile())
+			})
+
+			It("should be able to unmount volume", func() {
+				err = volmanClient.Unmount(logger, node.NODE_PLUGIN_ID, volumeName)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(expectedMountPath).NotTo(BeAnExistingFile())
+			})
+
+		})
+
 		It("should be able to mount volume", func() {
 			Expect(err).NotTo(HaveOccurred())
 			mountPoint := mountResponse.Path
