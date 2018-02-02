@@ -33,11 +33,11 @@ import (
 var (
 	componentMaker world.ComponentMaker
 
-	plumbing, bbsProcess ifrit.Process
-	gardenClient         garden.Client
-	bbsClient            bbs.InternalClient
-	bbsServiceClient     serviceclient.ServiceClient
-	logger               lager.Logger
+	plumbing, bbsProcess, gardenProcess ifrit.Process
+	gardenClient                        garden.Client
+	bbsClient                           bbs.InternalClient
+	bbsServiceClient                    serviceclient.ServiceClient
+	logger                              lager.Logger
 )
 
 func overrideConvergenceRepeatInterval(conf *bbsconfig.BBSConfig) {
@@ -108,10 +108,10 @@ var _ = BeforeEach(func() {
 			{"sql", componentMaker.SQL()},
 			{"nats", componentMaker.NATS()},
 			{"consul", componentMaker.Consul()},
-			{"garden", componentMaker.Garden()},
 		})},
 		{"locket", componentMaker.Locket()},
 	}))
+	gardenProcess = ginkgomon.Invoke(componentMaker.Garden())
 	bbsProcess = ginkgomon.Invoke(componentMaker.BBS())
 
 	helpers.ConsulWaitUntilReady(componentMaker.Addresses())
@@ -131,6 +131,7 @@ var _ = AfterEach(func() {
 	destroyContainerErrors := helpers.CleanupGarden(gardenClient)
 
 	helpers.StopProcesses(bbsProcess)
+	helpers.StopProcesses(gardenProcess)
 	helpers.StopProcesses(plumbing)
 
 	Expect(destroyContainerErrors).To(

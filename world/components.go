@@ -24,6 +24,7 @@ import (
 	"code.cloudfoundry.org/bbs/encryption"
 	"code.cloudfoundry.org/bbs/serviceclient"
 	"code.cloudfoundry.org/bbs/test_helpers"
+	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
@@ -43,6 +44,7 @@ import (
 	"code.cloudfoundry.org/locket"
 	locketconfig "code.cloudfoundry.org/locket/cmd/locket/config"
 	locketrunner "code.cloudfoundry.org/locket/cmd/locket/testrunner"
+	"code.cloudfoundry.org/rep"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	"code.cloudfoundry.org/rep/maintain"
 	routeemitterconfig "code.cloudfoundry.org/route-emitter/cmd/route-emitter/config"
@@ -317,6 +319,7 @@ type ComponentMaker interface {
 	Auctioneer(modifyConfigFuncs ...func(cfg *auctioneerconfig.AuctioneerConfig)) ifrit.Runner
 	BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig)) ifrit.Runner
 	BBSClient() bbs.InternalClient
+	RepClientFactory() rep.ClientFactory
 	BBSServiceClient(logger lager.Logger) serviceclient.ServiceClient
 	BBSURL() string
 	BBSSSLConfig() SSLConfig
@@ -325,7 +328,7 @@ type ComponentMaker interface {
 	CsiLocalNodePlugin(logger lager.Logger) ifrit.Runner
 	DefaultStack() string
 	FileServer() (ifrit.Runner, string)
-	Garden() ifrit.Runner
+	Garden(fs ...func(*runner.GdnRunnerConfig)) ifrit.Runner
 	GardenClient() garden.Client
 	GardenWithoutDefaultStack() ifrit.Runner
 	GrootFSDeleteStore()
@@ -550,11 +553,11 @@ func (maker commonComponentMaker) GardenWithoutDefaultStack() ifrit.Runner {
 	return maker.garden(false)
 }
 
-func (maker commonComponentMaker) Garden() ifrit.Runner {
-	return maker.garden(true)
+func (maker commonComponentMaker) Garden(fs ...func(*runner.GdnRunnerConfig)) ifrit.Runner {
+	return maker.garden(true, fs...)
 }
 
-func (maker commonComponentMaker) garden(includeDefaultStack bool) ifrit.Runner {
+func (maker commonComponentMaker) garden(includeDefaultStack bool, fs ...func(*runner.GdnRunnerConfig)) ifrit.Runner {
 	defaultRootFS := ""
 	if includeDefaultStack {
 		defaultRootFS = maker.rootFSes.StackPathMap()[maker.DefaultStack()]
@@ -610,6 +613,10 @@ func (maker commonComponentMaker) garden(includeDefaultStack bool) ifrit.Runner 
 	config.PrivilegedImagePluginExtraArgs = []string{
 		"\"--config\"",
 		maker.grootfsConfigPath(maker.gardenConfig.PrivilegedGrootfsConfig),
+	}
+
+	for _, f := range fs {
+		f(&config)
 	}
 
 	gardenRunner := runner.NewGardenRunner(config)
@@ -927,6 +934,23 @@ func (maker commonComponentMaker) BBSClient() bbs.InternalClient {
 	)
 	Expect(err).NotTo(HaveOccurred())
 	return client
+}
+
+func (maker commonComponentMaker) RepClientFactory() rep.ClientFactory {
+	Expect(maker.repSSL.CACert).To(BeAnExistingFile())
+
+	tlsConfig := rep.TLSConfig{
+		RequireTLS:      true,
+		CertFile:        maker.repSSL.ClientCert,
+		KeyFile:         maker.repSSL.ClientKey,
+		CaCertFile:      maker.repSSL.CACert,
+		ClientCacheSize: 100,
+	}
+
+	client := cfhttp.NewClient()
+	factory, err := rep.NewClientFactory(client, client, &tlsConfig)
+	Expect(err).NotTo(HaveOccurred())
+	return factory
 }
 
 func (maker commonComponentMaker) BBSServiceClient(logger lager.Logger) serviceclient.ServiceClient {

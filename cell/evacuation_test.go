@@ -2,6 +2,7 @@ package cell_test
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/durationjson"
+	"code.cloudfoundry.org/guardian/gqt/runner"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
@@ -39,7 +41,9 @@ var _ = Describe("Evacuation", func() {
 		cellA ifrit.Process
 		cellB ifrit.Process
 
-		processGuid string
+		processGuid    string
+		lrp            *models.DesiredLRP
+		cellPortsStart uint16
 	)
 
 	BeforeEach(func() {
@@ -63,13 +67,14 @@ var _ = Describe("Evacuation", func() {
 		cellAID = "cell-a"
 		cellBID = "cell-b"
 
-		cellARepPort, err := componentMaker.PortAllocator().ClaimPorts(4)
+		var err error
+		cellPortsStart, err = componentMaker.PortAllocator().ClaimPorts(4)
 		Expect(err).NotTo(HaveOccurred())
 
-		cellARepAddr = fmt.Sprintf("0.0.0.0:%d", cellARepPort)
-		cellARepSecureAddr = fmt.Sprintf("0.0.0.0:%d", cellARepPort+1)
-		cellBRepAddr = fmt.Sprintf("0.0.0.0:%d", cellARepPort+2)
-		cellBRepSecureAddr = fmt.Sprintf("0.0.0.0:%d", cellARepPort+3)
+		cellARepAddr = fmt.Sprintf("0.0.0.0:%d", cellPortsStart)
+		cellARepSecureAddr = fmt.Sprintf("0.0.0.0:%d", cellPortsStart+1)
+		cellBRepAddr = fmt.Sprintf("0.0.0.0:%d", cellPortsStart+2)
+		cellBRepSecureAddr = fmt.Sprintf("0.0.0.0:%d", cellPortsStart+3)
 
 		cellARepRunner = componentMaker.RepN(0,
 			func(config *repconfig.RepConfig) {
@@ -88,13 +93,17 @@ var _ = Describe("Evacuation", func() {
 				config.EvacuationTimeout = durationjson.Duration(30 * time.Second)
 			})
 
-		cellA = ginkgomon.Invoke(cellARepRunner)
-		cellB = ginkgomon.Invoke(cellBRepRunner)
-
 		test_helper.CreateZipArchive(
 			filepath.Join(fileServerStaticDir, "lrp.zip"),
 			fixtures.GoServerApp(),
 		)
+
+		lrp = helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, "log-guid", 1)
+	})
+
+	JustBeforeEach(func() {
+		cellA = ginkgomon.Invoke(cellARepRunner)
+		cellB = ginkgomon.Invoke(cellBRepRunner)
 	})
 
 	AfterEach(func() {
@@ -103,37 +112,6 @@ var _ = Describe("Evacuation", func() {
 
 	It("handles evacuation", func() {
 		By("desiring an LRP")
-		lrp := helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, "log-guid", 1)
-		lrp.Setup = models.WrapAction(&models.DownloadAction{
-			From: fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses().FileServer, "lrp.zip"),
-			To:   "/tmp/diego",
-			User: "vcap",
-		})
-		lrp.Action = models.WrapAction(&models.RunAction{
-			User: "vcap",
-			Path: "/tmp/diego/go-server",
-			Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
-		})
-
-		lrp.Monitor = models.WrapAction(
-			models.EmitProgressFor(
-				models.Timeout(
-					&models.RunAction{
-						User: "vcap",
-						Path: "sh",
-						Args: []string{
-							"-c",
-							`curl -I http://0.0.0.0:8080 --connect-timeout 2`,
-						},
-					},
-					5*time.Second,
-				),
-				"start",
-				"success",
-				"fail",
-			),
-		)
-
 		err := bbsClient.DesireLRP(logger, lrp)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -177,4 +155,87 @@ var _ = Describe("Evacuation", func() {
 		Expect(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)()).To(Equal(models.ActualLRPStateRunning))
 		Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 	})
+
+	Context("when garden Destroy hangs", func() {
+		BeforeEach(func() {
+			replaceGrootFSWithHangingVersion()
+			cellARepRunner = componentMaker.RepN(0,
+				func(config *repconfig.RepConfig) {
+					config.CellID = cellAID
+					config.ListenAddr = cellARepAddr
+					config.ListenAddrSecurable = cellARepSecureAddr
+					config.GracefulShutdownInterval = 1 // 1 nanosecond otherwise a 0 is treated as omitted value
+				},
+			)
+		})
+
+		JustBeforeEach(func() {
+			// kill cell-b to simplify the test. otherwise, we will have to figure
+			// out which cell to evacuate
+			ginkgomon.Kill(cellB)
+		})
+
+		It("shuts down gracefully after the evacuation timeout", func() {
+			time.Sleep(time.Minute)
+
+			err := bbsClient.DesireLRP(logger, lrp)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("running an actual LRP instance")
+			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+
+			By("posting the evacuation endpoint")
+			resp, err := http.Post(fmt.Sprintf("http://%s/evacuate", cellARepAddr), "text/html", nil)
+			Expect(err).NotTo(HaveOccurred())
+			resp.Body.Close()
+			Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
+
+			factory := componentMaker.RepClientFactory()
+			addr := fmt.Sprintf("http://%s.cell.service.cf.internal:%d", cellAID, cellPortsStart)
+			secureAddr := fmt.Sprintf("https://%s.cell.service.cf.internal:%d", cellAID, cellPortsStart+1)
+			client, err := factory.CreateClient(addr, secureAddr)
+			Expect(err).NotTo(HaveOccurred())
+
+			group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, lrp.ProcessGuid, 0)
+			Expect(err).NotTo(HaveOccurred())
+
+			// the following requests will hang since garden is stuck trying to destroy the containers
+			go func() {
+				for i := 0; i < 100; i++ {
+					err := client.StopLRPInstance(logger, group.Instance.ActualLRPKey, group.Instance.ActualLRPInstanceKey)
+					if err != nil {
+						return
+					}
+					time.Sleep(100 * time.Millisecond)
+				}
+			}()
+
+			// hanging http requests shouldn't prevent the process from exiting
+			Eventually(cellA.Wait(), 10*time.Second).Should(Receive())
+		})
+	})
 })
+
+func replaceGrootFSWithHangingVersion() {
+	f, err := ioutil.TempFile(os.TempDir(), "image_plugin")
+	Expect(err).NotTo(HaveOccurred())
+	Expect(f.Chmod(0755)).To(Succeed())
+	path := filepath.Join(os.Getenv("GROOTFS_BINPATH"), "grootfs")
+	os.Remove(fmt.Sprintf("/tmp/image_plugin_sleep_%d", GinkgoParallelNode()))
+	fmt.Fprintf(f, `#!/usr/bin/env bash
+echo $(date +%%s) "$@" >> /tmp/image_plugin_trace
+lock_file=/tmp/image_plugin_sleep_%d
+# sleep on delete of non healthcheck container and only the first time
+if [[ "x$3" == "xdelete" && ! ( "$4" =~ .*healthcheck.* ) && ! -f $lock_file ]]; then
+  touch $lock_file
+  sleep 10
+fi
+%s "$@"
+`, GinkgoParallelNode(), path)
+	Expect(f.Close()).To(Succeed())
+	ginkgomon.Interrupt(gardenProcess)
+	gardenProcess = ginkgomon.Invoke(componentMaker.Garden(func(config *runner.GdnRunnerConfig) {
+		config.ImagePluginBin = f.Name()
+		config.PrivilegedImagePluginBin = f.Name()
+	}))
+}
