@@ -121,6 +121,9 @@ var _ = Describe("SSH", func() {
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
 		repConfig := func(cfg *config.RepConfig) {
 			cfg.DropsondePort = addr.Port
+			cfg.PathToTLSCert = "../fixtures/certs/rep_server.crt"
+			cfg.PathToTLSKey = "../fixtures/certs/rep_server.key"
+			cfg.PathToTLSCACert = "../fixtures/certs/ca.crt"
 		}
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},

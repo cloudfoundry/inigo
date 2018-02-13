@@ -10,6 +10,7 @@ import (
 
 	"code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/guardian/gqt/runner"
 	"code.cloudfoundry.org/inigo/fixtures"
@@ -44,6 +45,8 @@ var _ = Describe("Evacuation", func() {
 		processGuid    string
 		lrp            *models.DesiredLRP
 		cellPortsStart uint16
+
+		httpClient *http.Client
 	)
 
 	BeforeEach(func() {
@@ -71,6 +74,20 @@ var _ = Describe("Evacuation", func() {
 		cellPortsStart, err = componentMaker.PortAllocator().ClaimPorts(4)
 		Expect(err).NotTo(HaveOccurred())
 
+		tlscfg, err := cfhttp.NewTLSConfig(
+			"../fixtures/certs/client.crt",
+			"../fixtures/certs/client.key",
+			"../fixtures/certs/ca.crt",
+		)
+		Expect(err).NotTo(HaveOccurred())
+
+		httpClient = &http.Client{
+			Timeout: 5 * time.Second,
+			Transport: &http.Transport{
+				TLSClientConfig: tlscfg,
+			},
+		}
+
 		cellARepAddr = fmt.Sprintf("0.0.0.0:%d", cellPortsStart)
 		cellARepSecureAddr = fmt.Sprintf("0.0.0.0:%d", cellPortsStart+1)
 		cellBRepAddr = fmt.Sprintf("0.0.0.0:%d", cellPortsStart+2)
@@ -82,6 +99,9 @@ var _ = Describe("Evacuation", func() {
 				config.ListenAddr = cellARepAddr
 				config.ListenAddrSecurable = cellARepSecureAddr
 				config.EvacuationTimeout = durationjson.Duration(30 * time.Second)
+				config.PathToTLSCert = "../fixtures/certs/rep_server.crt"
+				config.PathToTLSKey = "../fixtures/certs/rep_server.key"
+				config.PathToTLSCACert = "../fixtures/certs/ca.crt"
 			},
 		)
 
@@ -91,6 +111,9 @@ var _ = Describe("Evacuation", func() {
 				config.ListenAddr = cellBRepAddr
 				config.ListenAddrSecurable = cellBRepSecureAddr
 				config.EvacuationTimeout = durationjson.Duration(30 * time.Second)
+				config.PathToTLSCert = "../fixtures/certs/rep_server.crt"
+				config.PathToTLSKey = "../fixtures/certs/rep_server.key"
+				config.PathToTLSCACert = "../fixtures/certs/ca.crt"
 			})
 
 		test_helper.CreateZipArchive(
@@ -125,22 +148,23 @@ var _ = Describe("Evacuation", func() {
 		actualLRP, isEvacuating := actualLRPGroup.Resolve()
 		Expect(isEvacuating).To(BeFalse())
 
-		var evacuatingRepAddr string
+		var evacuatingRepPort uint16
 		var evacuatingRepRunner *ginkgomon.Runner
 
 		switch actualLRP.CellId {
 		case cellAID:
-			evacuatingRepAddr = cellARepAddr
 			evacuatingRepRunner = cellARepRunner
+			evacuatingRepPort = cellPortsStart
 		case cellBID:
-			evacuatingRepAddr = cellBRepAddr
 			evacuatingRepRunner = cellBRepRunner
+			evacuatingRepPort = cellPortsStart + 2
 		default:
 			panic("what? who?")
 		}
 
 		By("posting the evacuation endpoint")
-		resp, err := http.Post(fmt.Sprintf("http://%s/evacuate", evacuatingRepAddr), "text/html", nil)
+		// Rep admin endpoint verifies and validate 127.0.0.1 for IP SAN
+		resp, err := httpClient.Post(fmt.Sprintf("https://127.0.0.1:%d/evacuate", evacuatingRepPort), "text/html", nil)
 		Expect(err).NotTo(HaveOccurred())
 		resp.Body.Close()
 		Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
@@ -185,14 +209,16 @@ var _ = Describe("Evacuation", func() {
 			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 
 			By("posting the evacuation endpoint")
-			resp, err := http.Post(fmt.Sprintf("http://%s/evacuate", cellARepAddr), "text/html", nil)
+			// Rep admin endpoint verifies and validate 127.0.0.1 for IP SAN
+			resp, err := httpClient.Post(fmt.Sprintf("https://127.0.0.1:%d/evacuate", cellPortsStart), "text/html", nil)
 			Expect(err).NotTo(HaveOccurred())
 			resp.Body.Close()
 			Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 
 			factory := componentMaker.RepClientFactory()
-			addr := fmt.Sprintf("http://%s.cell.service.cf.internal:%d", cellAID, cellPortsStart)
+			addr := fmt.Sprintf("https://%s.cell.service.cf.internal:%d", cellAID, cellPortsStart)
 			secureAddr := fmt.Sprintf("https://%s.cell.service.cf.internal:%d", cellAID, cellPortsStart+1)
+			// NewClientFactory <<- tls
 			client, err := factory.CreateClient(addr, secureAddr)
 			Expect(err).NotTo(HaveOccurred())
 

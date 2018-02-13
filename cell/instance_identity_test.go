@@ -87,6 +87,9 @@ var _ = Describe("InstanceIdentity", func() {
 			cfg.InstanceIdentityCAPath = intermediateCACertPath
 			cfg.InstanceIdentityPrivateKeyPath = intermediateKeyPath
 			cfg.InstanceIdentityValidityPeriod = durationjson.Duration(validityPeriod)
+			cfg.PathToTLSCert = "../fixtures/certs/rep_server.crt"
+			cfg.PathToTLSKey = "../fixtures/certs/rep_server.key"
+			cfg.PathToTLSCACert = "../fixtures/certs/ca.crt"
 		}
 
 		exportNetworkVars := func(config *config.RepConfig) {

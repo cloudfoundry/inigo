@@ -11,6 +11,7 @@ import (
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/bbs/test_helpers"
+	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
@@ -35,6 +36,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 		fileServerStaticDir                          string
 		cellAID, cellBID, cellARepAddr, cellBRepAddr string
 		routeEmitterConfigs                          []func(*routeemitterconfig.RouteEmitterConfig)
+		cellAPort, cellBPort                         uint16
 	)
 
 	BeforeEach(func() {
@@ -49,8 +51,11 @@ var _ = Describe("LocalRouteEmitter", func() {
 		cellRepPort, err := componentMaker.PortAllocator().ClaimPorts(2)
 		Expect(err).NotTo(HaveOccurred())
 
-		cellARepAddr = fmt.Sprintf("0.0.0.0:%d", cellRepPort)
-		cellBRepAddr = fmt.Sprintf("0.0.0.0:%d", cellRepPort+1)
+		cellAPort = cellRepPort
+		cellBPort = cellRepPort + 1
+
+		cellARepAddr = fmt.Sprintf("0.0.0.0:%d", cellAPort)
+		cellBRepAddr = fmt.Sprintf("0.0.0.0:%d", cellBPort)
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},
@@ -197,6 +202,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 						bbsClient,
 						cellAID, cellARepAddr,
 						cellBID, cellBRepAddr,
+						cellAPort, cellBPort,
 					)
 				})
 
@@ -362,6 +368,7 @@ func evacuateARep(
 	bbsClient bbs.InternalClient,
 	cellAID, cellARepAddr string,
 	cellBID, cellBRepAddr string,
+	cellAPort, cellBPort uint16,
 ) {
 	By("finding rep with one instance running")
 	actualLRPGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGuid)
@@ -382,20 +389,34 @@ func evacuateARep(
 	}
 	Expect(repWithOneInstance).NotTo(BeEmpty())
 
-	evacuatingRepAddr := ""
+	tlscfg, err := cfhttp.NewTLSConfig(
+		"../fixtures/certs/client.crt",
+		"../fixtures/certs/client.key",
+		"../fixtures/certs/ca.crt",
+	)
+	Expect(err).NotTo(HaveOccurred())
+
+	httpClient := &http.Client{
+		Timeout: 5 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: tlscfg,
+		},
+	}
+
 	otherRepID := ""
+	var evacuatingRepPort uint16
 	if repWithOneInstance == cellAID {
-		evacuatingRepAddr = cellARepAddr
+		evacuatingRepPort = cellAPort
 		otherRepID = cellBID
 	} else if repWithOneInstance == cellBID {
-		evacuatingRepAddr = cellBRepAddr
+		evacuatingRepPort = cellBPort
 		otherRepID = cellAID
 	} else {
 		Fail(fmt.Sprintf("cell id %s doesn't match either cell-a or cell-b", repWithOneInstance))
 	}
 
 	By(fmt.Sprintf("sending evacuate request to %s", repWithOneInstance))
-	resp, err := http.Post(fmt.Sprintf("http://%s/evacuate", evacuatingRepAddr), "text/html", nil)
+	resp, err := httpClient.Post(fmt.Sprintf("https://127.0.0.1:%d/evacuate", evacuatingRepPort), "text/html", nil)
 	Expect(err).NotTo(HaveOccurred())
 	resp.Body.Close()
 	Expect(resp.StatusCode).To(Equal(http.StatusAccepted))

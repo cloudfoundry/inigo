@@ -49,7 +49,12 @@ var _ = Describe("Task Lifecycle", func() {
 		BeforeEach(func() {
 
 			cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-				{"rep", componentMaker.Rep(func(config *repconfig.RepConfig) { config.MemoryMB = "1024" })},
+				{"rep", componentMaker.Rep(func(config *repconfig.RepConfig) {
+					config.MemoryMB = "1024"
+					config.PathToTLSCert = "../fixtures/certs/rep_server.crt"
+					config.PathToTLSKey = "../fixtures/certs/rep_server.key"
+					config.PathToTLSCACert = "../fixtures/certs/ca.crt"
+				})},
 			}))
 
 			auctioneerProcess = ginkgomon.Invoke(componentMaker.Auctioneer())

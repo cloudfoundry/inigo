@@ -81,6 +81,7 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 				"../fixtures/certs/bbs_server.key",
 				"../fixtures/certs/ca.crt",
 			)
+			Expect(err).NotTo(HaveOccurred())
 			tlsFileServer.TLS = tlsConfig
 		})
 
@@ -94,21 +95,6 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 
 		It("eventually runs", func() {
 			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
-		})
-
-		Context("when client keypair is not provided", func() {
-			BeforeEach(func() {
-				tlsFileServer.TLS.ClientAuth = tls.NoClientCert
-
-				cfgs = append(cfgs, func(cfg *config.RepConfig) {
-					cfg.PathToTLSCert = ""
-					cfg.PathToTLSKey = ""
-				})
-			})
-
-			It("eventually runs", func() {
-				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
-			})
 		})
 
 		Context("when CaCertForDownload is present", func() {
@@ -181,6 +167,7 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 				"../fixtures/certs/bbs_server.key",
 				"../fixtures/certs/ca.crt",
 			)
+			Expect(err).NotTo(HaveOccurred())
 			tlsFileServer.TLS = tlsConfig
 			tlsFileServer.StartTLS()
 		})
