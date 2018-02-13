@@ -925,7 +925,7 @@ func (maker commonComponentMaker) GardenClient() garden.Client {
 }
 
 func (maker commonComponentMaker) BBSClient() bbs.InternalClient {
-	client, err := bbs.NewSecureClient(
+	client, err := bbs.NewClient(
 		maker.BBSURL(),
 		maker.bbsSSL.CACert,
 		maker.bbsSSL.ClientCert,
@@ -1242,7 +1242,6 @@ func (maker v1ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig
 		AuctioneerAddress:             "https://" + maker.addresses.Auctioneer,
 		ListenAddress:                 maker.addresses.BBS,
 		HealthAddress:                 maker.addresses.Health,
-		RequireSSL:                    true,
 		CertFile:                      maker.bbsSSL.ServerCert,
 		KeyFile:                       maker.bbsSSL.ServerKey,
 		CaFile:                        maker.bbsSSL.CACert,
@@ -1299,13 +1298,9 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 		LockTTL:                   durationjson.Duration(10 * time.Second),
 		LockRetryInterval:         durationjson.Duration(1 * time.Second),
 		ConsulCluster:             maker.ConsulCluster(),
-		BBSClientCertFile:         maker.bbsSSL.ClientCert,
-		BBSClientKeyFile:          maker.bbsSSL.ClientKey,
-		BBSCACertFile:             maker.bbsSSL.CACert,
-		ServerCertFile:            maker.repSSL.ServerCert,
-		ServerKeyFile:             maker.repSSL.ServerKey,
+		CertFile:                  maker.repSSL.ServerCert,
+		KeyFile:                   maker.repSSL.ServerKey,
 		CaCertFile:                maker.repSSL.CACert,
-		RequireTLS:                true,
 		EnableLegacyAPIServer:     false,
 		ListenAddrSecurable:       fmt.Sprintf("%s:%d", host, offsetPort(port+100, n)),
 		PreloadedRootFS:           maker.rootFSes,
@@ -1321,6 +1316,9 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 			VolmanDriverPaths:             path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
 			ContainerOwnerName:            "executor-" + strconv.Itoa(n),
 			HealthCheckContainerOwnerName: "executor-health-check-" + strconv.Itoa(n),
+			PathToTLSCert:                 maker.repSSL.ServerCert,
+			PathToTLSKey:                  maker.repSSL.ServerKey,
+			PathToTLSCACert:               maker.repSSL.CACert,
 		},
 		LagerConfig: lagerflags.LagerConfig{
 			LogLevel: "debug",

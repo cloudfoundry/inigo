@@ -81,6 +81,7 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 				"../fixtures/certs/bbs_server.key",
 				"../fixtures/certs/ca.crt",
 			)
+			Expect(err).NotTo(HaveOccurred())
 			tlsFileServer.TLS = tlsConfig
 		})
 
@@ -181,6 +182,7 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 				"../fixtures/certs/bbs_server.key",
 				"../fixtures/certs/ca.crt",
 			)
+			Expect(err).NotTo(HaveOccurred())
 			tlsFileServer.TLS = tlsConfig
 			tlsFileServer.StartTLS()
 		})
