@@ -20,14 +20,6 @@ func StopProcesses(processes ...ifrit.Process) {
 			}
 
 			process.Signal(syscall.SIGTERM)
-		}
-
-		for _, process := range processes {
-			if process == nil {
-				// sometimes components aren't initialized in individual tests, but a full
-				// suite may want AfterEach to clean up everything
-				continue
-			}
 
 			select {
 			case <-process.Wait():
