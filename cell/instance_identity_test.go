@@ -455,6 +455,24 @@ var _ = Describe("InstanceIdentity", func() {
 				Eventually(connect, 10*time.Second).Should(Succeed())
 			})
 
+			Context("when the app listens on the container interface and does not listen on localhost", func() {
+				BeforeEach(func() {
+					lrp.EnvironmentVariables = append(lrp.EnvironmentVariables, &models.EnvironmentVariable{
+						Name:  "SKIP_LOCALHOST_LISTEN",
+						Value: "true",
+					})
+					lrp.Monitor = models.WrapAction(&models.RunAction{
+						User: "vcap",
+						Path: "sh",
+						Args: []string{"-c", "nc -z $CF_INSTANCE_INTERNAL_IP 8080"},
+					})
+				})
+
+				It("should have a container with envoy enabled on it", func() {
+					Eventually(connect, 10*time.Second).Should(Succeed())
+				})
+			})
+
 			Context("when the container uses a docker image", func() {
 				BeforeEach(func() {
 					lrp = helpers.DockerLRPCreateRequest(componentMaker.Addresses(), processGUID)

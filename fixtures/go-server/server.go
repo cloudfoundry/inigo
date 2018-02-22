@@ -41,11 +41,15 @@ func main() {
 	errCh := make(chan error)
 
 	for _, port := range portArray {
-		println(port)
-		go func(port string) {
-			errCh <- http.ListenAndServe(":"+port, nil)
-		}(port)
-
+		addr := ""
+		if os.Getenv("SKIP_LOCALHOST_LISTEN") != "" {
+			addr = os.Getenv("CF_INSTANCE_INTERNAL_IP")
+		}
+		addr += ":" + port
+		go func(addr string) {
+			println(addr)
+			errCh <- http.ListenAndServe(addr, nil)
+		}(addr)
 	}
 
 	if httpsPort != "" {
