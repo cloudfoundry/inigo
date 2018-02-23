@@ -1305,7 +1305,6 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 		CertFile:                  maker.repSSL.ServerCert,
 		KeyFile:                   maker.repSSL.ServerKey,
 		CaCertFile:                maker.repSSL.CACert,
-		EnableLegacyAPIServer:     false,
 		ListenAddrSecurable:       fmt.Sprintf("%s:%d", host, offsetPort(port+100, n)),
 		PreloadedRootFS:           maker.rootFSes,
 		ExecutorConfig: executorinit.ExecutorConfig{
