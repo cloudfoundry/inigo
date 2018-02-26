@@ -1,20 +1,23 @@
 package cell_test
 
 import (
-	"fmt"
-	"net"
 	"os"
+	"path"
 	"path/filepath"
 	"sync"
+	"time"
 
 	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/bbs/events"
 	"code.cloudfoundry.org/bbs/models"
+	logging "code.cloudfoundry.org/diego-logging-client"
+	"code.cloudfoundry.org/diego-logging-client/testhelpers"
+	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
-	logevents "github.com/cloudfoundry/sonde-go/events"
 	"github.com/gogo/protobuf/proto"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -32,9 +35,10 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 
 		runtime ifrit.Process
 
-		lock        *sync.Mutex
-		eventSource events.EventSource
-		events      []models.Event
+		lock              *sync.Mutex
+		eventSource       events.EventSource
+		events            []models.Event
+		testIngressServer *testhelpers.TestIngressServer
 	)
 
 	BeforeEach(func() {
@@ -49,64 +53,56 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 			cfg.HealthCheckWorkPoolSize = 1
 		}
 
-		port, err := componentMaker.PortAllocator().ClaimPorts(1)
-		Expect(err).NotTo(HaveOccurred())
-		addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", port))
-		Expect(err).NotTo(HaveOccurred())
-		udpConn, err := net.ListenUDP("udp", addr)
+		fixturesPath := path.Join(os.Getenv("GOPATH"), "src/code.cloudfoundry.org/inigo/fixtures/certs")
+		metronCAFile := path.Join(fixturesPath, "metron", "CA.crt")
+		metronClientCertFile := path.Join(fixturesPath, "metron", "client.crt")
+		metronClientKeyFile := path.Join(fixturesPath, "metron", "client.key")
+		metronServerCertFile := path.Join(fixturesPath, "metron", "metron.crt")
+		metronServerKeyFile := path.Join(fixturesPath, "metron", "metron.key")
+		var err error
+		testIngressServer, err = testhelpers.NewTestIngressServer(metronServerCertFile, metronServerKeyFile, metronCAFile)
 		Expect(err).NotTo(HaveOccurred())
 
+		Expect(testIngressServer.Start()).To(Succeed())
+
+		metricsPort, err := testIngressServer.Port()
+		Expect(err).NotTo(HaveOccurred())
+
+		loggregatorConfig := func(cfg *config.RepConfig) {
+			cfg.LoggregatorConfig = logging.Config{
+				BatchFlushInterval: 10 * time.Millisecond,
+				BatchMaxSize:       1,
+				UseV2API:           true,
+				APIPort:            metricsPort,
+				CACertPath:         metronCAFile,
+				KeyPath:            metronClientKeyFile,
+				CertPath:           metronClientCertFile,
+			}
+			cfg.ContainerMetricsReportInterval = durationjson.Duration(5 * time.Second)
+		}
+
+		logger := lagertest.NewTestLogger("metron-agent")
 		metronAgent := ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
-			logger := logger.Session("metron-agent")
 			close(ready)
-			logger.Info("starting", lager.Data{"port": addr.Port})
-			msgs := make(chan []byte)
-			errCh := make(chan error)
-			go func() {
-				for {
-					bs := make([]byte, 102400)
-					n, _, err := udpConn.ReadFromUDP(bs)
-					if err != nil {
-						errCh <- err
-						return
-					}
-					msgs <- bs[:n]
-				}
-			}()
-		loop:
+			testMetricsChan, signalMetricsChan := testhelpers.TestMetricChan(testIngressServer.Receivers())
+			defer close(signalMetricsChan)
 			for {
 				select {
+				case envelope := <-testMetricsChan:
+					if log := envelope.GetLog(); log != nil {
+						logger.Info("received-data", lager.Data{"message": string(log.GetPayload())})
+					}
 				case <-signals:
-					logger.Info("signaled")
-					break loop
-				case err := <-errCh:
-					return err
-				case msg := <-msgs:
-					var envelope logevents.Envelope
-					err := proto.Unmarshal(msg, &envelope)
-					if err != nil {
-						logger.Error("error-parsing-message", err)
-						continue
-					}
-					if envelope.GetEventType() != logevents.Envelope_LogMessage {
-						continue
-					}
-					logger.Info("received-data", lager.Data{"message": string(envelope.GetLogMessage().GetMessage())})
+					return nil
 				}
 			}
-			udpConn.Close()
-			return nil
 		})
-
-		dropsondeListener := func(cfg *config.RepConfig) {
-			cfg.DropsondePort = addr.Port
-		}
 
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
 			{"metron-agent", metronAgent},
-			{"rep", componentMaker.Rep(turnOnLongRunningHealthchecks, dropsondeListener)},
+			{"rep", componentMaker.Rep(turnOnLongRunningHealthchecks, loggregatorConfig)},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 		}))
@@ -140,6 +136,7 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 	})
 
 	AfterEach(func() {
+		testIngressServer.Stop()
 		helpers.StopProcesses(runtime)
 	})
 

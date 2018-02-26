@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"sync"
@@ -17,20 +18,21 @@ import (
 	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
+	logging "code.cloudfoundry.org/diego-logging-client"
+	"code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/inigo/world"
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
 
 	"crypto/tls"
 	"crypto/x509"
 
-	"github.com/cloudfoundry/sonde-go/events"
-	"github.com/gogo/protobuf/proto"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
@@ -134,16 +136,11 @@ var _ = Describe("InstanceIdentity", func() {
 		)
 
 		rep = componentMaker.Rep(configRepCerts)
+		logger := lagertest.NewTestLogger("metron-agent")
 		metronAgent = ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
 			close(ready)
-		loop:
-			for {
-				select {
-				case <-signals:
-					logger.Info("signaled")
-					break loop
-				}
-			}
+			<-signals
+			logger.Info("signaled")
 			return nil
 		})
 	})
@@ -327,10 +324,13 @@ var _ = Describe("InstanceIdentity", func() {
 	})
 
 	Context("when running with envoy proxy", func() {
-		var address string
-		var configRepCerts func(cfg *config.RepConfig)
-		var enableContainerProxy func(cfg *config.RepConfig)
-		var dropsondeConfig func(cfg *config.RepConfig)
+		var (
+			address              string
+			configRepCerts       func(cfg *config.RepConfig)
+			enableContainerProxy func(cfg *config.RepConfig)
+			loggregatorConfig    func(cfg *config.RepConfig)
+			testIngressServer    *testhelpers.TestIngressServer
+		)
 
 		BeforeEach(func() {
 			configRepCerts = func(cfg *config.RepConfig) {
@@ -350,58 +350,56 @@ var _ = Describe("InstanceIdentity", func() {
 				config.ContainerProxyConfigPath = tmpdir
 			}
 
-			addr, err := net.ResolveUDPAddr("udp", ":0")
+			fixturesPath := path.Join(os.Getenv("GOPATH"), "src/code.cloudfoundry.org/inigo/fixtures/certs")
+			metronCAFile := path.Join(fixturesPath, "metron", "CA.crt")
+			metronClientCertFile := path.Join(fixturesPath, "metron", "client.crt")
+			metronClientKeyFile := path.Join(fixturesPath, "metron", "client.key")
+			metronServerCertFile := path.Join(fixturesPath, "metron", "metron.crt")
+			metronServerKeyFile := path.Join(fixturesPath, "metron", "metron.key")
+			var err error
+			testIngressServer, err = testhelpers.NewTestIngressServer(metronServerCertFile, metronServerKeyFile, metronCAFile)
 			Expect(err).NotTo(HaveOccurred())
 
-			udpConn, err := net.ListenUDP("udp", addr)
+			Expect(testIngressServer.Start()).To(Succeed())
+
+			metricsPort, err := testIngressServer.Port()
 			Expect(err).NotTo(HaveOccurred())
 
-			dropsondeConfig = func(cfg *config.RepConfig) {
-				cfg.DropsondePort = udpConn.LocalAddr().(*net.UDPAddr).Port
+			loggregatorConfig = func(cfg *config.RepConfig) {
+				cfg.LoggregatorConfig = logging.Config{
+					BatchFlushInterval: 10 * time.Millisecond,
+					BatchMaxSize:       1,
+					UseV2API:           true,
+					APIPort:            metricsPort,
+					CACertPath:         metronCAFile,
+					KeyPath:            metronClientKeyFile,
+					CertPath:           metronClientCertFile,
+				}
 				cfg.ContainerMetricsReportInterval = durationjson.Duration(5 * time.Second)
 			}
 
-			rep = componentMaker.Rep(configRepCerts, enableContainerProxy, dropsondeConfig)
+			rep = componentMaker.Rep(configRepCerts, enableContainerProxy, loggregatorConfig)
 
+			logger := lagertest.NewTestLogger("metron-agent")
 			metronAgent = ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
-				defer GinkgoRecover()
-				defer udpConn.Close()
-
-				logger := logger.Session("metron-agent")
 				close(ready)
-				logger.Info("starting", lager.Data{"port": udpConn.LocalAddr().(*net.UDPAddr).Port})
-				msgs := make(chan []byte)
-				errCh := make(chan error)
-				go func() {
-					for {
-						bs := make([]byte, 102400)
-						n, _, err := udpConn.ReadFromUDP(bs)
-						if err != nil {
-							errCh <- err
-							return
-						}
-						msgs <- bs[:n]
-					}
-				}()
+				testMetricsChan, signalMetricsChan := testhelpers.TestMetricChan(testIngressServer.Receivers())
+				defer close(signalMetricsChan)
 				for {
 					select {
+					case envelope := <-testMetricsChan:
+						if log := envelope.GetLog(); log != nil {
+							logger.Info("received-data", lager.Data{"message": string(log.GetPayload())})
+						}
 					case <-signals:
-						logger.Info("signaled")
 						return nil
-					case err := <-errCh:
-						return err
-					case msg := <-msgs:
-						var envelope events.Envelope
-						err := proto.Unmarshal(msg, &envelope)
-						if err != nil {
-							continue
-						}
-						if x := envelope.GetLogMessage(); x != nil {
-							logger.Info("received-data", lager.Data{"message": string(x.GetMessage())})
-						}
 					}
 				}
 			})
+		})
+
+		AfterEach(func() {
+			testIngressServer.Stop()
 		})
 
 		connect := func() error {
@@ -538,7 +536,7 @@ var _ = Describe("InstanceIdentity", func() {
 						config.InstanceIdentityValidityPeriod = durationjson.Duration(credRotationPeriod)
 					}
 
-					rep = componentMaker.Rep(configRepCerts, enableContainerProxy, dropsondeConfig, alterCredRotation)
+					rep = componentMaker.Rep(configRepCerts, enableContainerProxy, loggregatorConfig, alterCredRotation)
 				})
 
 				It("should be able to reconnect with the updated certs", func() {
@@ -584,55 +582,32 @@ var _ = Describe("InstanceIdentity", func() {
 
 				Context("when emitting app metrics", func() {
 					var (
-						metricsChan     chan map[string]uint64
-						dropsondeConfig func(cfg *config.RepConfig)
-						memoryLimit     uint64
+						metricsChan chan map[string]uint64
+						memoryLimit uint64
 					)
 
 					BeforeEach(func() {
 						metricsChan = make(chan map[string]uint64, 10)
 						memoryLimit = uint64(lrp.MemoryMb)
 
-						addr, err := net.ResolveUDPAddr("udp", ":0")
-						Expect(err).NotTo(HaveOccurred())
-						udpConn, err := net.ListenUDP("udp", addr)
-						Expect(err).NotTo(HaveOccurred())
-
+						logger := lagertest.NewTestLogger("metron-agent")
 						metronAgent = ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
-							defer GinkgoRecover()
-							defer udpConn.Close()
-
-							logger := logger.Session("metron-agent")
 							close(ready)
-							logger.Info("starting", lager.Data{"port": addr.Port})
-							msgs := make(chan []byte)
-							errCh := make(chan error)
-							go func() {
-								for {
-									bs := make([]byte, 102400)
-									n, _, err := udpConn.ReadFromUDP(bs)
-									if err != nil {
-										errCh <- err
-										return
-									}
-									msgs <- bs[:n]
-								}
-							}()
+							testMetricsChan, signalMetricsChan := testhelpers.TestMetricChan(testIngressServer.Receivers())
+							defer close(signalMetricsChan)
 							for {
 								select {
-								case <-signals:
-									logger.Info("signaled")
-									return nil
-								case err := <-errCh:
-									return err
-								case msg := <-msgs:
-									var envelope events.Envelope
-									err := proto.Unmarshal(msg, &envelope)
-									if err != nil {
+								case envelope := <-testMetricsChan:
+									if envelope.GetInstanceId() == "" {
+										// not app metrics
+										logger.Info("no-instance-id")
 										continue
 									}
-									metric := envelope.GetContainerMetric()
+
+									metric := envelope.GetGauge()
 									if metric == nil {
+										// not app metrics
+										logger.Info("no-envelop-gauge")
 										continue
 									}
 
@@ -643,35 +618,34 @@ var _ = Describe("InstanceIdentity", func() {
 										// container can be nil if we get a container metric while
 										// the JustBeforeEach is still getting the actual lrp and
 										// container infromation
+										logger.Info("container-is-not-set")
 										continue
 									}
 
 									metrics, err := c.Metrics()
 									if err != nil {
 										// do not return the error since garden will initially
+										logger.Info("no-container-metrics")
 										continue
 									}
 									stats := metrics.MemoryStat
 									actualMemoryUsage := stats.TotalRss + stats.TotalCache - stats.TotalInactiveFile
 
 									metricsChan <- map[string]uint64{
-										"memory":        metric.GetMemoryBytes(),
+										"memory":        uint64(metric.Metrics["memory"].Value),
 										"actual_memory": actualMemoryUsage,
-										"memory_quota":  metric.GetMemoryBytesQuota(),
+										"memory_quota":  uint64(metric.Metrics["memory_quota"].Value),
 									}
+								case <-signals:
+									return nil
 								}
 							}
 						})
 
-						dropsondeConfig = func(cfg *config.RepConfig) {
-							cfg.DropsondePort = udpConn.LocalAddr().(*net.UDPAddr).Port
-							cfg.ContainerMetricsReportInterval = durationjson.Duration(5 * time.Second)
-						}
-
 						rep = componentMaker.Rep(
 							configRepCerts,
 							enableContainerProxy, setProxyMemoryAllocation,
-							dropsondeConfig,
+							loggregatorConfig,
 						)
 
 						lrp.Action.RunAction.Args = []string{"-allocate-memory-mb=30"}
@@ -690,7 +664,7 @@ var _ = Describe("InstanceIdentity", func() {
 							rep = componentMaker.Rep(
 								configRepCerts,
 								setProxyMemoryAllocation,
-								dropsondeConfig,
+								loggregatorConfig,
 							)
 
 							lrp = helpers.DockerLRPCreateRequest(componentMaker.Addresses(), processGUID)
@@ -746,7 +720,7 @@ var _ = Describe("InstanceIdentity", func() {
 					config.HealthCheckWorkPoolSize = 1
 				}
 
-				rep = componentMaker.Rep(configRepCerts, enableContainerProxy, dropsondeConfig, enableDeclarativeHealthChecks)
+				rep = componentMaker.Rep(configRepCerts, enableContainerProxy, loggregatorConfig, enableDeclarativeHealthChecks)
 			})
 
 			JustBeforeEach(func() {
