@@ -247,7 +247,7 @@ func makeCommonComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, 
 		CACert:     caCert,
 	}
 
-	storeTimestamp := time.Now().UnixNano
+	storeTimestamp := time.Now().UnixNano()
 
 	unprivilegedGrootfsConfig := GrootFSConfig{
 		StorePath: fmt.Sprintf("/mnt/garden-storage/unprivileged-%d-%d", GinkgoParallelNode(), storeTimestamp),
