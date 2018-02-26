@@ -92,10 +92,6 @@ var _ = Describe("InstanceIdentity", func() {
 			cfg.PathToTLSCACert = "../fixtures/certs/ca.crt"
 		}
 
-		exportNetworkVars := func(config *config.RepConfig) {
-			config.ExportNetworkEnvVars = true
-		}
-
 		client = http.Client{}
 		client.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{
@@ -137,7 +133,7 @@ var _ = Describe("InstanceIdentity", func() {
 			archiveFiles,
 		)
 
-		rep = componentMaker.Rep(configRepCerts, exportNetworkVars)
+		rep = componentMaker.Rep(configRepCerts)
 		metronAgent = ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
 			close(ready)
 		loop:
@@ -333,7 +329,6 @@ var _ = Describe("InstanceIdentity", func() {
 	Context("when running with envoy proxy", func() {
 		var address string
 		var configRepCerts func(cfg *config.RepConfig)
-		var exportNetworkVars func(cfg *config.RepConfig)
 		var enableContainerProxy func(cfg *config.RepConfig)
 		var dropsondeConfig func(cfg *config.RepConfig)
 
@@ -343,10 +338,6 @@ var _ = Describe("InstanceIdentity", func() {
 				cfg.InstanceIdentityCAPath = intermediateCACertPath
 				cfg.InstanceIdentityPrivateKeyPath = intermediateKeyPath
 				cfg.InstanceIdentityValidityPeriod = durationjson.Duration(validityPeriod)
-			}
-
-			exportNetworkVars = func(config *config.RepConfig) {
-				config.ExportNetworkEnvVars = true
 			}
 
 			enableContainerProxy = func(config *config.RepConfig) {
@@ -370,7 +361,7 @@ var _ = Describe("InstanceIdentity", func() {
 				cfg.ContainerMetricsReportInterval = durationjson.Duration(5 * time.Second)
 			}
 
-			rep = componentMaker.Rep(configRepCerts, exportNetworkVars, enableContainerProxy, dropsondeConfig)
+			rep = componentMaker.Rep(configRepCerts, enableContainerProxy, dropsondeConfig)
 
 			metronAgent = ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
 				defer GinkgoRecover()
@@ -547,7 +538,7 @@ var _ = Describe("InstanceIdentity", func() {
 						config.InstanceIdentityValidityPeriod = durationjson.Duration(credRotationPeriod)
 					}
 
-					rep = componentMaker.Rep(configRepCerts, exportNetworkVars, enableContainerProxy, dropsondeConfig, alterCredRotation)
+					rep = componentMaker.Rep(configRepCerts, enableContainerProxy, dropsondeConfig, alterCredRotation)
 				})
 
 				It("should be able to reconnect with the updated certs", func() {
@@ -573,7 +564,7 @@ var _ = Describe("InstanceIdentity", func() {
 						config.ProxyMemoryAllocationMB = 5
 					}
 
-					rep = componentMaker.Rep(configRepCerts, exportNetworkVars, enableContainerProxy, setProxyMemoryAllocation)
+					rep = componentMaker.Rep(configRepCerts, enableContainerProxy, setProxyMemoryAllocation)
 				})
 
 				JustBeforeEach(func() {
@@ -678,7 +669,7 @@ var _ = Describe("InstanceIdentity", func() {
 						}
 
 						rep = componentMaker.Rep(
-							configRepCerts, exportNetworkVars,
+							configRepCerts,
 							enableContainerProxy, setProxyMemoryAllocation,
 							dropsondeConfig,
 						)
@@ -697,7 +688,7 @@ var _ = Describe("InstanceIdentity", func() {
 					Context("when additional memory is set but container proxy is not enabled", func() {
 						BeforeEach(func() {
 							rep = componentMaker.Rep(
-								configRepCerts, exportNetworkVars,
+								configRepCerts,
 								setProxyMemoryAllocation,
 								dropsondeConfig,
 							)
@@ -755,7 +746,7 @@ var _ = Describe("InstanceIdentity", func() {
 					config.HealthCheckWorkPoolSize = 1
 				}
 
-				rep = componentMaker.Rep(configRepCerts, exportNetworkVars, enableContainerProxy, dropsondeConfig, enableDeclarativeHealthChecks)
+				rep = componentMaker.Rep(configRepCerts, enableContainerProxy, dropsondeConfig, enableDeclarativeHealthChecks)
 			})
 
 			JustBeforeEach(func() {

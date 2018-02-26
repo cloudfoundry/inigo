@@ -38,7 +38,6 @@ var _ = Describe("Executor/Garden", func() {
 		process                 ifrit.Process
 		runner                  ifrit.Runner
 		gardenCapacity          garden.Capacity
-		exportNetworkEnvVars    bool
 		cachePath               string
 		config                  executorinit.ExecutorConfig
 		logger                  lager.Logger
@@ -72,8 +71,6 @@ var _ = Describe("Executor/Garden", func() {
 
 	JustBeforeEach(func() {
 		var err error
-
-		config.ExportNetworkEnvVars = exportNetworkEnvVars
 
 		logger = lagertest.NewTestLogger("test")
 		var executorMembers grouper.Members
@@ -1060,24 +1057,8 @@ var _ = Describe("Executor/Garden", func() {
 					Expect(err).NotTo(HaveOccurred())
 				})
 
-				Context("when exportNetworkEnvVars is set", func() {
-					BeforeEach(func() {
-						exportNetworkEnvVars = true
-					})
-
-					It("echoes back the correct CF_INSTANCE_ADDR", func() {
-						Expect(string(containerResponse)).To(Equal("." + externalAddr + "."))
-					})
-				})
-
-				Context("when exportNetworkEnvVars is not set", func() {
-					BeforeEach(func() {
-						exportNetworkEnvVars = false
-					})
-
-					It("echoes back an empty CF_INSTANCE_ADDR", func() {
-						Expect(string(containerResponse)).To(Equal(".."))
-					})
+				It("echoes back the correct CF_INSTANCE_ADDR", func() {
+					Expect(string(containerResponse)).To(Equal("." + externalAddr + "."))
 				})
 			})
 		})

@@ -76,28 +76,12 @@ var _ = Describe("Network Environment Variables", func() {
 			}).Should(Equal(models.Task_Completed))
 		})
 
-		Context("when ExportNetworkEnvVars is false", func() {
-			BeforeEach(func() {
-				modifyRepConfig = func(config *repconfig.RepConfig) { config.ExportNetworkEnvVars = false }
-			})
-
-			It("does not set the networking environment variables", func() {
-				Expect(task.Result).To(Equal(""))
-			})
-		})
-
-		Context("when ExportNetworkEnvVars is true", func() {
-			BeforeEach(func() {
-				modifyRepConfig = func(config *repconfig.RepConfig) { config.ExportNetworkEnvVars = true }
-			})
-
-			It("sets the networking environment variables", func() {
-				Expect(task.Result).To(ContainSubstring("CF_INSTANCE_ADDR=\n"))
-				Expect(task.Result).To(ContainSubstring("CF_INSTANCE_PORT=\n"))
-				Expect(task.Result).To(ContainSubstring("CF_INSTANCE_PORTS=[]\n"))
-				Expect(task.Result).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_IP=%s\n", os.Getenv("EXTERNAL_ADDRESS"))))
-				Expect(task.Result).To(ContainSubstring("CF_INSTANCE_INTERNAL_IP="))
-			})
+		It("sets the networking environment variables", func() {
+			Expect(task.Result).To(ContainSubstring("CF_INSTANCE_ADDR=\n"))
+			Expect(task.Result).To(ContainSubstring("CF_INSTANCE_PORT=\n"))
+			Expect(task.Result).To(ContainSubstring("CF_INSTANCE_PORTS=[]\n"))
+			Expect(task.Result).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_IP=%s\n", os.Getenv("EXTERNAL_ADDRESS"))))
+			Expect(task.Result).To(ContainSubstring("CF_INSTANCE_INTERNAL_IP="))
 		})
 	})
 
@@ -143,55 +127,35 @@ var _ = Describe("Network Environment Variables", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		Context("when ExportNetworkEnvVars is false", func() {
-			BeforeEach(func() {
-				modifyRepConfig = func(config *repconfig.RepConfig) { config.ExportNetworkEnvVars = false }
-			})
+		It("sets the networking environment variables", func() {
+			netInfo := actualLRP.ActualLRPNetInfo
+			Expect(response).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_ADDR=%s:%d\n", netInfo.Address, netInfo.Ports[0].HostPort)))
+			Expect(response).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_IP=%s\n", os.Getenv("EXTERNAL_ADDRESS"))))
+			Expect(response).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_INTERNAL_IP=%s\n", netInfo.InstanceAddress)))
+			Expect(response).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_PORT=%d\n", netInfo.Ports[0].HostPort)))
 
-			It("does not set the networking environment variables", func() {
-				Expect(response).NotTo(ContainSubstring("CF_INSTANCE_IP="))
-				Expect(response).NotTo(ContainSubstring("CF_INSTANCE_INTERNAL_IP="))
-				Expect(response).NotTo(ContainSubstring("CF_INSTANCE_ADDR="))
-				Expect(response).NotTo(ContainSubstring("CF_INSTANCE_PORT="))
-				Expect(response).NotTo(ContainSubstring("CF_INSTANCE_PORTS="))
-			})
-		})
+			type portMapping struct {
+				External uint32 `json:"external"`
+				Internal uint32 `json:"internal"`
+			}
+			ports := []portMapping{}
 
-		Context("when ExportNetworkEnvVars is true", func() {
-			BeforeEach(func() {
-				modifyRepConfig = func(config *repconfig.RepConfig) { config.ExportNetworkEnvVars = true }
-			})
-
-			It("sets the networking environment variables", func() {
-				netInfo := actualLRP.ActualLRPNetInfo
-				Expect(response).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_ADDR=%s:%d\n", netInfo.Address, netInfo.Ports[0].HostPort)))
-				Expect(response).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_IP=%s\n", os.Getenv("EXTERNAL_ADDRESS"))))
-				Expect(response).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_INTERNAL_IP=%s\n", netInfo.InstanceAddress)))
-				Expect(response).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_PORT=%d\n", netInfo.Ports[0].HostPort)))
-
-				type portMapping struct {
-					External uint32 `json:"external"`
-					Internal uint32 `json:"internal"`
+			buf := bytes.NewBuffer(response)
+			for {
+				line, err := buf.ReadString('\n')
+				if err != nil {
+					break
 				}
-				ports := []portMapping{}
-
-				buf := bytes.NewBuffer(response)
-				for {
-					line, err := buf.ReadString('\n')
-					if err != nil {
-						break
-					}
-					if strings.HasPrefix(line, "CF_INSTANCE_PORTS=") {
-						err := json.Unmarshal([]byte(strings.TrimPrefix(line, "CF_INSTANCE_PORTS=")), &ports)
-						Expect(err).NotTo(HaveOccurred())
-						break
-					}
+				if strings.HasPrefix(line, "CF_INSTANCE_PORTS=") {
+					err := json.Unmarshal([]byte(strings.TrimPrefix(line, "CF_INSTANCE_PORTS=")), &ports)
+					Expect(err).NotTo(HaveOccurred())
+					break
 				}
+			}
 
-				Expect(ports).To(Equal([]portMapping{
-					{External: netInfo.Ports[0].HostPort, Internal: netInfo.Ports[0].ContainerPort},
-				}))
-			})
+			Expect(ports).To(Equal([]portMapping{
+				{External: netInfo.Ports[0].HostPort, Internal: netInfo.Ports[0].ContainerPort},
+			}))
 		})
 	})
 })
