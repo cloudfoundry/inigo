@@ -113,7 +113,6 @@ var _ = Describe("InstanceIdentity", func() {
 			LogSource: "APP",
 		}}
 		lrp.MetricsGuid = processGUID
-		lrp.LegacyDownloadUser = "vcap"
 		lrp.Ports = []uint32{8080, 8081}
 		lrp.Action = models.WrapAction(&models.RunAction{
 			User: "vcap",

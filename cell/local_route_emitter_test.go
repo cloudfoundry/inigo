@@ -350,7 +350,6 @@ func createDesiredLRP(processGuid string) *models.DesiredLRP {
 		CacheKey:  "lrp-cache-key",
 		LogSource: "APP",
 	}}
-	lrp.LegacyDownloadUser = "vcap"
 	lrp.Privileged = true
 	lrp.Action = models.WrapAction(&models.RunAction{
 		User: "vcap",

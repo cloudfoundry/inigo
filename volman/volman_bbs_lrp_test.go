@@ -119,7 +119,6 @@ var _ = Describe("LRPs with volume mounts", func() {
 
 			lrp.Privileged = true
 
-			lrp.LegacyDownloadUser = "vcap"
 			lrp.Action = models.WrapAction(&models.RunAction{
 				User: "vcap",
 				Path: "/tmp/diego/go-server",

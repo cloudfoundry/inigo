@@ -153,7 +153,6 @@ var _ = Describe("Tasks", func() {
 					CacheKey:  "docker-app-lifecycle",
 					LogSource: "docker-app-lifecycle",
 				}}
-				expectedTask.LegacyDownloadUser = "vcap"
 				expectedTask.Privileged = true
 				expectedTask.ResultFile = "/tmp/result.json"
 				expectedTask.EgressRules = []*models.SecurityGroupRule{
@@ -586,7 +585,6 @@ echo should have died by now
 				}
 
 				expectedTask.Privileged = true
-				expectedTask.LegacyDownloadUser = "vcap"
 			})
 
 			Context("with no checksum", func() {

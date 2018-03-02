@@ -106,12 +106,11 @@ var _ = Describe("SSH", func() {
 		}
 
 		lrp = models.DesiredLRP{
-			LogGuid:            processGuid,
-			ProcessGuid:        processGuid,
-			Domain:             "inigo",
-			Instances:          2,
-			Privileged:         true,
-			LegacyDownloadUser: "vcap",
+			LogGuid:     processGuid,
+			ProcessGuid: processGuid,
+			Domain:      "inigo",
+			Instances:   2,
+			Privileged:  true,
 			Setup: models.WrapAction(models.Serial(
 				&models.DownloadAction{
 					Artifact: "sshd",

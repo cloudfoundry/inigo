@@ -104,7 +104,6 @@ var _ = Describe("LRP", func() {
 				CacheKey:  "lrp-cache-key",
 				LogSource: "APP",
 			}}
-			lrp.LegacyDownloadUser = "vcap"
 			lrp.Privileged = true
 		})
 
@@ -691,7 +690,6 @@ var _ = Describe("LRP", func() {
 					ChecksumAlgorithm: algorithm,
 					ChecksumValue:     "incorrect_checksum",
 				}}
-				lrp.LegacyDownloadUser = "vcap"
 				lrp.Privileged = true
 			}
 
