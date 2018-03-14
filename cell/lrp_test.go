@@ -135,12 +135,11 @@ var _ = Describe("LRP", func() {
 				}
 			})
 
-				It("eventually runs", func() {
-					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
-					Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
-				})
+			It("eventually runs", func() {
+				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+				Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 			})
-		}
+		})
 
 		Context("when correct checksum information is provided", func() {
 			var checksumValue string
