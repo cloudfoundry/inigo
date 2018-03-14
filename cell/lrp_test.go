@@ -124,14 +124,16 @@ var _ = Describe("LRP", func() {
 			Eventually(getEvents).Should(ContainElement(MatchActualLRPChangedEvent(processGuid, 0, models.ActualLRPStateRunning)))
 		})
 
-		if os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_URI") != "" {
-			Context("when using a private image", func() {
-				BeforeEach(func() {
-					lrp.RootFs = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_URI")
-					lrp.ImageUsername = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_USERNAME")
-					lrp.ImagePassword = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_PASSWORD")
-					lrp.Monitor = nil
-				})
+		Context("when using a private image", func() {
+			BeforeEach(func() {
+				lrp.RootFs = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_URI")
+				lrp.ImageUsername = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_USERNAME")
+				lrp.ImagePassword = os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_PASSWORD")
+				lrp.Monitor = nil
+				if os.Getenv("INIGO_PRIVATE_DOCKER_IMAGE_URI") == "" {
+					Skip("no private docker image specified")
+				}
+			})
 
 				It("eventually runs", func() {
 					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
