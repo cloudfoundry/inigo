@@ -658,6 +658,16 @@ var _ = Describe("InstanceIdentity", func() {
 						Eventually(metricsChan, 10*time.Second).Should(Receive(HaveKeyWithValue("memory_quota", memoryInBytes(memoryLimit))))
 					})
 
+					Context("when additional memory is set and the LRP has unlimited memory", func() {
+						BeforeEach(func() {
+							lrp.MemoryMb = 0
+						})
+
+						It("should have unlimited memory", func() {
+							Eventually(metricsChan, 10*time.Second).Should(Receive(unlimitedMemory()))
+						})
+					})
+
 					Context("when additional memory is set but container proxy is not enabled", func() {
 						BeforeEach(func() {
 							rep = componentMaker.Rep(
@@ -768,6 +778,21 @@ var _ = Describe("InstanceIdentity", func() {
 func unscaledDownMemory() types.GomegaMatcher {
 	someNonZeroValue := uint64(1) // otherwise the scaledDownMemory will attempt to divide by 0
 	return scaledDownMemory(someNonZeroValue, 0)
+}
+
+func unlimitedMemory() types.GomegaMatcher {
+	const MaxUint64 uint64 = 1<<64 - 1
+	transform := func(m map[string]uint64) uint64 {
+		return uint64(m["memory_quota"])
+	}
+	// Note: the memory_quota returned by the garden.Container is very near MaxUnit64,
+	// but due to being converted to and from JSON and float64 lose precision in an
+	// non-deterministic manner.  So we simply check that the memory_quota is within
+	// 5% of MaxUint64.
+	return And(
+		HaveKey("memory_quota"),
+		matchers.NewWithTransformMatcher(transform, BeNumerically(">", MaxUint64, MaxUint64/20)),
+	)
 }
 
 func scaledDownMemory(memoryLimit, proxyAllocatedMemory uint64) types.GomegaMatcher {
