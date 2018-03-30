@@ -791,7 +791,7 @@ func unlimitedMemory() types.GomegaMatcher {
 	// 5% of MaxUint64.
 	return And(
 		HaveKey("memory_quota"),
-		matchers.NewWithTransformMatcher(transform, BeNumerically(">", MaxUint64, MaxUint64/20)),
+		matchers.NewWithTransformMatcher(transform, BeNumerically("~", MaxUint64, MaxUint64/20)),
 	)
 }
 
