@@ -77,7 +77,7 @@ var _ = Describe("Executor/Garden", func() {
 		metronClient, err := loggingclient.NewIngressClient(loggingclient.Config{})
 		Expect(err).NotTo(HaveOccurred())
 
-		executorClient, executorMembers, err = executorinit.Initialize(logger, config, "", gardenHealthcheckRootFS, metronClient, clock.NewClock())
+		executorClient, _, executorMembers, err = executorinit.Initialize(logger, config, "", gardenHealthcheckRootFS, metronClient, clock.NewClock())
 		Expect(err).NotTo(HaveOccurred())
 		runner = grouper.NewParallel(os.Kill, executorMembers)
 
