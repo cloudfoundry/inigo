@@ -157,17 +157,9 @@ var _ = Describe("Tasks", func() {
 				expectedTask.ResultFile = "/tmp/result.json"
 				expectedTask.EgressRules = []*models.SecurityGroupRule{
 					{
-						Protocol:     models.TCPProtocol,
-						Destinations: []string{"9.0.0.0-89.255.255.255", "90.0.0.0-94.0.0.0"},
-						Ports:        []uint32{80, 443},
-					},
-					{
-						Protocol:     models.UDPProtocol,
+						// allow traffic to the docker registry
+						Protocol:     models.AllProtocol,
 						Destinations: []string{"0.0.0.0/0"},
-						PortRange: &models.PortRange{
-							Start: 53,
-							End:   53,
-						},
 					},
 				}
 
