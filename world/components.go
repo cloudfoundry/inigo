@@ -575,9 +575,9 @@ func (maker commonComponentMaker) garden(includeDefaultStack bool, fs ...func(*r
 	config.ExecRunnerBin = filepath.Join(maker.gardenConfig.GardenBinPath, "dadoo")
 	config.NSTarBin = filepath.Join(maker.gardenConfig.GardenBinPath, "nstar")
 	config.RuntimePluginBin = filepath.Join(maker.gardenConfig.GardenBinPath, "runc")
-	ports, err := maker.portAllocator.ClaimPorts(10)
+	poolSize := 50
+	ports, err := maker.portAllocator.ClaimPorts(poolSize)
 	startPort := int(ports)
-	poolSize := 10
 	Expect(err).NotTo(HaveOccurred())
 	config.PortPoolStart = &startPort
 	config.PortPoolSize = &poolSize
