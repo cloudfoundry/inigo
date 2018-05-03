@@ -575,12 +575,6 @@ func (maker commonComponentMaker) garden(includeDefaultStack bool, fs ...func(*r
 	config.ExecRunnerBin = filepath.Join(maker.gardenConfig.GardenBinPath, "dadoo")
 	config.NSTarBin = filepath.Join(maker.gardenConfig.GardenBinPath, "nstar")
 	config.RuntimePluginBin = filepath.Join(maker.gardenConfig.GardenBinPath, "runc")
-	poolSize := 20
-	ports, err := maker.portAllocator.ClaimPorts(poolSize)
-	startPort := int(ports)
-	Expect(err).NotTo(HaveOccurred())
-	config.PortPoolStart = &startPort
-	config.PortPoolSize = &poolSize
 
 	config.DefaultRootFS = defaultRootFS
 
@@ -615,9 +609,17 @@ func (maker commonComponentMaker) garden(includeDefaultStack bool, fs ...func(*r
 		maker.grootfsConfigPath(maker.gardenConfig.PrivilegedGrootfsConfig),
 	}
 
+	poolSize := 10
+	config.PortPoolSize = &poolSize
+
 	for _, f := range fs {
 		f(&config)
 	}
+
+	ports, err := maker.portAllocator.ClaimPorts(*config.PortPoolSize)
+	startPort := int(ports)
+	Expect(err).NotTo(HaveOccurred())
+	config.PortPoolStart = &startPort
 
 	gardenRunner := runner.NewGardenRunner(config)
 
