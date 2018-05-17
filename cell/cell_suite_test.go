@@ -99,7 +99,9 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 })
 
 var _ = AfterSuite(func() {
-	componentMaker.Teardown()
+	if componentMaker != nil {
+		componentMaker.Teardown()
+	}
 })
 
 var _ = BeforeEach(func() {
