@@ -157,7 +157,8 @@ var _ = Describe("LRPs with volume mounts", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					var evacuating bool
-					actualLRP, evacuating = group.Resolve()
+					actualLRP, evacuating, err = group.Resolve()
+					Expect(err).NotTo(HaveOccurred())
 					Expect(evacuating).To(BeFalse())
 
 					return actualLRP.PlacementError
@@ -180,7 +181,8 @@ var _ = Describe("LRPs with volume mounts", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					var evacuating bool
-					actualLRP, evacuating = group.Resolve()
+					actualLRP, evacuating, err = group.Resolve()
+					Expect(err).NotTo(HaveOccurred())
 					Expect(evacuating).To(BeFalse())
 
 					return actualLRP.PlacementError
@@ -203,7 +205,8 @@ var _ = Describe("LRPs with volume mounts", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					var evacuating bool
-					actualLRP, evacuating = group.Resolve()
+					actualLRP, evacuating, err = group.Resolve()
+					Expect(err).NotTo(HaveOccurred())
 					Expect(evacuating).To(BeFalse())
 
 					return actualLRP.PlacementError

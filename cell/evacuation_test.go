@@ -145,7 +145,8 @@ var _ = Describe("Evacuation", func() {
 		actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, processGuid, 0)
 		Expect(err).NotTo(HaveOccurred())
 
-		actualLRP, isEvacuating := actualLRPGroup.Resolve()
+		actualLRP, isEvacuating, err := actualLRPGroup.Resolve()
+		Expect(err).NotTo(HaveOccurred())
 		Expect(isEvacuating).To(BeFalse())
 
 		var evacuatingRepPort uint16

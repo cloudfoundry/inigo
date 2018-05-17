@@ -375,7 +375,8 @@ func evacuateARep(
 	Expect(actualLRPGroups).To(HaveLen(3))
 	instancePerRepCount := map[string]int{}
 	for _, lrpGroup := range actualLRPGroups {
-		lrp, _ := lrpGroup.Resolve()
+		lrp, _, err := lrpGroup.Resolve()
+		Expect(err).NotTo(HaveOccurred())
 		cellID := lrp.ActualLRPInstanceKey.CellId
 		instancePerRepCount[cellID]++
 	}

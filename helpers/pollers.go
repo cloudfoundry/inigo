@@ -14,7 +14,8 @@ func filteredActualLRPs(logger lager.Logger, client bbs.InternalClient, processG
 
 	startedLRPs := make([]models.ActualLRP, 0, len(lrpGroups))
 	for _, lrpGroup := range lrpGroups {
-		lrp, _ := lrpGroup.Resolve()
+		lrp, _, err := lrpGroup.Resolve()
+		Expect(err).NotTo(HaveOccurred())
 		if filter(lrp) {
 			startedLRPs = append(startedLRPs, *lrp)
 		}
@@ -70,8 +71,8 @@ func LRPStatePoller(logger lager.Logger, client bbs.InternalClient, processGuid 
 			return ""
 		}
 
-		foundLRP, _ := lrpGroups[0].Resolve()
-
+		foundLRP, _, err := lrpGroups[0].Resolve()
+		Expect(err).NotTo(HaveOccurred())
 		if lrp != nil {
 			*lrp = *foundLRP
 		}
@@ -85,7 +86,8 @@ func LRPInstanceStatePoller(logger lager.Logger, client bbs.InternalClient, proc
 		lrpGroup, err := client.ActualLRPGroupByProcessGuidAndIndex(logger, processGuid, index)
 		Expect(err).NotTo(HaveOccurred())
 
-		foundLRP, _ := lrpGroup.Resolve()
+		foundLRP, _, err := lrpGroup.Resolve()
+		Expect(err).NotTo(HaveOccurred())
 		if lrp != nil {
 			*lrp = *foundLRP
 		}

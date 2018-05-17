@@ -85,8 +85,8 @@ var _ = Describe("Placement Tags", func() {
 					if len(lrpGroups) == 0 {
 						return ""
 					}
-					lrp, _ := lrpGroups[0].Resolve()
-
+					lrp, _, err := lrpGroups[0].Resolve()
+					Expect(err).NotTo(HaveOccurred())
 					return lrp.CellId
 				}
 				Eventually(lrpFunc).Should(MatchRegexp("the-cell-id-.*-0"))
@@ -106,8 +106,8 @@ var _ = Describe("Placement Tags", func() {
 					if len(lrpGroups) == 0 {
 						return ""
 					}
-					lrp, _ := lrpGroups[0].Resolve()
-
+					lrp, _, err := lrpGroups[0].Resolve()
+					Expect(err).NotTo(HaveOccurred())
 					return lrp.CellId
 				}
 				Eventually(lrpFunc).Should(MatchRegexp("the-cell-id-.*-0"))
@@ -127,7 +127,8 @@ var _ = Describe("Placement Tags", func() {
 					if len(lrpGroups) == 0 {
 						return ""
 					}
-					lrp, _ := lrpGroups[0].Resolve()
+					lrp, _, err := lrpGroups[0].Resolve()
+					Expect(err).NotTo(HaveOccurred())
 					logger.Info("lrp-cell-id", lager.Data{"cell-id": lrp.CellId})
 
 					return lrp.PlacementError

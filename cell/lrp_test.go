@@ -529,8 +529,8 @@ var _ = Describe("LRP", func() {
 					if len(lrpGroups) == 0 {
 						return ""
 					}
-					lrp, _ := lrpGroups[0].Resolve()
-
+					lrp, _, err := lrpGroups[0].Resolve()
+					Expect(err).NotTo(HaveOccurred())
 					return lrp.PlacementError
 				}
 
@@ -550,8 +550,8 @@ var _ = Describe("LRP", func() {
 					if len(lrpGroups) == 0 {
 						return ""
 					}
-					lrp, _ := lrpGroups[0].Resolve()
-
+					lrp, _, err := lrpGroups[0].Resolve()
+					Expect(err).NotTo(HaveOccurred())
 					return lrp.PlacementError
 				}
 
@@ -586,7 +586,8 @@ var _ = Describe("LRP", func() {
 			return func() int32 {
 				actualGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, guid, index)
 				Expect(err).NotTo(HaveOccurred())
-				actual, _ := actualGroup.Resolve()
+				actual, _, err := actualGroup.Resolve()
+				Expect(err).NotTo(HaveOccurred())
 				return actual.CrashCount
 			}
 		}
@@ -665,7 +666,8 @@ var _ = Describe("LRP", func() {
 				})
 
 				It("contains the instance guid and cell id", func() {
-					lrp, _ := group.Resolve()
+					lrp, _, err := group.Resolve()
+					Expect(err).NotTo(HaveOccurred())
 					Eventually(getEvents).Should(ContainElement(helpers.MatchActualLRPCrashedEvent(
 						processGuid,
 						lrp.InstanceGuid,
