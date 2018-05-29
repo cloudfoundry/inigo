@@ -110,9 +110,8 @@ var _ = Describe("Executor/Garden", func() {
 		container.Guid = generateGuid()
 
 		request := executor.NewAllocationRequest(container.Guid, &container.Resource, container.Tags)
-		failures, err := executorClient.AllocateContainers(logger, []executor.AllocationRequest{request})
+		failures := executorClient.AllocateContainers(logger, []executor.AllocationRequest{request})
 		Expect(failures).To(BeEmpty())
-		Expect(err).NotTo(HaveOccurred())
 
 		return request.Guid
 	}
@@ -356,7 +355,6 @@ var _ = Describe("Executor/Garden", func() {
 				guid string
 
 				allocationFailures []executor.AllocationFailure
-				allocErr           error
 			)
 
 			BeforeEach(func() {
@@ -366,11 +364,7 @@ var _ = Describe("Executor/Garden", func() {
 			})
 
 			JustBeforeEach(func() {
-				allocationFailures, allocErr = executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest})
-			})
-
-			It("does not return an error", func() {
-				Expect(allocErr).NotTo(HaveOccurred())
+				allocationFailures = executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest})
 			})
 
 			It("returns an empty error map", func() {
@@ -420,12 +414,10 @@ var _ = Describe("Executor/Garden", func() {
 
 			Context("when the guid is already taken", func() {
 				JustBeforeEach(func() {
-					Expect(allocErr).NotTo(HaveOccurred())
-					allocationFailures, allocErr = executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest})
+					allocationFailures = executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest})
 				})
 
 				It("returns an error", func() {
-					Expect(allocErr).NotTo(HaveOccurred())
 					Expect(allocationFailures).To(HaveLen(1))
 					Expect(allocationFailures[0].Error()).To(Equal(executor.ErrContainerGuidNotAvailable.Error()))
 				})
@@ -437,7 +429,6 @@ var _ = Describe("Executor/Garden", func() {
 				})
 
 				It("returns an error", func() {
-					Expect(allocErr).NotTo(HaveOccurred())
 					Expect(allocationFailures).To(HaveLen(1))
 					Expect(allocationFailures[0].Error()).To(Equal(executor.ErrGuidNotSpecified.Error()))
 				})
@@ -450,7 +441,6 @@ var _ = Describe("Executor/Garden", func() {
 				})
 
 				It("returns an error", func() {
-					Expect(allocErr).NotTo(HaveOccurred())
 					Expect(allocationFailures).To(HaveLen(1))
 					Expect(allocationFailures[0].Error()).To(Equal(executor.ErrInsufficientResourcesAvailable.Error()))
 				})
@@ -963,14 +953,14 @@ var _ = Describe("Executor/Garden", func() {
 
 		Describe("pruning the registry", func() {
 			It("continously prunes the registry", func() {
-				_, err := executorClient.AllocateContainers(logger, []executor.AllocationRequest{{
+				failures := executorClient.AllocateContainers(logger, []executor.AllocationRequest{{
 					Guid: "some-handle",
 					Resource: executor.Resource{
 						MemoryMB: 1024,
 						DiskMB:   1024,
 					}},
 				})
-				Expect(err).NotTo(HaveOccurred())
+				Expect(failures).To(BeEmpty())
 
 				containers, err := executorClient.ListContainers(logger)
 				Expect(err).NotTo(HaveOccurred())

@@ -158,9 +158,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 				allocationRequest = executor.NewAllocationRequest(guid, &executor.Resource{}, tags)
 
-				allocationFailures, err = executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest})
-
-				Expect(err).NotTo(HaveOccurred())
+				allocationFailures = executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest})
 				Expect(allocationFailures).To(BeEmpty())
 			})
 
@@ -231,9 +229,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 					allocationRequest = executor.NewAllocationRequest(guid, &executor.Resource{}, tags)
 
-					allocationFailures, err = executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest})
-
-					Expect(err).NotTo(HaveOccurred())
+					allocationFailures = executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest})
 					Expect(allocationFailures).To(BeEmpty())
 				})
 
@@ -303,8 +299,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 								tags := executor.Tags{"some-tag": "some-value"}
 								allocationRequest2 := executor.NewAllocationRequest(guid2, &executor.Resource{}, tags)
-								allocationFailures, err := executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest2})
-								Expect(err).NotTo(HaveOccurred())
+								allocationFailures := executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest2})
 								Expect(allocationFailures).To(BeEmpty())
 
 								fileName2 = fmt.Sprintf("testfile2-%d.txt", time.Now().UnixNano())
@@ -403,8 +398,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 								tags := executor.Tags{"some-tag": "some-value"}
 								allocationRequest2 := executor.NewAllocationRequest(guid2, &executor.Resource{}, tags)
-								allocationFailures, err := executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest2})
-								Expect(err).NotTo(HaveOccurred())
+								allocationFailures := executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest2})
 								Expect(allocationFailures).To(BeEmpty())
 
 								fileName2 = fmt.Sprintf("testfile2-%d.txt", time.Now().UnixNano())
