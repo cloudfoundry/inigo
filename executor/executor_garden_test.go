@@ -709,7 +709,7 @@ var _ = Describe("Executor/Garden", func() {
 
 							container := getContainer(guid)
 							Expect(container.RunResult.Failed).To(BeTrue())
-							Expect(container.RunResult.FailureReason).To(ContainSubstring("failed to initialize container"))
+							Expect(container.RunResult.FailureReason).To(ContainSubstring("failed to create container"))
 						})
 					})
 				})
