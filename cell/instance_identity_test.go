@@ -443,6 +443,125 @@ var _ = Describe("InstanceIdentity", func() {
 				Eventually(connect, 10*time.Second).Should(Succeed())
 			})
 
+			FContext("when rep is configured for mutual tls", func() {
+				var (
+					caCertContent   []byte
+					mutualTLSConfig func(*config.RepConfig)
+				)
+
+				BeforeEach(func() {
+					serverCaCertPath, err := filepath.Abs("../fixtures/certs/server/ca.crt")
+					Expect(err).NotTo(HaveOccurred())
+					serverCert, err := filepath.Abs("../fixtures/certs/server/server.crt")
+					Expect(err).NotTo(HaveOccurred())
+					serverKey, err := filepath.Abs("../fixtures/certs/server/server.key")
+					Expect(err).NotTo(HaveOccurred())
+					caCertContent, err = ioutil.ReadFile(serverCaCertPath)
+					Expect(err).NotTo(HaveOccurred())
+
+					tlsCert, err := tls.LoadX509KeyPair(string(serverCert), string(serverKey))
+					Expect(err).NotTo(HaveOccurred())
+
+					client.Transport = &http.Transport{
+						TLSClientConfig: &tls.Config{
+							InsecureSkipVerify: false,
+							RootCAs:            rootCAs,
+							Certificates:       []tls.Certificate{tlsCert},
+						},
+					}
+
+					mutualTLSConfig = func(cfg *config.RepConfig) {
+						cfg.ContainerProxyTrustedCACerts = []string{string(caCertContent)}
+						cfg.ContainerProxyRequireClientCerts = true
+					}
+
+					rep = componentMaker.Rep(configRepCerts, enableContainerProxy, loggregatorConfig, mutualTLSConfig)
+				})
+
+				Context("with subject_altname", func() {
+					Context("when the subject_alt_name is missing", func() {
+						BeforeEach(func() {
+							noAltNameConfig := func(cfg *config.RepConfig) {
+								cfg.ContainerProxyVerifySubjectAltName = []string{}
+							}
+							rep = componentMaker.Rep(configRepCerts, enableContainerProxy, loggregatorConfig, mutualTLSConfig, noAltNameConfig)
+						})
+
+						It("should connect successfully", func() {
+							Eventually(connect, 10*time.Second).Should(Succeed())
+						})
+					})
+
+					Context("with the wrong subject_alt_name", func() {
+						BeforeEach(func() {
+							wrongAltNameConfig := func(cfg *config.RepConfig) {
+								cfg.ContainerProxyVerifySubjectAltName = []string{"random-subject-name"}
+							}
+							rep = componentMaker.Rep(configRepCerts, enableContainerProxy, loggregatorConfig, mutualTLSConfig, wrongAltNameConfig)
+						})
+
+						It("should fail to connect", func() {
+							Eventually(connect, 10*time.Second).Should(MatchError(ContainSubstring("tls: unknown certificate")))
+						})
+					})
+
+					Context("with the correct subject_alt_name", func() {
+						BeforeEach(func() {
+							correctAltNameConfig := func(cfg *config.RepConfig) {
+								cfg.ContainerProxyVerifySubjectAltName = []string{"gorouter.cf.service.internal"}
+							}
+							rep = componentMaker.Rep(configRepCerts, enableContainerProxy, loggregatorConfig, mutualTLSConfig, correctAltNameConfig)
+						})
+
+						It("should connect successfully", func() {
+							Eventually(connect, 10*time.Second).Should(Succeed())
+						})
+					})
+				})
+
+				Context("when the envoy configured ca cert is wrong", func() {
+					BeforeEach(func() {
+						serverCaCertPath, err := filepath.Abs("../fixtures/certs/server/wrong-ca.crt")
+						Expect(err).NotTo(HaveOccurred())
+						caCertContent, err = ioutil.ReadFile(serverCaCertPath)
+						Expect(err).NotTo(HaveOccurred())
+
+						mutualTLSConfig = func(cfg *config.RepConfig) {
+							cfg.ContainerProxyTrustedCACerts = []string{string(caCertContent)}
+							cfg.ContainerProxyRequireClientCerts = true
+						}
+						rep = componentMaker.Rep(configRepCerts, enableContainerProxy, loggregatorConfig, mutualTLSConfig)
+					})
+
+					It("should fail to connect with the wrong server cert", func() {
+						Eventually(connect, 10*time.Second).Should(MatchError(ContainSubstring("tls: error decrypting message")))
+					})
+				})
+
+				Context("when the client has the wrong cert for mutual tls", func() {
+					BeforeEach(func() {
+						wrongServerCert, err := filepath.Abs("../fixtures/certs/server/wrong-server.crt")
+						Expect(err).NotTo(HaveOccurred())
+						wrongServerKey, err := filepath.Abs("../fixtures/certs/server/wrong-server.key")
+						Expect(err).NotTo(HaveOccurred())
+						wrongTlsCert, err := tls.LoadX509KeyPair(string(wrongServerCert), string(wrongServerKey))
+						Expect(err).NotTo(HaveOccurred())
+
+						client.Transport = &http.Transport{
+							TLSClientConfig: &tls.Config{
+								InsecureSkipVerify: false,
+								RootCAs:            rootCAs,
+								Certificates:       []tls.Certificate{wrongTlsCert},
+							},
+						}
+					})
+
+					It("should fail to connect", func() {
+						Eventually(connect, 10*time.Second).Should(MatchError(ContainSubstring("tls: handshake failure")))
+					})
+				})
+			})
+
 			Context("when the app listens on the container interface and does not listen on localhost", func() {
 				BeforeEach(func() {
 					lrp.EnvironmentVariables = append(lrp.EnvironmentVariables, &models.EnvironmentVariable{
