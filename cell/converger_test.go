@@ -25,8 +25,9 @@ var _ = Describe("Convergence to desired state", func() {
 		appId       string
 		processGuid string
 
-		runningLRPsPoller        func() []models.ActualLRP
-		helloWorldInstancePoller func() []string
+		runningLRPsPoller         func() []models.ActualLRP
+		helloWorldInstancePoller  func() []string
+		runningLRPsPresencePoller func() []models.ActualLRP_Presence
 	)
 
 	BeforeEach(func() {
@@ -49,6 +50,15 @@ var _ = Describe("Convergence to desired state", func() {
 
 		runningLRPsPoller = func() []models.ActualLRP {
 			return helpers.ActiveActualLRPs(logger, bbsClient, processGuid)
+		}
+
+		runningLRPsPresencePoller = func() []models.ActualLRP_Presence {
+			lrps := helpers.ActiveActualLRPs(logger, bbsClient, processGuid)
+			presences := []models.ActualLRP_Presence{}
+			for _, lrp := range lrps {
+				presences = append(presences, lrp.Presence)
+			}
+			return presences
 		}
 
 		helloWorldInstancePoller = helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)
@@ -91,8 +101,9 @@ var _ = Describe("Convergence to desired state", func() {
 					BeforeEach(func() {
 						ginkgomon.Interrupt(rep)
 
-						Eventually(runningLRPsPoller).Should(BeEmpty())
-						Eventually(helloWorldInstancePoller).Should(BeEmpty())
+						// marks the lrps as suspect
+						Eventually(runningLRPsPoller).Should(HaveLen(2))
+						Eventually(runningLRPsPresencePoller).Should(ConsistOf(models.ActualLRP_Suspect, models.ActualLRP_Suspect))
 					})
 
 					Context("once the rep comes back", func() {
@@ -108,6 +119,7 @@ var _ = Describe("Convergence to desired state", func() {
 							instanceGuids := []string{currentActuals[0].InstanceGuid, currentActuals[1].InstanceGuid}
 							Expect(instanceGuids).NotTo(ContainElement(initialInstanceGuids[0]))
 							Expect(instanceGuids).NotTo(ContainElement(initialInstanceGuids[1]))
+							Eventually(runningLRPsPresencePoller).Should(ConsistOf(models.ActualLRP_Ordinary, models.ActualLRP_Ordinary))
 						})
 					})
 				})
