@@ -60,6 +60,7 @@ var _ = Describe("Executor/Garden", func() {
 		config.GardenHealthcheckProcessArgs = []string{"-c", "echo", "checking health"}
 		config.GardenHealthcheckProcessUser = "vcap"
 		config.MaxCacheSizeInBytes = 1 * 1024 * 1024
+		config.EnableUnproxiedPortMappings = true
 
 		cachePath = world.TempDir("executor-tmp")
 
