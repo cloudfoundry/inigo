@@ -45,7 +45,7 @@ func overrideConvergenceRepeatInterval(conf *bbsconfig.BBSConfig) {
 }
 
 func overrideGenerateSuspectActualLRPs(conf *bbsconfig.BBSConfig) {
-	conf.GenerateSuspectAcutalLRPs = true
+	conf.GenerateSuspectActualLRPs = true
 }
 
 var _ = SynchronizedBeforeSuite(func() []byte {
