@@ -349,7 +349,7 @@ var _ = Describe("InstanceIdentity", func() {
 				config.ContainerProxyConfigPath = tmpdir
 			}
 
-			fixturesPath := path.Join(os.Getenv("GOPATH"), "src/code.cloudfoundry.org/inigo/fixtures/certs")
+			fixturesPath := path.Join(os.Getenv("TOPDIR"), "src/code.cloudfoundry.org/inigo/fixtures/certs")
 			metronCAFile := path.Join(fixturesPath, "metron", "CA.crt")
 			metronClientCertFile := path.Join(fixturesPath, "metron", "client.crt")
 			metronClientKeyFile := path.Join(fixturesPath, "metron", "client.key")
