@@ -33,6 +33,7 @@ import (
 	"code.cloudfoundry.org/diego-ssh/keys"
 	"code.cloudfoundry.org/durationjson"
 	executorinit "code.cloudfoundry.org/executor/initializer"
+	"code.cloudfoundry.org/executor/initializer/configuration"
 	fileserverconfig "code.cloudfoundry.org/fileserver/cmd/file-server/config"
 	"code.cloudfoundry.org/garden"
 	gardenclient "code.cloudfoundry.org/garden/client"
@@ -681,16 +682,27 @@ func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routee
 	Expect(err).NotTo(HaveOccurred())
 
 	cfg := routeemitterconfig.RouteEmitterConfig{
-		ConsulEnabled:     true,
-		ConsulSessionName: name,
-		NATSAddresses:     maker.addresses.NATS,
-		BBSAddress:        maker.BBSURL(),
-		LockRetryInterval: durationjson.Duration(time.Second),
-		ConsulCluster:     maker.ConsulCluster(),
-		LagerConfig:       lagerflags.LagerConfig{LogLevel: "debug"},
-		BBSClientCertFile: maker.bbsSSL.ClientCert,
-		BBSClientKeyFile:  maker.bbsSSL.ClientKey,
-		BBSCACertFile:     maker.bbsSSL.CACert,
+		ConsulEnabled:                      true,
+		ConsulSessionName:                  name,
+		NATSAddresses:                      maker.addresses.NATS,
+		BBSAddress:                         maker.BBSURL(),
+		LockRetryInterval:                  durationjson.Duration(time.Second),
+		ConsulCluster:                      maker.ConsulCluster(),
+		LagerConfig:                        lagerflags.LagerConfig{LogLevel: "debug"},
+		BBSClientCertFile:                  maker.bbsSSL.ClientCert,
+		BBSClientKeyFile:                   maker.bbsSSL.ClientKey,
+		BBSCACertFile:                      maker.bbsSSL.CACert,
+		CommunicationTimeout:               durationjson.Duration(30 * time.Second),
+		ConsulDownModeNotificationInterval: durationjson.Duration(time.Minute),
+		LockTTL:                      durationjson.Duration(locket.DefaultSessionTTL),
+		NATSUsername:                 "nats",
+		NATSPassword:                 "nats",
+		RouteEmittingWorkers:         20,
+		SyncInterval:                 durationjson.Duration(time.Minute),
+		TCPRouteTTL:                  durationjson.Duration(2 * time.Minute),
+		EnableTCPEmitter:             false,
+		EnableInternalEmitter:        false,
+		RegisterDirectInstanceRoutes: false,
 	}
 
 	for _, f := range fs {
@@ -724,9 +736,12 @@ func (maker commonComponentMaker) FileServer() (ifrit.Runner, string) {
 	Expect(err).NotTo(HaveOccurred())
 
 	cfg := fileserverconfig.FileServerConfig{
-		ServerAddress:   maker.addresses.FileServer,
-		ConsulCluster:   maker.ConsulCluster(),
-		LagerConfig:     lagerflags.LagerConfig{LogLevel: "debug"},
+		ServerAddress: maker.addresses.FileServer,
+		ConsulCluster: maker.ConsulCluster(),
+		LagerConfig: lagerflags.LagerConfig{
+			LogLevel:   "debug",
+			TimeFormat: lagerflags.FormatUnixEpoch,
+		},
 		StaticDirectory: servedFilesDir,
 	}
 
@@ -893,6 +908,9 @@ func (maker commonComponentMaker) SSHProxy(argv ...string) ifrit.Runner {
 		LagerConfig: lagerflags.LagerConfig{
 			LogLevel: "debug",
 		},
+		CommunicationTimeout:     durationjson.Duration(10 * time.Second),
+		ConnectToInstanceAddress: false,
+		IdleConnectionTimeout:    durationjson.Duration(5 * time.Minute),
 	}
 
 	configFile, err := ioutil.TempFile("", "ssh-proxy-config")
@@ -1226,6 +1244,26 @@ func (maker v0ComponentMaker) RepN(n int, _ ...func(*repconfig.RepConfig)) *gink
 
 func (maker v1ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig)) ifrit.Runner {
 	config := bbsconfig.BBSConfig{
+		SessionName:                     "bbs",
+		CommunicationTimeout:            durationjson.Duration(10 * time.Second),
+		DesiredLRPCreationTimeout:       durationjson.Duration(1 * time.Minute),
+		ExpireCompletedTaskDuration:     durationjson.Duration(2 * time.Minute),
+		ExpirePendingTaskDuration:       durationjson.Duration(30 * time.Minute),
+		EnableConsulServiceRegistration: false,
+		ConvergeRepeatInterval:          durationjson.Duration(30 * time.Second),
+		KickTaskDuration:                durationjson.Duration(30 * time.Second),
+		LockTTL:                         durationjson.Duration(locket.DefaultSessionTTL),
+		LockRetryInterval:               durationjson.Duration(locket.RetryInterval),
+		ReportInterval:                  durationjson.Duration(1 * time.Minute),
+		ConvergenceWorkers:              20,
+		UpdateWorkers:                   1000,
+		TaskCallbackWorkers:             1000,
+		MaxOpenDatabaseConnections:      200,
+		MaxIdleDatabaseConnections:      200,
+		RepClientSessionCacheSize:       0,
+		RepRequireTLS:                   false,
+		GenerateSuspectActualLRPs:       false,
+
 		AdvertiseURL:  maker.BBSURL(),
 		ConsulCluster: maker.ConsulCluster(),
 		EncryptionConfig: encryption.EncryptionConfig{
@@ -1288,6 +1326,11 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 	Expect(os.Mkdir(cachePath, 0777)).To(Succeed())
 
 	repConfig := repconfig.RepConfig{
+		AdvertiseDomain:           "cell.service.cf.internal",
+		BBSClientSessionCacheSize: 0,
+		BBSMaxIdleConnsPerHost:    0,
+		CommunicationTimeout:      durationjson.Duration(10 * time.Second),
+
 		SessionName:               name,
 		SupportedProviders:        []string{"docker"},
 		BBSAddress:                maker.BBSURL(),
@@ -1310,6 +1353,34 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 		ListenAddrSecurable:       fmt.Sprintf("%s:%d", host, offsetPort(port+100, n)),
 		PreloadedRootFS:           maker.rootFSes,
 		ExecutorConfig: executorinit.ExecutorConfig{
+			MemoryMB:                           configuration.Automatic,
+			DiskMB:                             configuration.Automatic,
+			ReservedExpirationTime:             durationjson.Duration(time.Minute),
+			ContainerReapInterval:              durationjson.Duration(time.Minute),
+			ContainerInodeLimit:                200000,
+			EnableDeclarativeHealthcheck:       false,
+			MaxCacheSizeInBytes:                10 * 1024 * 1024 * 1024,
+			SkipCertVerify:                     false,
+			HealthyMonitoringInterval:          durationjson.Duration(30 * time.Second),
+			UnhealthyMonitoringInterval:        durationjson.Duration(500 * time.Millisecond),
+			CreateWorkPoolSize:                 32,
+			DeleteWorkPoolSize:                 32,
+			ReadWorkPoolSize:                   64,
+			MetricsWorkPoolSize:                8,
+			HealthCheckWorkPoolSize:            64,
+			MaxConcurrentDownloads:             5,
+			GardenHealthcheckInterval:          durationjson.Duration(10 * time.Minute),
+			GardenHealthcheckEmissionInterval:  durationjson.Duration(30 * time.Second),
+			GardenHealthcheckTimeout:           durationjson.Duration(10 * time.Minute),
+			GardenHealthcheckCommandRetryPause: durationjson.Duration(time.Second),
+			GardenHealthcheckProcessEnv:        []string{},
+			GracefulShutdownInterval:           durationjson.Duration(10 * time.Second),
+			ContainerMetricsReportInterval:     durationjson.Duration(15 * time.Second),
+			EnvoyConfigRefreshDelay:            durationjson.Duration(time.Second),
+			EnvoyDrainTimeout:                  durationjson.Duration(15 * time.Minute),
+			CSIPaths:                           []string{"/var/vcap/data/csiplugins"},
+			CSIMountRootDir:                    "/var/vcap/data/csimountroot",
+
 			EnableUnproxiedPortMappings: true,
 			GardenNetwork:               "tcp",
 			GardenAddr:                  maker.addresses.GardenLinux,
@@ -1361,6 +1432,13 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 
 func (maker v1ComponentMaker) Auctioneer(modifyConfigFuncs ...func(cfg *auctioneerconfig.AuctioneerConfig)) ifrit.Runner {
 	auctioneerConfig := auctioneerconfig.AuctioneerConfig{
+		AuctionRunnerWorkers:          1000,
+		CellStateTimeout:              durationjson.Duration(1 * time.Second),
+		CommunicationTimeout:          durationjson.Duration(10 * time.Second),
+		LockTTL:                       durationjson.Duration(locket.DefaultSessionTTL),
+		ReportInterval:                durationjson.Duration(1 * time.Minute),
+		StartingContainerCountMaximum: 0,
+
 		BBSAddress:              maker.BBSURL(),
 		ListenAddress:           maker.addresses.Auctioneer,
 		LockRetryInterval:       durationjson.Duration(time.Second),

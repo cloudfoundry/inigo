@@ -17,6 +17,7 @@ import (
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/executor"
 	executorinit "code.cloudfoundry.org/executor/initializer"
+	"code.cloudfoundry.org/executor/initializer/configuration"
 	"code.cloudfoundry.org/inigo/world"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
@@ -63,7 +64,43 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 		cachePath = world.TempDir("executor-tmp")
 
-		config = executorinit.DefaultConfiguration
+		config = executorinit.ExecutorConfig{
+			GardenNetwork:                      "unix",
+			GardenAddr:                         "/tmp/garden.sock",
+			MemoryMB:                           configuration.Automatic,
+			DiskMB:                             configuration.Automatic,
+			TempDir:                            "/tmp",
+			ReservedExpirationTime:             durationjson.Duration(time.Minute),
+			ContainerReapInterval:              durationjson.Duration(time.Minute),
+			ContainerInodeLimit:                200000,
+			ContainerMaxCpuShares:              0,
+			CachePath:                          "/tmp/cache",
+			EnableDeclarativeHealthcheck:       false,
+			MaxCacheSizeInBytes:                10 * 1024 * 1024 * 1024,
+			SkipCertVerify:                     false,
+			HealthyMonitoringInterval:          durationjson.Duration(30 * time.Second),
+			UnhealthyMonitoringInterval:        durationjson.Duration(500 * time.Millisecond),
+			ContainerOwnerName:                 "executor",
+			HealthCheckContainerOwnerName:      "executor-health-check",
+			CreateWorkPoolSize:                 32,
+			DeleteWorkPoolSize:                 32,
+			ReadWorkPoolSize:                   64,
+			MetricsWorkPoolSize:                8,
+			HealthCheckWorkPoolSize:            64,
+			MaxConcurrentDownloads:             5,
+			GardenHealthcheckInterval:          durationjson.Duration(10 * time.Minute),
+			GardenHealthcheckEmissionInterval:  durationjson.Duration(30 * time.Second),
+			GardenHealthcheckTimeout:           durationjson.Duration(10 * time.Minute),
+			GardenHealthcheckCommandRetryPause: durationjson.Duration(time.Second),
+			GardenHealthcheckProcessArgs:       []string{},
+			GardenHealthcheckProcessEnv:        []string{},
+			GracefulShutdownInterval:           durationjson.Duration(10 * time.Second),
+			ContainerMetricsReportInterval:     durationjson.Duration(15 * time.Second),
+			EnvoyConfigRefreshDelay:            durationjson.Duration(time.Second),
+			EnvoyDrainTimeout:                  durationjson.Duration(15 * time.Minute),
+			CSIPaths:                           []string{"/var/vcap/data/csiplugins"},
+			CSIMountRootDir:                    "/var/vcap/data/csimountroot",
+		}
 		config.VolmanDriverPaths = path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("node-%d", ginkgoconfig.GinkgoConfig.ParallelNode))
 		config.CSIPaths = []string{path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("local-node-plugin-%d", ginkgoconfig.GinkgoConfig.ParallelNode))}
 		config.GardenNetwork = "tcp"
