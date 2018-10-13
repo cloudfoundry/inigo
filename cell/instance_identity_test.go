@@ -800,7 +800,7 @@ var _ = Describe("InstanceIdentity", func() {
 							lrp.MemoryMb = int32(memoryLimit)
 						})
 
-						It("should rescale the memory usage", func() {
+						It("should not scale the memory usage", func() {
 							Eventually(metricsChan, 10*time.Second).Should(Receive(unscaledDownMemory()))
 						})
 
