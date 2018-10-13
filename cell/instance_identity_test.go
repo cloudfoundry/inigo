@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -900,9 +901,9 @@ func unscaledDownMemory() types.GomegaMatcher {
 }
 
 func unlimitedMemory() types.GomegaMatcher {
-	const MaxUint64 uint64 = 1<<64 - 1
+	const maxMemory uint64 = math.MaxUint64
 	transform := func(m map[string]uint64) uint64 {
-		return uint64(m["memory_quota"])
+		return m["memory_quota"]
 	}
 	// Note: the memory_quota returned by the garden.Container is very near MaxUnit64,
 	// but due to being converted to and from JSON and float64 lose precision in an
@@ -910,7 +911,7 @@ func unlimitedMemory() types.GomegaMatcher {
 	// 5% of MaxUint64.
 	return And(
 		HaveKey("memory_quota"),
-		matchers.NewWithTransformMatcher(transform, BeNumerically("~", MaxUint64, MaxUint64/20)),
+		matchers.NewWithTransformMatcher(transform, BeNumerically("~", maxMemory, maxMemory/20)),
 	)
 }
 
@@ -919,7 +920,10 @@ func scaledDownMemory(memoryLimit, proxyAllocatedMemory uint64) types.GomegaMatc
 		HaveKey("memory"),
 		HaveKey("actual_memory"),
 		matchers.NewWithTransformMatcher(func(m map[string]uint64) int64 {
-			return int64(m["memory"]) - int64(m["actual_memory"]*memoryLimit/(memoryLimit+proxyAllocatedMemory))
+			reportedMemory := int64(m["memory"])
+			actualMemoryUsage := m["actual_memory"]
+			scaledDownActualMemroy := int64(actualMemoryUsage * memoryLimit / (memoryLimit + proxyAllocatedMemory))
+			return reportedMemory - scaledDownActualMemroy
 		}, BeNumerically("~", 0, 102400)),
 	)
 }
