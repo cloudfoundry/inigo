@@ -14,6 +14,9 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/clock"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
+	"code.cloudfoundry.org/dockerdriver"
+	"code.cloudfoundry.org/dockerdriver/driverhttp"
+	dockerdriverutils "code.cloudfoundry.org/dockerdriver/utils"
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/executor"
 	executorinit "code.cloudfoundry.org/executor/initializer"
@@ -21,8 +24,6 @@ import (
 	"code.cloudfoundry.org/inigo/world"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
-	"code.cloudfoundry.org/voldriver"
-	"code.cloudfoundry.org/voldriver/driverhttp"
 	"github.com/cloudfoundry-incubator/cf-test-helpers/generator"
 	. "github.com/onsi/ginkgo"
 	ginkgoconfig "github.com/onsi/ginkgo/config"
@@ -41,7 +42,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		cachePath      string
 		config         executorinit.ExecutorConfig
 		logger         lager.Logger
-		env            voldriver.Env
+		env            dockerdriver.Env
 		err            error
 	)
 
@@ -129,16 +130,15 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 		Context("when there are volumes", func() {
 			BeforeEach(func() {
-				errorResponse := driverClient.Create(env, voldriver.CreateRequest{
-					Name: "a-volume",
-					Opts: map[string]interface{}{
-						"volume_id": "a-volume",
-					},
+				uniqueVolumeId := dockerdriverutils.NewVolumeId("a-volume", "a-container")
+				errorResponse := driverClient.Create(env, dockerdriver.CreateRequest{
+					Name: uniqueVolumeId.GetUniqueId(),
+					Opts: map[string]interface{}{},
 				})
 				Expect(errorResponse.Err).To(BeEmpty())
 
-				mountResponse := driverClient.Mount(env, voldriver.MountRequest{
-					Name: "a-volume",
+				mountResponse := driverClient.Mount(env, dockerdriver.MountRequest{
+					Name: uniqueVolumeId.GetUniqueId(),
 				})
 				Expect(mountResponse.Err).To(BeEmpty())
 			})
@@ -272,15 +272,18 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 				Context("when running the container", func() {
 					var (
-						runReq       executor.RunRequest
-						volumeId     string
-						fileName     string
-						volumeMounts []executor.VolumeMount
+						runReq              executor.RunRequest
+						volumeId            string
+						volumeDirectoryName string
+						fileName            string
+						volumeMounts        []executor.VolumeMount
 					)
 
 					BeforeEach(func() {
 						fileName = fmt.Sprintf("testfile-%d.txt", time.Now().UnixNano())
 						volumeId = fmt.Sprintf("some-volumeID-%d", time.Now().UnixNano())
+						uniqueVolumeId := dockerdriverutils.NewVolumeId(volumeId, guid)
+						volumeDirectoryName = uniqueVolumeId.GetUniqueId()
 						someConfig := map[string]interface{}{"volume_id": volumeId}
 						volumeMounts = []executor.VolumeMount{executor.VolumeMount{ContainerPath: "/testmount", Driver: "localdriver", VolumeId: volumeId, Config: someConfig, Mode: executor.BindMountModeRW}}
 						runInfo := executor.RunInfo{
@@ -309,16 +312,18 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 							err = os.RemoveAll(path.Join(componentMaker.VolmanDriverConfigDir(), "_volumes", volumeId))
 							Expect(err).ToNot(HaveOccurred())
-
-							files, err := filepath.Glob(path.Join(componentMaker.VolmanDriverConfigDir(), "_volumes", volumeId, fileName))
-							Expect(err).ToNot(HaveOccurred())
-							Expect(len(files)).To(Equal(0))
 						})
 
 						It("can write files to the mounted volume", func() {
 							By("we expect the file it wrote to be available outside of the container")
 							volmanPath := path.Join(componentMaker.VolmanDriverConfigDir(), "_volumes", volumeId, fileName)
 							files, err := filepath.Glob(volmanPath)
+							Expect(err).ToNot(HaveOccurred())
+							Expect(len(files)).To(Equal(1))
+
+							By("verifying the file it wrote to be available inside the container mount point")
+							volmanPath = path.Join(componentMaker.VolmanDriverConfigDir(), "_mounts", volumeDirectoryName, fileName)
+							files, err = filepath.Glob(volmanPath)
 							Expect(err).ToNot(HaveOccurred())
 							Expect(len(files)).To(Equal(1))
 						})
@@ -357,6 +362,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 								err = executorClient.DeleteContainer(logger, guid2)
 								Expect(err).NotTo(HaveOccurred())
 							})
+
 							It("can still read files on the mounted volume for the first container", func() {
 								volmanPath := path.Join(componentMaker.VolmanDriverConfigDir(), "_volumes", volumeId, fileName)
 								files, err := filepath.Glob(volmanPath)

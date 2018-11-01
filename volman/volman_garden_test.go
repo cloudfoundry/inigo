@@ -13,20 +13,18 @@ import (
 )
 
 var _ = Describe("Given garden, volman, localdriver", func() {
-
 	var mountPoint string
 
 	Context("and a mounted volume", func() {
-
 		BeforeEach(func() {
 			someConfig := map[string]interface{}{"volume_id": "volman_garden_test-someID"}
-			mountPointResponse, err := volmanClient.Mount(logger, "localdriver", "someVolume", someConfig)
+			mountPointResponse, err := volmanClient.Mount(logger, "localdriver", "someVolume", "someContainer", someConfig)
 			Expect(err).NotTo(HaveOccurred())
 			mountPoint = mountPointResponse.Path
 		})
 
 		AfterEach(func() {
-			err := volmanClient.Unmount(logger, "localdriver", "someVolume")
+			err := volmanClient.Unmount(logger, "localdriver", "someVolume", "someContainer")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -111,7 +109,6 @@ func createContainer(bindMount garden.BindMount) garden.Container {
 }
 
 func createContainerTestFileIn(container garden.Container, filePath string) {
-
 	process, err := container.Run(garden.ProcessSpec{
 		Path: "touch",
 		Args: []string{filePath},

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -22,6 +23,7 @@ import (
 	"code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/garden"
+	"code.cloudfoundry.org/go-loggregator/rpc/loggregator_v2"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/inigo/world"
@@ -716,42 +718,23 @@ var _ = Describe("InstanceIdentity", func() {
 							for {
 								select {
 								case envelope := <-testMetricsChan:
-									if envelope.GetInstanceId() == "" {
-										// not app metrics
-										logger.Info("no-instance-id")
-										continue
-									}
-
-									metric := envelope.GetGauge()
+									metric := getContainerMetricEnvelope(logger, envelope)
 									if metric == nil {
-										// not app metrics
-										logger.Info("no-envelop-gauge")
 										continue
 									}
 
+									// lock to avoid the annoying race detector errors
 									containerMutex.Lock()
 									c := container
 									containerMutex.Unlock()
-									if c == nil {
-										// container can be nil if we get a container metric while
-										// the JustBeforeEach is still getting the actual lrp and
-										// container infromation
-										logger.Info("container-is-not-set")
+									actualMemoryUsage := getContainerMemoryUsage(logger, c)
+									if actualMemoryUsage == nil {
 										continue
 									}
-
-									metrics, err := c.Metrics()
-									if err != nil {
-										// do not return the error since garden will initially
-										logger.Info("no-container-metrics")
-										continue
-									}
-									stats := metrics.MemoryStat
-									actualMemoryUsage := stats.TotalRss + stats.TotalCache - stats.TotalInactiveFile
 
 									metricsChan <- map[string]uint64{
 										"memory":        uint64(metric.Metrics["memory"].Value),
-										"actual_memory": actualMemoryUsage,
+										"actual_memory": *actualMemoryUsage,
 										"memory_quota":  uint64(metric.Metrics["memory_quota"].Value),
 									}
 								case <-signals:
@@ -800,7 +783,7 @@ var _ = Describe("InstanceIdentity", func() {
 							lrp.MemoryMb = int32(memoryLimit)
 						})
 
-						It("should rescale the memory usage", func() {
+						It("should not scale the memory usage", func() {
 							Eventually(metricsChan, 10*time.Second).Should(Receive(unscaledDownMemory()))
 						})
 
@@ -900,9 +883,9 @@ func unscaledDownMemory() types.GomegaMatcher {
 }
 
 func unlimitedMemory() types.GomegaMatcher {
-	const MaxUint64 uint64 = 1<<64 - 1
+	const maxMemory uint64 = math.MaxUint64
 	transform := func(m map[string]uint64) uint64 {
-		return uint64(m["memory_quota"])
+		return m["memory_quota"]
 	}
 	// Note: the memory_quota returned by the garden.Container is very near MaxUnit64,
 	// but due to being converted to and from JSON and float64 lose precision in an
@@ -910,7 +893,7 @@ func unlimitedMemory() types.GomegaMatcher {
 	// 5% of MaxUint64.
 	return And(
 		HaveKey("memory_quota"),
-		matchers.NewWithTransformMatcher(transform, BeNumerically("~", MaxUint64, MaxUint64/20)),
+		matchers.NewWithTransformMatcher(transform, BeNumerically("~", maxMemory, maxMemory/20)),
 	)
 }
 
@@ -919,7 +902,10 @@ func scaledDownMemory(memoryLimit, proxyAllocatedMemory uint64) types.GomegaMatc
 		HaveKey("memory"),
 		HaveKey("actual_memory"),
 		matchers.NewWithTransformMatcher(func(m map[string]uint64) int64 {
-			return int64(m["memory"]) - int64(m["actual_memory"]*memoryLimit/(memoryLimit+proxyAllocatedMemory))
+			reportedMemory := int64(m["memory"])
+			actualMemoryUsage := m["actual_memory"]
+			scaledDownActualMemroy := int64(actualMemoryUsage * memoryLimit / (memoryLimit + proxyAllocatedMemory))
+			return reportedMemory - scaledDownActualMemroy
 		}, BeNumerically("~", 0, 102400)),
 	)
 }
@@ -1031,4 +1017,46 @@ dir=$(dirname $0)
 exec $dir/orig_envoy "$@"
 `)
 	return dir
+}
+
+func getContainerMetricEnvelope(logger lager.Logger, envelope *loggregator_v2.Envelope) *loggregator_v2.Gauge {
+	if envelope.GetInstanceId() == "" {
+		// not app metrics
+		logger.Info("no-instance-id")
+		return nil
+	}
+
+	metric := envelope.GetGauge()
+	if metric == nil {
+		// not app metrics
+		logger.Info("no-envelop-gauge")
+		return nil
+	}
+
+	if _, ok := metric.Metrics["memory"]; !ok {
+		// this is the separate garden cpu entitlement, container age gauge.
+		return nil
+	}
+
+	return metric
+}
+
+func getContainerMemoryUsage(logger lager.Logger, c garden.Container) *uint64 {
+	if c == nil {
+		// container can be nil if we get a container metric while
+		// the JustBeforeEach is still getting the actual lrp and
+		// container infromation
+		logger.Info("container-is-not-set")
+		return nil
+	}
+
+	metrics, err := c.Metrics()
+	if err != nil {
+		// do not return the error since garden will initially
+		logger.Info("no-container-metrics")
+		return nil
+	}
+	stats := metrics.MemoryStat
+	actualMemoryUsage := stats.TotalRss + stats.TotalCache - stats.TotalInactiveFile
+	return &actualMemoryUsage
 }

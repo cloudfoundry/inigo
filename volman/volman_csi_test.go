@@ -1,22 +1,19 @@
 package volman_test
 
 import (
-	"os"
 	"path"
 
-	"code.cloudfoundry.org/inigo/helpers"
-	"code.cloudfoundry.org/localdriver"
 	"code.cloudfoundry.org/volman"
 
 	"github.com/jeffpak/local-node-plugin/node"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/tedsuo/ifrit/ginkgomon"
 )
 
 var _ = Describe("Given volman and a local-node-plugin", func() {
 	var (
 		volumeName          string
+		containerId         string
 		csiVolume           string
 		csiMountRootDir     string
 		expectedMountPath   string
@@ -43,6 +40,7 @@ var _ = Describe("Given volman and a local-node-plugin", func() {
 	Context("when running mount and unmount", func() {
 		BeforeEach(func() {
 			volumeName = "someVolume"
+			containerId = "someContainer"
 			csiVolume = "csiVolume"
 			csiMountRootDir = "local-node-plugin-mount"
 			volumeConfig = map[string]interface{}{"id": csiVolume, "attributes": map[string]string{}}
@@ -50,7 +48,7 @@ var _ = Describe("Given volman and a local-node-plugin", func() {
 		})
 
 		JustBeforeEach(func() {
-			mountResponse, err = volmanClient.Mount(logger, node.NODE_PLUGIN_ID, volumeName, volumeConfig)
+			mountResponse, err = volmanClient.Mount(logger, node.NODE_PLUGIN_ID, volumeName, containerId, volumeConfig)
 		})
 
 		Context("when volumeConfig doesn't have any attributes", func() {
@@ -66,7 +64,7 @@ var _ = Describe("Given volman and a local-node-plugin", func() {
 			})
 
 			It("should be able to unmount volume", func() {
-				err = volmanClient.Unmount(logger, node.NODE_PLUGIN_ID, volumeName)
+				err = volmanClient.Unmount(logger, node.NODE_PLUGIN_ID, volumeName, containerId)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(expectedMountPath).NotTo(BeAnExistingFile())
 			})
@@ -81,40 +79,10 @@ var _ = Describe("Given volman and a local-node-plugin", func() {
 		})
 
 		It("should be able to unmount volume", func() {
-			err = volmanClient.Unmount(logger, node.NODE_PLUGIN_ID, volumeName)
+			err = volmanClient.Unmount(logger, node.NODE_PLUGIN_ID, volumeName, containerId)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(expectedMountPath).NotTo(BeAnExistingFile())
 		})
 
 	})
-
-	Context("when volman client restarted", func() {
-		BeforeEach(func() {
-			volumeName = "someVolume"
-			csiVolume = "csiVolume"
-			volumeConfig = map[string]interface{}{"id": csiVolume, "attributes": map[string]string{}}
-			expectedMountPath = path.Join(componentMaker.VolmanDriverConfigDir(), localdriver.MountsRootDir, volumeName)
-		})
-
-		JustBeforeEach(func() {
-			mountResponse, err = volmanClient.Mount(logger, "localdriver", volumeName, volumeConfig)
-			helpers.StopProcesses(driverSyncerProcess)
-		})
-
-		It("should purge existing mount points", func() {
-			Eventually(func() bool {
-				_, err = os.Stat(expectedMountPath)
-				return os.IsNotExist(err)
-			}).Should(Equal(false))
-
-			volmanClient, driverSyncer = componentMaker.VolmanClient(logger)
-			driverSyncerProcess = ginkgomon.Invoke(driverSyncer)
-
-			Eventually(func() bool {
-				_, err = os.Stat(expectedMountPath)
-				return os.IsNotExist(err)
-			}).Should(Equal(true))
-		})
-	})
-
 })
