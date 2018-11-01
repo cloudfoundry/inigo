@@ -11,6 +11,7 @@ import (
 
 	"code.cloudfoundry.org/consuladapter/consulrunner"
 	"code.cloudfoundry.org/csiplugin"
+	"code.cloudfoundry.org/dockerdriver"
 	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/inigo/helpers/portauthority"
@@ -19,7 +20,6 @@ import (
 	"code.cloudfoundry.org/lager/ginkgoreporter"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/localip"
-	"code.cloudfoundry.org/voldriver"
 	"code.cloudfoundry.org/volman"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
@@ -43,7 +43,7 @@ var (
 	localDriverProcess     ifrit.Process
 	localNodePluginProcess ifrit.Process
 
-	driverClient    voldriver.Driver
+	driverClient    dockerdriver.Driver
 	localNodeClient volman.Plugin
 
 	logger lager.Logger
@@ -118,7 +118,7 @@ var _ = BeforeEach(func() {
 
 	// make a dummy spec file not corresponding to a running driver just to make sure volman ignores it
 	driverPluginsPath = path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode))
-	voldriver.WriteDriverSpec(logger, driverPluginsPath, "deaddriver", "json", []byte(`{"Name":"deaddriver","Addr":"https://127.0.0.1:1111"}`))
+	dockerdriver.WriteDriverSpec(logger, driverPluginsPath, "deaddriver", "json", []byte(`{"Name":"deaddriver","Addr":"https://127.0.0.1:1111"}`))
 
 	// make a dummy spec file not corresponding to a running node plugin just to make sure volman ignores it
 	csiPluginsPath = path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("local-node-plugin-%d", config.GinkgoConfig.ParallelNode))

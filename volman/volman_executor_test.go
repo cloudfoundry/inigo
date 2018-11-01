@@ -14,6 +14,9 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/clock"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
+	"code.cloudfoundry.org/dockerdriver"
+	"code.cloudfoundry.org/dockerdriver/driverhttp"
+	dockerdriverutils "code.cloudfoundry.org/dockerdriver/utils"
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/executor"
 	executorinit "code.cloudfoundry.org/executor/initializer"
@@ -21,9 +24,6 @@ import (
 	"code.cloudfoundry.org/inigo/world"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
-	"code.cloudfoundry.org/voldriver"
-	"code.cloudfoundry.org/voldriver/driverhttp"
-	voldriverutils "code.cloudfoundry.org/voldriver/utils"
 	"github.com/cloudfoundry-incubator/cf-test-helpers/generator"
 	. "github.com/onsi/ginkgo"
 	ginkgoconfig "github.com/onsi/ginkgo/config"
@@ -42,7 +42,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		cachePath      string
 		config         executorinit.ExecutorConfig
 		logger         lager.Logger
-		env            voldriver.Env
+		env            dockerdriver.Env
 		err            error
 	)
 
@@ -130,14 +130,14 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 		Context("when there are volumes", func() {
 			BeforeEach(func() {
-				uniqueVolumeId := voldriverutils.NewVolumeId("a-volume", "a-container")
-				errorResponse := driverClient.Create(env, voldriver.CreateRequest{
+				uniqueVolumeId := dockerdriverutils.NewVolumeId("a-volume", "a-container")
+				errorResponse := driverClient.Create(env, dockerdriver.CreateRequest{
 					Name: uniqueVolumeId.GetUniqueId(),
 					Opts: map[string]interface{}{},
 				})
 				Expect(errorResponse.Err).To(BeEmpty())
 
-				mountResponse := driverClient.Mount(env, voldriver.MountRequest{
+				mountResponse := driverClient.Mount(env, dockerdriver.MountRequest{
 					Name: uniqueVolumeId.GetUniqueId(),
 				})
 				Expect(mountResponse.Err).To(BeEmpty())
@@ -282,7 +282,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 					BeforeEach(func() {
 						fileName = fmt.Sprintf("testfile-%d.txt", time.Now().UnixNano())
 						volumeId = fmt.Sprintf("some-volumeID-%d", time.Now().UnixNano())
-						uniqueVolumeId := voldriverutils.NewVolumeId(volumeId, guid)
+						uniqueVolumeId := dockerdriverutils.NewVolumeId(volumeId, guid)
 						volumeDirectoryName = uniqueVolumeId.GetUniqueId()
 						someConfig := map[string]interface{}{"volume_id": volumeId}
 						volumeMounts = []executor.VolumeMount{executor.VolumeMount{ContainerPath: "/testmount", Driver: "localdriver", VolumeId: volumeId, Config: someConfig, Mode: executor.BindMountModeRW}}

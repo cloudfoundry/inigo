@@ -4,9 +4,9 @@ import (
 	"os"
 	"path"
 
+	dockerdriverutils "code.cloudfoundry.org/dockerdriver/utils"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/localdriver"
-	voldriverutils "code.cloudfoundry.org/voldriver/utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -55,7 +55,7 @@ var _ = Describe("Given volman and localdriver", func() {
 			expectedMountPath string
 		)
 		BeforeEach(func() {
-			uniqueVolumeId := voldriverutils.NewVolumeId(volumeId, containerId)
+			uniqueVolumeId := dockerdriverutils.NewVolumeId(volumeId, containerId)
 			expectedMountPath = path.Join(componentMaker.VolmanDriverConfigDir(), localdriver.MountsRootDir, uniqueVolumeId.GetUniqueId())
 		})
 

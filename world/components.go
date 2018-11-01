@@ -31,6 +31,8 @@ import (
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	sshproxyconfig "code.cloudfoundry.org/diego-ssh/cmd/ssh-proxy/config"
 	"code.cloudfoundry.org/diego-ssh/keys"
+	"code.cloudfoundry.org/dockerdriver"
+	"code.cloudfoundry.org/dockerdriver/driverhttp"
 	"code.cloudfoundry.org/durationjson"
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/executor/initializer/configuration"
@@ -50,8 +52,6 @@ import (
 	"code.cloudfoundry.org/rep/maintain"
 	routeemitterconfig "code.cloudfoundry.org/route-emitter/cmd/route-emitter/config"
 	routingapi "code.cloudfoundry.org/route-emitter/cmd/route-emitter/runners"
-	"code.cloudfoundry.org/voldriver"
-	"code.cloudfoundry.org/voldriver/driverhttp"
 	"code.cloudfoundry.org/volman"
 	volmanclient "code.cloudfoundry.org/volman/vollocal"
 	"github.com/go-sql-driver/mysql"
@@ -347,7 +347,7 @@ type ComponentMaker interface {
 	Setup()
 	Teardown()
 	VolmanClient(logger lager.Logger) (volman.Manager, ifrit.Runner)
-	VolmanDriver(logger lager.Logger) (ifrit.Runner, voldriver.Driver)
+	VolmanDriver(logger lager.Logger) (ifrit.Runner, dockerdriver.Driver)
 }
 
 type commonComponentMaker struct {
@@ -694,15 +694,15 @@ func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routee
 		BBSCACertFile:                      maker.bbsSSL.CACert,
 		CommunicationTimeout:               durationjson.Duration(30 * time.Second),
 		ConsulDownModeNotificationInterval: durationjson.Duration(time.Minute),
-		LockTTL:                      durationjson.Duration(locket.DefaultSessionTTL),
-		NATSUsername:                 "nats",
-		NATSPassword:                 "nats",
-		RouteEmittingWorkers:         20,
-		SyncInterval:                 durationjson.Duration(time.Minute),
-		TCPRouteTTL:                  durationjson.Duration(2 * time.Minute),
-		EnableTCPEmitter:             false,
-		EnableInternalEmitter:        false,
-		RegisterDirectInstanceRoutes: false,
+		LockTTL:                            durationjson.Duration(locket.DefaultSessionTTL),
+		NATSUsername:                       "nats",
+		NATSPassword:                       "nats",
+		RouteEmittingWorkers:               20,
+		SyncInterval:                       durationjson.Duration(time.Minute),
+		TCPRouteTTL:                        durationjson.Duration(2 * time.Minute),
+		EnableTCPEmitter:                   false,
+		EnableInternalEmitter:              false,
+		RegisterDirectInstanceRoutes:       false,
 	}
 
 	for _, f := range fs {
@@ -1002,7 +1002,7 @@ func (maker commonComponentMaker) VolmanClient(logger lager.Logger) (volman.Mana
 	return volmanclient.NewServer(logger, metronClient, driverConfig)
 }
 
-func (maker commonComponentMaker) VolmanDriver(logger lager.Logger) (ifrit.Runner, voldriver.Driver) {
+func (maker commonComponentMaker) VolmanDriver(logger lager.Logger) (ifrit.Runner, dockerdriver.Driver) {
 	debugServerPort, err := maker.portAllocator.ClaimPorts(1)
 	Expect(err).NotTo(HaveOccurred())
 	debugServerAddress := fmt.Sprintf("0.0.0.0:%d", debugServerPort)
@@ -1018,7 +1018,7 @@ func (maker commonComponentMaker) VolmanDriver(logger lager.Logger) (ifrit.Runne
 			"-transport", "tcp-json",
 			"-uniqueVolumeIds",
 		),
-		StartCheck: "local-driver-server.started",
+		StartCheck: "localdriver-server.started",
 	})
 
 	client, err := driverhttp.NewRemoteClient("http://"+maker.addresses.FakeVolmanDriver, nil)
@@ -1392,12 +1392,12 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 			CSIPaths:                           []string{"/var/vcap/data/csiplugins"},
 			CSIMountRootDir:                    "/var/vcap/data/csimountroot",
 
-			EnableUnproxiedPortMappings: true,
-			GardenNetwork:               "tcp",
-			GardenAddr:                  maker.addresses.GardenLinux,
-			ContainerMaxCpuShares:       1024,
-			CachePath:                   cachePath,
-			TempDir:                     tmpDir,
+			EnableUnproxiedPortMappings:   true,
+			GardenNetwork:                 "tcp",
+			GardenAddr:                    maker.addresses.GardenLinux,
+			ContainerMaxCpuShares:         1024,
+			CachePath:                     cachePath,
+			TempDir:                       tmpDir,
 			GardenHealthcheckProcessPath:  "/bin/sh",
 			GardenHealthcheckProcessArgs:  []string{"-c", "echo", "foo"},
 			GardenHealthcheckProcessUser:  "vcap",
