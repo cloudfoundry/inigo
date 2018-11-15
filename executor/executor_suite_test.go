@@ -72,7 +72,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	allocator, err := portauthority.New(startPort, endPort)
 	Expect(err).NotTo(HaveOccurred())
 
-	componentMaker = world.MakeComponentMaker(helpers.AssetsPath, builtArtifacts, addresses, allocator)
+	componentMaker = world.MakeComponentMaker(builtArtifacts, addresses, allocator)
 	componentMaker.Setup()
 })
 

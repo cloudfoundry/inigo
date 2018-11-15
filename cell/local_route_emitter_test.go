@@ -390,9 +390,9 @@ func evacuateARep(
 	Expect(repWithOneInstance).NotTo(BeEmpty())
 
 	tlscfg, err := cfhttp.NewTLSConfig(
-		"../fixtures/certs/client.crt",
-		"../fixtures/certs/client.key",
-		"../fixtures/certs/ca.crt",
+		componentMaker.RepSSLConfig().ClientCert,
+		componentMaker.RepSSLConfig().ClientKey,
+		componentMaker.RepSSLConfig().CACert,
 	)
 	Expect(err).NotTo(HaveOccurred())
 

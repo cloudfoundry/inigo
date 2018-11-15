@@ -75,9 +75,9 @@ var _ = Describe("Evacuation", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		tlscfg, err := cfhttp.NewTLSConfig(
-			"../fixtures/certs/client.crt",
-			"../fixtures/certs/client.key",
-			"../fixtures/certs/ca.crt",
+			componentMaker.RepSSLConfig().ClientCert,
+			componentMaker.RepSSLConfig().ClientKey,
+			componentMaker.RepSSLConfig().CACert,
 		)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -99,9 +99,6 @@ var _ = Describe("Evacuation", func() {
 				config.ListenAddr = cellARepAddr
 				config.ListenAddrSecurable = cellARepSecureAddr
 				config.EvacuationTimeout = durationjson.Duration(30 * time.Second)
-				config.PathToTLSCert = "../fixtures/certs/rep_server.crt"
-				config.PathToTLSKey = "../fixtures/certs/rep_server.key"
-				config.PathToTLSCACert = "../fixtures/certs/ca.crt"
 			},
 		)
 
@@ -111,9 +108,6 @@ var _ = Describe("Evacuation", func() {
 				config.ListenAddr = cellBRepAddr
 				config.ListenAddrSecurable = cellBRepSecureAddr
 				config.EvacuationTimeout = durationjson.Duration(30 * time.Second)
-				config.PathToTLSCert = "../fixtures/certs/rep_server.crt"
-				config.PathToTLSKey = "../fixtures/certs/rep_server.key"
-				config.PathToTLSCACert = "../fixtures/certs/ca.crt"
 			})
 
 		test_helper.CreateZipArchive(

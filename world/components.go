@@ -63,6 +63,7 @@ import (
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/square/certstrap/pkix"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -157,7 +158,66 @@ func DBInfo() (string, string) {
 	return dbDriverName, dbBaseConnectionString
 }
 
-func makeCommonComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, worldAddresses ComponentAddresses, allocator portauthority.PortAllocator) commonComponentMaker {
+func generateCAAndKey(depotDir, commonName string) (string, string) {
+	key, err := pkix.CreateRSAKey(4096)
+	Expect(err).NotTo(HaveOccurred())
+	keyBytes, err := key.ExportPrivate()
+	Expect(err).NotTo(HaveOccurred())
+
+	crt, err := pkix.CreateCertificateAuthority(key, "", time.Now().AddDate(1, 0, 0), "", "", "", "", commonName)
+	Expect(err).NotTo(HaveOccurred())
+	crtBytes, err := crt.Export()
+	Expect(err).NotTo(HaveOccurred())
+
+	keyFile := filepath.Join(depotDir, commonName+".key")
+	err = ioutil.WriteFile(keyFile, keyBytes, 0655)
+	Expect(err).NotTo(HaveOccurred())
+
+	crtFile := filepath.Join(depotDir, commonName+".crt")
+	err = ioutil.WriteFile(crtFile, crtBytes, 0655)
+	Expect(err).NotTo(HaveOccurred())
+
+	return keyFile, crtFile
+}
+
+func generateSelfSignedCertAndKey(depotDir, commonName string, sans []string) (string, string) {
+	key, err := pkix.CreateRSAKey(4096)
+	Expect(err).NotTo(HaveOccurred())
+	keyBytes, err := key.ExportPrivate()
+	Expect(err).NotTo(HaveOccurred())
+
+	csr, err := pkix.CreateCertificateSigningRequest(key, "", []net.IP{net.ParseIP("127.0.0.1")}, sans, nil, "", "", "", "", commonName)
+	Expect(err).NotTo(HaveOccurred())
+
+	caBytes, err := ioutil.ReadFile(filepath.Join(depotDir, "ca.crt"))
+	Expect(err).NotTo(HaveOccurred())
+
+	ca, err := pkix.NewCertificateFromPEM(caBytes)
+	Expect(err).NotTo(HaveOccurred())
+
+	caKeyBytes, err := ioutil.ReadFile(filepath.Join(depotDir, "ca.key"))
+	Expect(err).NotTo(HaveOccurred())
+
+	caKey, err := pkix.NewKeyFromPrivateKeyPEM(caKeyBytes)
+	Expect(err).NotTo(HaveOccurred())
+
+	crt, err := pkix.CreateCertificateHost(ca, caKey, csr, time.Now().AddDate(1, 0, 0))
+	Expect(err).NotTo(HaveOccurred())
+	crtBytes, err := crt.Export()
+	Expect(err).NotTo(HaveOccurred())
+
+	keyFile := filepath.Join(depotDir, commonName+".key")
+	err = ioutil.WriteFile(keyFile, keyBytes, 0655)
+	Expect(err).NotTo(HaveOccurred())
+
+	crtFile := filepath.Join(depotDir, commonName+".crt")
+	err = ioutil.WriteFile(crtFile, crtBytes, 0655)
+	Expect(err).NotTo(HaveOccurred())
+
+	return keyFile, crtFile
+}
+
+func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses ComponentAddresses, allocator portauthority.PortAllocator) commonComponentMaker {
 	grootfsBinPath := os.Getenv("GROOTFS_BINPATH")
 	gardenBinPath := os.Getenv("GARDEN_BINPATH")
 	gardenRootFSPath := os.Getenv("GARDEN_ROOTFS")
@@ -195,31 +255,22 @@ func makeCommonComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, 
 		PrivateKeyPem: userKeyPair.PEMEncodedPrivateKey(),
 		AuthorizedKey: userKeyPair.AuthorizedKey(),
 	}
-	bbsServerCert, err := filepath.Abs(assetsPath + "bbs_server.crt")
-	Expect(err).NotTo(HaveOccurred())
-	bbsServerKey, err := filepath.Abs(assetsPath + "bbs_server.key")
-	Expect(err).NotTo(HaveOccurred())
-	repServerCert, err := filepath.Abs(assetsPath + "rep_server.crt")
-	Expect(err).NotTo(HaveOccurred())
-	repServerKey, err := filepath.Abs(assetsPath + "rep_server.key")
-	Expect(err).NotTo(HaveOccurred())
-	auctioneerServerCert, err := filepath.Abs(assetsPath + "auctioneer_server.crt")
-	Expect(err).NotTo(HaveOccurred())
-	auctioneerServerKey, err := filepath.Abs(assetsPath + "auctioneer_server.key")
-	Expect(err).NotTo(HaveOccurred())
-	clientCrt, err := filepath.Abs(assetsPath + "client.crt")
-	Expect(err).NotTo(HaveOccurred())
-	clientKey, err := filepath.Abs(assetsPath + "client.key")
-	Expect(err).NotTo(HaveOccurred())
-	caCert, err := filepath.Abs(assetsPath + "ca.crt")
-	Expect(err).NotTo(HaveOccurred())
-	sqlCACert, err := filepath.Abs(assetsPath + "sql-certs/server-ca.crt")
+
+	certDepot, err := ioutil.TempDir("", "cert-depot")
 	Expect(err).NotTo(HaveOccurred())
 
-	sslConfig := SSLConfig{
+	_, caCert := generateCAAndKey(certDepot, "ca")
+	bbsServerKey, bbsServerCert := generateSelfSignedCertAndKey(certDepot, "bbs_server", nil)
+	repServerKey, repServerCert := generateSelfSignedCertAndKey(certDepot, "rep_server", []string{"cell.service.cf.internal", "*.cell.service.cf.internal"})
+	auctioneerServerKey, auctioneerServerCert := generateSelfSignedCertAndKey(certDepot, "auctioneer_server", nil)
+	clientKey, clientCert := generateSelfSignedCertAndKey(certDepot, "client", nil)
+
+	sqlCACert := filepath.Join(os.Getenv("GOPATH"), "src", "code.cloudfoundry.org", "inigo", "fixtures", "certs", "sql-certs", "server-ca.crt")
+
+	bbsSSLConfig := SSLConfig{
 		ServerCert: bbsServerCert,
 		ServerKey:  bbsServerKey,
-		ClientCert: clientCrt,
+		ClientCert: clientCert,
 		ClientKey:  clientKey,
 		CACert:     caCert,
 	}
@@ -227,7 +278,7 @@ func makeCommonComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, 
 	locketSSLConfig := SSLConfig{
 		ServerCert: bbsServerCert,
 		ServerKey:  bbsServerKey,
-		ClientCert: clientCrt,
+		ClientCert: clientCert,
 		ClientKey:  clientKey,
 		CACert:     caCert,
 	}
@@ -235,7 +286,7 @@ func makeCommonComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, 
 	repSSLConfig := SSLConfig{
 		ServerCert: repServerCert,
 		ServerKey:  repServerKey,
-		ClientCert: clientCrt,
+		ClientCert: clientCert,
 		ClientKey:  clientKey,
 		CACert:     caCert,
 	}
@@ -243,7 +294,7 @@ func makeCommonComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, 
 	auctioneerSSLConfig := SSLConfig{
 		ServerCert: auctioneerServerCert,
 		ServerKey:  auctioneerServerKey,
-		ClientCert: clientCrt,
+		ClientCert: clientCert,
 		ClientKey:  clientKey,
 		CACert:     caCert,
 	}
@@ -283,6 +334,7 @@ func makeCommonComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, 
 
 	dbDriverName, dbBaseConnectionString := DBInfo()
 	return commonComponentMaker{
+		certDepot: certDepot,
 		artifacts: builtArtifacts,
 		addresses: worldAddresses,
 
@@ -290,7 +342,7 @@ func makeCommonComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, 
 
 		gardenConfig:           gardenConfig,
 		sshConfig:              sshKeys,
-		bbsSSL:                 sslConfig,
+		bbsSSL:                 bbsSSLConfig,
 		locketSSL:              locketSSLConfig,
 		repSSL:                 repSSLConfig,
 		auctioneerSSL:          auctioneerSSLConfig,
@@ -303,12 +355,12 @@ func makeCommonComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, 
 	}
 }
 
-func MakeV0ComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, worldAddresses ComponentAddresses, allocator portauthority.PortAllocator) ComponentMaker {
-	return v0ComponentMaker{commonComponentMaker: makeCommonComponentMaker(assetsPath, builtArtifacts, worldAddresses, allocator)}
+func MakeV0ComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses ComponentAddresses, allocator portauthority.PortAllocator) ComponentMaker {
+	return v0ComponentMaker{commonComponentMaker: makeCommonComponentMaker(builtArtifacts, worldAddresses, allocator)}
 }
 
-func MakeComponentMaker(assetsPath string, builtArtifacts BuiltArtifacts, worldAddresses ComponentAddresses, allocator portauthority.PortAllocator) ComponentMaker {
-	return v1ComponentMaker{commonComponentMaker: makeCommonComponentMaker(assetsPath, builtArtifacts, worldAddresses, allocator)}
+func MakeComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses ComponentAddresses, allocator portauthority.PortAllocator) ComponentMaker {
+	return v1ComponentMaker{commonComponentMaker: makeCommonComponentMaker(builtArtifacts, worldAddresses, allocator)}
 }
 
 type ComponentMaker interface {
@@ -338,7 +390,8 @@ type ComponentMaker interface {
 	NATS(argv ...string) ifrit.Runner
 	Rep(modifyConfigFuncs ...func(*repconfig.RepConfig)) *ginkgomon.Runner
 	RepN(n int, modifyConfigFuncs ...func(*repconfig.RepConfig)) *ginkgomon.Runner
-	RouteEmitter() ifrit.Runner
+	RepSSLConfig() SSLConfig
+	RouteEmitter(fs ...func(config *routeemitterconfig.RouteEmitterConfig)) ifrit.Runner
 	RouteEmitterN(n int, fs ...func(config *routeemitterconfig.RouteEmitterConfig)) ifrit.Runner
 	Router() ifrit.Runner
 	RoutingAPI(modifyConfigFuncs ...func(*routingapi.Config)) *routingapi.RoutingAPIRunner
@@ -351,6 +404,7 @@ type ComponentMaker interface {
 }
 
 type commonComponentMaker struct {
+	certDepot              string
 	artifacts              BuiltArtifacts
 	addresses              ComponentAddresses
 	rootFSes               repconfig.RootFSes
@@ -391,11 +445,16 @@ func (maker commonComponentMaker) BBSSSLConfig() SSLConfig {
 	return maker.bbsSSL
 }
 
+func (maker commonComponentMaker) RepSSLConfig() SSLConfig {
+	return maker.repSSL
+}
+
 func (maker commonComponentMaker) Setup() {
 	maker.GrootFSInitStore()
 }
 
 func (maker commonComponentMaker) Teardown() {
+	Expect(os.RemoveAll(maker.certDepot)).To(Succeed())
 	maker.GrootFSDeleteStore()
 }
 
@@ -694,15 +753,15 @@ func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routee
 		BBSCACertFile:                      maker.bbsSSL.CACert,
 		CommunicationTimeout:               durationjson.Duration(30 * time.Second),
 		ConsulDownModeNotificationInterval: durationjson.Duration(time.Minute),
-		LockTTL:                            durationjson.Duration(locket.DefaultSessionTTL),
-		NATSUsername:                       "nats",
-		NATSPassword:                       "nats",
-		RouteEmittingWorkers:               20,
-		SyncInterval:                       durationjson.Duration(time.Minute),
-		TCPRouteTTL:                        durationjson.Duration(2 * time.Minute),
-		EnableTCPEmitter:                   false,
-		EnableInternalEmitter:              false,
-		RegisterDirectInstanceRoutes:       false,
+		LockTTL:                      durationjson.Duration(locket.DefaultSessionTTL),
+		NATSUsername:                 "nats",
+		NATSPassword:                 "nats",
+		RouteEmittingWorkers:         20,
+		SyncInterval:                 durationjson.Duration(time.Minute),
+		TCPRouteTTL:                  durationjson.Duration(2 * time.Minute),
+		EnableTCPEmitter:             false,
+		EnableInternalEmitter:        false,
+		RegisterDirectInstanceRoutes: false,
 	}
 
 	for _, f := range fs {
@@ -1089,7 +1148,24 @@ func (maker v0ComponentMaker) Auctioneer(_ ...func(*auctioneerconfig.AuctioneerC
 	})
 }
 
-func (maker v0ComponentMaker) RouteEmitter() ifrit.Runner {
+func (maker v0ComponentMaker) RouteEmitter(modifyConfigFuncs ...func(config *routeemitterconfig.RouteEmitterConfig)) ifrit.Runner {
+	cfg := routeemitterconfig.RouteEmitterConfig{
+		NATSAddresses:     maker.addresses.NATS,
+		BBSAddress:        maker.BBSURL(),
+		BBSClientCertFile: maker.bbsSSL.ClientCert,
+		BBSClientKeyFile:  maker.bbsSSL.ClientKey,
+		BBSCACertFile:     maker.bbsSSL.CACert,
+		LockRetryInterval: durationjson.Duration(1 * time.Second),
+		ConsulCluster:     maker.ConsulCluster(),
+		LagerConfig: lagerflags.LagerConfig{
+			LogLevel: "debug",
+		},
+	}
+
+	for _, f := range modifyConfigFuncs {
+		f(&cfg)
+	}
+
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "route-emitter",
 		AnsiColorCode:     "36m",
@@ -1098,14 +1174,14 @@ func (maker v0ComponentMaker) RouteEmitter() ifrit.Runner {
 		Command: exec.Command(
 			maker.artifacts.Executables["route-emitter"],
 			[]string{
-				"-natsAddresses", maker.addresses.NATS,
-				"-bbsAddress", maker.BBSURL(),
-				"-lockRetryInterval", "1s",
-				"-consulCluster", maker.ConsulCluster(),
-				"-logLevel", "debug",
-				"-bbsClientCert", maker.bbsSSL.ClientCert,
-				"-bbsClientKey", maker.bbsSSL.ClientKey,
-				"-bbsCACert", maker.bbsSSL.CACert,
+				"-natsAddresses", cfg.NATSAddresses,
+				"-bbsAddress", cfg.BBSAddress,
+				"-lockRetryInterval", time.Duration(cfg.LockRetryInterval).String(),
+				"-consulCluster", cfg.ConsulCluster,
+				"-logLevel", cfg.LogLevel,
+				"-bbsClientCert", cfg.BBSClientCertFile,
+				"-bbsClientKey", cfg.BBSClientKeyFile,
+				"-bbsCACert", cfg.BBSCACertFile,
 			}...,
 		),
 	})
@@ -1392,12 +1468,12 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 			CSIPaths:                           []string{"/var/vcap/data/csiplugins"},
 			CSIMountRootDir:                    "/var/vcap/data/csimountroot",
 
-			EnableUnproxiedPortMappings:   true,
-			GardenNetwork:                 "tcp",
-			GardenAddr:                    maker.addresses.GardenLinux,
-			ContainerMaxCpuShares:         1024,
-			CachePath:                     cachePath,
-			TempDir:                       tmpDir,
+			EnableUnproxiedPortMappings: true,
+			GardenNetwork:               "tcp",
+			GardenAddr:                  maker.addresses.GardenLinux,
+			ContainerMaxCpuShares:       1024,
+			CachePath:                   cachePath,
+			TempDir:                     tmpDir,
 			GardenHealthcheckProcessPath:  "/bin/sh",
 			GardenHealthcheckProcessArgs:  []string{"-c", "echo", "foo"},
 			GardenHealthcheckProcessUser:  "vcap",
@@ -1495,8 +1571,8 @@ func (maker v1ComponentMaker) Auctioneer(modifyConfigFuncs ...func(cfg *auctione
 	})
 }
 
-func (maker v1ComponentMaker) RouteEmitter() ifrit.Runner {
-	return maker.RouteEmitterN(0, func(*routeemitterconfig.RouteEmitterConfig) {})
+func (maker v1ComponentMaker) RouteEmitter(modifyConfigFuncs ...func(config *routeemitterconfig.RouteEmitterConfig)) ifrit.Runner {
+	return maker.RouteEmitterN(0, modifyConfigFuncs...)
 }
 
 func (blc *BuiltLifecycles) BuildLifecycles(lifeCycle string) {
