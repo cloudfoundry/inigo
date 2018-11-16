@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/jeffpak/local-node-plugin/node"
+	"code.cloudfoundry.org/local-node-plugin/node"
 	"github.com/nu7hatch/gouuid"
 
 	"code.cloudfoundry.org/bbs/models"

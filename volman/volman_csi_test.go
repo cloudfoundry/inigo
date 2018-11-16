@@ -5,7 +5,7 @@ import (
 
 	"code.cloudfoundry.org/volman"
 
-	"github.com/jeffpak/local-node-plugin/node"
+	"code.cloudfoundry.org/local-node-plugin/node"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
