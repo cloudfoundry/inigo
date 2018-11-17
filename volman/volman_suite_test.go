@@ -168,7 +168,7 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	builtExecutables["local-driver"], err = gexec.Build("code.cloudfoundry.org/localdriver/cmd/localdriver", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	builtExecutables["local-node-plugin"], err = gexec.Build("github.com/jeffpak/local-node-plugin/cmd/localnodeplugin", "-race")
+	builtExecutables["local-node-plugin"], err = gexec.Build("code.cloudfoundry.org/local-node-plugin/cmd/localnodeplugin", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["auctioneer"], err = gexec.BuildIn(os.Getenv("AUCTIONEER_GOPATH"), "code.cloudfoundry.org/auctioneer/cmd/auctioneer", "-race")
