@@ -3,6 +3,7 @@ package executor_test
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -17,6 +18,7 @@ import (
 
 	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/inigo/helpers"
+	"code.cloudfoundry.org/inigo/helpers/certauthority"
 	"code.cloudfoundry.org/inigo/helpers/portauthority"
 	"code.cloudfoundry.org/inigo/world"
 )
@@ -26,6 +28,7 @@ var (
 
 	gardenProcess ifrit.Process
 	gardenClient  garden.Client
+	certDepot     string
 )
 
 var _ = SynchronizedBeforeSuite(func() []byte {
@@ -72,11 +75,18 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	allocator, err := portauthority.New(startPort, endPort)
 	Expect(err).NotTo(HaveOccurred())
 
-	componentMaker = world.MakeComponentMaker(builtArtifacts, addresses, allocator)
+	certDepot, err = ioutil.TempDir("", "cert-depot")
+	Expect(err).NotTo(HaveOccurred())
+
+	certAuthority, err := certauthority.NewCertAuthority(certDepot, "ca")
+	Expect(err).NotTo(HaveOccurred())
+
+	componentMaker = world.MakeComponentMaker(builtArtifacts, addresses, allocator, certAuthority)
 	componentMaker.Setup()
 })
 
 var _ = AfterSuite(func() {
+	Expect(os.RemoveAll(certDepot)).To(Succeed())
 	componentMaker.Teardown()
 })
 
