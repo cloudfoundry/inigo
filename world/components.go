@@ -13,6 +13,7 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	yaml "gopkg.in/yaml.v2"
@@ -41,6 +42,7 @@ import (
 	gardenclient "code.cloudfoundry.org/garden/client"
 	gardenconnection "code.cloudfoundry.org/garden/client/connection"
 	"code.cloudfoundry.org/guardian/gqt/runner"
+	"code.cloudfoundry.org/inigo/helpers/certauthority"
 	"code.cloudfoundry.org/inigo/helpers/portauthority"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
@@ -63,7 +65,6 @@ import (
 	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
-	"github.com/square/certstrap/pkix"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -158,66 +159,7 @@ func DBInfo() (string, string) {
 	return dbDriverName, dbBaseConnectionString
 }
 
-func generateCAAndKey(depotDir, commonName string) (string, string) {
-	key, err := pkix.CreateRSAKey(4096)
-	Expect(err).NotTo(HaveOccurred())
-	keyBytes, err := key.ExportPrivate()
-	Expect(err).NotTo(HaveOccurred())
-
-	crt, err := pkix.CreateCertificateAuthority(key, "", time.Now().AddDate(1, 0, 0), "", "", "", "", commonName)
-	Expect(err).NotTo(HaveOccurred())
-	crtBytes, err := crt.Export()
-	Expect(err).NotTo(HaveOccurred())
-
-	keyFile := filepath.Join(depotDir, commonName+".key")
-	err = ioutil.WriteFile(keyFile, keyBytes, 0655)
-	Expect(err).NotTo(HaveOccurred())
-
-	crtFile := filepath.Join(depotDir, commonName+".crt")
-	err = ioutil.WriteFile(crtFile, crtBytes, 0655)
-	Expect(err).NotTo(HaveOccurred())
-
-	return keyFile, crtFile
-}
-
-func generateSelfSignedCertAndKey(depotDir, commonName string, sans []string) (string, string) {
-	key, err := pkix.CreateRSAKey(4096)
-	Expect(err).NotTo(HaveOccurred())
-	keyBytes, err := key.ExportPrivate()
-	Expect(err).NotTo(HaveOccurred())
-
-	csr, err := pkix.CreateCertificateSigningRequest(key, "", []net.IP{net.ParseIP("127.0.0.1")}, sans, nil, "", "", "", "", commonName)
-	Expect(err).NotTo(HaveOccurred())
-
-	caBytes, err := ioutil.ReadFile(filepath.Join(depotDir, "ca.crt"))
-	Expect(err).NotTo(HaveOccurred())
-
-	ca, err := pkix.NewCertificateFromPEM(caBytes)
-	Expect(err).NotTo(HaveOccurred())
-
-	caKeyBytes, err := ioutil.ReadFile(filepath.Join(depotDir, "ca.key"))
-	Expect(err).NotTo(HaveOccurred())
-
-	caKey, err := pkix.NewKeyFromPrivateKeyPEM(caKeyBytes)
-	Expect(err).NotTo(HaveOccurred())
-
-	crt, err := pkix.CreateCertificateHost(ca, caKey, csr, time.Now().AddDate(1, 0, 0))
-	Expect(err).NotTo(HaveOccurred())
-	crtBytes, err := crt.Export()
-	Expect(err).NotTo(HaveOccurred())
-
-	keyFile := filepath.Join(depotDir, commonName+".key")
-	err = ioutil.WriteFile(keyFile, keyBytes, 0655)
-	Expect(err).NotTo(HaveOccurred())
-
-	crtFile := filepath.Join(depotDir, commonName+".crt")
-	err = ioutil.WriteFile(crtFile, crtBytes, 0655)
-	Expect(err).NotTo(HaveOccurred())
-
-	return keyFile, crtFile
-}
-
-func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses ComponentAddresses, allocator portauthority.PortAllocator) commonComponentMaker {
+func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses ComponentAddresses, allocator portauthority.PortAllocator, certAuthority certauthority.CertAuthority) commonComponentMaker {
 	grootfsBinPath := os.Getenv("GROOTFS_BINPATH")
 	gardenBinPath := os.Getenv("GARDEN_BINPATH")
 	gardenRootFSPath := os.Getenv("GARDEN_ROOTFS")
@@ -256,14 +198,15 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 		AuthorizedKey: userKeyPair.AuthorizedKey(),
 	}
 
-	certDepot, err := ioutil.TempDir("", "cert-depot")
+	_, caCert := certAuthority.CAAndKey()
+	bbsServerKey, bbsServerCert, err := certAuthority.GenerateSelfSignedCertAndKey("bbs_server", nil)
 	Expect(err).NotTo(HaveOccurred())
-
-	_, caCert := generateCAAndKey(certDepot, "ca")
-	bbsServerKey, bbsServerCert := generateSelfSignedCertAndKey(certDepot, "bbs_server", nil)
-	repServerKey, repServerCert := generateSelfSignedCertAndKey(certDepot, "rep_server", []string{"cell.service.cf.internal", "*.cell.service.cf.internal"})
-	auctioneerServerKey, auctioneerServerCert := generateSelfSignedCertAndKey(certDepot, "auctioneer_server", nil)
-	clientKey, clientCert := generateSelfSignedCertAndKey(certDepot, "client", nil)
+	repServerKey, repServerCert, err := certAuthority.GenerateSelfSignedCertAndKey("rep_server", []string{"cell.service.cf.internal", "*.cell.service.cf.internal"})
+	Expect(err).NotTo(HaveOccurred())
+	auctioneerServerKey, auctioneerServerCert, err := certAuthority.GenerateSelfSignedCertAndKey("auctioneer_server", nil)
+	Expect(err).NotTo(HaveOccurred())
+	clientKey, clientCert, err := certAuthority.GenerateSelfSignedCertAndKey("client", nil)
+	Expect(err).NotTo(HaveOccurred())
 
 	sqlCACert := filepath.Join(os.Getenv("GOPATH"), "src", "code.cloudfoundry.org", "inigo", "fixtures", "certs", "sql-certs", "server-ca.crt")
 
@@ -334,7 +277,6 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 
 	dbDriverName, dbBaseConnectionString := DBInfo()
 	return commonComponentMaker{
-		certDepot: certDepot,
 		artifacts: builtArtifacts,
 		addresses: worldAddresses,
 
@@ -355,12 +297,12 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 	}
 }
 
-func MakeV0ComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses ComponentAddresses, allocator portauthority.PortAllocator) ComponentMaker {
-	return v0ComponentMaker{commonComponentMaker: makeCommonComponentMaker(builtArtifacts, worldAddresses, allocator)}
+func MakeV0ComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses ComponentAddresses, allocator portauthority.PortAllocator, certAuthority certauthority.CertAuthority) ComponentMaker {
+	return v0ComponentMaker{commonComponentMaker: makeCommonComponentMaker(builtArtifacts, worldAddresses, allocator, certAuthority)}
 }
 
-func MakeComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses ComponentAddresses, allocator portauthority.PortAllocator) ComponentMaker {
-	return v1ComponentMaker{commonComponentMaker: makeCommonComponentMaker(builtArtifacts, worldAddresses, allocator)}
+func MakeComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses ComponentAddresses, allocator portauthority.PortAllocator, certAuthority certauthority.CertAuthority) ComponentMaker {
+	return v1ComponentMaker{commonComponentMaker: makeCommonComponentMaker(builtArtifacts, worldAddresses, allocator, certAuthority)}
 }
 
 type ComponentMaker interface {
@@ -404,7 +346,6 @@ type ComponentMaker interface {
 }
 
 type commonComponentMaker struct {
-	certDepot              string
 	artifacts              BuiltArtifacts
 	addresses              ComponentAddresses
 	rootFSes               repconfig.RootFSes
@@ -454,7 +395,6 @@ func (maker commonComponentMaker) Setup() {
 }
 
 func (maker commonComponentMaker) Teardown() {
-	Expect(os.RemoveAll(maker.certDepot)).To(Succeed())
 	maker.GrootFSDeleteStore()
 }
 
@@ -953,7 +893,7 @@ pid_file: ""
 	})
 }
 
-func (maker commonComponentMaker) SSHProxy(argv ...string) ifrit.Runner {
+func (maker commonComponentMaker) SSHProxy(modifyConfigFuncs ...func(*sshproxyconfig.SSHProxyConfig)) ifrit.Runner {
 	sshProxyConfig := sshproxyconfig.SSHProxyConfig{
 		Address:            maker.addresses.SSHProxy,
 		HealthCheckAddress: maker.addresses.SSHProxyHealthCheck,
