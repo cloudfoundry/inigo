@@ -338,7 +338,7 @@ type ComponentMaker interface {
 	Router() ifrit.Runner
 	RoutingAPI(modifyConfigFuncs ...func(*routingapi.Config)) *routingapi.RoutingAPIRunner
 	SQL(argv ...string) ifrit.Runner
-	SSHProxy(argv ...string) ifrit.Runner
+	SSHProxy(modifyConfigFuncs ...func(*sshproxyconfig.SSHProxyConfig)) ifrit.Runner
 	Setup()
 	Teardown()
 	VolmanClient(logger lager.Logger) (volman.Manager, ifrit.Runner)
@@ -912,6 +912,10 @@ func (maker commonComponentMaker) SSHProxy(modifyConfigFuncs ...func(*sshproxyco
 		IdleConnectionTimeout:    durationjson.Duration(5 * time.Minute),
 	}
 
+	for _, f := range modifyConfigFuncs {
+		f(&sshProxyConfig)
+	}
+
 	configFile, err := ioutil.TempFile("", "ssh-proxy-config")
 	Expect(err).NotTo(HaveOccurred())
 	defer configFile.Close()
@@ -929,7 +933,7 @@ func (maker commonComponentMaker) SSHProxy(modifyConfigFuncs ...func(*sshproxyco
 			maker.artifacts.Executables["ssh-proxy"],
 			append([]string{
 				"-config", configFile.Name(),
-			}, argv...)...,
+			})...,
 		),
 	})
 }
@@ -1058,22 +1062,41 @@ type v0ComponentMaker struct {
 	commonComponentMaker
 }
 
-func (maker v0ComponentMaker) Auctioneer(_ ...func(*auctioneerconfig.AuctioneerConfig)) ifrit.Runner {
-	// TODO: pass a real config to the functions and use it to set the flags
+func (maker v0ComponentMaker) Auctioneer(modifyConfigFuncs ...func(*auctioneerconfig.AuctioneerConfig)) ifrit.Runner {
+	cfg := auctioneerconfig.AuctioneerConfig{
+		BBSAddress:        maker.BBSURL(),
+		BBSCACertFile:     maker.bbsSSL.CACert,
+		BBSClientCertFile: maker.bbsSSL.ClientCert,
+		BBSClientKeyFile:  maker.bbsSSL.ClientKey,
+		ConsulCluster:     maker.ConsulCluster(),
+		ListenAddress:     maker.addresses.Auctioneer,
+		LockRetryInterval: durationjson.Duration(1 * time.Second),
+		LagerConfig: lagerflags.LagerConfig{
+			LogLevel: "debug",
+		},
+		RepCACert:               maker.repSSL.CACert,
+		RepClientCert:           maker.repSSL.ClientCert,
+		RepClientKey:            maker.repSSL.ClientKey,
+		StartingContainerWeight: 0.33,
+	}
+
+	for _, f := range modifyConfigFuncs {
+		f(&cfg)
+	}
 
 	args := []string{
-		"-bbsAddress", maker.BBSURL(),
-		"-bbsCACert", maker.bbsSSL.CACert,
-		"-bbsClientCert", maker.bbsSSL.ClientCert,
-		"-bbsClientKey", maker.bbsSSL.ClientKey,
-		"-consulCluster", maker.ConsulCluster(),
-		"-listenAddr", maker.addresses.Auctioneer,
-		"-lockRetryInterval", "1s",
-		"-logLevel", "debug",
-		"-repCACert", maker.repSSL.CACert,
-		"-repClientCert", maker.repSSL.ClientCert,
-		"-repClientKey", maker.repSSL.ClientKey,
-		"-startingContainerWeight", "0.33",
+		"-bbsAddress", cfg.BBSAddress,
+		"-bbsCACert", cfg.BBSCACertFile,
+		"-bbsClientCert", cfg.BBSClientCertFile,
+		"-bbsClientKey", cfg.BBSClientKeyFile,
+		"-consulCluster", cfg.ConsulCluster,
+		"-listenAddr", cfg.ListenAddress,
+		"-lockRetryInterval", time.Duration(cfg.LockRetryInterval).String(),
+		"-logLevel", cfg.LagerConfig.LogLevel,
+		"-repCACert", cfg.RepCACert,
+		"-repClientCert", cfg.RepClientCert,
+		"-repClientKey", cfg.RepClientKey,
+		"-startingContainerWeight", strconv.FormatFloat(cfg.StartingContainerWeight, 'f', -1, 64),
 	}
 
 	return ginkgomon.New(ginkgomon.Config{
@@ -1152,25 +1175,53 @@ func (maker v0ComponentMaker) FileServer() (ifrit.Runner, string) {
 }
 
 func (maker v0ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig)) ifrit.Runner {
-	// TODO: pass a real config to the functions and use it to set the flags
+	cfg := bbsconfig.BBSConfig{
+		AdvertiseURL:             maker.BBSURL(),
+		AuctioneerAddress:        "http://" + maker.addresses.Auctioneer,
+		CaFile:                   maker.bbsSSL.CACert,
+		CertFile:                 maker.bbsSSL.ServerCert,
+		KeyFile:                  maker.bbsSSL.ServerKey,
+		ConsulCluster:            maker.ConsulCluster(),
+		DatabaseConnectionString: maker.addresses.SQL,
+		DatabaseDriver:           maker.dbDriverName,
+		EncryptionConfig: encryption.EncryptionConfig{
+			ActiveKeyLabel: "secure-key-1",
+			EncryptionKeys: map[string]string{"secure-key-1": "secure-passphrase"},
+		},
+		HealthAddress: maker.addresses.Health,
+		ListenAddress: maker.addresses.BBS,
+		LagerConfig: lagerflags.LagerConfig{
+			LogLevel: "debug",
+		},
+		RepCACert:     maker.repSSL.CACert,
+		RepClientCert: maker.repSSL.ClientCert,
+		RepClientKey:  maker.repSSL.ClientKey,
+	}
+
+	for _, f := range modifyConfigFuncs {
+		f(&cfg)
+	}
+
+	akl := cfg.ActiveKeyLabel
+	encryptionKey := fmt.Sprintf("%s:%s", akl, cfg.EncryptionKeys[akl])
 
 	args := []string{
-		"-activeKeyLabel", "secure-key-1",
-		"-advertiseURL", maker.BBSURL(),
-		"-auctioneerAddress", "http://" + maker.addresses.Auctioneer,
-		"-caFile", maker.bbsSSL.CACert,
-		"-certFile", maker.bbsSSL.ServerCert,
-		"-consulCluster", maker.ConsulCluster(),
-		"-databaseConnectionString", maker.addresses.SQL,
-		"-databaseDriver", maker.dbDriverName,
-		"-encryptionKey", "secure-key-1:secure-passphrase",
-		"-healthAddress", maker.addresses.Health,
-		"-keyFile", maker.bbsSSL.ServerKey,
-		"-listenAddress", maker.addresses.BBS,
-		"-logLevel", "debug",
-		"-repCACert", maker.repSSL.CACert,
-		"-repClientCert", maker.repSSL.ClientCert,
-		"-repClientKey", maker.repSSL.ClientKey,
+		"-activeKeyLabel", akl,
+		"-advertiseURL", cfg.AdvertiseURL,
+		"-auctioneerAddress", cfg.AuctioneerAddress,
+		"-caFile", cfg.CaFile,
+		"-certFile", cfg.CertFile,
+		"-keyFile", cfg.KeyFile,
+		"-consulCluster", cfg.ConsulCluster,
+		"-databaseConnectionString", cfg.DatabaseConnectionString,
+		"-databaseDriver", cfg.DatabaseDriver,
+		"-encryptionKey", encryptionKey,
+		"-healthAddress", cfg.HealthAddress,
+		"-listenAddress", cfg.ListenAddress,
+		"-logLevel", cfg.LogLevel,
+		"-repCACert", cfg.RepCACert,
+		"-repClientCert", cfg.RepClientCert,
+		"-repClientKey", cfg.RepClientKey,
 		"-requireSSL",
 	}
 
@@ -1190,9 +1241,7 @@ func (maker v0ComponentMaker) Rep(modifyConfigFuncs ...func(*repconfig.RepConfig
 	return maker.RepN(0, modifyConfigFuncs...)
 }
 
-func (maker v0ComponentMaker) RepN(n int, _ ...func(*repconfig.RepConfig)) *ginkgomon.Runner {
-	// TODO: pass a real config to the functions and use it to set the flags
-
+func (maker v0ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.RepConfig)) *ginkgomon.Runner {
 	host, portString, err := net.SplitHostPort(maker.addresses.Rep)
 	Expect(err).NotTo(HaveOccurred())
 	port, err := strconv.Atoi(portString)
@@ -1204,39 +1253,85 @@ func (maker v0ComponentMaker) RepN(n int, _ ...func(*repconfig.RepConfig)) *gink
 	cachePath := path.Join(tmpDir, "cache")
 	Expect(os.Mkdir(cachePath, 0777)).To(Succeed())
 
+	cfg := repconfig.RepConfig{
+		SessionName:               name,
+		BBSAddress:                maker.BBSURL(),
+		BBSCACertFile:             maker.bbsSSL.CACert,
+		BBSClientCertFile:         maker.bbsSSL.ClientCert,
+		BBSClientKeyFile:          maker.bbsSSL.ClientKey,
+		CaCertFile:                maker.repSSL.CACert,
+		ServerCertFile:            maker.repSSL.ServerCert,
+		ServerKeyFile:             maker.repSSL.ServerKey,
+		CellID:                    "cell_z1" + "-" + strconv.Itoa(n) + "-" + strconv.Itoa(GinkgoParallelNode()),
+		Zone:                      "z1",
+		ConsulCluster:             maker.ConsulCluster(),
+		EvacuationPollingInterval: durationjson.Duration(1 * time.Second),
+		EvacuationTimeout:         durationjson.Duration(10 * time.Second),
+		ExecutorConfig: executorinit.ExecutorConfig{
+			CachePath:                    cachePath,
+			ContainerMaxCpuShares:        1024,
+			ExportNetworkEnvVars:         true,
+			GardenAddr:                   maker.addresses.GardenLinux,
+			GardenHealthcheckProcessPath: "/bin/sh",
+			GardenHealthcheckProcessArgs: []string{"-c", "echo", "foo"},
+			GardenHealthcheckProcessUser: "vcap",
+			GardenNetwork:                "tcp",
+			TempDir:                      tmpDir,
+			VolmanDriverPaths:            path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
+		},
+		ListenAddr:          fmt.Sprintf("%s:%d", host, offsetPort(port, n)),
+		ListenAddrSecurable: fmt.Sprintf("%s:%d", host, offsetPort(port+100, n)),
+		LockRetryInterval:   durationjson.Duration(1 * time.Second),
+		LockTTL:             durationjson.Duration(10 * time.Second),
+		ClientLocketConfig:  locket.ClientLocketConfig{},
+		LagerConfig: lagerflags.LagerConfig{
+			LogLevel: "debug",
+		},
+		PollingInterval:    durationjson.Duration(1 * time.Second),
+		SupportedProviders: []string{"docker"},
+	}
+
+	// for _, rootfs := range maker.rootFSes {
+	// 	cfg.PreloadedRootFS = append(cfg.PreloadedRootFS, repconfig.RootFS{Name: rootfs.Name, Path: rootfs.Path})
+	// }
+
+	for _, f := range modifyConfigFuncs {
+		f(&cfg)
+	}
+
 	args := []string{
-		"-sessionName", name,
-		"-bbsAddress", maker.BBSURL(),
-		"-bbsCACert", maker.bbsSSL.CACert,
-		"-bbsClientCert", maker.bbsSSL.ClientCert,
-		"-bbsClientKey", maker.bbsSSL.ClientKey,
-		"-caFile", maker.repSSL.CACert,
-		"-cachePath", cachePath,
-		"-cellID", "cell_z1" + "-" + strconv.Itoa(n) + "-" + strconv.Itoa(GinkgoParallelNode()),
-		"--zone", "z1",
-		"-certFile", maker.repSSL.ServerCert,
-		"-consulCluster", maker.ConsulCluster(),
-		"-containerMaxCpuShares", "1024",
+		"-sessionName", cfg.SessionName,
+		"-bbsAddress", cfg.BBSAddress,
+		"-bbsCACert", cfg.BBSCACertFile,
+		"-bbsClientCert", cfg.BBSClientCertFile,
+		"-bbsClientKey", cfg.BBSClientKeyFile,
+		"-caFile", cfg.CaCertFile,
+		"-certFile", cfg.ServerCertFile,
+		"-keyFile", cfg.ServerKeyFile,
+		"-cachePath", cfg.CachePath,
+		"-cellID", cfg.CellID,
+		"--zone", cfg.Zone,
+		"-consulCluster", cfg.ConsulCluster,
+		"-containerMaxCpuShares", strconv.FormatUint(cfg.ContainerMaxCpuShares, 10),
 		"-enableLegacyApiServer=false",
-		"-evacuationPollingInterval", "1s",
-		"-evacuationTimeout", "10s",
-		"-exportNetworkEnvVars=true",
-		"-gardenAddr", maker.addresses.GardenLinux,
-		"-gardenHealthcheckProcessPath", "/bin/sh",
-		"-gardenHealthcheckProcessArgs", "-c,echo,foo",
-		"-gardenHealthcheckProcessUser", "vcap",
-		"-gardenNetwork", "tcp",
-		"-keyFile", maker.repSSL.ServerKey,
-		"-listenAddr", fmt.Sprintf("%s:%d", host, offsetPort(port, n)),
-		"-listenAddrSecurable", fmt.Sprintf("%s:%d", host, offsetPort(port+100, n)),
-		"-lockRetryInterval", "1s",
-		"-lockTTL", "10s",
-		"-logLevel", "debug",
-		"-pollingInterval", "1s",
+		"-evacuationPollingInterval", time.Duration(cfg.EvacuationPollingInterval).String(),
+		"-evacuationTimeout", time.Duration(cfg.EvacuationTimeout).String(),
+		fmt.Sprintf("-exportNetworkEnvVars=%t", cfg.ExportNetworkEnvVars),
+		"-gardenAddr", cfg.GardenAddr,
+		"-gardenHealthcheckProcessPath", cfg.GardenHealthcheckProcessPath,
+		"-gardenHealthcheckProcessArgs", strings.Join(cfg.GardenHealthcheckProcessArgs, ","),
+		"-gardenHealthcheckProcessUser", cfg.GardenHealthcheckProcessUser,
+		"-gardenNetwork", cfg.GardenNetwork,
+		"-listenAddr", cfg.ListenAddr,
+		"-listenAddrSecurable", cfg.ListenAddrSecurable,
+		"-lockRetryInterval", time.Duration(cfg.LockRetryInterval).String(),
+		"-lockTTL", time.Duration(cfg.LockTTL).String(),
+		"-logLevel", cfg.LogLevel,
+		"-pollingInterval", time.Duration(cfg.PollingInterval).String(),
 		"-requireTLS=true",
-		"-rootFSProvider", "docker",
-		"-tempDir", tmpDir,
-		"-volmanDriverPaths", path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
+		"-rootFSProvider", cfg.SupportedProviders[0],
+		"-tempDir", cfg.TempDir,
+		"-volmanDriverPaths", cfg.VolmanDriverPaths,
 	}
 
 	for _, rootfs := range maker.rootFSes {
