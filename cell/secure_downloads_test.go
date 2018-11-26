@@ -43,11 +43,6 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
 
 		archiveFiles = fixtures.GoServerApp()
-		cfgs = append(cfgs, func(cfg *config.RepConfig) {
-			cfg.PathToTLSCert = "../fixtures/certs/client.crt"
-			cfg.PathToTLSKey = "../fixtures/certs/client.key"
-			cfg.PathToTLSCACert = "../fixtures/certs/ca.crt"
-		})
 	})
 
 	JustBeforeEach(func() {
@@ -77,9 +72,9 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 				proxy.ServeHTTP(rw, req)
 			}))
 			tlsConfig, err := cfhttp.NewTLSConfig(
-				"../fixtures/certs/bbs_server.crt",
-				"../fixtures/certs/bbs_server.key",
-				"../fixtures/certs/ca.crt",
+				componentMaker.BBSSSLConfig().ServerCert,
+				componentMaker.BBSSSLConfig().ServerKey,
+				componentMaker.BBSSSLConfig().CACert,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			tlsFileServer.TLS = tlsConfig
@@ -100,9 +95,10 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 		Context("when CaCertForDownload is present", func() {
 			BeforeEach(func() {
 				cfgs = append(cfgs, func(cfg *config.RepConfig) {
-					cfg.PathToCACertsForDownloads = "../fixtures/certs/ca.crt"
+					cfg.PathToCACertsForDownloads = cfg.PathToTLSCACert
 				})
 			})
+
 			Context("when TLSCaCert is empty", func() {
 				BeforeEach(func() {
 					tlsFileServer.TLS.ClientAuth = tls.NoClientCert
@@ -163,9 +159,9 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 				proxy.ServeHTTP(rw, req)
 			}))
 			tlsConfig, err := cfhttp.NewTLSConfig(
-				"../fixtures/certs/bbs_server.crt",
-				"../fixtures/certs/bbs_server.key",
-				"../fixtures/certs/ca.crt",
+				componentMaker.BBSSSLConfig().ServerCert,
+				componentMaker.BBSSSLConfig().ServerKey,
+				componentMaker.BBSSSLConfig().CACert,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			tlsFileServer.TLS = tlsConfig

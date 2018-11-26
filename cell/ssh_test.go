@@ -19,7 +19,6 @@ import (
 	"code.cloudfoundry.org/inigo/world"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
-	"code.cloudfoundry.org/rep/cmd/rep/config"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -67,15 +66,10 @@ var _ = Describe("SSH", func() {
 
 		var fileServer ifrit.Runner
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
-		repConfig := func(cfg *config.RepConfig) {
-			cfg.PathToTLSCert = "../fixtures/certs/rep_server.crt"
-			cfg.PathToTLSKey = "../fixtures/certs/rep_server.key"
-			cfg.PathToTLSCACert = "../fixtures/certs/ca.crt"
-		}
 		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
-			{"rep", componentMaker.Rep(repConfig)},
+			{"rep", componentMaker.Rep()},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"route-emitter", componentMaker.RouteEmitter()},
 			{"ssh-proxy", componentMaker.SSHProxy()},
