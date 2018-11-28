@@ -621,21 +621,10 @@ func (maker commonComponentMaker) garden(includeDefaultStack bool, fs ...func(*r
 	Expect(err).NotTo(HaveOccurred())
 	config.PortPoolStart = &startPort
 
-	gdn := ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
-		gdn := runner.Start(config)
-		close(ready)
+	gardenRunner := runner.NewGardenRunner(config)
+	gardenRunner.Runner.StartCheck = "guardian.started"
 
-		var err error
-		for {
-			select {
-			case <-signals:
-				err = gdn.DestroyAndStop()
-				return err
-			}
-		}
-	})
-
-	members = append(members, grouper.Member{Name: "garden", Runner: gdn})
+	members = append(members, grouper.Member{Name: "garden", Runner: gardenRunner})
 
 	return grouper.NewOrdered(os.Interrupt, members)
 }
