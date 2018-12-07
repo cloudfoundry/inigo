@@ -17,6 +17,7 @@ import (
 	"code.cloudfoundry.org/executor/gardenhealth"
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/executor/initializer/configuration"
+	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/inigo/world"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
@@ -28,8 +29,6 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
-
-	"code.cloudfoundry.org/garden"
 )
 
 var _ = Describe("Executor/Garden", func() {
@@ -734,7 +733,7 @@ var _ = Describe("Executor/Garden", func() {
 
 				Context("when the container cannot be created", func() {
 					BeforeEach(func() {
-						allocationRequest.RootFSPath = "gopher://example.com"
+						runInfo.RootFSPath = "gopher://example.com"
 					})
 
 					It("does not immediately return an error", func() {
