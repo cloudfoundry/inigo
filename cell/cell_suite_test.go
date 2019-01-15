@@ -47,10 +47,6 @@ func overrideConvergenceRepeatInterval(conf *bbsconfig.BBSConfig) {
 	conf.ConvergeRepeatInterval = durationjson.Duration(time.Second)
 }
 
-func overrideGenerateSuspectActualLRPs(conf *bbsconfig.BBSConfig) {
-	conf.GenerateSuspectActualLRPs = true
-}
-
 var _ = SynchronizedBeforeSuite(func() []byte {
 	artifacts := world.BuiltArtifacts{
 		Lifecycles: world.BuiltLifecycles{},

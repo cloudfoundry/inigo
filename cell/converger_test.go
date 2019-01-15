@@ -95,88 +95,56 @@ var _ = Describe("Convergence to desired state", func() {
 				By("collecting the ActualLRP instance guids")
 				initialActuals := runningLRPsPoller()
 				initialInstanceGuids = []string{initialActuals[0].InstanceGuid, initialActuals[1].InstanceGuid}
+
+				By("restarting the bbs with smaller convergeRepeatInterval and generating SuspectActualLRPs")
+				ginkgomon.Interrupt(bbsProcess)
+				bbsProcess = ginkgomon.Invoke(componentMaker.BBS(
+					overrideConvergenceRepeatInterval,
+				))
 			})
 
-			Context("and the BBS allows generation of suspect ActualLRPs", func() {
+			It("marks the LRPs as Suspect until the rep comes back, and then marks the LRPs as Ordinary", func() {
+				By("killing the lone rep")
+				ginkgomon.Interrupt(rep)
+
+				By("Asserting that the LRPs are marked as Suspect")
+				Eventually(runningLRPsPoller).Should(HaveLen(2))
+				Eventually(runningLRPsPresencePoller).Should(ConsistOf(models.ActualLRP_Suspect, models.ActualLRP_Suspect))
+
+				By("bringing back the original rep")
+				rep = ginkgomon.Invoke(componentMaker.Rep())
+
+				Eventually(runningLRPsPoller).Should(HaveLen(2))
+				Eventually(helloWorldInstancePoller).Should(Equal([]string{"0", "1"}))
+
+				By("Asserting that the LRPs marked as Ordinary")
+				currentActuals := runningLRPsPoller()
+				instanceGuids := []string{currentActuals[0].InstanceGuid, currentActuals[1].InstanceGuid}
+				Expect(instanceGuids).NotTo(ContainElement(initialInstanceGuids[0]))
+				Expect(instanceGuids).NotTo(ContainElement(initialInstanceGuids[1]))
+				Eventually(runningLRPsPresencePoller).Should(ConsistOf(models.ActualLRP_Ordinary, models.ActualLRP_Ordinary))
+			})
+
+			Context("and a second rep is running", func() {
+				var firstActualLRPs []models.ActualLRP
+				var rep2 ifrit.Process
+
 				BeforeEach(func() {
-					By("restarting the bbs with smaller convergeRepeatInterval and generating SuspectActualLRPs")
-					ginkgomon.Interrupt(bbsProcess)
-					bbsProcess = ginkgomon.Invoke(componentMaker.BBS(
-						overrideConvergenceRepeatInterval,
-						overrideGenerateSuspectActualLRPs,
-					))
+					firstActualLRPs = runningLRPsPoller()
+					rep2 = ginkgomon.Invoke(componentMaker.RepN(1))
 				})
 
-				It("marks the LRPs as Suspect until the rep comes back, and then marks the LRPs as Ordinary", func() {
-					By("killing the lone rep")
+				AfterEach(func() {
+					helpers.StopProcesses(rep2)
+				})
+
+				It("marks the LRPs as Suspect until they get started on the other rep", func() {
+					By("killing the original rep")
 					ginkgomon.Interrupt(rep)
 
 					By("Asserting that the LRPs are marked as Suspect")
 					Eventually(runningLRPsPoller).Should(HaveLen(2))
 					Eventually(runningLRPsPresencePoller).Should(ConsistOf(models.ActualLRP_Suspect, models.ActualLRP_Suspect))
-
-					By("bringing back the original rep")
-					rep = ginkgomon.Invoke(componentMaker.Rep())
-
-					Eventually(runningLRPsPoller).Should(HaveLen(2))
-					Eventually(helloWorldInstancePoller).Should(Equal([]string{"0", "1"}))
-
-					By("Asserting that the LRPs marked as Ordinary")
-					currentActuals := runningLRPsPoller()
-					instanceGuids := []string{currentActuals[0].InstanceGuid, currentActuals[1].InstanceGuid}
-					Expect(instanceGuids).NotTo(ContainElement(initialInstanceGuids[0]))
-					Expect(instanceGuids).NotTo(ContainElement(initialInstanceGuids[1]))
-					Eventually(runningLRPsPresencePoller).Should(ConsistOf(models.ActualLRP_Ordinary, models.ActualLRP_Ordinary))
-				})
-
-				Context("and a second rep is running", func() {
-					var firstActualLRPs []models.ActualLRP
-					var rep2 ifrit.Process
-
-					BeforeEach(func() {
-						firstActualLRPs = runningLRPsPoller()
-						rep2 = ginkgomon.Invoke(componentMaker.RepN(1))
-					})
-
-					AfterEach(func() {
-						helpers.StopProcesses(rep2)
-					})
-
-					It("marks the LRPs as Suspect until they get started on the other rep", func() {
-						By("killing the original rep")
-						ginkgomon.Interrupt(rep)
-
-						By("Asserting that the LRPs are marked as Suspect")
-						Eventually(runningLRPsPoller).Should(HaveLen(2))
-						Eventually(runningLRPsPresencePoller).Should(ConsistOf(models.ActualLRP_Suspect, models.ActualLRP_Suspect))
-
-						By("Asserting that the LRPs are started on the second rep")
-						Eventually(func() bool {
-							secondActualLRPs := runningLRPsPoller()
-							if len(secondActualLRPs) != 2 {
-								return false
-							}
-							return secondActualLRPs[0].CellId != firstActualLRPs[0].CellId &&
-								secondActualLRPs[1].CellId != firstActualLRPs[1].CellId
-						}).Should(BeTrue())
-					})
-				})
-			})
-
-			Context("and the BBS does not allow generation of suspect ActualLRPs", func() {
-				It("eventually brings up the LRP on the new rep", func() {
-					By("Collecting the list of LRPs prior to killing the rep")
-					firstActualLRPs := runningLRPsPoller()
-
-					By("killing the original rep")
-					ginkgomon.Interrupt(rep)
-
-					By("Asserting there are no running LRPs while there are no reps")
-					Consistently(runningLRPsPoller).Should(HaveLen(0))
-
-					By("bringing up another rep")
-					rep2 := ginkgomon.Invoke(componentMaker.RepN(1))
-					defer helpers.StopProcesses(rep2)
 
 					By("Asserting that the LRPs are started on the second rep")
 					Eventually(func() bool {
