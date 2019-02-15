@@ -11,7 +11,7 @@ import (
 
 type CertAuthority interface {
 	CAAndKey() (key string, cert string)
-	GenerateSelfSignedCertAndKey(string, []string) (key string, cert string, err error)
+	GenerateSelfSignedCertAndKey(string, []string, bool) (key string, cert string, err error)
 }
 
 type certAuthority struct {
@@ -38,8 +38,7 @@ func (c certAuthority) CAAndKey() (string, string) {
 	return c.caKey, c.caCert
 }
 
-func (c certAuthority) GenerateSelfSignedCertAndKey(commonName string, sans []string) (string, string, error) {
-
+func (c certAuthority) GenerateSelfSignedCertAndKey(commonName string, sans []string, intermediateCA bool) (string, string, error) {
 	key, err := pkix.CreateRSAKey(4096)
 	keyBytes, err := key.ExportPrivate()
 	if err != nil {
@@ -71,7 +70,12 @@ func (c certAuthority) GenerateSelfSignedCertAndKey(commonName string, sans []st
 		return handleError(err)
 	}
 
-	crt, err := pkix.CreateCertificateHost(ca, caKey, csr, time.Now().AddDate(1, 0, 0))
+	var crt *pkix.Certificate
+	if intermediateCA {
+		crt, err = pkix.CreateIntermediateCertificateAuthority(ca, caKey, csr, time.Now().AddDate(1, 0, 0))
+	} else {
+		crt, err = pkix.CreateCertificateHost(ca, caKey, csr, time.Now().AddDate(1, 0, 0))
+	}
 	if err != nil {
 		return handleError(err)
 	}

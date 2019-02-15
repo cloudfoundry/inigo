@@ -51,7 +51,17 @@ var _ = Describe("Cert Allocator", func() {
 			authority, err = certauthority.NewCertAuthority(depotDir, "some-name")
 			Expect(err).NotTo(HaveOccurred())
 
-			key, cert, err := authority.GenerateSelfSignedCertAndKey("some-component", []string{})
+			key, cert, err := authority.GenerateSelfSignedCertAndKey("some-component", []string{}, false)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cert).To(BeAnExistingFile())
+			Expect(key).To(BeAnExistingFile())
+		})
+
+		It("successfully generates intermediate certificate authorities", func() {
+			authority, err = certauthority.NewCertAuthority(depotDir, "some-name")
+			Expect(err).NotTo(HaveOccurred())
+
+			key, cert, err := authority.GenerateSelfSignedCertAndKey("some-intermediate", []string{}, true)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(cert).To(BeAnExistingFile())
 			Expect(key).To(BeAnExistingFile())
@@ -61,7 +71,7 @@ var _ = Describe("Cert Allocator", func() {
 			authority, err = certauthority.NewCertAuthority(depotDir, "some-name")
 			Expect(err).NotTo(HaveOccurred())
 
-			_, cert, err := authority.GenerateSelfSignedCertAndKey("some-component", []string{})
+			_, cert, err := authority.GenerateSelfSignedCertAndKey("some-component", []string{}, false)
 			Expect(err).NotTo(HaveOccurred())
 			parsedCert, _ := parseCert(cert)
 			Expect(parsedCert.Subject.CommonName).To(Equal("some-component"))

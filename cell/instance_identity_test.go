@@ -26,6 +26,7 @@ import (
 	"code.cloudfoundry.org/go-loggregator/rpc/loggregator_v2"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
+	"code.cloudfoundry.org/inigo/helpers/certauthority"
 	"code.cloudfoundry.org/inigo/world"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
@@ -41,6 +42,7 @@ import (
 	"github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/matchers"
 	"github.com/onsi/gomega/types"
+	"github.com/square/certstrap/pkix"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -72,11 +74,15 @@ var _ = Describe("InstanceIdentity", func() {
 		var err error
 		credDir = world.TempDir("instance-creds")
 
-		caCertPath, err := filepath.Abs("../fixtures/certs/ca-with-no-max-path-length.crt")
+		// Hack to set MaxPathLenZero to false on the internal package authTemplate
+		dummyCsr := pkix.CertificateSigningRequest{}
+		_, _ = pkix.CreateIntermediateCertificateAuthority(nil, nil, &dummyCsr, time.Now())
+
+		certAuthority, err := certauthority.NewCertAuthority(credDir, "ca-with-no-max-path-length")
 		Expect(err).NotTo(HaveOccurred())
-		intermediateCACertPath, err = filepath.Abs("../fixtures/certs/instance-identity.crt")
-		Expect(err).NotTo(HaveOccurred())
-		intermediateKeyPath, err = filepath.Abs("../fixtures/certs/instance-identity.key")
+		_, caCertPath := certAuthority.CAAndKey()
+
+		intermediateKeyPath, intermediateCACertPath, err = certAuthority.GenerateSelfSignedCertAndKey("instance-identity", []string{}, true)
 		Expect(err).NotTo(HaveOccurred())
 		caCertContent, err := ioutil.ReadFile(caCertPath)
 		Expect(err).NotTo(HaveOccurred())

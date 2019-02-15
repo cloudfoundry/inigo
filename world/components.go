@@ -199,13 +199,13 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 	}
 
 	_, caCert := certAuthority.CAAndKey()
-	bbsServerKey, bbsServerCert, err := certAuthority.GenerateSelfSignedCertAndKey("bbs_server", nil)
+	bbsServerKey, bbsServerCert, err := certAuthority.GenerateSelfSignedCertAndKey("bbs_server", nil, false)
 	Expect(err).NotTo(HaveOccurred())
-	repServerKey, repServerCert, err := certAuthority.GenerateSelfSignedCertAndKey("rep_server", []string{"cell.service.cf.internal", "*.cell.service.cf.internal"})
+	repServerKey, repServerCert, err := certAuthority.GenerateSelfSignedCertAndKey("rep_server", []string{"cell.service.cf.internal", "*.cell.service.cf.internal"}, false)
 	Expect(err).NotTo(HaveOccurred())
-	auctioneerServerKey, auctioneerServerCert, err := certAuthority.GenerateSelfSignedCertAndKey("auctioneer_server", nil)
+	auctioneerServerKey, auctioneerServerCert, err := certAuthority.GenerateSelfSignedCertAndKey("auctioneer_server", nil, false)
 	Expect(err).NotTo(HaveOccurred())
-	clientKey, clientCert, err := certAuthority.GenerateSelfSignedCertAndKey("client", nil)
+	clientKey, clientCert, err := certAuthority.GenerateSelfSignedCertAndKey("client", nil, false)
 	Expect(err).NotTo(HaveOccurred())
 
 	sqlCACert := filepath.Join(os.Getenv("GOPATH"), "src", "code.cloudfoundry.org", "inigo", "fixtures", "certs", "sql-certs", "server-ca.crt")
