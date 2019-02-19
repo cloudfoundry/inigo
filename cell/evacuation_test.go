@@ -10,12 +10,12 @@ import (
 
 	"code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/bbs/models"
-	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/guardian/gqt/runner"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
+	"code.cloudfoundry.org/tlsconfig"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -74,10 +74,11 @@ var _ = Describe("Evacuation", func() {
 		cellPortsStart, err = componentMaker.PortAllocator().ClaimPorts(4)
 		Expect(err).NotTo(HaveOccurred())
 
-		tlscfg, err := cfhttp.NewTLSConfig(
-			componentMaker.RepSSLConfig().ClientCert,
-			componentMaker.RepSSLConfig().ClientKey,
-			componentMaker.RepSSLConfig().CACert,
+		tlscfg, err := tlsconfig.Build(
+			tlsconfig.WithInternalServiceDefaults(),
+			tlsconfig.WithIdentityFromFile(componentMaker.RepSSLConfig().ServerCert, componentMaker.RepSSLConfig().ServerKey),
+		).Client(
+			tlsconfig.WithAuthorityFromFile(componentMaker.RepSSLConfig().CACert),
 		)
 		Expect(err).NotTo(HaveOccurred())
 

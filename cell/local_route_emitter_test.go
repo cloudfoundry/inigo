@@ -11,7 +11,6 @@ import (
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/bbs/test_helpers"
-	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
@@ -21,6 +20,7 @@ import (
 	routingapi "code.cloudfoundry.org/route-emitter/cmd/route-emitter/runners"
 	"code.cloudfoundry.org/routing-info/cfroutes"
 	"code.cloudfoundry.org/routing-info/tcp_routes"
+	"code.cloudfoundry.org/tlsconfig"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
@@ -389,10 +389,11 @@ func evacuateARep(
 	}
 	Expect(repWithOneInstance).NotTo(BeEmpty())
 
-	tlscfg, err := cfhttp.NewTLSConfig(
-		componentMaker.RepSSLConfig().ClientCert,
-		componentMaker.RepSSLConfig().ClientKey,
-		componentMaker.RepSSLConfig().CACert,
+	tlscfg, err := tlsconfig.Build(
+		tlsconfig.WithInternalServiceDefaults(),
+		tlsconfig.WithIdentityFromFile(componentMaker.RepSSLConfig().ServerCert, componentMaker.RepSSLConfig().ServerKey),
+	).Client(
+		tlsconfig.WithAuthorityFromFile(componentMaker.RepSSLConfig().CACert),
 	)
 	Expect(err).NotTo(HaveOccurred())
 

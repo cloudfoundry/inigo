@@ -13,10 +13,10 @@ import (
 
 	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/bbs/models"
-	"code.cloudfoundry.org/cfhttp"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
+	"code.cloudfoundry.org/tlsconfig"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -71,10 +71,11 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 			tlsFileServer = httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 				proxy.ServeHTTP(rw, req)
 			}))
-			tlsConfig, err := cfhttp.NewTLSConfig(
-				componentMaker.BBSSSLConfig().ServerCert,
-				componentMaker.BBSSSLConfig().ServerKey,
-				componentMaker.BBSSSLConfig().CACert,
+			tlsConfig, err := tlsconfig.Build(
+				tlsconfig.WithInternalServiceDefaults(),
+				tlsconfig.WithIdentityFromFile(componentMaker.BBSSSLConfig().ServerCert, componentMaker.BBSSSLConfig().ServerKey),
+			).Server(
+				tlsconfig.WithClientAuthenticationFromFile(componentMaker.BBSSSLConfig().CACert),
 			)
 			Expect(err).NotTo(HaveOccurred())
 			tlsFileServer.TLS = tlsConfig
@@ -158,10 +159,11 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 			tlsFileServer = httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 				proxy.ServeHTTP(rw, req)
 			}))
-			tlsConfig, err := cfhttp.NewTLSConfig(
-				componentMaker.BBSSSLConfig().ServerCert,
-				componentMaker.BBSSSLConfig().ServerKey,
-				componentMaker.BBSSSLConfig().CACert,
+			tlsConfig, err := tlsconfig.Build(
+				tlsconfig.WithInternalServiceDefaults(),
+				tlsconfig.WithIdentityFromFile(componentMaker.BBSSSLConfig().ServerCert, componentMaker.BBSSSLConfig().ServerKey),
+			).Server(
+				tlsconfig.WithClientAuthenticationFromFile(componentMaker.BBSSSLConfig().CACert),
 			)
 			Expect(err).NotTo(HaveOccurred())
 			tlsFileServer.TLS = tlsConfig
