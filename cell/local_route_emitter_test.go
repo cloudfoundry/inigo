@@ -247,7 +247,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 				Context("to scale the app down", func() {
 					BeforeEach(func() {
 						newInstances := int32(1)
-						desiredLRPUdate.Instances = &newInstances
+						desiredLRPUdate.SetInstances(newInstances)
 					})
 
 					It("eventually extra routes are removed within a second", func() {
@@ -297,9 +297,9 @@ var _ = Describe("LocalRouteEmitter", func() {
 			)
 
 			JustBeforeEach(func() {
-				err := bbsClient.UpdateDesiredLRP(logger, processGuid, &models.DesiredLRPUpdate{
-					Instances: &newInstances,
-				})
+				dlu := &models.DesiredLRPUpdate{}
+				dlu.SetInstances(newInstances)
+				err := bbsClient.UpdateDesiredLRP(logger, processGuid, dlu)
 				Expect(err).NotTo(HaveOccurred())
 			})
 

@@ -18,7 +18,6 @@ import (
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
-	"github.com/gogo/protobuf/proto"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -171,9 +170,9 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 		Context("when the lrp is scaled up", func() {
 			JustBeforeEach(func() {
 				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
-				bbsClient.UpdateDesiredLRP(logger, processGuid, &models.DesiredLRPUpdate{
-					Instances: proto.Int32(2),
-				})
+				dlu := &models.DesiredLRPUpdate{}
+				dlu.SetInstances(2)
+				bbsClient.UpdateDesiredLRP(logger, processGuid, dlu)
 			})
 
 			It("eventually runs", func() {

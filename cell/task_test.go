@@ -271,6 +271,9 @@ var _ = Describe("Tasks", func() {
 			It("should fail the Task", func() {
 				nofile := uint64(10)
 
+				rl := &models.ResourceLimits{}
+				rl.SetNofile(nofile)
+
 				expectedTask := helpers.TaskCreateRequest(
 					guid,
 					models.Serial(
@@ -295,9 +298,7 @@ exec 13<>file11
 
 echo should have died by now
 `},
-							ResourceLimits: &models.ResourceLimits{
-								Nofile: &nofile,
-							},
+							ResourceLimits: rl,
 						},
 					),
 				)

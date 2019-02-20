@@ -364,9 +364,9 @@ var _ = Describe("LRP", func() {
 				})
 
 				JustBeforeEach(func() {
-					err := bbsClient.UpdateDesiredLRP(logger, processGuid, &models.DesiredLRPUpdate{
-						Instances: &newInstances,
-					})
+					dlu := &models.DesiredLRPUpdate{}
+					dlu.SetInstances(newInstances)
+					err := bbsClient.UpdateDesiredLRP(logger, processGuid, dlu)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
@@ -422,9 +422,9 @@ var _ = Describe("LRP", func() {
 
 					It("can be scaled back up", func() {
 						newInstances := int32(1)
-						err := bbsClient.UpdateDesiredLRP(logger, processGuid, &models.DesiredLRPUpdate{
-							Instances: &newInstances,
-						})
+						dlu := &models.DesiredLRPUpdate{}
+						dlu.SetInstances(newInstances)
+						err := bbsClient.UpdateDesiredLRP(logger, processGuid, dlu)
 						Expect(err).NotTo(HaveOccurred())
 
 						Eventually(func() []*models.ActualLRPGroup {
