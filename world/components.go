@@ -25,7 +25,7 @@ import (
 	"code.cloudfoundry.org/bbs/encryption"
 	"code.cloudfoundry.org/bbs/serviceclient"
 	"code.cloudfoundry.org/bbs/test_helpers"
-	"code.cloudfoundry.org/cfhttp"
+	cfhttp "code.cloudfoundry.org/cfhttp/v2"
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
