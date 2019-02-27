@@ -971,7 +971,7 @@ func (maker commonComponentMaker) RepClientFactory() rep.ClientFactory {
 		ClientCacheSize: 100,
 	}
 
-	client := cfhttp.NewClient()
+	client := cfhttp.NewClient(cfhttp.WithRequestTimeout(10 * time.Second))
 	factory, err := rep.NewClientFactory(client, client, &tlsConfig)
 	Expect(err).NotTo(HaveOccurred())
 	return factory
