@@ -1289,6 +1289,7 @@ func (maker v0ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 			LogLevel: "debug",
 		},
 		PollingInterval:    durationjson.Duration(1 * time.Second),
+		ReportInterval:     durationjson.Duration(1 * time.Minute),
 		SupportedProviders: []string{"docker"},
 	}
 
@@ -1461,6 +1462,7 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 		ListenAddr:                fmt.Sprintf("%s:%d", host, offsetPort(port, n)),
 		CellID:                    "the-cell-id-" + strconv.Itoa(GinkgoParallelNode()) + "-" + strconv.Itoa(n),
 		PollingInterval:           durationjson.Duration(1 * time.Second),
+		ReportInterval:            durationjson.Duration(1 * time.Minute),
 		EvacuationPollingInterval: durationjson.Duration(1 * time.Second),
 		EvacuationTimeout:         durationjson.Duration(1 * time.Second),
 		LockTTL:                   durationjson.Duration(10 * time.Second),
