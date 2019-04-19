@@ -72,7 +72,7 @@ import (
 )
 
 var (
-	PreloadedStacks = []string{"red-stack", "blue-stack", "cflinuxfs2"}
+	PreloadedStacks = []string{"red-stack", "blue-stack", "cflinuxfs3"}
 	DefaultStack    = PreloadedStacks[0]
 )
 
