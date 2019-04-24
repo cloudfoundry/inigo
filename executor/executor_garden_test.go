@@ -1060,7 +1060,7 @@ var _ = Describe("Executor/Garden", func() {
 						Action: models.WrapAction(&models.RunAction{
 							User: "vcap",
 							Path: "sh",
-							Args: []string{"-c", "echo -n .$CF_INSTANCE_ADDR. | nc -l 8080"},
+							Args: []string{"-c", "echo -n .$CF_INSTANCE_ADDR. | nc -l -N -p 8080"},
 						}),
 					}, executor.Tags{})
 
@@ -1076,7 +1076,8 @@ var _ = Describe("Executor/Garden", func() {
 					var conn net.Conn
 					Eventually(func() error {
 						var err error
-						conn, err = net.Dial("tcp", externalAddr)
+						dialer := net.Dialer{Timeout: time.Second * 5}
+						conn, err = dialer.Dial("tcp", externalAddr)
 						return err
 					}).ShouldNot(HaveOccurred())
 
