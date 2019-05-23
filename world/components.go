@@ -650,7 +650,7 @@ func (maker commonComponentMaker) RoutingAPI(modifyConfigFuncs ...func(*routinga
 		sqlConfig.Password = "diego_pw"
 	}
 
-	runner, err := routingapi.NewRoutingAPIRunner(binPath, maker.ConsulCluster(), int(port), int(port+1), sqlConfig, modifyConfigFuncs...)
+	runner, err := routingapi.NewRoutingAPIRunner(binPath, int(port), int(port+1), sqlConfig, maker.locketClientConfig(), modifyConfigFuncs...)
 	Expect(err).NotTo(HaveOccurred())
 	return runner
 }
