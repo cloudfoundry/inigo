@@ -160,6 +160,13 @@ func DBInfo() (string, string) {
 }
 
 func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses ComponentAddresses, allocator portauthority.PortAllocator, certAuthority certauthority.CertAuthority) commonComponentMaker {
+	startCheckTimeout := 10 * time.Second
+	if timeout, found := os.LookupEnv("START_CHECK_TIMEOUT_DURATION"); found && timeout != "" {
+		var err error
+		startCheckTimeout, err = time.ParseDuration(timeout)
+		Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("%s not a valid duration", timeout))
+	}
+
 	grootfsBinPath := os.Getenv("GROOTFS_BINPATH")
 	gardenBinPath := os.Getenv("GARDEN_BINPATH")
 	gardenRootFSPath := os.Getenv("GARDEN_ROOTFS")
@@ -294,6 +301,8 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 		dbBaseConnectionString: dbBaseConnectionString,
 
 		portAllocator: allocator,
+
+		startCheckTimeout: startCheckTimeout,
 	}
 }
 
@@ -360,6 +369,7 @@ type commonComponentMaker struct {
 	dbDriverName           string
 	dbBaseConnectionString string
 	portAllocator          portauthority.PortAllocator
+	startCheckTimeout      time.Duration
 }
 
 func (maker commonComponentMaker) VolmanDriverConfigDir() string {
@@ -406,7 +416,7 @@ func (maker commonComponentMaker) NATS(argv ...string) ifrit.Runner {
 		Name:              "gnatsd",
 		AnsiColorCode:     "30m",
 		StartCheck:        "gnatsd is ready",
-		StartCheckTimeout: startCheckTimeout(),
+		StartCheckTimeout: maker.startCheckTimeout,
 		Command: exec.Command(
 			"gnatsd",
 			append([]string{
@@ -623,7 +633,7 @@ func (maker commonComponentMaker) garden(includeDefaultStack bool, fs ...func(*r
 
 	gardenRunner := runner.NewGardenRunner(config)
 	gardenRunner.Runner.StartCheck = "guardian.started"
-	gardenRunner.Runner.StartCheckTimeout = startCheckTimeout()
+	gardenRunner.Runner.StartCheckTimeout = maker.startCheckTimeout
 
 	members = append(members, grouper.Member{Name: "garden", Runner: gardenRunner})
 
@@ -718,7 +728,7 @@ func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routee
 		Name:              name,
 		AnsiColorCode:     "36m",
 		StartCheck:        `"` + name + `.watcher.sync.complete"`,
-		StartCheckTimeout: startCheckTimeout(),
+		StartCheckTimeout: maker.startCheckTimeout,
 		Command: exec.Command(
 			maker.artifacts.Executables["route-emitter"],
 			"-config", configFile.Name(),
@@ -772,7 +782,7 @@ func (maker commonComponentMaker) FileServer() (ifrit.Runner, string) {
 		Name:              "file-server",
 		AnsiColorCode:     "92m",
 		StartCheck:        `"file-server.ready"`,
-		StartCheckTimeout: startCheckTimeout(),
+		StartCheckTimeout: maker.startCheckTimeout,
 		Command: exec.Command(
 			maker.artifacts.Executables["file-server"],
 			"-config", configFile.Name(),
@@ -883,7 +893,7 @@ pid_file: ""
 		Name:              "router",
 		AnsiColorCode:     "93m",
 		StartCheck:        "router.started",
-		StartCheckTimeout: startCheckTimeout(),
+		StartCheckTimeout: maker.startCheckTimeout,
 		Command: exec.Command(
 			maker.artifacts.Executables["router"],
 			"-c", configFile.Name(),
@@ -930,7 +940,7 @@ func (maker commonComponentMaker) SSHProxy(modifyConfigFuncs ...func(*sshproxyco
 		Name:              "ssh-proxy",
 		AnsiColorCode:     "96m",
 		StartCheck:        "ssh-proxy.started",
-		StartCheckTimeout: startCheckTimeout(),
+		StartCheckTimeout: maker.startCheckTimeout,
 		Command: exec.Command(
 			maker.artifacts.Executables["ssh-proxy"],
 			append([]string{
@@ -1105,7 +1115,7 @@ func (maker v0ComponentMaker) Auctioneer(modifyConfigFuncs ...func(*auctioneerco
 		Name:              "auctioneer",
 		AnsiColorCode:     "35m",
 		StartCheck:        `"auctioneer.started"`,
-		StartCheckTimeout: startCheckTimeout(),
+		StartCheckTimeout: maker.startCheckTimeout,
 		Command: exec.Command(
 			maker.artifacts.Executables["auctioneer"],
 			args...,
@@ -1135,7 +1145,7 @@ func (maker v0ComponentMaker) RouteEmitter(modifyConfigFuncs ...func(config *rou
 		Name:              "route-emitter",
 		AnsiColorCode:     "36m",
 		StartCheck:        `"route-emitter.started"`,
-		StartCheckTimeout: startCheckTimeout(),
+		StartCheckTimeout: maker.startCheckTimeout,
 		Command: exec.Command(
 			maker.artifacts.Executables["route-emitter"],
 			[]string{
@@ -1159,7 +1169,7 @@ func (maker v0ComponentMaker) FileServer() (ifrit.Runner, string) {
 		Name:              "file-server",
 		AnsiColorCode:     "92m",
 		StartCheck:        `"file-server.ready"`,
-		StartCheckTimeout: startCheckTimeout(),
+		StartCheckTimeout: maker.startCheckTimeout,
 		Command: exec.Command(
 			maker.artifacts.Executables["file-server"],
 			[]string{
@@ -1231,7 +1241,7 @@ func (maker v0ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig
 		Name:              "bbs",
 		AnsiColorCode:     "32m",
 		StartCheck:        "bbs.started",
-		StartCheckTimeout: startCheckTimeout(),
+		StartCheckTimeout: maker.startCheckTimeout,
 		Command: exec.Command(
 			maker.artifacts.Executables["bbs"],
 			args...,
@@ -1420,7 +1430,7 @@ func (maker v1ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig
 
 	runner := bbsrunner.New(maker.artifacts.Executables["bbs"], config)
 	runner.AnsiColorCode = "32m"
-	runner.StartCheckTimeout = startCheckTimeout()
+	runner.StartCheckTimeout = maker.startCheckTimeout
 	return runner
 }
 
@@ -1601,7 +1611,7 @@ func (maker v1ComponentMaker) Auctioneer(modifyConfigFuncs ...func(cfg *auctione
 		Name:              "auctioneer",
 		AnsiColorCode:     "35m",
 		StartCheck:        `"auctioneer.started"`,
-		StartCheckTimeout: startCheckTimeout(),
+		StartCheckTimeout: maker.startCheckTimeout,
 		Command: exec.Command(
 			maker.artifacts.Executables["auctioneer"],
 			"-config", configFile.Name(),
@@ -1705,16 +1715,4 @@ func intPtr(i int) *int {
 
 func boolPtr(b bool) *bool {
 	return &b
-}
-
-func startCheckTimeout() time.Duration {
-	var timeoutDuration = 10 * time.Second
-	if timeout, found := os.LookupEnv("START_CHECK_TIMEOUT_DURATION"); found {
-		var err error
-		timeoutDuration, err = time.ParseDuration(timeout)
-		if err != nil {
-			Expect(err).NotTo(HaveOccurred())
-		}
-	}
-	return timeoutDuration
 }
