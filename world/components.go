@@ -711,6 +711,8 @@ func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routee
 		RouteEmittingWorkers:               20,
 		SyncInterval:                       durationjson.Duration(time.Minute),
 		TCPRouteTTL:                        durationjson.Duration(2 * time.Minute),
+		UnregistrationInterval:             durationjson.Duration(30 * time.Second),
+		UnregistrationSendCount:            20,
 		EnableTCPEmitter:                   false,
 		EnableInternalEmitter:              false,
 		RegisterDirectInstanceRoutes:       false,
