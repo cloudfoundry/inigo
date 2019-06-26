@@ -485,7 +485,7 @@ func initializeExecutor(logger lager.Logger, config executorinit.ExecutorConfig)
 	defaultRootFS := ""
 	metronClient, err := loggingclient.NewIngressClient(loggingclient.Config{})
 	Expect(err).NotTo(HaveOccurred())
-	executorClient, _, executorMembers, err = executorinit.Initialize(logger, config, "", defaultRootFS, metronClient, clock.NewClock())
+	executorClient, _, executorMembers, err = executorinit.Initialize(logger, config, "", "", defaultRootFS, metronClient, clock.NewClock())
 	Expect(err).NotTo(HaveOccurred())
 
 	return executorClient, grouper.NewParallel(os.Kill, executorMembers)
