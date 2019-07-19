@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"fmt"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -19,7 +20,11 @@ func StopProcesses(processes ...ifrit.Process) {
 				continue
 			}
 
-			process.Signal(syscall.SIGTERM)
+			if runtime.GOOS == "windows" {
+				process.Signal(syscall.SIGKILL)
+			} else {
+				process.Signal(syscall.SIGTERM)
+			}
 
 			select {
 			case <-process.Wait():

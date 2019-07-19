@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -108,10 +109,18 @@ type SSLConfig struct {
 
 type GardenSettingsConfig struct {
 	GrootFSBinPath            string
+	GrootFSStorePath          string
 	GardenBinPath             string
 	GardenGraphPath           string
 	UnprivilegedGrootfsConfig GrootFSConfig
 	PrivilegedGrootfsConfig   GrootFSConfig
+	NetworkPluginConfig       NetworkPluginConfig
+}
+
+type NetworkPluginConfig struct {
+	NetworkName    string `json:"network_name"`
+	SubnetRange    string `json:"subnet_range"`
+	GatewayAddress string `json:"gateway_address"`
 }
 
 type GrootFSConfig struct {
@@ -134,7 +143,7 @@ type ComponentAddresses struct {
 	Rep                 string
 	FileServer          string
 	Router              string
-	GardenLinux         string
+	Garden              string
 	Auctioneer          string
 	SSHProxy            string
 	SSHProxyHealthCheck string
@@ -168,6 +177,7 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 	}
 
 	grootfsBinPath := os.Getenv("GROOTFS_BINPATH")
+	grootfsStorePath := os.Getenv("GROOTFS_STORE_PATH")
 	gardenBinPath := os.Getenv("GARDEN_BINPATH")
 	gardenRootFSPath := os.Getenv("GARDEN_ROOTFS")
 	gardenGraphPath := os.Getenv("GARDEN_GRAPH_PATH")
@@ -177,6 +187,9 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 	}
 
 	Expect(grootfsBinPath).NotTo(BeEmpty(), "must provide $GROOTFS_BINPATH")
+	if runtime.GOOS == "windows" {
+		Expect(grootfsStorePath).NotTo(BeEmpty(), "must provide $GROOTFS_STORE_PATH")
+	}
 	Expect(gardenBinPath).NotTo(BeEmpty(), "must provide $GARDEN_BINPATH")
 	Expect(gardenRootFSPath).NotTo(BeEmpty(), "must provide $GARDEN_ROOTFS")
 
@@ -269,12 +282,20 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 	privilegedGrootfsConfig.Create.JSON = true
 	privilegedGrootfsConfig.Create.SkipLayerValidation = true
 
+	networkPluginConfig := NetworkPluginConfig{
+		NetworkName:    "winc-nat",
+		SubnetRange:    "172.30.0.0/22",
+		GatewayAddress: "172.30.0.1",
+	}
+
 	gardenConfig := GardenSettingsConfig{
 		GrootFSBinPath:            grootfsBinPath,
+		GrootFSStorePath:          grootfsStorePath,
 		GardenBinPath:             gardenBinPath,
 		GardenGraphPath:           gardenGraphPath,
 		UnprivilegedGrootfsConfig: unprivilegedGrootfsConfig,
 		PrivilegedGrootfsConfig:   privilegedGrootfsConfig,
+		NetworkPluginConfig:       networkPluginConfig,
 	}
 
 	guid, err := uuid.NewV4()
@@ -401,11 +422,15 @@ func (maker commonComponentMaker) RepSSLConfig() SSLConfig {
 }
 
 func (maker commonComponentMaker) Setup() {
-	maker.GrootFSInitStore()
+	if runtime.GOOS != "windows" {
+		maker.GrootFSInitStore()
+	}
 }
 
 func (maker commonComponentMaker) Teardown() {
-	maker.GrootFSDeleteStore()
+	if runtime.GOOS != "windows" {
+		maker.GrootFSDeleteStore()
+	}
 }
 
 func (maker commonComponentMaker) NATS(argv ...string) ifrit.Runner {
@@ -438,10 +463,11 @@ func (maker commonComponentMaker) SQL(argv ...string) ifrit.Runner {
 
 		Eventually(db.Ping).Should(Succeed())
 
-		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", GinkgoParallelNode()))
+		sqlDBName := fmt.Sprintf("diego_%d", GinkgoParallelNode())
+		db.Exec(fmt.Sprintf("DROP DATABASE %s", sqlDBName))
+		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", sqlDBName))
 		Expect(err).NotTo(HaveOccurred())
 
-		sqlDBName := fmt.Sprintf("diego_%d", GinkgoParallelNode())
 		dbWithDatabaseNameConnectionString := appendExtraConnectionStringParam(maker.dbDriverName, fmt.Sprintf("%s%s", maker.dbBaseConnectionString, sqlDBName), maker.sqlCACertFile)
 		db, err = sql.Open(maker.dbDriverName, dbWithDatabaseNameConnectionString)
 		Expect(err).NotTo(HaveOccurred())
@@ -559,6 +585,18 @@ func (maker commonComponentMaker) grootfsConfigPath(grootfsConfig GrootFSConfig)
 	return configFile.Name()
 }
 
+func (maker commonComponentMaker) networkPluginConfigPath(networkPluginConfig NetworkPluginConfig) string {
+	configFile, err := ioutil.TempFile("", "network-plugin-config")
+	Expect(err).NotTo(HaveOccurred())
+	defer configFile.Close()
+	data, err := json.Marshal(&networkPluginConfig)
+	Expect(err).NotTo(HaveOccurred())
+	_, err = configFile.Write(data)
+	Expect(err).NotTo(HaveOccurred())
+
+	return configFile.Name()
+}
+
 func (maker commonComponentMaker) GardenWithoutDefaultStack() ifrit.Runner {
 	return maker.garden(false)
 }
@@ -580,19 +618,62 @@ func (maker commonComponentMaker) garden(includeDefaultStack bool, fs ...func(*r
 	})
 
 	config.GdnBin = maker.artifacts.Executables["garden"]
-	config.TarBin = filepath.Join(maker.gardenConfig.GardenBinPath, "tar")
-	config.InitBin = filepath.Join(maker.gardenConfig.GardenBinPath, "init")
-	config.ExecRunnerBin = filepath.Join(maker.gardenConfig.GardenBinPath, "dadoo")
-	config.NSTarBin = filepath.Join(maker.gardenConfig.GardenBinPath, "nstar")
-	config.RuntimePluginBin = filepath.Join(maker.gardenConfig.GardenBinPath, "runc")
+
+	maxContainers := uint64(10)
+	config.MaxContainers = &maxContainers
+
+	if runtime.GOOS == "windows" {
+		config.TarBin = filepath.Join(maker.gardenConfig.GardenBinPath, "tar.exe")
+		config.InitBin = filepath.Join(maker.gardenConfig.GardenBinPath, "init.exe")
+		config.RuntimePluginBin = filepath.Join(maker.gardenConfig.GardenBinPath, "winc.exe")
+		config.NSTarBin = filepath.Join(maker.gardenConfig.GardenBinPath, "nstar.exe")
+		config.ImagePluginBin = filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs.exe")
+		config.ImagePluginExtraArgs = []string{
+			"\"--driver-store\"",
+			maker.gardenConfig.GrootFSStorePath,
+		}
+		config.NetworkPluginBin = filepath.Join(maker.gardenConfig.GardenBinPath, "winc-network.exe")
+		config.NetworkPluginExtraArgs = []string{
+			"\"--configFile\"",
+			maker.networkPluginConfigPath(maker.gardenConfig.NetworkPluginConfig),
+		}
+	} else {
+		config.TarBin = filepath.Join(maker.gardenConfig.GardenBinPath, "tar")
+		config.InitBin = filepath.Join(maker.gardenConfig.GardenBinPath, "init")
+		config.ExecRunnerBin = filepath.Join(maker.gardenConfig.GardenBinPath, "dadoo")
+		config.RuntimePluginBin = filepath.Join(maker.gardenConfig.GardenBinPath, "runc")
+		config.NSTarBin = filepath.Join(maker.gardenConfig.GardenBinPath, "nstar")
+		config.ImagePluginBin = filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs")
+		config.PrivilegedImagePluginBin = filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs")
+
+		// TODO: this is overriding the guardian runner args, which is fine since we
+		// don't use tardis (tardis is only required for overlay+xfs)
+		config.ImagePluginExtraArgs = []string{
+			"\"--config\"",
+			maker.grootfsConfigPath(maker.gardenConfig.UnprivilegedGrootfsConfig),
+		}
+
+		// TODO: this is overriding the guardian runner args, which is fine since we
+		// don't use tardis (tardis is only required for overlay+xfs)
+		config.PrivilegedImagePluginExtraArgs = []string{
+			"\"--config\"",
+			maker.grootfsConfigPath(maker.gardenConfig.PrivilegedGrootfsConfig),
+		}
+
+		config.DenyNetworks = []string{"0.0.0.0/0"}
+		config.AllowHostAccess = boolPtr(true)
+
+		poolSize := int(maxContainers)
+		config.PortPoolSize = &poolSize
+		ports, err := maker.portAllocator.ClaimPorts(*config.PortPoolSize)
+		startPort := int(ports)
+		Expect(err).NotTo(HaveOccurred())
+		config.PortPoolStart = &startPort
+	}
 
 	config.DefaultRootFS = defaultRootFS
 
-	config.AllowHostAccess = boolPtr(true)
-
-	config.DenyNetworks = []string{"0.0.0.0/0"}
-
-	host, port, err := net.SplitHostPort(maker.addresses.GardenLinux)
+	host, port, err := net.SplitHostPort(maker.addresses.Garden)
 	Expect(err).NotTo(HaveOccurred())
 
 	config.BindSocket = ""
@@ -602,34 +683,9 @@ func (maker commonComponentMaker) garden(includeDefaultStack bool, fs ...func(*r
 	Expect(err).NotTo(HaveOccurred())
 	config.BindPort = intPtr(intPort)
 
-	config.ImagePluginBin = filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs")
-	config.PrivilegedImagePluginBin = filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs")
-
-	// TODO: this is overriding the guardian runner args, which is fine since we
-	// don't use tardis (tardis is only required for overlay+xfs)
-	config.ImagePluginExtraArgs = []string{
-		"\"--config\"",
-		maker.grootfsConfigPath(maker.gardenConfig.UnprivilegedGrootfsConfig),
-	}
-
-	// TODO: this is overriding the guardian runner args, which is fine since we
-	// don't use tardis (tardis is only required for overlay+xfs)
-	config.PrivilegedImagePluginExtraArgs = []string{
-		"\"--config\"",
-		maker.grootfsConfigPath(maker.gardenConfig.PrivilegedGrootfsConfig),
-	}
-
-	poolSize := 10
-	config.PortPoolSize = &poolSize
-
 	for _, f := range fs {
 		f(&config)
 	}
-
-	ports, err := maker.portAllocator.ClaimPorts(*config.PortPoolSize)
-	startPort := int(ports)
-	Expect(err).NotTo(HaveOccurred())
-	config.PortPoolStart = &startPort
 
 	gardenRunner := runner.NewGardenRunner(config)
 	gardenRunner.Runner.StartCheck = "guardian.started"
@@ -763,7 +819,13 @@ func (maker commonComponentMaker) FileServer() (ifrit.Runner, string) {
 	Expect(err).NotTo(HaveOccurred())
 	file := maker.artifacts.Lifecycles["buildpackapplifecycle"]
 	if _, err := os.Stat(file); !os.IsNotExist(err) {
-		err = exec.Command("cp", file, filepath.Join(buildpackAppLifeCycleDir, "buildpack_app_lifecycle.tgz")).Run()
+		var cmd *exec.Cmd
+		if runtime.GOOS == "windows" {
+			cmd = exec.Command("powershell", "-Command", fmt.Sprintf("cp -Recurse -Force %s %s", file, filepath.Join(buildpackAppLifeCycleDir, "buildpack_app_lifecycle.tgz")))
+		} else {
+			cmd = exec.Command("cp", file, filepath.Join(buildpackAppLifeCycleDir, "buildpack_app_lifecycle.tgz"))
+		}
+		err = cmd.Run()
 		Expect(err).NotTo(HaveOccurred())
 	}
 
@@ -772,7 +834,13 @@ func (maker commonComponentMaker) FileServer() (ifrit.Runner, string) {
 	Expect(err).NotTo(HaveOccurred())
 	file = maker.artifacts.Lifecycles["dockerapplifecycle"]
 	if _, err := os.Stat(file); !os.IsNotExist(err) {
-		err = exec.Command("cp", file, filepath.Join(dockerAppLifeCycleDir, "docker_app_lifecycle.tgz")).Run()
+		var cmd *exec.Cmd
+		if runtime.GOOS == "windows" {
+			cmd = exec.Command("powershell", "-Command", fmt.Sprintf("cp -Recurse -Force %s %s", file, filepath.Join(buildpackAppLifeCycleDir, "docker_app_lifecycle.tgz")))
+		} else {
+			cmd = exec.Command("cp", file, filepath.Join(dockerAppLifeCycleDir, "docker_app_lifecycle.tgz"))
+		}
+		err = cmd.Run()
 		Expect(err).NotTo(HaveOccurred())
 	}
 
@@ -958,7 +1026,7 @@ func (maker commonComponentMaker) DefaultStack() string {
 }
 
 func (maker commonComponentMaker) GardenClient() garden.Client {
-	return gardenclient.New(gardenconnection.New("tcp", maker.addresses.GardenLinux))
+	return gardenclient.New(gardenconnection.New("tcp", maker.addresses.Garden))
 }
 
 func (maker commonComponentMaker) BBSClient() bbs.InternalClient {
@@ -1285,9 +1353,7 @@ func (maker v0ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 			CachePath:                    cachePath,
 			ContainerMaxCpuShares:        1024,
 			ExportNetworkEnvVars:         true,
-			GardenAddr:                   maker.addresses.GardenLinux,
-			GardenHealthcheckProcessPath: "/bin/sh",
-			GardenHealthcheckProcessArgs: []string{"-c", "echo", "foo"},
+			GardenAddr:                   maker.addresses.Garden,
 			GardenHealthcheckProcessUser: "vcap",
 			GardenNetwork:                "tcp",
 			TempDir:                      tmpDir,
@@ -1304,6 +1370,14 @@ func (maker v0ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 		PollingInterval:    durationjson.Duration(1 * time.Second),
 		ReportInterval:     durationjson.Duration(1 * time.Minute),
 		SupportedProviders: []string{"docker"},
+	}
+
+	if runtime.GOOS == "windows" {
+		cfg.GardenHealthcheckProcessPath = "C:\\windows\\system32\\cmd.exe"
+		cfg.GardenHealthcheckProcessArgs = []string{"/c", "dir"}
+	} else {
+		cfg.GardenHealthcheckProcessPath = "/bin/sh"
+		cfg.GardenHealthcheckProcessArgs = []string{"-c", "echo", "foo"}
 	}
 
 	// for _, rootfs := range maker.rootFSes {
@@ -1520,12 +1594,10 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 
 			EnableUnproxiedPortMappings:   true,
 			GardenNetwork:                 "tcp",
-			GardenAddr:                    maker.addresses.GardenLinux,
+			GardenAddr:                    maker.addresses.Garden,
 			ContainerMaxCpuShares:         1024,
 			CachePath:                     cachePath,
 			TempDir:                       tmpDir,
-			GardenHealthcheckProcessPath:  "/bin/sh",
-			GardenHealthcheckProcessArgs:  []string{"-c", "echo", "foo"},
 			GardenHealthcheckProcessUser:  "vcap",
 			VolmanDriverPaths:             path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
 			ContainerOwnerName:            "executor-" + strconv.Itoa(n),
@@ -1537,6 +1609,14 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 		LagerConfig: lagerflags.LagerConfig{
 			LogLevel: "debug",
 		},
+	}
+
+	if runtime.GOOS == "windows" {
+		repConfig.GardenHealthcheckProcessPath = "C:\\windows\\system32\\cmd.exe"
+		repConfig.GardenHealthcheckProcessArgs = []string{"/c", "dir"}
+	} else {
+		repConfig.GardenHealthcheckProcessPath = "/bin/sh"
+		repConfig.GardenHealthcheckProcessArgs = []string{"-c", "echo", "foo"}
 	}
 
 	for _, modifyConfig := range modifyConfigFuncs {

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -39,7 +40,7 @@ var (
 	gardenClient                        garden.Client
 	bbsClient                           bbs.InternalClient
 	bbsServiceClient                    serviceclient.ServiceClient
-	logger                              lager.Logger
+	lgr                                 lager.Logger
 	certDepot                           string
 )
 
@@ -72,7 +73,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	Expect(err).NotTo(HaveOccurred())
 
 	addresses := world.ComponentAddresses{
-		GardenLinux:         fmt.Sprintf("127.0.0.1:%d", 10000+ginkgoconfig.GinkgoConfig.ParallelNode),
+		Garden:              fmt.Sprintf("127.0.0.1:%d", 10000+ginkgoconfig.GinkgoConfig.ParallelNode),
 		NATS:                fmt.Sprintf("127.0.0.1:%d", 11000+ginkgoconfig.GinkgoConfig.ParallelNode),
 		Consul:              fmt.Sprintf("127.0.0.1:%d", 12750+ginkgoconfig.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength),
 		Rep:                 fmt.Sprintf("127.0.0.1:%d", 14000+ginkgoconfig.GinkgoConfig.ParallelNode),
@@ -108,7 +109,8 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 })
 
 var _ = AfterSuite(func() {
-	Expect(os.RemoveAll(certDepot)).To(Succeed())
+	removeAll := func() error { return os.RemoveAll(certDepot) }
+	Eventually(removeAll).Should(Succeed())
 	if componentMaker != nil {
 		componentMaker.Teardown()
 	}
@@ -127,12 +129,12 @@ var _ = BeforeEach(func() {
 	bbsProcess = ginkgomon.Invoke(componentMaker.BBS())
 
 	helpers.ConsulWaitUntilReady(componentMaker.Addresses())
-	logger = lager.NewLogger("test")
-	logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
+	lgr = lager.NewLogger("test")
+	lgr.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 
 	gardenClient = componentMaker.GardenClient()
 	bbsClient = componentMaker.BBSClient()
-	bbsServiceClient = componentMaker.BBSServiceClient(logger)
+	bbsServiceClient = componentMaker.BBSServiceClient(lgr)
 
 	inigo_announcement_server.Start(os.Getenv("EXTERNAL_ADDRESS"))
 })
@@ -198,8 +200,10 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	builtExecutables["route-emitter"], err = gexec.BuildIn(os.Getenv("ROUTE_EMITTER_GOPATH"), "code.cloudfoundry.org/route-emitter/cmd/route-emitter", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	builtExecutables["router"], err = gexec.BuildIn(os.Getenv("ROUTER_GOPATH"), "code.cloudfoundry.org/gorouter", "-race")
-	Expect(err).NotTo(HaveOccurred())
+	if runtime.GOOS != "windows" {
+		builtExecutables["router"], err = gexec.BuildIn(os.Getenv("ROUTER_GOPATH"), "code.cloudfoundry.org/gorouter", "-race")
+		Expect(err).NotTo(HaveOccurred())
+	}
 
 	builtExecutables["routing-api"], err = gexec.BuildIn(os.Getenv("ROUTING_API_GOPATH"), "code.cloudfoundry.org/routing-api/cmd/routing-api", "-race")
 	Expect(err).NotTo(HaveOccurred())

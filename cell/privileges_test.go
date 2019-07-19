@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/bbs/models"
@@ -17,11 +18,14 @@ import (
 )
 
 var _ = Describe("Privileges", func() {
-	var runtime ifrit.Process
+	var ifritRuntime ifrit.Process
 
 	BeforeEach(func() {
+		if runtime.GOOS == "windows" {
+			Skip(" not yet working on windows")
+		}
 		fileServer, fileServerStaticDir := componentMaker.FileServer()
-		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+		ifritRuntime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
 			{"rep", componentMaker.Rep()},
@@ -36,7 +40,7 @@ var _ = Describe("Privileges", func() {
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(runtime)
+		helpers.StopProcesses(ifritRuntime)
 	})
 
 	Context("when a task that tries to do privileged things is requested", func() {
@@ -60,7 +64,7 @@ var _ = Describe("Privileges", func() {
 		})
 
 		JustBeforeEach(func() {
-			err := bbsClient.DesireTask(logger, taskToDesire.TaskGuid, taskToDesire.Domain, taskToDesire.TaskDefinition)
+			err := bbsClient.DesireTask(lgr, taskToDesire.TaskGuid, taskToDesire.Domain, taskToDesire.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -71,7 +75,7 @@ var _ = Describe("Privileges", func() {
 
 			It("succeeds", func() {
 				var task models.Task
-				Eventually(helpers.TaskStatePoller(logger, bbsClient, taskToDesire.TaskGuid, &task)).Should(Equal(models.Task_Completed))
+				Eventually(helpers.TaskStatePoller(lgr, bbsClient, taskToDesire.TaskGuid, &task)).Should(Equal(models.Task_Completed))
 				Expect(task.Failed).To(BeFalse())
 			})
 		})
@@ -83,7 +87,7 @@ var _ = Describe("Privileges", func() {
 
 			It("fails", func() {
 				var task models.Task
-				Eventually(helpers.TaskStatePoller(logger, bbsClient, taskToDesire.TaskGuid, &task)).Should(Equal(models.Task_Completed))
+				Eventually(helpers.TaskStatePoller(lgr, bbsClient, taskToDesire.TaskGuid, &task)).Should(Equal(models.Task_Completed))
 				Expect(task.Failed).To(BeTrue())
 			})
 		})
@@ -102,9 +106,9 @@ var _ = Describe("Privileges", func() {
 		})
 
 		JustBeforeEach(func() {
-			err := bbsClient.DesireLRP(logger, lrpRequest)
+			err := bbsClient.DesireLRP(lgr, lrpRequest)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(helpers.LRPStatePoller(logger, bbsClient, lrpRequest.ProcessGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+			Eventually(helpers.LRPStatePoller(lgr, bbsClient, lrpRequest.ProcessGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 		})
 
 		Context("when the LRP is privileged", func() {

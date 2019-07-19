@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
@@ -31,7 +32,7 @@ import (
 var _ = Describe("LocalRouteEmitter", func() {
 	var (
 		processGuid                                  string
-		runtime, cellAProcess, cellBProcess          ifrit.Process
+		ifritRuntime, cellAProcess, cellBProcess     ifrit.Process
 		archiveFiles                                 []archive_helper.ArchiveFile
 		fileServerStaticDir                          string
 		cellAID, cellBID, cellARepAddr, cellBRepAddr string
@@ -40,6 +41,9 @@ var _ = Describe("LocalRouteEmitter", func() {
 	)
 
 	BeforeEach(func() {
+		if runtime.GOOS == "windows" {
+			Skip(" not yet working on windows")
+		}
 		processGuid = helpers.GenerateGuid()
 
 		var fileServer ifrit.Runner
@@ -57,7 +61,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 		cellARepAddr = fmt.Sprintf("0.0.0.0:%d", cellAPort)
 		cellBRepAddr = fmt.Sprintf("0.0.0.0:%d", cellBPort)
 
-		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+		ifritRuntime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
 			{"auctioneer", componentMaker.Auctioneer()},
@@ -67,7 +71,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(runtime, cellAProcess, cellBProcess)
+		helpers.StopProcesses(ifritRuntime, cellAProcess, cellBProcess)
 	})
 
 	JustBeforeEach(func() {
@@ -119,9 +123,9 @@ var _ = Describe("LocalRouteEmitter", func() {
 
 		JustBeforeEach(func() {
 			lrp.Instances = instances
-			err := bbsClient.DesireLRP(logger, lrp)
+			err := bbsClient.DesireLRP(lgr, lrp)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+			Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 		})
 
 		It("eventually is accessible through the router within a second", func() {
@@ -198,7 +202,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 				JustBeforeEach(func() {
 					evacuateARep(
 						processGuid,
-						logger,
+						lgr,
 						bbsClient,
 						cellAID, cellARepAddr,
 						cellBID, cellBRepAddr,
@@ -217,7 +221,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 
 			Context("and the app is deleted", func() {
 				JustBeforeEach(func() {
-					err := bbsClient.RemoveDesiredLRP(logger, processGuid)
+					err := bbsClient.RemoveDesiredLRP(lgr, processGuid)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
@@ -240,7 +244,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 				})
 
 				JustBeforeEach(func() {
-					err := bbsClient.UpdateDesiredLRP(logger, processGuid, desiredLRPUdate)
+					err := bbsClient.UpdateDesiredLRP(lgr, processGuid, desiredLRPUdate)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
@@ -299,7 +303,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 			JustBeforeEach(func() {
 				dlu := &models.DesiredLRPUpdate{}
 				dlu.SetInstances(newInstances)
-				err := bbsClient.UpdateDesiredLRP(logger, processGuid, dlu)
+				err := bbsClient.UpdateDesiredLRP(lgr, processGuid, dlu)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -310,7 +314,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 
 				JustBeforeEach(func() {
 					for i := 1; i < int(newInstances); i++ {
-						Eventually(helpers.LRPInstanceStatePoller(logger, bbsClient, processGuid, i, nil)).Should(Equal(models.ActualLRPStateRunning))
+						Eventually(helpers.LRPInstanceStatePoller(lgr, bbsClient, processGuid, i, nil)).Should(Equal(models.ActualLRPStateRunning))
 					}
 				})
 

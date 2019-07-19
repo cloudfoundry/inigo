@@ -4,6 +4,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 
@@ -32,7 +33,7 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 		archiveFiles        []archive_helper.ArchiveFile
 		fileServerStaticDir string
 
-		runtime ifrit.Process
+		ifritRuntime ifrit.Process
 
 		lock              *sync.Mutex
 		eventSource       events.EventSource
@@ -41,6 +42,10 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 	)
 
 	BeforeEach(func() {
+		if runtime.GOOS == "windows" {
+			Skip(" not yet working on windows")
+		}
+
 		processGuid = helpers.GenerateGuid()
 
 		var fileServer ifrit.Runner
@@ -97,7 +102,7 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 			}
 		})
 
-		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+		ifritRuntime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
 			{"metron-agent", metronAgent},
@@ -117,7 +122,7 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 
 	JustBeforeEach(func() {
 		var err error
-		eventSource, err = bbsClient.SubscribeToEvents(logger)
+		eventSource, err = bbsClient.SubscribeToEvents(lgr)
 		Expect(err).NotTo(HaveOccurred())
 		go func() {
 			defer GinkgoRecover()
@@ -136,7 +141,7 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 
 	AfterEach(func() {
 		testIngressServer.Stop()
-		helpers.StopProcesses(runtime)
+		helpers.StopProcesses(ifritRuntime)
 	})
 
 	Describe("desiring", func() {
@@ -147,12 +152,12 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 		})
 
 		JustBeforeEach(func() {
-			err := bbsClient.DesireLRP(logger, lrp)
+			err := bbsClient.DesireLRP(lgr, lrp)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("eventually runs", func() {
-			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+			Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 			Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 		})
 
@@ -162,17 +167,17 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 			})
 
 			It("eventually runs", func() {
-				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+				Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 				Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 			})
 		})
 
 		Context("when the lrp is scaled up", func() {
 			JustBeforeEach(func() {
-				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+				Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 				dlu := &models.DesiredLRPUpdate{}
 				dlu.SetInstances(2)
-				bbsClient.UpdateDesiredLRP(logger, processGuid, dlu)
+				bbsClient.UpdateDesiredLRP(lgr, processGuid, dlu)
 			})
 
 			It("eventually runs", func() {
@@ -186,7 +191,7 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 			})
 
 			It("eventually runs", func() {
-				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+				Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 				Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
 			})
 		})

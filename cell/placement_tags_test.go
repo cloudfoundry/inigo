@@ -3,6 +3,7 @@ package cell_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 
 	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/bbs/models"
@@ -20,11 +21,14 @@ import (
 
 var _ = Describe("Placement Tags", func() {
 	var (
-		guid    string
-		runtime ifrit.Process
+		guid         string
+		ifritRuntime ifrit.Process
 	)
 
 	BeforeEach(func() {
+		if runtime.GOOS == "windows" {
+			Skip(" not yet working on windows")
+		}
 		guid = helpers.GenerateGuid()
 
 		var fileServer ifrit.Runner
@@ -33,7 +37,7 @@ var _ = Describe("Placement Tags", func() {
 			config.PlacementTags = []string{"inigo-tag"}
 			config.OptionalPlacementTags = []string{"inigo-optional-tag"}
 		}
-		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, grouper.Members{
+		ifritRuntime = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, grouper.Members{
 			{"file-server", fileServer},
 			{"rep-with-tag", componentMaker.Rep(modifyRepConfig)},
 			{"auctioneer", componentMaker.Auctioneer()},
@@ -46,11 +50,11 @@ var _ = Describe("Placement Tags", func() {
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(runtime)
+		helpers.StopProcesses(ifritRuntime)
 	})
 
 	It("advertises placement tags in the cell presence", func() {
-		presences, err := bbsClient.Cells(logger)
+		presences, err := bbsClient.Cells(lgr)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(presences).To(HaveLen(1))
@@ -58,7 +62,7 @@ var _ = Describe("Placement Tags", func() {
 	})
 
 	It("advertises optional placement tags in the cell presence", func() {
-		presences, err := bbsClient.Cells(logger)
+		presences, err := bbsClient.Cells(lgr)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(presences).To(HaveLen(1))
@@ -69,7 +73,7 @@ var _ = Describe("Placement Tags", func() {
 		var lrp *models.DesiredLRP
 
 		JustBeforeEach(func() {
-			err := bbsClient.DesireLRP(logger, lrp)
+			err := bbsClient.DesireLRP(lgr, lrp)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -80,7 +84,7 @@ var _ = Describe("Placement Tags", func() {
 
 			It("succeeds and is running on correct cell", func() {
 				lrpFunc := func() string {
-					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, guid)
+					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(lgr, guid)
 					Expect(err).NotTo(HaveOccurred())
 					if len(lrpGroups) == 0 {
 						return ""
@@ -90,7 +94,7 @@ var _ = Describe("Placement Tags", func() {
 					return lrp.CellId
 				}
 				Eventually(lrpFunc).Should(MatchRegexp("the-cell-id-.*-0"))
-				Eventually(helpers.LRPStatePoller(logger, bbsClient, guid, nil)).Should(Equal(models.ActualLRPStateRunning))
+				Eventually(helpers.LRPStatePoller(lgr, bbsClient, guid, nil)).Should(Equal(models.ActualLRPStateRunning))
 			})
 		})
 
@@ -101,7 +105,7 @@ var _ = Describe("Placement Tags", func() {
 
 			It("succeeds and is running on correct cell", func() {
 				lrpFunc := func() string {
-					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, guid)
+					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(lgr, guid)
 					Expect(err).NotTo(HaveOccurred())
 					if len(lrpGroups) == 0 {
 						return ""
@@ -111,7 +115,7 @@ var _ = Describe("Placement Tags", func() {
 					return lrp.CellId
 				}
 				Eventually(lrpFunc).Should(MatchRegexp("the-cell-id-.*-0"))
-				Eventually(helpers.LRPStatePoller(logger, bbsClient, guid, nil)).Should(Equal(models.ActualLRPStateRunning))
+				Eventually(helpers.LRPStatePoller(lgr, bbsClient, guid, nil)).Should(Equal(models.ActualLRPStateRunning))
 			})
 		})
 
@@ -122,14 +126,14 @@ var _ = Describe("Placement Tags", func() {
 
 			It("fails and sets a placement error", func() {
 				lrpFunc := func() string {
-					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, guid)
+					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(lgr, guid)
 					Expect(err).NotTo(HaveOccurred())
 					if len(lrpGroups) == 0 {
 						return ""
 					}
 					lrp, _, err := lrpGroups[0].Resolve()
 					Expect(err).NotTo(HaveOccurred())
-					logger.Info("lrp-cell-id", lager.Data{"cell-id": lrp.CellId})
+					lgr.Info("lrp-cell-id", lager.Data{"cell-id": lrp.CellId})
 
 					return lrp.PlacementError
 				}
@@ -172,7 +176,7 @@ var _ = Describe("Placement Tags", func() {
 		})
 
 		JustBeforeEach(func() {
-			err := bbsClient.DesireTask(logger, task.TaskGuid, task.Domain, task.TaskDefinition)
+			err := bbsClient.DesireTask(lgr, task.TaskGuid, task.Domain, task.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -182,7 +186,7 @@ var _ = Describe("Placement Tags", func() {
 				Eventually(func() interface{} {
 					var err error
 
-					completedTask, err = bbsClient.TaskByGuid(logger, guid)
+					completedTask, err = bbsClient.TaskByGuid(lgr, guid)
 					Expect(err).NotTo(HaveOccurred())
 
 					return completedTask.State
@@ -215,7 +219,7 @@ var _ = Describe("Placement Tags", func() {
 
 			It("fails and sets a placement error", func() {
 				taskFunc := func() string {
-					t, err := bbsClient.TaskByGuid(logger, task.TaskGuid)
+					t, err := bbsClient.TaskByGuid(lgr, task.TaskGuid)
 					Expect(err).NotTo(HaveOccurred())
 					return t.FailureReason
 				}

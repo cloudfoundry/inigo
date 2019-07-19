@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"code.cloudfoundry.org/archiver/compressor"
@@ -54,19 +55,22 @@ var _ = Describe("SSH", func() {
 		processGuid         string
 		fileServerStaticDir string
 
-		runtime ifrit.Process
-		address string
+		ifritRuntime ifrit.Process
+		address      string
 
 		lrp models.DesiredLRP
 	)
 
 	BeforeEach(func() {
+		if runtime.GOOS == "windows" {
+			Skip(" not yet working on windows")
+		}
 		processGuid = helpers.GenerateGuid()
 		address = componentMaker.Addresses().SSHProxy
 
 		var fileServer ifrit.Runner
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
-		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+		ifritRuntime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
 			{"rep", componentMaker.Rep()},
@@ -179,7 +183,7 @@ var _ = Describe("SSH", func() {
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(runtime)
+		helpers.StopProcesses(ifritRuntime)
 	})
 
 	Context("when valid process guid and index are used in the username", func() {
@@ -227,7 +231,7 @@ var _ = Describe("SSH", func() {
 
 			It("returns an error", func() {
 				Eventually(
-					helpers.LRPInstanceStatePoller(logger, bbsClient, processGuid, 0, nil),
+					helpers.LRPInstanceStatePoller(lgr, bbsClient, processGuid, 0, nil),
 				).Should(Equal(models.ActualLRPStateRunning))
 
 				_, err := ssh.Dial("tcp", address, clientConfig)

@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
 	"code.cloudfoundry.org/bbs/models"
@@ -31,13 +32,16 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 		processGuid         string
 		archiveFiles        []archive_helper.ArchiveFile
 		fileServerStaticDir string
-		runtime             ifrit.Process
+		ifritRuntime        ifrit.Process
 		tlsFileServer       *httptest.Server
 		cfgs                []func(cfg *config.RepConfig)
 		fileServer          ifrit.Runner
 	)
 
 	BeforeEach(func() {
+		if runtime.GOOS == "windows" {
+			Skip(" not yet working on windows")
+		}
 		processGuid = helpers.GenerateGuid()
 
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
@@ -46,7 +50,7 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 	})
 
 	JustBeforeEach(func() {
-		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+		ifritRuntime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{Name: "file-server", Runner: fileServer},
 			{Name: "rep", Runner: componentMaker.Rep(cfgs...)},
 			{Name: "auctioneer", Runner: componentMaker.Auctioneer()},
@@ -58,7 +62,7 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(runtime)
+		helpers.StopProcesses(ifritRuntime)
 	})
 
 	Describe("downloading", func() {
@@ -85,12 +89,12 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 			tlsFileServer.StartTLS()
 
 			lrp = helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, "log-guid", 1)
-			err := bbsClient.DesireLRP(logger, lrp)
+			err := bbsClient.DesireLRP(lgr, lrp)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("eventually runs", func() {
-			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+			Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 		})
 
 		Context("when CaCertForDownload is present", func() {
@@ -110,7 +114,7 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 				})
 
 				It("eventually runs", func() {
-					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+					Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 				})
 			})
 		})
@@ -124,7 +128,7 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 			})
 
 			It("eventually runs", func() {
-				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+				Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 			})
 		})
 	})
@@ -191,7 +195,7 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 				),
 			)
 
-			err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+			err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(gotRequest).Should(BeClosed())

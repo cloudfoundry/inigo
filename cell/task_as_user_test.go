@@ -2,6 +2,7 @@ package cell_test
 
 import (
 	"os"
+	"runtime"
 
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -18,6 +19,9 @@ var _ = Describe("Tasks as specific user", func() {
 	var cellProcess ifrit.Process
 
 	BeforeEach(func() {
+		if runtime.GOOS == "windows" {
+			Skip(" not yet working on windows")
+		}
 		var fileServerRunner ifrit.Runner
 
 		fileServerRunner, _ = componentMaker.FileServer()
@@ -29,7 +33,7 @@ var _ = Describe("Tasks as specific user", func() {
 		}
 		cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, cellGroup))
 
-		Eventually(func() (models.CellSet, error) { return bbsServiceClient.Cells(logger) }).Should(HaveLen(1))
+		Eventually(func() (models.CellSet, error) { return bbsServiceClient.Cells(lgr) }).Should(HaveLen(1))
 	})
 
 	AfterEach(func() {
@@ -53,7 +57,7 @@ var _ = Describe("Tasks as specific user", func() {
 				},
 			)
 			expectedTask.Privileged = true
-			err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+			err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 
 			var task *models.Task
@@ -61,7 +65,7 @@ var _ = Describe("Tasks as specific user", func() {
 			Eventually(func() interface{} {
 				var err error
 
-				task, err = bbsClient.TaskByGuid(logger, guid)
+				task, err = bbsClient.TaskByGuid(lgr, guid)
 				Expect(err).NotTo(HaveOccurred())
 
 				return task.State

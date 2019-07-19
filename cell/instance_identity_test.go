@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -108,7 +109,7 @@ var _ = Describe("InstanceIdentity", func() {
 		}
 
 		processGUID = helpers.GenerateGuid()
-		lrp = helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGUID, "log-guid", 1)
+		lrp = helpers.DefaultDeclaritiveHealthcheckLRPCreateRequest(componentMaker.Addresses(), processGUID, "log-guid", 1)
 		lrp.Setup = nil
 		lrp.CachedDependencies = []*models.CachedDependency{{
 			From:      fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses().FileServer, "lrp.zip"),
@@ -151,16 +152,14 @@ var _ = Describe("InstanceIdentity", func() {
 
 	JustBeforeEach(func() {
 		cellGroup := grouper.Members{
-			{"router", componentMaker.Router()},
 			{"metron-agent", metronAgent},
 			{"file-server", fileServer},
 			{"rep", rep},
 			{"auctioneer", componentMaker.Auctioneer()},
-			{"route-emitter", componentMaker.RouteEmitter()},
 		}
 		cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, cellGroup))
 
-		Eventually(func() (models.CellSet, error) { return bbsServiceClient.Cells(logger) }).Should(HaveLen(1))
+		Eventually(func() (models.CellSet, error) { return bbsServiceClient.Cells(lgr) }).Should(HaveLen(1))
 	})
 
 	AfterEach(func() {
@@ -202,7 +201,13 @@ var _ = Describe("InstanceIdentity", func() {
 
 	verifyCertAndKeyArePresentForTask := func(certPath, keyPath string, organizationalUnit []string) {
 		By("running the task and getting the concatenated pem cert and key")
-		result := runTaskAndGetCommandOutput(fmt.Sprintf("cat %s %s", certPath, keyPath), organizationalUnit)
+		var commandTemplate string
+		if runtime.GOOS == "windows" {
+			commandTemplate = "cat %s,%s"
+		} else {
+			commandTemplate = "cat %s %s"
+		}
+		result := runTaskAndGetCommandOutput(fmt.Sprintf(commandTemplate, certPath, keyPath), organizationalUnit)
 		verifyCertAndKey([]byte(result), organizationalUnit)
 	}
 
@@ -235,7 +240,15 @@ var _ = Describe("InstanceIdentity", func() {
 		})
 
 		It("should add instance identity environment variables to the container", func() {
-			verifyCertAndKeyArePresentForTask("$CF_INSTANCE_CERT", "$CF_INSTANCE_KEY", organizationalUnit)
+			var instanceCertVarName, instanceKeyVarName string
+			if runtime.GOOS == "windows" {
+				instanceCertVarName = "$env:CF_INSTANCE_CERT"
+				instanceKeyVarName = "$env:CF_INSTANCE_KEY"
+			} else {
+				instanceCertVarName = "$CF_INSTANCE_CERT"
+				instanceKeyVarName = "$CF_INSTANCE_KEY"
+			}
+			verifyCertAndKeyArePresentForTask(instanceCertVarName, instanceKeyVarName, organizationalUnit)
 		})
 	})
 
@@ -243,9 +256,9 @@ var _ = Describe("InstanceIdentity", func() {
 		var address, ipAddress string
 
 		JustBeforeEach(func() {
-			err := bbsClient.DesireLRP(logger, lrp)
+			err := bbsClient.DesireLRP(lgr, lrp)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
+			Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
 
 			address = getContainerInternalAddress(bbsClient, processGUID, 8081, false)
 			ipAddress, _, err = net.SplitHostPort(address)
@@ -257,7 +270,7 @@ var _ = Describe("InstanceIdentity", func() {
 		})
 
 		It("does not write container proxy config files", func() {
-			resp, err := client.Get(fmt.Sprintf("https://%s:8081/cat?file=/etc/cf-assets/envoy_config/envoy.json", ipAddress))
+			resp, err := client.Get(fmt.Sprintf("https://%s:8081/cat?file=/etc/cf-assets/envoy_config/envoy.yaml", ipAddress))
 			Expect(err).NotTo(HaveOccurred())
 			defer resp.Body.Close()
 
@@ -269,9 +282,9 @@ var _ = Describe("InstanceIdentity", func() {
 		var address string
 
 		JustBeforeEach(func() {
-			err := bbsClient.DesireLRP(logger, lrp)
+			err := bbsClient.DesireLRP(lgr, lrp)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
+			Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
 
 			address = getContainerInternalAddress(bbsClient, processGUID, 8081, false)
 		})
@@ -318,6 +331,9 @@ var _ = Describe("InstanceIdentity", func() {
 			)
 
 			JustBeforeEach(func() {
+				if runtime.GOOS == "windows" {
+					Skip("unable to find the equivalant command in windows even after using curl.exe (see https://github.com/curl/curl/issues/2262)")
+				}
 				output = runTaskAndGetCommandOutput(fmt.Sprintf("curl --silent -k --cert /etc/cf-instance-credentials/instance.crt --key /etc/cf-instance-credentials/instance.key https://%s", url), []string{})
 			})
 
@@ -420,10 +436,12 @@ var _ = Describe("InstanceIdentity", func() {
 		}
 
 		Context("and the app starts successfully", func() {
+			var instanceGuid string
+
 			JustBeforeEach(func() {
-				err := bbsClient.DesireLRP(logger, lrp)
+				err := bbsClient.DesireLRP(lgr, lrp)
 				Expect(err).NotTo(HaveOccurred())
-				Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
+				Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
 
 				address = getContainerInternalAddress(bbsClient, processGUID, 8080, true)
 			})
@@ -499,6 +517,9 @@ var _ = Describe("InstanceIdentity", func() {
 
 					Context("with the wrong subject_alt_name", func() {
 						BeforeEach(func() {
+							if runtime.GOOS == "windows" {
+								Skip("subject alt name verification is not yet supported on windows")
+							}
 							wrongAltNameConfig := func(cfg *config.RepConfig) {
 								cfg.ContainerProxyVerifySubjectAltName = []string{"random-subject-name"}
 							}
@@ -573,11 +594,22 @@ var _ = Describe("InstanceIdentity", func() {
 						Name:  "SKIP_LOCALHOST_LISTEN",
 						Value: "true",
 					})
-					lrp.Monitor = models.WrapAction(&models.RunAction{
-						User: "vcap",
-						Path: "sh",
-						Args: []string{"-c", "nc -z $CF_INSTANCE_INTERNAL_IP 8080"},
-					})
+					lrp.CheckDefinition = nil
+					if runtime.GOOS == "windows" {
+						cmd := `$ErrorActionPreference = 'Stop'; trap { $host.SetShouldExit(1) }; $result=(Test-NetConnection -ComputerName "$env:CF_INSTANCE_INTERNAL_IP" -Port 8080).TcpTestSucceeded; if ($result) { exit 0 } else { exit 1}`
+						lrp.Monitor = models.WrapAction(&models.RunAction{
+							User: "vcap",
+							Path: "powershell",
+							Args: []string{"-command", cmd},
+						})
+					} else {
+						lrp.Monitor = models.WrapAction(&models.RunAction{
+							User: "vcap",
+							Path: "sh",
+							Args: []string{"-c", "nc -z $CF_INSTANCE_INTERNAL_IP 8080"},
+						})
+					}
+
 				})
 
 				It("should have a container with envoy enabled on it", func() {
@@ -587,6 +619,9 @@ var _ = Describe("InstanceIdentity", func() {
 
 			Context("when the container uses a docker image", func() {
 				BeforeEach(func() {
+					if runtime.GOOS == "windows" {
+						Skip("docker image is not yet supported for windows")
+					}
 					lrp = helpers.DockerLRPCreateRequest(componentMaker.Addresses(), processGUID)
 				})
 
@@ -610,7 +645,7 @@ var _ = Describe("InstanceIdentity", func() {
 					Context("and is killed", func() {
 						JustBeforeEach(func() {
 							Eventually(connect, 10*time.Second).Should(Succeed())
-							err := bbsClient.RemoveDesiredLRP(logger, lrp.ProcessGuid)
+							err := bbsClient.RemoveDesiredLRP(lgr, lrp.ProcessGuid)
 							Expect(err).NotTo(HaveOccurred())
 						})
 
@@ -623,6 +658,10 @@ var _ = Describe("InstanceIdentity", func() {
 
 			Context("when the container is privileged", func() {
 				BeforeEach(func() {
+					if runtime.GOOS == "windows" {
+						Skip("privileged containers is not supported on windows")
+					}
+
 					lrp.Privileged = true
 				})
 
@@ -633,6 +672,9 @@ var _ = Describe("InstanceIdentity", func() {
 
 			Context("when the container uses OCI preloaded rootfs", func() {
 				BeforeEach(func() {
+					if runtime.GOOS == "windows" {
+						Skip("OCI mode is not supported on windows")
+					}
 					lrp.CachedDependencies = nil
 					layer := fmt.Sprintf("http://%s/v1/static/%s", componentMaker.Addresses().FileServer, "lrp.tgz")
 					lrp.RootFs = "preloaded+layer:" + world.DefaultStack + "?layer=" + layer + "&layer_path=/" + "&layer_digest="
@@ -680,7 +722,11 @@ var _ = Describe("InstanceIdentity", func() {
 					defer containerMutex.Unlock()
 					container = nil
 
-					lrp.MemoryMb = 64
+					if runtime.GOOS == "windows" {
+						lrp.MemoryMb = 564
+					} else {
+						lrp.MemoryMb = 64
+					}
 					setProxyMemoryAllocation = func(config *config.RepConfig) {
 						config.ProxyMemoryAllocationMB = 5
 					}
@@ -689,17 +735,10 @@ var _ = Describe("InstanceIdentity", func() {
 				})
 
 				JustBeforeEach(func() {
-					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
-
-					lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGUID)
-					Expect(err).NotTo(HaveOccurred())
-
-					actualLRP := lrps[0].Instance
-					containerHandle := actualLRP.InstanceGuid
-
 					containerMutex.Lock()
 					defer containerMutex.Unlock()
-					container, err = gardenClient.Lookup(containerHandle)
+					var err error
+					container, err = gardenClient.Lookup(instanceGuid)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
@@ -775,6 +814,9 @@ var _ = Describe("InstanceIdentity", func() {
 
 					Context("when additional memory is set but container proxy is not enabled", func() {
 						BeforeEach(func() {
+							if runtime.GOOS == "windows" {
+								Skip("TODO: use buildpack LRP. docker lrp is not supported on windows")
+							}
 							rep = componentMaker.Rep(
 								configRepCerts,
 								setProxyMemoryAllocation,
@@ -797,6 +839,9 @@ var _ = Describe("InstanceIdentity", func() {
 
 					Context("when the lrp is using docker rootfs", func() {
 						BeforeEach(func() {
+							if runtime.GOOS == "windows" {
+								Skip("TODO: use buildpack LRP. docker lrp is not supported on windows")
+							}
 							lrp = helpers.DockerLRPCreateRequest(componentMaker.Addresses(), processGUID)
 							lrp.MetricsGuid = processGUID
 							lrp.MemoryMb = int32(memoryLimit)
@@ -816,6 +861,9 @@ var _ = Describe("InstanceIdentity", func() {
 
 		Context("and envoy takes longer to start", func() {
 			BeforeEach(func() {
+				if runtime.GOOS == "windows" {
+					Skip("TODO: figure out a way to create .exe or .bat file that emulates the slep behavior in windows")
+				}
 				dir := createSleepyEnvoy()
 
 				enableContainerProxy = func(config *config.RepConfig) {
@@ -838,13 +886,13 @@ var _ = Describe("InstanceIdentity", func() {
 			})
 
 			JustBeforeEach(func() {
-				err := bbsClient.DesireLRP(logger, lrp)
+				err := bbsClient.DesireLRP(lgr, lrp)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			envoyIsHealthChecked := func() {
 				It("should be marked running only when both envoy and the app are available", func() {
-					Eventually(helpers.LRPStatePoller(logger, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
+					Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
 					address = getContainerInternalAddress(bbsClient, processGUID, 8080, true)
 
 					Consistently(connect).Should(Succeed())
@@ -857,7 +905,7 @@ var _ = Describe("InstanceIdentity", func() {
 
 					It("crashes the lrp with a descriptive error", func() {
 						Eventually(func() *models.ActualLRP {
-							group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, processGUID, 0)
+							group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(lgr, processGUID, 0)
 							Expect(err).NotTo(HaveOccurred())
 							return group.Instance
 						}).Should(gstruct.PointTo(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
@@ -919,7 +967,7 @@ func memoryInBytes(memoryMb uint64) uint64 {
 
 func getContainerInternalAddress(client bbs.Client, processGuid string, port uint32, tls bool) string {
 	By("getting the internal ip address of the container")
-	lrpGroups, err := client.ActualLRPGroupsByProcessGuid(logger, processGuid)
+	lrpGroups, err := client.ActualLRPGroupsByProcessGuid(lgr, processGuid)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(lrpGroups).To(HaveLen(1))
 	netInfo := lrpGroups[0].Instance.ActualLRPNetInfo
@@ -939,33 +987,49 @@ func getContainerInternalAddress(client bbs.Client, processGuid string, port uin
 func runTaskAndGetCommandOutput(command string, organizationalUnits []string) string {
 	guid := helpers.GenerateGuid()
 
+	var (
+		shell      string
+		args       []string
+		resultFile string
+	)
+
+	if runtime.GOOS == "windows" {
+		shell = "powershell"
+		args = []string{"-Command", fmt.Sprintf("%s | Set-Content -Encoding Ascii -Path thingy", command)}
+		resultFile = "/Users/vcap/thingy"
+	} else {
+		shell = "sh"
+		args = []string{"-c", fmt.Sprintf("%s > thingy", command)}
+		resultFile = "/home/vcap/thingy"
+	}
+
 	expectedTask := helpers.TaskCreateRequestWithCertificateProperties(
 		guid,
 		&models.RunAction{
 			User: "vcap",
-			Path: "sh",
-			Args: []string{"-c", fmt.Sprintf("%s > thingy", command)},
+			Path: shell,
+			Args: args,
 		},
 		&models.CertificateProperties{
 			OrganizationalUnit: organizationalUnits,
 		},
 	)
-	expectedTask.ResultFile = "/home/vcap/thingy"
+	expectedTask.ResultFile = resultFile
 
-	err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+	err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 	Expect(err).NotTo(HaveOccurred())
 
 	var task *models.Task
 	Eventually(func() interface{} {
 		var err error
 
-		task, err = bbsClient.TaskByGuid(logger, guid)
+		task, err = bbsClient.TaskByGuid(lgr, guid)
 		Expect(err).NotTo(HaveOccurred())
 
 		return task.State
 	}).Should(Equal(models.Task_Completed))
 
-	Expect(task.Failed).To(BeFalse())
+	Expect(task.Failed).To(BeFalse(), "Task Should've succeeded")
 
 	return task.Result
 }
@@ -992,6 +1056,38 @@ func verifyCertificateIsSignedBy(cert, parentCert *x509.Certificate) {
 	Expect(certs).To(HaveLen(1))
 	Expect(certs[0]).To(ContainElement(parentCert))
 }
+
+// func createSleepyEnvoyWindows() string {
+// 	envoyPath := filepath.Join(os.Getenv("ENVOY_PATH"), "envoy.exe")
+//
+// 	dir := world.TempDir("envoy")
+//
+// 	copyFile := func(dst, src string) {
+// 		dstFile, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+// 		Expect(err).NotTo(HaveOccurred())
+// 		defer dstFile.Close()
+// 		srcFile, err := os.Open(src)
+// 		Expect(err).NotTo(HaveOccurred())
+// 		defer srcFile.Close()
+// 		_, err = io.Copy(dstFile, srcFile)
+// 		Expect(err).NotTo(HaveOccurred())
+// 	}
+//
+// 	copyFile(filepath.Join(dir, "orig_envoy.exe"), envoyPath)
+//
+// 	newEnvoy, err := os.OpenFile(filepath.Join(dir, "envoy.bat"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+// 	Expect(err).NotTo(HaveOccurred())
+// 	defer newEnvoy.Close()
+// 	fmt.Fprintf(newEnvoy, `@ECHO OFF
+// timeout 5
+// pushd %sdp0
+// set script_dir=%s
+// popd
+// start %s\orig_envoy.exe %s`, "%~", "%CD%", "%script_dir%", "%*")
+// 	// Expect(os.Remove(filepath.Join(dir, "envoy.exe"))).To(Succeed())
+// 	return dir
+// }
+//
 
 func createSleepyEnvoy() string {
 	envoyPath := filepath.Join(os.Getenv("ENVOY_PATH"), "envoy")

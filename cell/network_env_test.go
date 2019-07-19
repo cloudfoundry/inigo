@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"code.cloudfoundry.org/archiver/extractor/test_helper"
@@ -27,17 +28,20 @@ var _ = Describe("Network Environment Variables", func() {
 		modifyRepConfig     func(*repconfig.RepConfig)
 		fileServerStaticDir string
 		fileServer          ifrit.Runner
-		runtime             ifrit.Process
+		ifritRuntime        ifrit.Process
 	)
 
 	BeforeEach(func() {
+		if runtime.GOOS == "windows" {
+			Skip(" not yet working on windows")
+		}
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
 		modifyRepConfig = func(*repconfig.RepConfig) {}
 		guid = helpers.GenerateGuid()
 	})
 
 	JustBeforeEach(func() {
-		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+		ifritRuntime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"rep", componentMaker.Rep(modifyRepConfig)},
 			{"auctioneer", componentMaker.Auctioneer()},
 			{"router", componentMaker.Router()},
@@ -47,7 +51,7 @@ var _ = Describe("Network Environment Variables", func() {
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(runtime)
+		helpers.StopProcesses(ifritRuntime)
 	})
 
 	Describe("tasks", func() {
@@ -64,12 +68,12 @@ var _ = Describe("Network Environment Variables", func() {
 			)
 			taskToDesire.ResultFile = "/home/vcap/env"
 
-			err := bbsClient.DesireTask(logger, taskToDesire.TaskGuid, taskToDesire.Domain, taskToDesire.TaskDefinition)
+			err := bbsClient.DesireTask(lgr, taskToDesire.TaskGuid, taskToDesire.Domain, taskToDesire.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func() interface{} {
 				var err error
-				task, err = bbsClient.TaskByGuid(logger, guid)
+				task, err = bbsClient.TaskByGuid(lgr, guid)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				return task.State
@@ -109,13 +113,13 @@ var _ = Describe("Network Environment Variables", func() {
 				Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
 			})
 
-			err := bbsClient.DesireLRP(logger, lrp)
+			err := bbsClient.DesireLRP(lgr, lrp)
 			Expect(err).NotTo(HaveOccurred())
 
-			Eventually(helpers.LRPStatePoller(logger, bbsClient, guid, nil)).Should(Equal(models.ActualLRPStateRunning))
+			Eventually(helpers.LRPStatePoller(lgr, bbsClient, guid, nil)).Should(Equal(models.ActualLRPStateRunning))
 			Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 
-			lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, guid)
+			lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(lgr, guid)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(lrps).To(HaveLen(1))

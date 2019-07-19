@@ -3,6 +3,7 @@ package fixtures
 import (
 	"io/ioutil"
 	"os"
+	"runtime"
 
 	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
 	. "github.com/onsi/gomega"
@@ -23,7 +24,7 @@ func GoServerApp() []archive_helper.ArchiveFile {
 	Expect(err).NotTo(HaveOccurred())
 	return []archive_helper.ArchiveFile{
 		{
-			Name: "go-server",
+			Name: getGoServerBinaryName(),
 			Body: string(contents),
 		}, {
 			Name: "staging_info.yml",
@@ -31,4 +32,11 @@ func GoServerApp() []archive_helper.ArchiveFile {
 start_command: go-server`,
 		},
 	}
+}
+
+func getGoServerBinaryName() string {
+	if runtime.GOOS == "windows" {
+		return "go-server.exe"
+	}
+	return "go-server"
 }

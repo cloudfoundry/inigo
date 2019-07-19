@@ -87,7 +87,7 @@ var _ = Describe("Executor/Garden", func() {
 			CSIMountRootDir:                    "/var/vcap/data/csimountroot",
 		}
 		config.GardenNetwork = "tcp"
-		config.GardenAddr = componentMaker.Addresses().GardenLinux
+		config.GardenAddr = componentMaker.Addresses().Garden
 		config.ReservedExpirationTime = pruningInterval
 		config.ContainerReapInterval = pruningInterval
 		config.HealthyMonitoringInterval = durationjson.Duration(time.Second)
