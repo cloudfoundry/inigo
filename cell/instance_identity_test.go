@@ -539,7 +539,7 @@ var _ = Describe("InstanceIdentity", func() {
 					})
 
 					It("should fail to connect with the wrong server cert", func() {
-						Eventually(connect, 10*time.Second).Should(MatchError(ContainSubstring("tls: error decrypting message")))
+						Eventually(connect, 10*time.Second).Should(MatchError(ContainSubstring("tls: handshake failure")))
 					})
 				})
 
