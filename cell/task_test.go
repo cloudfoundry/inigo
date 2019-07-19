@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"code.cloudfoundry.org/archiver/extractor/test_helper"
@@ -32,6 +33,9 @@ var _ = Describe("Tasks", func() {
 	var fileServerStaticDir string
 
 	BeforeEach(func() {
+		if runtime.GOOS == "windows" {
+			Skip(" not yet working on windows")
+		}
 		var fileServerRunner ifrit.Runner
 
 		fileServerRunner, fileServerStaticDir = componentMaker.FileServer()
@@ -43,7 +47,7 @@ var _ = Describe("Tasks", func() {
 		}
 		cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, cellGroup))
 
-		Eventually(func() (models.CellSet, error) { return bbsServiceClient.Cells(logger) }).Should(HaveLen(1))
+		Eventually(func() (models.CellSet, error) { return bbsServiceClient.Cells(lgr) }).Should(HaveLen(1))
 	})
 
 	AfterEach(func() {
@@ -73,7 +77,7 @@ var _ = Describe("Tasks", func() {
 			)
 			expectedTask.Privileged = true
 
-			err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+			err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 
 			var task *models.Task
@@ -81,7 +85,7 @@ var _ = Describe("Tasks", func() {
 			Eventually(func() interface{} {
 				var err error
 
-				task, err = bbsClient.TaskByGuid(logger, guid)
+				task, err = bbsClient.TaskByGuid(lgr, guid)
 				Expect(err).NotTo(HaveOccurred())
 
 				return task.State
@@ -102,7 +106,7 @@ var _ = Describe("Tasks", func() {
 			)
 			expectedTask.Privileged = true
 
-			err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+			err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 
 			Expect(err).NotTo(HaveOccurred())
 
@@ -111,7 +115,7 @@ var _ = Describe("Tasks", func() {
 			Eventually(func() interface{} {
 				var err error
 
-				task, err = bbsClient.TaskByGuid(logger, guid)
+				task, err = bbsClient.TaskByGuid(lgr, guid)
 				Expect(err).NotTo(HaveOccurred())
 
 				return task.State
@@ -163,7 +167,7 @@ var _ = Describe("Tasks", func() {
 					},
 				}
 
-				err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 
 				var task *models.Task
@@ -171,7 +175,7 @@ var _ = Describe("Tasks", func() {
 				Eventually(func() interface{} {
 					var err error
 
-					task, err = bbsClient.TaskByGuid(logger, guid)
+					task, err = bbsClient.TaskByGuid(lgr, guid)
 					Expect(err).NotTo(HaveOccurred())
 
 					return task.State
@@ -201,7 +205,7 @@ var _ = Describe("Tasks", func() {
 				expectedTask.ImageUsername = privateUser
 				expectedTask.ImagePassword = privatePassword
 
-				err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 
 				var task *models.Task
@@ -209,7 +213,7 @@ var _ = Describe("Tasks", func() {
 				Eventually(func() interface{} {
 					var err error
 
-					task, err = bbsClient.TaskByGuid(logger, guid)
+					task, err = bbsClient.TaskByGuid(lgr, guid)
 					Expect(err).NotTo(HaveOccurred())
 
 					return task.State
@@ -244,7 +248,7 @@ var _ = Describe("Tasks", func() {
 					1024,
 				)
 
-				err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 
 				Expect(err).NotTo(HaveOccurred())
 
@@ -254,7 +258,7 @@ var _ = Describe("Tasks", func() {
 				Eventually(func() interface{} {
 					var err error
 
-					task, err = bbsClient.TaskByGuid(logger, guid)
+					task, err = bbsClient.TaskByGuid(lgr, guid)
 					Expect(err).NotTo(HaveOccurred())
 
 					return task.State
@@ -303,14 +307,14 @@ echo should have died by now
 					),
 				)
 
-				err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 
 				var task *models.Task
 				Eventually(func() interface{} {
 					var err error
 
-					task, err = bbsClient.TaskByGuid(logger, guid)
+					task, err = bbsClient.TaskByGuid(lgr, guid)
 					Expect(err).NotTo(HaveOccurred())
 
 					return task.State
@@ -354,7 +358,7 @@ echo should have died by now
 					),
 				)
 
-				err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 
 				Expect(err).NotTo(HaveOccurred())
 
@@ -362,7 +366,7 @@ echo should have died by now
 				Eventually(func() interface{} {
 					var err error
 
-					task, err = bbsClient.TaskByGuid(logger, guid)
+					task, err = bbsClient.TaskByGuid(lgr, guid)
 					Expect(err).NotTo(HaveOccurred())
 
 					return task.State
@@ -404,7 +408,7 @@ echo should have died by now
 					},
 				}
 
-				err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 
 				var properties garden.Properties
@@ -462,7 +466,7 @@ echo should have died by now
 
 			Context("with no checksum", func() {
 				It("downloads the file", func() {
-					err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+					err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 					Expect(err).NotTo(HaveOccurred())
 					Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
 				})
@@ -493,21 +497,21 @@ echo should have died by now
 
 					It("downloads the file for md5", func() {
 						createChecksum("md5")
-						err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+						err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
 					})
 
 					It("downloads the file for sha1", func() {
 						createChecksum("sha1")
-						err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+						err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
 					})
 
 					It("downloads the file for sha256", func() {
 						createChecksum("sha256")
-						err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+						err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(inigo_announcement_server.Announcements).Should(ContainElement(guid))
 					})
@@ -518,7 +522,7 @@ echo should have died by now
 					It("with incorrect algorithm", func() {
 						downloadAction.ChecksumAlgorithm = "incorrect_algorithm"
 						downloadAction.ChecksumValue = "incorrect_checksum"
-						err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+						err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 						Expect(err).To(HaveOccurred())
 					})
 
@@ -526,25 +530,25 @@ echo should have died by now
 						It("for md5", func() {
 							downloadAction.ChecksumAlgorithm = "md5"
 							downloadAction.ChecksumValue = "incorrect_checksum"
-							err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+							err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 							Expect(err).NotTo(HaveOccurred())
-							Eventually(helpers.TaskFailedPoller(logger, bbsClient, expectedTask.TaskGuid, nil)).Should(BeTrue())
+							Eventually(helpers.TaskFailedPoller(lgr, bbsClient, expectedTask.TaskGuid, nil)).Should(BeTrue())
 						})
 
 						It("for sha1", func() {
 							downloadAction.ChecksumAlgorithm = "sha1"
 							downloadAction.ChecksumValue = "incorrect_checksum"
-							err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+							err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 							Expect(err).NotTo(HaveOccurred())
-							Eventually(helpers.TaskFailedPoller(logger, bbsClient, expectedTask.TaskGuid, nil)).Should(BeTrue())
+							Eventually(helpers.TaskFailedPoller(lgr, bbsClient, expectedTask.TaskGuid, nil)).Should(BeTrue())
 						})
 
 						It("for sha256", func() {
 							downloadAction.ChecksumAlgorithm = "sha256"
 							downloadAction.ChecksumValue = "incorrect_checksum"
-							err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+							err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 							Expect(err).NotTo(HaveOccurred())
-							Eventually(helpers.TaskFailedPoller(logger, bbsClient, expectedTask.TaskGuid, nil)).Should(BeTrue())
+							Eventually(helpers.TaskFailedPoller(lgr, bbsClient, expectedTask.TaskGuid, nil)).Should(BeTrue())
 						})
 					})
 				})
@@ -582,7 +586,7 @@ echo should have died by now
 
 			Context("with no checksum", func() {
 				It("downloads the file", func() {
-					err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+					err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 					Expect(err).NotTo(HaveOccurred())
 					Eventually(inigo_announcement_server.Announcements).Should(ContainElement(expectedTask.TaskGuid))
 				})
@@ -613,7 +617,7 @@ echo should have died by now
 
 					It("downloads the file for md5", func() {
 						createChecksum("md5")
-						err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+						err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 						Expect(err).NotTo(HaveOccurred())
 						expectedGuid := expectedTask.TaskGuid
 						Eventually(inigo_announcement_server.Announcements).Should(ContainElement(expectedGuid))
@@ -621,7 +625,7 @@ echo should have died by now
 
 					It("downloads the file for sha1", func() {
 						createChecksum("sha1")
-						err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+						err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 						Expect(err).NotTo(HaveOccurred())
 						expectedGuid := expectedTask.TaskGuid
 						Eventually(inigo_announcement_server.Announcements).Should(ContainElement(expectedGuid))
@@ -629,7 +633,7 @@ echo should have died by now
 
 					It("downloads the file for sha256", func() {
 						createChecksum("sha256")
-						err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+						err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 						Expect(err).NotTo(HaveOccurred())
 						expectedGuid := expectedTask.TaskGuid
 						Eventually(inigo_announcement_server.Announcements).Should(ContainElement(expectedGuid))
@@ -641,7 +645,7 @@ echo should have died by now
 					It("with incorrect algorithm", func() {
 						cachedDependency.ChecksumAlgorithm = "incorrect_algorithm"
 						cachedDependency.ChecksumValue = "incorrect_checksum"
-						err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+						err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 						Expect(err).To(HaveOccurred())
 					})
 
@@ -649,25 +653,25 @@ echo should have died by now
 						It("for md5", func() {
 							cachedDependency.ChecksumAlgorithm = "md5"
 							cachedDependency.ChecksumValue = "incorrect_checksum"
-							err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+							err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 							Expect(err).NotTo(HaveOccurred())
-							Eventually(helpers.TaskFailedPoller(logger, bbsClient, expectedTask.TaskGuid, nil)).Should(BeTrue())
+							Eventually(helpers.TaskFailedPoller(lgr, bbsClient, expectedTask.TaskGuid, nil)).Should(BeTrue())
 						})
 
 						It("for sha1", func() {
 							cachedDependency.ChecksumAlgorithm = "sha1"
 							cachedDependency.ChecksumValue = "incorrect_checksum"
-							err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+							err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 							Expect(err).NotTo(HaveOccurred())
-							Eventually(helpers.TaskFailedPoller(logger, bbsClient, expectedTask.TaskGuid, nil)).Should(BeTrue())
+							Eventually(helpers.TaskFailedPoller(lgr, bbsClient, expectedTask.TaskGuid, nil)).Should(BeTrue())
 						})
 
 						It("for sha256", func() {
 							cachedDependency.ChecksumAlgorithm = "sha256"
 							cachedDependency.ChecksumValue = "incorrect_checksum"
-							err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+							err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 							Expect(err).NotTo(HaveOccurred())
-							Eventually(helpers.TaskFailedPoller(logger, bbsClient, expectedTask.TaskGuid, nil)).Should(BeTrue())
+							Eventually(helpers.TaskFailedPoller(lgr, bbsClient, expectedTask.TaskGuid, nil)).Should(BeTrue())
 						})
 					})
 				})
@@ -727,7 +731,7 @@ echo should have died by now
 				),
 			)
 
-			err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+			err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(gotRequest).Should(BeClosed())
@@ -750,14 +754,14 @@ echo should have died by now
 			)
 			expectedTask.ResultFile = "/home/vcap/thingy"
 
-			err := bbsClient.DesireTask(logger, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+			err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 
 			var task *models.Task
 			Eventually(func() interface{} {
 				var err error
 
-				task, err = bbsClient.TaskByGuid(logger, guid)
+				task, err = bbsClient.TaskByGuid(lgr, guid)
 				Expect(err).NotTo(HaveOccurred())
 
 				return task.State

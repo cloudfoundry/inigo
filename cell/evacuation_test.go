@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"code.cloudfoundry.org/archiver/extractor/test_helper"
@@ -26,7 +27,7 @@ import (
 
 var _ = Describe("Evacuation", func() {
 	var (
-		runtime ifrit.Process
+		ifritRuntime ifrit.Process
 
 		cellAID            string
 		cellARepAddr       string
@@ -50,6 +51,9 @@ var _ = Describe("Evacuation", func() {
 	)
 
 	BeforeEach(func() {
+		if runtime.GOOS == "windows" {
+			Skip(" not yet working on windows")
+		}
 		processGuid = helpers.GenerateGuid()
 
 		fileServer, fileServerStaticDir := componentMaker.FileServer()
@@ -60,7 +64,7 @@ var _ = Describe("Evacuation", func() {
 			overrideConvergenceRepeatInterval,
 		))
 
-		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+		ifritRuntime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"router", componentMaker.Router()},
 			{"file-server", fileServer},
 			{"auctioneer", componentMaker.Auctioneer()},
@@ -125,19 +129,19 @@ var _ = Describe("Evacuation", func() {
 	})
 
 	AfterEach(func() {
-		helpers.StopProcesses(runtime, cellA, cellB)
+		helpers.StopProcesses(ifritRuntime, cellA, cellB)
 	})
 
 	It("handles evacuation", func() {
 		By("desiring an LRP")
-		err := bbsClient.DesireLRP(logger, lrp)
+		err := bbsClient.DesireLRP(lgr, lrp)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("running an actual LRP instance")
-		Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+		Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 		Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 
-		actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, processGuid, 0)
+		actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(lgr, processGuid, 0)
 		Expect(err).NotTo(HaveOccurred())
 
 		actualLRP, isEvacuating, err := actualLRPGroup.Resolve()
@@ -172,7 +176,7 @@ var _ = Describe("Evacuation", func() {
 		}).Should(Equal(0))
 
 		By("running immediately after the rep exits and is routable")
-		Expect(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)()).To(Equal(models.ActualLRPStateRunning))
+		Expect(helpers.LRPStatePoller(lgr, bbsClient, processGuid, nil)()).To(Equal(models.ActualLRPStateRunning))
 		Consistently(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 	})
 
@@ -198,11 +202,11 @@ var _ = Describe("Evacuation", func() {
 		It("shuts down gracefully after the evacuation timeout", func() {
 			time.Sleep(time.Minute)
 
-			err := bbsClient.DesireLRP(logger, lrp)
+			err := bbsClient.DesireLRP(lgr, lrp)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("running an actual LRP instance")
-			Eventually(helpers.LRPStatePoller(logger, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+			Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 
 			By("posting the evacuation endpoint")
 			// Rep admin endpoint verifies and validate 127.0.0.1 for IP SAN
@@ -218,13 +222,13 @@ var _ = Describe("Evacuation", func() {
 			client, err := factory.CreateClient(addr, secureAddr)
 			Expect(err).NotTo(HaveOccurred())
 
-			group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, lrp.ProcessGuid, 0)
+			group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(lgr, lrp.ProcessGuid, 0)
 			Expect(err).NotTo(HaveOccurred())
 
 			// the following requests will hang since garden is stuck trying to destroy the containers
 			go func() {
 				for i := 0; i < 100; i++ {
-					err := client.StopLRPInstance(logger, group.Instance.ActualLRPKey, group.Instance.ActualLRPInstanceKey)
+					err := client.StopLRPInstance(lgr, group.Instance.ActualLRPKey, group.Instance.ActualLRPInstanceKey)
 					if err != nil {
 						return
 					}

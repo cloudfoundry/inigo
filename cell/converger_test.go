@@ -3,6 +3,7 @@ package cell_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/inigo/fixtures"
@@ -18,9 +19,9 @@ import (
 
 var _ = Describe("Convergence to desired state", func() {
 	var (
-		runtime    ifrit.Process
-		auctioneer ifrit.Process
-		rep        ifrit.Process
+		ifritRuntime ifrit.Process
+		auctioneer   ifrit.Process
+		rep          ifrit.Process
 
 		appId       string
 		processGuid string
@@ -31,9 +32,12 @@ var _ = Describe("Convergence to desired state", func() {
 	)
 
 	BeforeEach(func() {
+		if runtime.GOOS == "windows" {
+			Skip(" not yet working on windows")
+		}
 		fileServer, fileServerStaticDir := componentMaker.FileServer()
 
-		runtime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
+		ifritRuntime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
 			{"file-server", fileServer},
 			{"route-emitter", componentMaker.RouteEmitter()},
 			{"router", componentMaker.Router()},
@@ -49,11 +53,11 @@ var _ = Describe("Convergence to desired state", func() {
 		processGuid = helpers.GenerateGuid()
 
 		runningLRPsPoller = func() []models.ActualLRP {
-			return helpers.ActiveActualLRPs(logger, bbsClient, processGuid)
+			return helpers.ActiveActualLRPs(lgr, bbsClient, processGuid)
 		}
 
 		runningLRPsPresencePoller = func() []models.ActualLRP_Presence {
-			lrps := helpers.ActiveActualLRPs(logger, bbsClient, processGuid)
+			lrps := helpers.ActiveActualLRPs(lgr, bbsClient, processGuid)
 			presences := []models.ActualLRP_Presence{}
 			for _, lrp := range lrps {
 				presences = append(presences, lrp.Presence)
@@ -66,7 +70,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 	AfterEach(func() {
 		By("Stopping all the processes")
-		helpers.StopProcesses(auctioneer, rep, runtime)
+		helpers.StopProcesses(auctioneer, rep, ifritRuntime)
 	})
 
 	Describe("Executor fault tolerance", func() {
@@ -87,7 +91,7 @@ var _ = Describe("Convergence to desired state", func() {
 				))
 
 				By("creating and ActualLRP")
-				err := bbsClient.DesireLRP(logger, helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, appId, 2))
+				err := bbsClient.DesireLRP(lgr, helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, appId, 2))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(runningLRPsPoller).Should(HaveLen(2))
 				Eventually(helloWorldInstancePoller).Should(Equal([]string{"0", "1"}))
@@ -170,7 +174,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
-					err := bbsClient.DesireLRP(logger, helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, appId, 1))
+					err := bbsClient.DesireLRP(lgr, helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, appId, 1))
 					Expect(err).NotTo(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
@@ -207,7 +211,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
-					err := bbsClient.DesireLRP(logger, helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, appId, 1))
+					err := bbsClient.DesireLRP(lgr, helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, appId, 1))
 					Expect(err).NotTo(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
@@ -234,7 +238,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
-					err := bbsClient.DesireLRP(logger, helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, appId, 1))
+					err := bbsClient.DesireLRP(lgr, helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, appId, 1))
 					Expect(err).NotTo(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
