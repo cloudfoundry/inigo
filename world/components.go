@@ -54,6 +54,7 @@ import (
 	"code.cloudfoundry.org/rep/maintain"
 	routeemitterconfig "code.cloudfoundry.org/route-emitter/cmd/route-emitter/config"
 	routingapi "code.cloudfoundry.org/route-emitter/cmd/route-emitter/runners"
+	routingapiconfig "code.cloudfoundry.org/routing-api/config"
 	"code.cloudfoundry.org/volman"
 	volmanclient "code.cloudfoundry.org/volman/vollocal"
 	"github.com/go-sql-driver/mysql"
@@ -212,6 +213,8 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 	Expect(err).NotTo(HaveOccurred())
 	auctioneerServerKey, auctioneerServerCert, err := certAuthority.GenerateSelfSignedCertAndKey("auctioneer_server", nil, false)
 	Expect(err).NotTo(HaveOccurred())
+	routingAPIKey, routingAPICert, err := certAuthority.GenerateSelfSignedCertAndKey("routing_api_server", nil, false)
+	Expect(err).NotTo(HaveOccurred())
 	clientKey, clientCert, err := certAuthority.GenerateSelfSignedCertAndKey("client", nil, false)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -246,6 +249,12 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 		ServerKey:  auctioneerServerKey,
 		ClientCert: clientCert,
 		ClientKey:  clientKey,
+		CACert:     caCert,
+	}
+
+	routingApiSSLConfig := SSLConfig{
+		ServerCert: routingAPICert,
+		ServerKey:  routingAPIKey,
 		CACert:     caCert,
 	}
 
@@ -295,6 +304,7 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 		locketSSL:              locketSSLConfig,
 		repSSL:                 repSSLConfig,
 		auctioneerSSL:          auctioneerSSLConfig,
+		routingAPISSL:          routingApiSSLConfig,
 		sqlCACertFile:          sqlCACert,
 		volmanDriverConfigDir:  volmanConfigDir,
 		dbDriverName:           dbDriverName,
@@ -364,6 +374,7 @@ type commonComponentMaker struct {
 	locketSSL              SSLConfig
 	repSSL                 SSLConfig
 	auctioneerSSL          SSLConfig
+	routingAPISSL          SSLConfig
 	sqlCACertFile          string
 	volmanDriverConfigDir  string
 	dbDriverName           string
@@ -661,7 +672,23 @@ func (maker commonComponentMaker) RoutingAPI(modifyConfigFuncs ...func(*routinga
 		sqlConfig.Password = "diego_pw"
 	}
 
-	runner, err := routingapi.NewRoutingAPIRunner(binPath, maker.ConsulCluster(), int(port), int(port+1), sqlConfig, modifyConfigFuncs...)
+	modifyConfigFuncs = append(modifyConfigFuncs, func(c *routingapi.Config) {
+		c.Locket = maker.locketClientConfig()
+	})
+
+	modifyConfigFuncs = append(modifyConfigFuncs, func(c *routingapi.Config) {
+		c.API = routingapiconfig.APIConfig{
+			ListenPort:  int(port),
+			HTTPEnabled: true,
+
+			MTLSListenPort:     int(port + 2),
+			MTLSClientCAPath:   maker.routingAPISSL.CACert,
+			MTLSServerCertPath: maker.routingAPISSL.ServerCert,
+			MTLSServerKeyPath:  maker.routingAPISSL.ServerKey,
+		}
+	})
+
+	runner, err := routingapi.NewRoutingAPIRunner(binPath, int(port+1), sqlConfig, modifyConfigFuncs...)
 	Expect(err).NotTo(HaveOccurred())
 	return runner
 }

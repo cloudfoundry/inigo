@@ -147,7 +147,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 					cfg.EnableTCPEmitter = true
 					cfg.RoutingAPI = routeemitterconfig.RoutingAPIConfig{
 						URL:         "http://localhost",
-						Port:        routingAPI.Config.Port,
+						Port:        routingAPI.Config.API.ListenPort,
 						AuthEnabled: false,
 					}
 				})
