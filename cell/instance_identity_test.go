@@ -64,6 +64,7 @@ var _ = Describe("InstanceIdentity", func() {
 		processGUID                                 string
 		organizationalUnit                          []string
 		rep, fileServer, metronAgent                ifrit.Runner
+		logger                                      lager.Logger
 	)
 
 	BeforeEach(func() {
@@ -141,7 +142,7 @@ var _ = Describe("InstanceIdentity", func() {
 		)
 
 		rep = componentMaker.Rep(configRepCerts)
-		logger := lagertest.NewTestLogger("metron-agent")
+		logger = lagertest.NewTestLogger("metron-agent")
 		metronAgent = ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
 			close(ready)
 			<-signals
@@ -436,8 +437,6 @@ var _ = Describe("InstanceIdentity", func() {
 		}
 
 		Context("and the app starts successfully", func() {
-			var instanceGuid string
-
 			JustBeforeEach(func() {
 				err := bbsClient.DesireLRP(lgr, lrp)
 				Expect(err).NotTo(HaveOccurred())
@@ -737,8 +736,10 @@ var _ = Describe("InstanceIdentity", func() {
 				JustBeforeEach(func() {
 					containerMutex.Lock()
 					defer containerMutex.Unlock()
-					var err error
-					container, err = gardenClient.Lookup(instanceGuid)
+					actualLRPs, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: processGUID})
+					Expect(err).NotTo(HaveOccurred())
+					actualLRP := actualLRPs[0]
+					container, err = gardenClient.Lookup(actualLRP.InstanceGuid)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
@@ -752,7 +753,6 @@ var _ = Describe("InstanceIdentity", func() {
 						metricsChan = make(chan map[string]uint64, 10)
 						memoryLimit = uint64(lrp.MemoryMb)
 
-						logger := lagertest.NewTestLogger("metron-agent")
 						metronAgent = ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
 							close(ready)
 							testMetricsChan, signalMetricsChan := testhelpers.TestMetricChan(testIngressServer.Receivers())
