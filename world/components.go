@@ -630,9 +630,6 @@ func (maker commonComponentMaker) garden(includeDefaultStack bool, fs ...func(*r
 
 	config.GdnBin = maker.artifacts.Executables["garden"]
 
-	maxContainers := uint64(10)
-	config.MaxContainers = &maxContainers
-
 	if runtime.GOOS == "windows" {
 		config.TarBin = filepath.Join(maker.gardenConfig.GardenBinPath, "tar.exe")
 		config.InitBin = filepath.Join(maker.gardenConfig.GardenBinPath, "init.exe")
@@ -674,7 +671,7 @@ func (maker commonComponentMaker) garden(includeDefaultStack bool, fs ...func(*r
 		config.DenyNetworks = []string{"0.0.0.0/0"}
 		config.AllowHostAccess = boolPtr(true)
 
-		poolSize := int(maxContainers)
+		poolSize := 10
 		config.PortPoolSize = &poolSize
 		ports, err := maker.portAllocator.ClaimPorts(*config.PortPoolSize)
 		startPort := int(ports)
