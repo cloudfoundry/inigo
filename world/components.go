@@ -645,6 +645,9 @@ func (maker commonComponentMaker) garden(includeDefaultStack bool, fs ...func(*r
 			"\"--configFile\"",
 			maker.networkPluginConfigPath(maker.gardenConfig.NetworkPluginConfig),
 		}
+
+		maxContainers := uint64(20)
+		config.MaxContainers = &maxContainers
 	} else {
 		config.TarBin = filepath.Join(maker.gardenConfig.GardenBinPath, "tar")
 		config.InitBin = filepath.Join(maker.gardenConfig.GardenBinPath, "init")
