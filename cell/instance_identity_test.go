@@ -546,6 +546,9 @@ var _ = Describe("InstanceIdentity", func() {
 
 				Context("when the envoy configured ca cert is wrong", func() {
 					BeforeEach(func() {
+						if runtime.GOOS == "windows" {
+							Skip("not supported with envoy-nginx on windows")
+						}
 						serverCaCertPath, err := filepath.Abs("../fixtures/certs/server/wrong-ca.crt")
 						Expect(err).NotTo(HaveOccurred())
 						caCertContent, err = ioutil.ReadFile(serverCaCertPath)
@@ -565,6 +568,9 @@ var _ = Describe("InstanceIdentity", func() {
 
 				Context("when the client has the wrong cert for mutual tls", func() {
 					BeforeEach(func() {
+						if runtime.GOOS == "windows" {
+							Skip("not supported with envoy-nginx on windows")
+						}
 						wrongServerCert, err := filepath.Abs("../fixtures/certs/server/wrong-server.crt")
 						Expect(err).NotTo(HaveOccurred())
 						wrongServerKey, err := filepath.Abs("../fixtures/certs/server/wrong-server.key")
