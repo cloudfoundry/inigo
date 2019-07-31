@@ -259,38 +259,9 @@ var _ = Describe("Executor/Garden", func() {
 	})
 
 	Describe("Failing start up", func() {
-		Context("when an invalid rootFS is given for the garden healtcheck", func() {
-			BeforeEach(func() {
-				gardenHealthcheckRootFS = "/bad/path"
-				config.GardenHealthcheckInterval = durationjson.Duration(5 * time.Millisecond)
-				config.GardenHealthcheckCommandRetryPause = durationjson.Duration(5 * time.Millisecond)
-			})
-
-			It("shuts down the executor", func() {
-				process = ifrit.Background(runner)
-				processExit := process.Wait()
-
-				Eventually(processExit).Should(Receive(HaveOccurred()))
-			})
-		})
-
 		Context("when a blank garden healthcheck RootFS is given", func() {
 			BeforeEach(func() {
 				gardenHealthcheckRootFS = ""
-			})
-
-			Context("when garden is started without a default RootFS", func() {
-				BeforeEach(func() {
-					ginkgomon.Interrupt(gardenProcess)
-					gardenProcess = ginkgomon.Invoke(componentMaker.GardenWithoutDefaultStack())
-				})
-
-				It("shuts down the executor", func() {
-					process = ifrit.Background(runner)
-					processExit := process.Wait()
-
-					Eventually(processExit).Should(Receive(HaveOccurred()))
-				})
 			})
 
 			Context("when garden is started with a default RootFS", func() {
