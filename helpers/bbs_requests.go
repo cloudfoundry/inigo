@@ -91,7 +91,6 @@ func lrpCreateRequest(
 		Action:        action,
 		Monitor:       monitor,
 		PlacementTags: placementTags,
-		DiskMb:        1024,
 	}
 }
 
