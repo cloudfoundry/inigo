@@ -119,11 +119,11 @@ var _ = Describe("Network Environment Variables", func() {
 			Eventually(helpers.LRPStatePoller(lgr, bbsClient, guid, nil)).Should(Equal(models.ActualLRPStateRunning))
 			Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 
-			lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(lgr, guid)
+			lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: guid})
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(lrps).To(HaveLen(1))
-			actualLRP = lrps[0].Instance
+			actualLRP = lrps[0]
 
 			var status int
 			response, status, err = helpers.ResponseBodyAndStatusCodeFromHost(componentMaker.Addresses().Router, helpers.DefaultHost, "env")

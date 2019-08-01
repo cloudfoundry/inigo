@@ -374,13 +374,11 @@ func evacuateARep(
 	cellAPort, cellBPort uint16,
 ) {
 	By("finding rep with one instance running")
-	actualLRPGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGuid)
+	lrps, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: processGuid})
 	Expect(err).NotTo(HaveOccurred())
-	Expect(actualLRPGroups).To(HaveLen(3))
+	Expect(lrps).To(HaveLen(3))
 	instancePerRepCount := map[string]int{}
-	for _, lrpGroup := range actualLRPGroups {
-		lrp, _, err := lrpGroup.Resolve()
-		Expect(err).NotTo(HaveOccurred())
+	for _, lrp := range lrps {
 		cellID := lrp.ActualLRPInstanceKey.CellId
 		instancePerRepCount[cellID]++
 	}

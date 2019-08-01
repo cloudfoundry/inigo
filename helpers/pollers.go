@@ -9,13 +9,11 @@ import (
 )
 
 func filteredActualLRPs(logger lager.Logger, client bbs.InternalClient, processGuid string, filter func(lrp *models.ActualLRP) bool) []models.ActualLRP {
-	lrpGroups, err := client.ActualLRPGroupsByProcessGuid(logger, processGuid)
+	lrps, err := client.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: processGuid})
 	Expect(err).NotTo(HaveOccurred())
 
-	startedLRPs := make([]models.ActualLRP, 0, len(lrpGroups))
-	for _, lrpGroup := range lrpGroups {
-		lrp, _, err := lrpGroup.Resolve()
-		Expect(err).NotTo(HaveOccurred())
+	startedLRPs := make([]models.ActualLRP, 0, len(lrps))
+	for _, lrp := range lrps {
 		if filter(lrp) {
 			startedLRPs = append(startedLRPs, *lrp)
 		}
@@ -64,34 +62,28 @@ func TaskFailedPoller(logger lager.Logger, client bbs.InternalClient, taskGuid s
 
 func LRPStatePoller(logger lager.Logger, client bbs.InternalClient, processGuid string, lrp *models.ActualLRP) func() string {
 	return func() string {
-		lrpGroups, err := client.ActualLRPGroupsByProcessGuid(logger, processGuid)
+		lrps, err := client.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: processGuid})
 		Expect(err).NotTo(HaveOccurred())
-
-		if len(lrpGroups) == 0 {
+		if len(lrps) == 0 {
 			return ""
 		}
-
-		foundLRP, _, err := lrpGroups[0].Resolve()
-		Expect(err).NotTo(HaveOccurred())
+		Expect(len(lrps)).To(BeNumerically(">", 0))
 		if lrp != nil {
-			*lrp = *foundLRP
+			*lrp = *lrps[0]
 		}
-
-		return foundLRP.State
+		return lrps[0].State
 	}
 }
 
 func LRPInstanceStatePoller(logger lager.Logger, client bbs.InternalClient, processGuid string, index int, lrp *models.ActualLRP) func() string {
 	return func() string {
-		lrpGroup, err := client.ActualLRPGroupByProcessGuidAndIndex(logger, processGuid, index)
+		i := int32(index)
+		lrps, err := client.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: processGuid, Index: &i})
 		Expect(err).NotTo(HaveOccurred())
-
-		foundLRP, _, err := lrpGroup.Resolve()
-		Expect(err).NotTo(HaveOccurred())
+		Expect(len(lrps)).To(Equal(1))
 		if lrp != nil {
-			*lrp = *foundLRP
+			*lrp = *lrps[0]
 		}
-
-		return foundLRP.State
+		return lrps[0].State
 	}
 }

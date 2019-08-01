@@ -141,17 +141,16 @@ var _ = Describe("Evacuation", func() {
 		Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 		Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 
-		actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(lgr, processGuid, 0)
+		index := int32(0)
+		lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid, Index: &index})
 		Expect(err).NotTo(HaveOccurred())
-
-		actualLRP, isEvacuating, err := actualLRPGroup.Resolve()
-		Expect(err).NotTo(HaveOccurred())
-		Expect(isEvacuating).To(BeFalse())
+		Expect(len(lrps)).To(Equal(1))
+		Expect(lrps[0].Presence).NotTo(Equal(models.ActualLRP_Evacuating))
 
 		var evacuatingRepPort uint16
 		var evacuatingRepRunner *ginkgomon.Runner
 
-		switch actualLRP.CellId {
+		switch lrps[0].CellId {
 		case cellAID:
 			evacuatingRepRunner = cellARepRunner
 			evacuatingRepPort = cellPortsStart
@@ -222,13 +221,15 @@ var _ = Describe("Evacuation", func() {
 			client, err := factory.CreateClient(addr, secureAddr)
 			Expect(err).NotTo(HaveOccurred())
 
-			group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(lgr, lrp.ProcessGuid, 0)
+			index := int32(0)
+			lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: lrp.ProcessGuid, Index: &index})
 			Expect(err).NotTo(HaveOccurred())
+			Expect(len(lrps)).To(Equal(1))
 
 			// the following requests will hang since garden is stuck trying to destroy the containers
 			go func() {
 				for i := 0; i < 100; i++ {
-					err := client.StopLRPInstance(lgr, group.Instance.ActualLRPKey, group.Instance.ActualLRPInstanceKey)
+					err := client.StopLRPInstance(lgr, lrps[0].ActualLRPKey, lrps[0].ActualLRPInstanceKey)
 					if err != nil {
 						return
 					}

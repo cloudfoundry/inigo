@@ -84,14 +84,12 @@ var _ = Describe("Placement Tags", func() {
 
 			It("succeeds and is running on correct cell", func() {
 				lrpFunc := func() string {
-					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(lgr, guid)
+					lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: guid})
 					Expect(err).NotTo(HaveOccurred())
-					if len(lrpGroups) == 0 {
+					if len(lrps) == 0 {
 						return ""
 					}
-					lrp, _, err := lrpGroups[0].Resolve()
-					Expect(err).NotTo(HaveOccurred())
-					return lrp.CellId
+					return lrps[0].CellId
 				}
 				Eventually(lrpFunc).Should(MatchRegexp("the-cell-id-.*-0"))
 				Eventually(helpers.LRPStatePoller(lgr, bbsClient, guid, nil)).Should(Equal(models.ActualLRPStateRunning))
@@ -105,14 +103,12 @@ var _ = Describe("Placement Tags", func() {
 
 			It("succeeds and is running on correct cell", func() {
 				lrpFunc := func() string {
-					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(lgr, guid)
+					lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: guid})
 					Expect(err).NotTo(HaveOccurred())
-					if len(lrpGroups) == 0 {
+					if len(lrps) == 0 {
 						return ""
 					}
-					lrp, _, err := lrpGroups[0].Resolve()
-					Expect(err).NotTo(HaveOccurred())
-					return lrp.CellId
+					return lrps[0].CellId
 				}
 				Eventually(lrpFunc).Should(MatchRegexp("the-cell-id-.*-0"))
 				Eventually(helpers.LRPStatePoller(lgr, bbsClient, guid, nil)).Should(Equal(models.ActualLRPStateRunning))
@@ -126,16 +122,14 @@ var _ = Describe("Placement Tags", func() {
 
 			It("fails and sets a placement error", func() {
 				lrpFunc := func() string {
-					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(lgr, guid)
+					lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: guid})
 					Expect(err).NotTo(HaveOccurred())
-					if len(lrpGroups) == 0 {
+					if len(lrps) == 0 {
 						return ""
 					}
-					lrp, _, err := lrpGroups[0].Resolve()
-					Expect(err).NotTo(HaveOccurred())
-					lgr.Info("lrp-cell-id", lager.Data{"cell-id": lrp.CellId})
+					lgr.Info("lrp-cell-id", lager.Data{"cell-id": lrps[0].CellId})
 
-					return lrp.PlacementError
+					return lrps[0].PlacementError
 				}
 
 				Eventually(lrpFunc).Should(ContainSubstring("found no compatible cell with placement tag"))

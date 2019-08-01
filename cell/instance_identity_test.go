@@ -911,9 +911,11 @@ var _ = Describe("InstanceIdentity", func() {
 
 					It("crashes the lrp with a descriptive error", func() {
 						Eventually(func() *models.ActualLRP {
-							group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(lgr, processGUID, 0)
+							index := int32(0)
+							lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGUID, Index: &index})
 							Expect(err).NotTo(HaveOccurred())
-							return group.Instance
+							Expect(len(lrps)).To(Equal(1))
+							return lrps[0]
 						}).Should(gstruct.PointTo(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
 							"CrashReason": ContainSubstring("Instance never healthy after 3s: instance proxy failed to start"),
 						})))
@@ -973,10 +975,10 @@ func memoryInBytes(memoryMb uint64) uint64 {
 
 func getContainerInternalAddress(client bbs.Client, processGuid string, port uint32, tls bool) string {
 	By("getting the internal ip address of the container")
-	lrpGroups, err := client.ActualLRPGroupsByProcessGuid(lgr, processGuid)
+	lrps, err := client.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
 	Expect(err).NotTo(HaveOccurred())
-	Expect(lrpGroups).To(HaveLen(1))
-	netInfo := lrpGroups[0].Instance.ActualLRPNetInfo
+	Expect(lrps).To(HaveLen(1))
+	netInfo := lrps[0].ActualLRPNetInfo
 	address := netInfo.InstanceAddress
 	for _, mapping := range netInfo.Ports {
 		if mapping.ContainerPort == port {

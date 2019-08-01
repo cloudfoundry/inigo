@@ -153,13 +153,12 @@ var _ = Describe("LRPs with volume mounts", func() {
 			It("should error placing the lrp", func() {
 				var actualLRP *models.ActualLRP
 				Eventually(func() interface{} {
-					group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, processGuid, 0)
+					index := int32(0)
+					lrps, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: processGuid, Index: &index})
 					Expect(err).NotTo(HaveOccurred())
-
-					var evacuating bool
-					actualLRP, evacuating, err = group.Resolve()
-					Expect(err).NotTo(HaveOccurred())
-					Expect(evacuating).To(BeFalse())
+					Expect(len(lrps)).To(Equal(1))
+					Expect(lrps[0].Presence).NotTo(Equal(models.ActualLRP_Evacuating))
+					actualLRP = lrps[0]
 
 					return actualLRP.PlacementError
 				}).Should(Equal(auctiontypes.ErrorVolumeDriverMismatch.Error()))
@@ -177,13 +176,12 @@ var _ = Describe("LRPs with volume mounts", func() {
 			It("should error placing the task", func() {
 				var actualLRP *models.ActualLRP
 				Eventually(func() interface{} {
-					group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, processGuid, 0)
+					index := int32(0)
+					lrps, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: processGuid, Index: &index})
 					Expect(err).NotTo(HaveOccurred())
-
-					var evacuating bool
-					actualLRP, evacuating, err = group.Resolve()
-					Expect(err).NotTo(HaveOccurred())
-					Expect(evacuating).To(BeFalse())
+					Expect(len(lrps)).To(Equal(1))
+					Expect(lrps[0].Presence).NotTo(Equal(models.ActualLRP_Evacuating))
+					actualLRP = lrps[0]
 
 					return actualLRP.PlacementError
 				}).Should(Equal(auctiontypes.ErrorVolumeDriverMismatch.Error()))
@@ -201,13 +199,11 @@ var _ = Describe("LRPs with volume mounts", func() {
 			It("should error placing the task", func() {
 				var actualLRP *models.ActualLRP
 				Eventually(func() interface{} {
-					group, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, processGuid, 0)
+					index := int32(0)
+					lrps, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: processGuid, Index: &index})
 					Expect(err).NotTo(HaveOccurred())
-
-					var evacuating bool
-					actualLRP, evacuating, err = group.Resolve()
-					Expect(err).NotTo(HaveOccurred())
-					Expect(evacuating).To(BeFalse())
+					Expect(lrps[0].Presence).NotTo(Equal(models.ActualLRP_Evacuating))
+					actualLRP = lrps[0]
 
 					return actualLRP.PlacementError
 				}).Should(Equal(auctiontypes.ErrorVolumeDriverMismatch.Error()))

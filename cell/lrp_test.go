@@ -258,11 +258,11 @@ var _ = Describe("LRP", func() {
 			It("passes them to garden", func() {
 				Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 
-				lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(lgr, processGuid)
+				lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
 				Expect(err).NotTo(HaveOccurred())
+				Expect(len(lrps)).To(BeNumerically(">", 0))
 
-				actualLRP := lrps[0].Instance
-				containerHandle := actualLRP.InstanceGuid
+				containerHandle := lrps[0].InstanceGuid
 
 				container, err := gardenClient.Lookup(containerHandle)
 				Expect(err).NotTo(HaveOccurred())
@@ -351,8 +351,8 @@ var _ = Describe("LRP", func() {
 			})
 
 			JustBeforeEach(func() {
-				Eventually(func() []*models.ActualLRPGroup {
-					lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(lgr, processGuid)
+				Eventually(func() []*models.ActualLRP {
+					lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
 					Expect(err).NotTo(HaveOccurred())
 
 					return lrps
@@ -380,8 +380,8 @@ var _ = Describe("LRP", func() {
 					})
 
 					It("scales up to the correct number of instances", func() {
-						Eventually(func() []*models.ActualLRPGroup {
-							lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(lgr, processGuid)
+						Eventually(func() []*models.ActualLRP {
+							lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
 							Expect(err).NotTo(HaveOccurred())
 
 							return lrps
@@ -397,8 +397,8 @@ var _ = Describe("LRP", func() {
 					})
 
 					It("scales down to the correct number of instances", func() {
-						Eventually(func() []*models.ActualLRPGroup {
-							lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(lgr, processGuid)
+						Eventually(func() []*models.ActualLRP {
+							lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
 							Expect(err).NotTo(HaveOccurred())
 
 							return lrps
@@ -414,8 +414,8 @@ var _ = Describe("LRP", func() {
 					})
 
 					It("scales down to the correct number of instances", func() {
-						Eventually(func() []*models.ActualLRPGroup {
-							lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(lgr, processGuid)
+						Eventually(func() []*models.ActualLRP {
+							lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
 							Expect(err).NotTo(HaveOccurred())
 
 							return lrps
@@ -431,8 +431,8 @@ var _ = Describe("LRP", func() {
 						err := bbsClient.UpdateDesiredLRP(lgr, processGuid, dlu)
 						Expect(err).NotTo(HaveOccurred())
 
-						Eventually(func() []*models.ActualLRPGroup {
-							lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(lgr, processGuid)
+						Eventually(func() []*models.ActualLRP {
+							lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
 							Expect(err).NotTo(HaveOccurred())
 
 							return lrps
@@ -450,8 +450,8 @@ var _ = Describe("LRP", func() {
 				})
 
 				It("stops all instances", func() {
-					Eventually(func() []*models.ActualLRPGroup {
-						lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(lgr, processGuid)
+					Eventually(func() []*models.ActualLRP {
+						lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
 						Expect(err).NotTo(HaveOccurred())
 
 						return lrps
@@ -528,14 +528,12 @@ var _ = Describe("LRP", func() {
 
 			It("fails and sets a placement error", func() {
 				lrpFunc := func() string {
-					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(lgr, processGuid)
+					lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
 					Expect(err).NotTo(HaveOccurred())
-					if len(lrpGroups) == 0 {
+					if len(lrps) == 0 {
 						return ""
 					}
-					lrp, _, err := lrpGroups[0].Resolve()
-					Expect(err).NotTo(HaveOccurred())
-					return lrp.PlacementError
+					return lrps[0].PlacementError
 				}
 
 				Eventually(lrpFunc).Should(ContainSubstring("found no compatible cell"))
@@ -549,14 +547,12 @@ var _ = Describe("LRP", func() {
 
 			It("fails and sets a placement error", func() {
 				lrpFunc := func() string {
-					lrpGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(lgr, processGuid)
+					lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
 					Expect(err).NotTo(HaveOccurred())
-					if len(lrpGroups) == 0 {
+					if len(lrps) == 0 {
 						return ""
 					}
-					lrp, _, err := lrpGroups[0].Resolve()
-					Expect(err).NotTo(HaveOccurred())
-					return lrp.PlacementError
+					return lrps[0].PlacementError
 				}
 
 				Eventually(lrpFunc).Should(ContainSubstring("found no compatible cell"))
@@ -572,8 +568,8 @@ var _ = Describe("LRP", func() {
 			})
 
 			It("runs", func() {
-				Eventually(func() []*models.ActualLRPGroup {
-					lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(lgr, processGuid)
+				Eventually(func() []*models.ActualLRP {
+					lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
 					Expect(err).NotTo(HaveOccurred())
 					return lrps
 				}).Should(HaveLen(1))
@@ -588,11 +584,11 @@ var _ = Describe("LRP", func() {
 	Context("Crashing LRPs", func() {
 		crashCount := func(guid string, index int) func() int32 {
 			return func() int32 {
-				actualGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(lgr, guid, index)
+				i := int32(index)
+				lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: guid, Index: &i})
 				Expect(err).NotTo(HaveOccurred())
-				actual, _, err := actualGroup.Resolve()
-				Expect(err).NotTo(HaveOccurred())
-				return actual.CrashCount
+				Expect(len(lrps)).To(Equal(1))
+				return lrps[0].CrashCount
 			}
 		}
 
@@ -643,7 +639,7 @@ var _ = Describe("LRP", func() {
 		Describe("disappearing containrs", func() {
 			Context("when a container is deleted unexpectedly", func() {
 				var (
-					group *models.ActualLRPGroup
+					lrps []*models.ActualLRP
 				)
 
 				BeforeEach(func() {
@@ -656,11 +652,13 @@ var _ = Describe("LRP", func() {
 				})
 
 				JustBeforeEach(func() {
+					index := int32(0)
 					var err error
-					group, err = bbsClient.ActualLRPGroupByProcessGuidAndIndex(lgr, processGuid, 0)
+					lrps, err = bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid, Index: &index})
 					Expect(err).NotTo(HaveOccurred())
+					Expect(len(lrps)).To(Equal(1))
 
-					err = gardenClient.Destroy(group.Instance.GetInstanceGuid())
+					err = gardenClient.Destroy(lrps[0].GetInstanceGuid())
 					Expect(err).NotTo(HaveOccurred())
 				})
 
@@ -670,12 +668,10 @@ var _ = Describe("LRP", func() {
 				})
 
 				It("contains the instance guid and cell id", func() {
-					lrp, _, err := group.Resolve()
-					Expect(err).NotTo(HaveOccurred())
 					Eventually(getEvents).Should(ContainElement(helpers.MatchActualLRPCrashedEvent(
 						processGuid,
-						lrp.InstanceGuid,
-						lrp.CellId,
+						lrps[0].InstanceGuid,
+						lrps[0].CellId,
 						0,
 					)))
 				})

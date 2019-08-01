@@ -167,8 +167,8 @@ var _ = Describe("SSH", func() {
 		err := bbsClient.DesireLRP(logger, &lrp)
 		Expect(err).NotTo(HaveOccurred())
 
-		Eventually(func() []*models.ActualLRPGroup {
-			lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, processGuid)
+		Eventually(func() []*models.ActualLRP {
+			lrps, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: processGuid})
 			Expect(err).NotTo(HaveOccurred())
 			return lrps
 		}).Should(HaveLen(2))
