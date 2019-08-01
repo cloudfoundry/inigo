@@ -144,7 +144,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 				It("marks the LRPs as Suspect until they get started on the other rep", func() {
 					By("killing the original rep")
-					ginkgomon.Interrupt(rep)
+					ginkgomon.Kill(rep)
 
 					By("Asserting that the LRPs are marked as Suspect")
 					Eventually(runningLRPsPoller).Should(HaveLen(2))
