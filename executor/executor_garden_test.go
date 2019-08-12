@@ -83,8 +83,6 @@ var _ = Describe("Executor/Garden", func() {
 			ContainerMetricsReportInterval:     durationjson.Duration(15 * time.Second),
 			EnvoyConfigRefreshDelay:            durationjson.Duration(time.Second),
 			EnvoyDrainTimeout:                  durationjson.Duration(15 * time.Minute),
-			CSIPaths:                           []string{"/var/vcap/data/csiplugins"},
-			CSIMountRootDir:                    "/var/vcap/data/csimountroot",
 		}
 		config.GardenNetwork = "tcp"
 		config.GardenAddr = componentMaker.Addresses().Garden

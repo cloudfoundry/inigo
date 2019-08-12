@@ -149,7 +149,6 @@ type ComponentAddresses struct {
 	SSHProxy            string
 	SSHProxyHealthCheck string
 	FakeVolmanDriver    string
-	LocalNodePlugin     string
 	Locket              string
 	SQL                 string
 }
@@ -360,7 +359,6 @@ type ComponentMaker interface {
 	BBSSSLConfig() SSLConfig
 	Consul(argv ...string) ifrit.Runner
 	ConsulCluster() string
-	CsiLocalNodePlugin(logger lager.Logger) ifrit.Runner
 	DefaultStack() string
 	FileServer() (ifrit.Runner, string)
 	Garden(fs ...func(*runner.GdnRunnerConfig)) ifrit.Runner
@@ -1106,8 +1104,6 @@ func (maker commonComponentMaker) ConsulCluster() string {
 func (maker commonComponentMaker) VolmanClient(logger lager.Logger) (volman.Manager, ifrit.Runner) {
 	driverConfig := volmanclient.NewDriverConfig()
 	driverConfig.DriverPaths = []string{path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode))}
-	driverConfig.CSIPaths = []string{path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("local-node-plugin-%d", config.GinkgoConfig.ParallelNode))}
-	driverConfig.CSIMountRootDir = path.Join(maker.volmanDriverConfigDir, "local-node-plugin-mount")
 
 	metronClient, err := loggingclient.NewIngressClient(loggingclient.Config{})
 	Expect(err).NotTo(HaveOccurred())
@@ -1137,21 +1133,6 @@ func (maker commonComponentMaker) VolmanDriver(logger lager.Logger) (ifrit.Runne
 	Expect(err).NotTo(HaveOccurred())
 
 	return fakeDriverRunner, client
-}
-
-func (maker commonComponentMaker) CsiLocalNodePlugin(logger lager.Logger) ifrit.Runner {
-	localNodePluginRunner := ginkgomon.New(ginkgomon.Config{
-		Name: "local-node-plugin",
-		Command: exec.Command(
-			maker.artifacts.Executables["local-node-plugin"],
-			"-listenAddr", maker.addresses.LocalNodePlugin,
-			"-pluginsPath", path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("local-node-plugin-%d", config.GinkgoConfig.ParallelNode)),
-			"-volumesRoot", path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("local-node-volumes-%d", config.GinkgoConfig.ParallelNode)),
-		),
-		StartCheck: "local-node-plugin.started",
-	})
-
-	return localNodePluginRunner
 }
 
 func (maker commonComponentMaker) locketClientConfig() locket.ClientLocketConfig {
@@ -1616,8 +1597,6 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 			ContainerMetricsReportInterval:     durationjson.Duration(15 * time.Second),
 			EnvoyConfigRefreshDelay:            durationjson.Duration(time.Second),
 			EnvoyDrainTimeout:                  durationjson.Duration(15 * time.Minute),
-			CSIPaths:                           []string{"/var/vcap/data/csiplugins"},
-			CSIMountRootDir:                    "/var/vcap/data/csimountroot",
 
 			EnableUnproxiedPortMappings:   true,
 			GardenNetwork:                 "tcp",

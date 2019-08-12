@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	"code.cloudfoundry.org/consuladapter/consulrunner"
-	"code.cloudfoundry.org/csiplugin"
 	"code.cloudfoundry.org/dockerdriver"
 	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/inigo/helpers"
@@ -41,9 +40,7 @@ var (
 	driverSyncer           ifrit.Runner
 	driverSyncerProcess    ifrit.Process
 	localDriverRunner      ifrit.Runner
-	localNodePluginRunner  ifrit.Runner
 	localDriverProcess     ifrit.Process
-	localNodePluginProcess ifrit.Process
 
 	driverClient    dockerdriver.Driver
 	localNodeClient volman.Plugin
@@ -51,7 +48,6 @@ var (
 	logger lager.Logger
 
 	driverPluginsPath string
-	csiPluginsPath    string
 	certDepot         string
 )
 
@@ -86,7 +82,6 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		SSHProxy:            fmt.Sprintf("127.0.0.1:%d", 23500+config.GinkgoConfig.ParallelNode),
 		SSHProxyHealthCheck: fmt.Sprintf("127.0.0.1:%d", 24500+config.GinkgoConfig.ParallelNode),
 		FakeVolmanDriver:    fmt.Sprintf("127.0.0.1:%d", 25500+config.GinkgoConfig.ParallelNode),
-		LocalNodePlugin:     fmt.Sprintf("127.0.0.1:%d", 25550+config.GinkgoConfig.ParallelNode),
 		Locket:              fmt.Sprintf("127.0.0.1:%d", 26500+config.GinkgoConfig.ParallelNode),
 		SQL:                 fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, config.GinkgoConfig.ParallelNode),
 	}
@@ -123,20 +118,9 @@ var _ = BeforeEach(func() {
 	localDriverRunner, driverClient = componentMaker.VolmanDriver(logger)
 	localDriverProcess = ginkgomon.Invoke(localDriverRunner)
 
-	localNodePluginRunner /*, localNodeClient */ = componentMaker.CsiLocalNodePlugin(logger)
-	localNodePluginProcess = ginkgomon.Invoke(localNodePluginRunner)
-
 	// make a dummy spec file not corresponding to a running driver just to make sure volman ignores it
 	driverPluginsPath = path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode))
 	dockerdriver.WriteDriverSpec(logger, driverPluginsPath, "deaddriver", "json", []byte(`{"Name":"deaddriver","Addr":"https://127.0.0.1:1111"}`))
-
-	// make a dummy spec file not corresponding to a running node plugin just to make sure volman ignores it
-	csiPluginsPath = path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("local-node-plugin-%d", config.GinkgoConfig.ParallelNode))
-	csiSpec := csiplugin.CsiPluginSpec{
-		Name:    "dead-csi-plugin",
-		Address: "127.0.0.1:2222",
-	}
-	csiplugin.WriteSpec(logger, csiPluginsPath, csiSpec)
 
 	volmanClient, driverSyncer = componentMaker.VolmanClient(logger)
 	driverSyncerProcess = ginkgomon.Invoke(driverSyncer)
@@ -145,7 +129,7 @@ var _ = BeforeEach(func() {
 var _ = AfterEach(func() {
 	destroyContainerErrors := helpers.CleanupGarden(gardenClient)
 
-	helpers.StopProcesses(gardenProcess, driverSyncerProcess, localDriverProcess, localNodePluginProcess)
+	helpers.StopProcesses(gardenProcess, driverSyncerProcess, localDriverProcess)
 
 	Expect(destroyContainerErrors).To(
 		BeEmpty(),
@@ -154,7 +138,6 @@ var _ = AfterEach(func() {
 	)
 
 	os.Remove(filepath.Join(driverPluginsPath, "deaddriver.json"))
-	os.Remove(filepath.Join(csiPluginsPath, "dead-csi-plugin.json"))
 })
 
 func TestVolman(t *testing.T) {
@@ -176,9 +159,6 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["local-driver"], err = gexec.Build("code.cloudfoundry.org/localdriver/cmd/localdriver", "-race")
-	Expect(err).NotTo(HaveOccurred())
-
-	builtExecutables["local-node-plugin"], err = gexec.Build("code.cloudfoundry.org/local-node-plugin/cmd/localnodeplugin", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["auctioneer"], err = gexec.BuildIn(os.Getenv("AUCTIONEER_GOPATH"), "code.cloudfoundry.org/auctioneer/cmd/auctioneer", "-race")

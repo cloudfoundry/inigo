@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"code.cloudfoundry.org/local-node-plugin/node"
 	"github.com/nu7hatch/gouuid"
 
 	"code.cloudfoundry.org/bbs/models"
@@ -99,11 +98,8 @@ var _ = Describe("Executor/Garden/Volman", func() {
 			ContainerMetricsReportInterval:     durationjson.Duration(15 * time.Second),
 			EnvoyConfigRefreshDelay:            durationjson.Duration(time.Second),
 			EnvoyDrainTimeout:                  durationjson.Duration(15 * time.Minute),
-			CSIPaths:                           []string{"/var/vcap/data/csiplugins"},
-			CSIMountRootDir:                    "/var/vcap/data/csimountroot",
 		}
 		config.VolmanDriverPaths = path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("node-%d", ginkgoconfig.GinkgoConfig.ParallelNode))
-		config.CSIPaths = []string{path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("local-node-plugin-%d", ginkgoconfig.GinkgoConfig.ParallelNode))}
 		config.GardenNetwork = "tcp"
 		config.GardenAddr = componentMaker.Addresses().Garden
 		config.HealthyMonitoringInterval = durationjson.Duration(time.Second)
@@ -372,107 +368,6 @@ var _ = Describe("Executor/Garden/Volman", func() {
 						})
 					})
 				})
-
-				Context("when running the container with csi driver", func() {
-					var (
-						runReq       executor.RunRequest
-						csiVolume    string
-						volumeId     string
-						fileName     string
-						volumeMounts []executor.VolumeMount
-					)
-
-					BeforeEach(func() {
-						fileName = fmt.Sprintf("testfile-%d.txt", time.Now().UnixNano())
-						volumeId = fmt.Sprintf("some-volumeID-%d", time.Now().UnixNano())
-						csiVolume = fmt.Sprintf("csi-volumeID-%d", time.Now().UnixNano())
-						someConfig := map[string]interface{}{"id": csiVolume, "attributes": map[string]string{}}
-						volumeMounts = []executor.VolumeMount{executor.VolumeMount{ContainerPath: "/testmount", Driver: node.NODE_PLUGIN_ID, VolumeId: volumeId, Config: someConfig, Mode: executor.BindMountModeRW}}
-						runInfo := executor.RunInfo{
-							VolumeMounts: volumeMounts,
-							Privileged:   true,
-							Action: models.WrapAction(&models.RunAction{
-								Path: "/bin/touch",
-								User: "root",
-								Args: []string{"/testmount/" + fileName},
-							}),
-						}
-						runReq = executor.NewRunRequest(guid, &runInfo, executor.Tags{})
-					})
-
-					Context("when successfully mounting a RW Mode volume", func() {
-						BeforeEach(func() {
-							err := executorClient.RunContainer(logger, &runReq)
-							Expect(err).NotTo(HaveOccurred())
-							Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
-							Expect(getContainer(guid).RunResult.Failed).Should(BeFalse())
-						})
-
-						AfterEach(func() {
-							err := executorClient.DeleteContainer(logger, guid)
-							Expect(err).NotTo(HaveOccurred())
-
-							err = os.RemoveAll(path.Join(componentMaker.VolmanDriverConfigDir(), "_volumes", volumeId))
-							Expect(err).ToNot(HaveOccurred())
-
-							files, err := filepath.Glob(path.Join(componentMaker.VolmanDriverConfigDir(), "_volumes", volumeId, fileName))
-							Expect(err).ToNot(HaveOccurred())
-							Expect(len(files)).To(Equal(0))
-						})
-
-						It("can write files to the mounted volume", func() {
-							By("we expect the file it wrote to be available outside of the container")
-							volmanPath := path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("local-node-volumes-%d", ginkgoconfig.GinkgoConfig.ParallelNode), csiVolume, fileName)
-							files, err := filepath.Glob(volmanPath)
-							Expect(err).ToNot(HaveOccurred())
-							Expect(len(files)).To(Equal(1))
-						})
-
-						Context("when a second container using the same volume loads and then unloads", func() {
-							var (
-								runReq2   executor.RunRequest
-								fileName2 string
-								guid2     string
-							)
-							BeforeEach(func() {
-								id, err := uuid.NewV4()
-								Expect(err).NotTo(HaveOccurred())
-								guid2 = id.String()
-
-								tags := executor.Tags{"some-tag": "some-value"}
-								allocationRequest2 := executor.NewAllocationRequest(guid2, &executor.Resource{}, tags)
-								allocationFailures := executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest2})
-								Expect(allocationFailures).To(BeEmpty())
-
-								fileName2 = fmt.Sprintf("testfile2-%d.txt", time.Now().UnixNano())
-								runInfo := executor.RunInfo{
-									VolumeMounts: volumeMounts,
-									Privileged:   true,
-									Action: models.WrapAction(&models.RunAction{
-										Path: "/bin/touch",
-										User: "root",
-										Args: []string{"/testmount/" + fileName2},
-									}),
-								}
-								runReq2 = executor.NewRunRequest(guid2, &runInfo, executor.Tags{})
-								err = executorClient.RunContainer(logger, &runReq2)
-								Expect(err).NotTo(HaveOccurred())
-								Eventually(containerStatePoller(guid2)).Should(Equal(executor.StateCompleted))
-								Expect(getContainer(guid2).RunResult.Failed).Should(BeFalse())
-								err = executorClient.DeleteContainer(logger, guid2)
-								Expect(err).NotTo(HaveOccurred())
-							})
-							It("can still read files on the mounted volume for the first container", func() {
-								volmanPath := path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("local-node-volumes-%d", ginkgoconfig.GinkgoConfig.ParallelNode), csiVolume, fileName)
-								files, err := filepath.Glob(volmanPath)
-								Expect(err).ToNot(HaveOccurred())
-								Expect(len(files)).To(Equal(1))
-							})
-						})
-
-					})
-				})
-
 			})
 		})
 	})

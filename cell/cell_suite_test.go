@@ -85,7 +85,6 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		SSHProxy:            fmt.Sprintf("127.0.0.1:%d", 23500+ginkgoconfig.GinkgoConfig.ParallelNode),
 		SSHProxyHealthCheck: fmt.Sprintf("127.0.0.1:%d", 24500+ginkgoconfig.GinkgoConfig.ParallelNode),
 		FakeVolmanDriver:    fmt.Sprintf("127.0.0.1:%d", 25500+ginkgoconfig.GinkgoConfig.ParallelNode),
-		LocalNodePlugin:     fmt.Sprintf("127.0.0.1:%d", 25550+ginkgoconfig.GinkgoConfig.ParallelNode),
 		Locket:              fmt.Sprintf("127.0.0.1:%d", 26500+ginkgoconfig.GinkgoConfig.ParallelNode),
 		SQL:                 fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, ginkgoconfig.GinkgoConfig.ParallelNode),
 	}
