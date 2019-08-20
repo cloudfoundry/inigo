@@ -18,7 +18,8 @@ import (
 	"code.cloudfoundry.org/lager"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	routeemitterconfig "code.cloudfoundry.org/route-emitter/cmd/route-emitter/config"
-	routingapi "code.cloudfoundry.org/route-emitter/cmd/route-emitter/runners"
+	routingapihelpers "code.cloudfoundry.org/route-emitter/cmd/route-emitter/runners"
+	"code.cloudfoundry.org/routing-api"
 	"code.cloudfoundry.org/routing-info/cfroutes"
 	"code.cloudfoundry.org/routing-info/tcp_routes"
 	"code.cloudfoundry.org/tlsconfig"
@@ -138,7 +139,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 
 		Context("when tcp route emitting is enabled", func() {
 			var (
-				routingAPI        *routingapi.RoutingAPIRunner
+				routingAPI        *routingapihelpers.RoutingAPIRunner
 				routingAPIProcess ifrit.Process
 				sqlProcess        ifrit.Process
 			)
@@ -164,12 +165,21 @@ var _ = Describe("LocalRouteEmitter", func() {
 			})
 
 			Context("and the lrp has a tcp route", func() {
+				var routingAPIClient routing_api.Client
+
 				BeforeEach(func() {
-					routerGroupGUID, err := routingAPI.GetGUID()
+					var err error
+					routingAPIClient, err = routingapihelpers.NewRoutingAPIClient(
+						routingapihelpers.RoutingAPIClientConfig{
+							Port: routingAPI.Config.API.ListenPort,
+						},
+					)
+					Expect(err).NotTo(HaveOccurred())
+					routerGroups, err := routingAPIClient.RouterGroups()
 					Expect(err).NotTo(HaveOccurred())
 					tcpRoute := tcp_routes.TCPRoutes{
 						tcp_routes.TCPRoute{
-							RouterGroupGuid: routerGroupGUID,
+							RouterGroupGuid: routerGroups[0].Guid,
 							ExternalPort:    1234,
 							ContainerPort:   8080,
 						},
@@ -178,9 +188,8 @@ var _ = Describe("LocalRouteEmitter", func() {
 				})
 
 				It("emits the tcp route of the lrp", func() {
-					client := routingAPI.GetClient()
 					Eventually(func() error {
-						routes, err := client.TcpRouteMappings()
+						routes, err := routingAPIClient.TcpRouteMappings()
 						if err != nil {
 							return err
 						}
