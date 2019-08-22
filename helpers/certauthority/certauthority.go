@@ -4,9 +4,18 @@ import (
 	"io/ioutil"
 	"net"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/square/certstrap/pkix"
+)
+
+var (
+	// The github.com/square/certstrap/pkix package is not thread-safe for
+	// certain PKI operations. In order to avoid this concern leaking out into
+	// consumers of this package we perform our own locking.
+	caLock  sync.Mutex
+	csrLock sync.Mutex
 )
 
 type CertAuthority interface {
@@ -45,10 +54,13 @@ func (c certAuthority) GenerateSelfSignedCertAndKey(commonName string, sans []st
 		return handleError(err)
 	}
 
+	csrLock.Lock()
 	csr, err := pkix.CreateCertificateSigningRequest(key, "", []net.IP{net.ParseIP("127.0.0.1")}, sans, nil, "", "", "", "", commonName)
 	if err != nil {
+		csrLock.Unlock()
 		return handleError(err)
 	}
+	csrLock.Unlock()
 
 	caBytes, err := ioutil.ReadFile(c.caCert)
 	if err != nil {
@@ -117,10 +129,13 @@ func generateCAAndKey(depotDir, commonName string) (string, string, error) {
 		return handleError(err)
 	}
 
+	caLock.Lock()
 	crt, err := pkix.CreateCertificateAuthority(key, "", time.Now().AddDate(1, 0, 0), "", "", "", "", commonName)
 	if err != nil {
+		caLock.Unlock()
 		return handleError(err)
 	}
+	caLock.Unlock()
 
 	crtBytes, err := crt.Export()
 	if err != nil {
