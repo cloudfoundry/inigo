@@ -711,7 +711,7 @@ var _ = Describe("InstanceIdentity", func() {
 
 				It("should be able to reconnect with the updated certs", func() {
 					Eventually(connect).Should(Succeed())
-					Consistently(connect, 90*time.Second).Should(Succeed())
+					Consistently(connect, 90*time.Second, 20*time.Millisecond).Should(Succeed())
 				})
 			})
 
