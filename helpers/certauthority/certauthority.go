@@ -82,6 +82,7 @@ func (c certAuthority) GenerateSelfSignedCertAndKey(commonName string, sans []st
 		return handleError(err)
 	}
 
+	caLock.Lock()
 	var crt *pkix.Certificate
 	if intermediateCA {
 		crt, err = pkix.CreateIntermediateCertificateAuthority(ca, caKey, csr, time.Now().AddDate(1, 0, 0))
@@ -89,8 +90,10 @@ func (c certAuthority) GenerateSelfSignedCertAndKey(commonName string, sans []st
 		crt, err = pkix.CreateCertificateHost(ca, caKey, csr, time.Now().AddDate(1, 0, 0))
 	}
 	if err != nil {
+		caLock.Unlock()
 		return handleError(err)
 	}
+	caLock.Unlock()
 
 	crtBytes, err := crt.Export()
 	if err != nil {
