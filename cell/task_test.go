@@ -223,6 +223,105 @@ var _ = Describe("Tasks", func() {
 			})
 		})
 
+		Context("when using an ECR image", func() {
+			var (
+				imageRef        string
+				imageRootFSPath string
+				imageUsername   string
+				imagePassword   string
+			)
+			BeforeEach(func() {
+				imageRef = os.Getenv("INIGO_ECR_IMAGE_REF")
+				imageRootFSPath = os.Getenv("INIGO_ECR_IMAGE_ROOTFS_PATH")
+				imageUsername = os.Getenv("INIGO_ECR_AWS_ACCESS_KEY_ID")
+				imagePassword = os.Getenv("INIGO_ECR_AWS_SECRET_ACCESS_KEY")
+				if imageRef == "" {
+					Skip("no ECR image specified")
+				}
+			})
+
+			It("fetches the metadata", func() {
+				expectedTask := helpers.TaskCreateRequest(
+					guid,
+					&models.RunAction{
+						User: "vcap",
+						Path: "/tmp/diego/dockerapplifecycle/builder",
+						Args: []string{"--dockerRef", imageRef, "--dockerUser", imageUsername, "--dockerPassword", imagePassword, "--outputMetadataJSONFilename", "/tmp/result.json"},
+					},
+				)
+				expectedTask.CachedDependencies = []*models.CachedDependency{{
+					From:      fmt.Sprintf("http://%s/v1/static/docker_app_lifecycle/docker_app_lifecycle.tgz", componentMaker.Addresses().FileServer),
+					To:        "/tmp/diego/dockerapplifecycle",
+					Name:      "docker app lifecycle",
+					CacheKey:  "docker-app-lifecycle",
+					LogSource: "docker-app-lifecycle",
+				}}
+				expectedTask.Privileged = true
+				expectedTask.ResultFile = "/tmp/result.json"
+				expectedTask.EgressRules = []*models.SecurityGroupRule{
+					{
+						// allow traffic to the docker registry
+						Protocol:     models.AllProtocol,
+						Destinations: []string{"0.0.0.0/0"},
+					},
+				}
+
+				err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				Expect(err).NotTo(HaveOccurred())
+
+				var task *models.Task
+
+				Eventually(func() interface{} {
+					var err error
+
+					task, err = bbsClient.TaskByGuid(lgr, guid)
+					Expect(err).NotTo(HaveOccurred())
+
+					return task.State
+				}).Should(Equal(models.Task_Completed))
+
+				Expect(task.FailureReason).To(BeZero())
+				Expect(task.Failed).To(BeFalse())
+				Expect(task.Result).To(ContainSubstring(imageRef))
+			})
+
+			It("eventually runs", func() {
+				expectedTask := helpers.TaskCreateRequest(
+					guid,
+					&models.RunAction{
+						User: "vcap",
+						Path: "sh",
+						Args: []string{"-c", `[ "$FOO" = NEW-BAR -a "$BAZ" = WIBBLE ]`},
+						Env: []*models.EnvironmentVariable{
+							{"FOO", "OLD-BAR"},
+							{"BAZ", "WIBBLE"},
+							{"FOO", "NEW-BAR"},
+						},
+					},
+				)
+				expectedTask.Privileged = true
+				expectedTask.RootFs = imageRootFSPath
+				expectedTask.ImageUsername = imageUsername
+				expectedTask.ImagePassword = imagePassword
+
+				err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+				Expect(err).NotTo(HaveOccurred())
+
+				var task *models.Task
+
+				Eventually(func() interface{} {
+					var err error
+
+					task, err = bbsClient.TaskByGuid(lgr, guid)
+					Expect(err).NotTo(HaveOccurred())
+
+					return task.State
+				}).Should(Equal(models.Task_Completed))
+
+				Expect(task.Failed).To(BeFalse())
+			})
+		})
+
 		Context("when the command exceeds its memory limit", func() {
 			It("should fail the Task", func() {
 				expectedTask := helpers.TaskCreateRequestWithMemoryAndDisk(

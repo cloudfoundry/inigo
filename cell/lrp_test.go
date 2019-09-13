@@ -145,6 +145,23 @@ var _ = Describe("LRP", func() {
 			})
 		})
 
+		Context("when using an ECR image", func() {
+			BeforeEach(func() {
+				lrp.RootFs = os.Getenv("INIGO_ECR_IMAGE_URI")
+				lrp.ImageUsername = os.Getenv("INIGO_ECR_AWS_ACCESS_KEY_ID")
+				lrp.ImagePassword = os.Getenv("INIGO_ECR_AWS_SECRET_ACCESS_KEY")
+				lrp.Monitor = nil
+				if os.Getenv("INIGO_ECR_IMAGE_URI") == "" {
+					Skip("no ECR image specified")
+				}
+			})
+
+			It("eventually runs", func() {
+				Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+				Eventually(helpers.HelloWorldInstancePoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(ConsistOf([]string{"0"}))
+			})
+		})
+
 		Context("when correct checksum information is provided", func() {
 			var checksumValue string
 
