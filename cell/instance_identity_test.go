@@ -158,7 +158,11 @@ var _ = Describe("InstanceIdentity", func() {
 			{"rep", rep},
 			{"auctioneer", componentMaker.Auctioneer()},
 		}
-		cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, cellGroup))
+		terminationSignal := os.Interrupt
+		if runtime.GOOS == "windows" {
+			terminationSignal = os.Kill
+		}
+		cellProcess = ginkgomon.Invoke(grouper.NewParallel(terminationSignal, cellGroup))
 
 		Eventually(func() (models.CellSet, error) { return bbsServiceClient.Cells(lgr) }).Should(HaveLen(1))
 	})
