@@ -222,7 +222,7 @@ var _ = Describe("Evacuation", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			index := int32(0)
-			lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: lrp.ProcessGuid, Index: &index})
+			lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: lrp.ProcessGuid, Index: &index, CellID: cellAID})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(lrps)).To(Equal(1))
 
