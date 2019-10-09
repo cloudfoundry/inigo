@@ -455,13 +455,14 @@ var _ = Describe("InstanceIdentity", func() {
 						TLSClientConfig: &tls.Config{
 							InsecureSkipVerify: false,
 							RootCAs:            rootCAs,
-							CipherSuites:       []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256},
+							CipherSuites:       []uint16{tls.TLS_AES_128_GCM_SHA256}, //TLS1.3 only
+							MaxVersion:         tls.VersionTLS12,
 						},
 					}
 				})
 
 				It("should fail", func() {
-					Eventually(connect, 10*time.Second).Should(MatchError(ContainSubstring("tls: handshake failure")))
+					Eventually(connect, 10*time.Second).Should(MatchError(ContainSubstring("tls: error decoding message")))
 				})
 			})
 
@@ -566,7 +567,8 @@ var _ = Describe("InstanceIdentity", func() {
 					})
 
 					It("should fail to connect with the wrong server cert", func() {
-						Eventually(connect, 10*time.Second).Should(MatchError(ContainSubstring("tls: handshake failure")))
+						// this is a TLS 1.3 alert code
+						Eventually(connect, 10*time.Second).Should(MatchError(ContainSubstring("tls: alert(116)")))
 					})
 				})
 
@@ -592,7 +594,8 @@ var _ = Describe("InstanceIdentity", func() {
 					})
 
 					It("should fail to connect", func() {
-						Eventually(connect, 10*time.Second).Should(MatchError(ContainSubstring("tls: handshake failure")))
+						// this is a TLS 1.3 alert code
+						Eventually(connect, 10*time.Second).Should(MatchError(ContainSubstring("tls: alert(116)")))
 					})
 				})
 			})
