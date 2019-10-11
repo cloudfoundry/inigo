@@ -455,14 +455,14 @@ var _ = Describe("InstanceIdentity", func() {
 						TLSClientConfig: &tls.Config{
 							InsecureSkipVerify: false,
 							RootCAs:            rootCAs,
-							CipherSuites:       []uint16{tls.TLS_AES_128_GCM_SHA256}, //TLS1.3 only
+							CipherSuites:       []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256},
 							MaxVersion:         tls.VersionTLS12,
 						},
 					}
 				})
 
 				It("should fail", func() {
-					Eventually(connect, 10*time.Second).Should(MatchError(ContainSubstring("tls: error decoding message")))
+					Eventually(connect, 10*time.Second).Should(MatchError(ContainSubstring("tls: handshake failure")))
 				})
 			})
 
