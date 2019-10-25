@@ -36,11 +36,11 @@ var (
 	gardenProcess ifrit.Process
 	gardenClient  garden.Client
 
-	volmanClient           volman.Manager
-	driverSyncer           ifrit.Runner
-	driverSyncerProcess    ifrit.Process
-	localDriverRunner      ifrit.Runner
-	localDriverProcess     ifrit.Process
+	volmanClient        volman.Manager
+	driverSyncer        ifrit.Runner
+	driverSyncerProcess ifrit.Process
+	localDriverRunner   ifrit.Runner
+	localDriverProcess  ifrit.Process
 
 	driverClient    dockerdriver.Driver
 	localNodeClient volman.Plugin
