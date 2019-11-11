@@ -447,12 +447,12 @@ func (maker commonComponentMaker) NATS(argv ...string) ifrit.Runner {
 	Expect(err).NotTo(HaveOccurred())
 
 	return ginkgomon.New(ginkgomon.Config{
-		Name:              "gnatsd",
+		Name:              "nats-server",
 		AnsiColorCode:     "30m",
-		StartCheck:        "gnatsd is ready",
+		StartCheck:        "Server is ready",
 		StartCheckTimeout: maker.startCheckTimeout,
 		Command: exec.Command(
-			"gnatsd",
+			"nats-server",
 			append([]string{
 				"--addr", host,
 				"--port", port,
