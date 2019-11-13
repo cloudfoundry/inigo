@@ -104,6 +104,7 @@ func (c certAuthority) GenerateSelfSignedCertAndKey(commonName string, sans []st
 	if err != nil {
 		return handleError(err)
 	}
+	defer keyFile.Close()
 	err = ioutil.WriteFile(keyFile.Name(), keyBytes, 0655)
 	if err != nil {
 		return handleError(err)
@@ -113,6 +114,7 @@ func (c certAuthority) GenerateSelfSignedCertAndKey(commonName string, sans []st
 	if err != nil {
 		return handleError(err)
 	}
+	defer crtFile.Close()
 	err = ioutil.WriteFile(crtFile.Name(), crtBytes, 0655)
 	if err != nil {
 		return handleError(err)
