@@ -168,7 +168,8 @@ var _ = Describe("InstanceIdentity", func() {
 	})
 
 	AfterEach(func() {
-		os.RemoveAll(credDir)
+		deletedfunc := func() error { return os.RemoveAll(credDir) }
+		Eventually(deletedfunc).Should(Succeed())
 		helpers.StopProcesses(cellProcess)
 	})
 
@@ -355,6 +356,7 @@ var _ = Describe("InstanceIdentity", func() {
 			enableContainerProxy func(cfg *config.RepConfig)
 			loggregatorConfig    func(cfg *config.RepConfig)
 			testIngressServer    *testhelpers.TestIngressServer
+			tmpdir               string
 		)
 
 		BeforeEach(func() {
@@ -370,10 +372,16 @@ var _ = Describe("InstanceIdentity", func() {
 				config.EnvoyConfigRefreshDelay = durationjson.Duration(time.Second)
 				config.ContainerProxyPath = os.Getenv("ENVOY_PATH")
 
-				tmpdir := world.TempDir("envoy_config")
+				tmpdir = world.TempDir("envoy_config")
 
 				config.ContainerProxyConfigPath = tmpdir
 			}
+
+			AfterEach(func() {
+				if tmpdir != "" {
+					Expect(os.RemoveAll(tmpdir)).To(Succeed())
+				}
+			})
 
 			fixturesPath := path.Join(os.Getenv("GOPATH"), "src/code.cloudfoundry.org/inigo/fixtures/certs")
 			metronCAFile := path.Join(fixturesPath, "metron", "CA.crt")
@@ -873,18 +881,19 @@ var _ = Describe("InstanceIdentity", func() {
 		})
 
 		Context("and envoy takes longer to start", func() {
+			var dir string
 			BeforeEach(func() {
 				if runtime.GOOS == "windows" {
 					Skip("TODO: figure out a way to create .exe or .bat file that emulates the slep behavior in windows")
 				}
-				dir := createSleepyEnvoy()
+				dir = createSleepyEnvoy()
 
 				enableContainerProxy = func(config *config.RepConfig) {
 					config.EnableContainerProxy = true
 					config.EnvoyConfigRefreshDelay = durationjson.Duration(time.Second)
 					config.ContainerProxyPath = dir
 
-					tmpdir := world.TempDir("envoy_config")
+					tmpdir = world.TempDir("envoy_config")
 
 					config.ContainerProxyConfigPath = tmpdir
 				}
@@ -896,6 +905,11 @@ var _ = Describe("InstanceIdentity", func() {
 				}
 
 				rep = componentMaker.Rep(configRepCerts, enableContainerProxy, loggregatorConfig, enableDeclarativeHealthChecks)
+			})
+
+			AfterEach(func() {
+				deletedfunc := func() error { return os.RemoveAll(dir) }
+				Eventually(deletedfunc).Should(Succeed())
 			})
 
 			JustBeforeEach(func() {

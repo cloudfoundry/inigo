@@ -1648,8 +1648,10 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 			maker.artifacts.Executables["rep"],
 			"-config", configFile.Name()),
 		Cleanup: func() {
-			os.RemoveAll(tmpDir)
-			os.RemoveAll(healthcheckDummyDir)
+			deleteTmpDir := func() error { return os.RemoveAll(tmpDir) }
+			Eventually(deleteTmpDir).Should(Succeed())
+			healthcheckDummyDirFunc := func() error { return os.RemoveAll(healthcheckDummyDir) }
+			Eventually(healthcheckDummyDirFunc).Should(Succeed())
 		},
 	})
 }
