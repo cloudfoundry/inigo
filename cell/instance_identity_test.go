@@ -377,12 +377,6 @@ var _ = Describe("InstanceIdentity", func() {
 				config.ContainerProxyConfigPath = tmpdir
 			}
 
-			AfterEach(func() {
-				if tmpdir != "" {
-					Expect(os.RemoveAll(tmpdir)).To(Succeed())
-				}
-			})
-
 			fixturesPath := path.Join(os.Getenv("GOPATH"), "src/code.cloudfoundry.org/inigo/fixtures/certs")
 			metronCAFile := path.Join(fixturesPath, "metron", "CA.crt")
 			metronClientCertFile := path.Join(fixturesPath, "metron", "client.crt")
@@ -433,6 +427,9 @@ var _ = Describe("InstanceIdentity", func() {
 
 		AfterEach(func() {
 			testIngressServer.Stop()
+			if tmpdir != "" {
+				Expect(os.RemoveAll(tmpdir)).To(Succeed())
+			}
 		})
 
 		connect := func() error {
