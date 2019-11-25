@@ -168,9 +168,9 @@ var _ = Describe("InstanceIdentity", func() {
 	})
 
 	AfterEach(func() {
+		helpers.StopProcesses(cellProcess)
 		deletedfunc := func() error { return os.RemoveAll(credDir) }
 		Eventually(deletedfunc).Should(Succeed())
-		helpers.StopProcesses(cellProcess)
 	})
 
 	verifyCertAndKey := func(data []byte, organizationalUnit []string) {
