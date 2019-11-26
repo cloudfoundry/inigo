@@ -53,7 +53,6 @@ const GraceBusyboxImageURL = "docker:///cfdiegodocker/grace"
 
 var _ = Describe("InstanceIdentity", func() {
 	var (
-		tmpDir                                      string
 		validityPeriod                              time.Duration
 		cellProcess                                 ifrit.Process
 		fileServerStaticDir                         string
@@ -75,8 +74,7 @@ var _ = Describe("InstanceIdentity", func() {
 		organizationalUnit = []string{"jim:radical"}
 
 		var err error
-		tmpDir = world.TempDir("tmp-instance-identity-test")
-		credDir := world.TempDirWithParent(tmpDir, "instance-creds")
+		credDir := world.TempDirWithParent(suiteTempDir, "instance-creds")
 
 		// Hack to set MaxPathLenZero to false on the internal package authTemplate
 		dummyCsr := pkix.CertificateSigningRequest{}
@@ -171,8 +169,6 @@ var _ = Describe("InstanceIdentity", func() {
 
 	AfterEach(func() {
 		helpers.StopProcesses(cellProcess)
-		deletedfunc := func() error { return os.RemoveAll(tmpDir) }
-		Eventually(deletedfunc).Should(Succeed())
 	})
 
 	verifyCertAndKey := func(data []byte, organizationalUnit []string) {
@@ -366,7 +362,7 @@ var _ = Describe("InstanceIdentity", func() {
 				config.EnvoyConfigRefreshDelay = durationjson.Duration(time.Second)
 				config.ContainerProxyPath = os.Getenv("ENVOY_PATH")
 
-				envoyConfigDir := world.TempDirWithParent(tmpDir, "envoy_config")
+				envoyConfigDir := world.TempDirWithParent(suiteTempDir, "envoy_config")
 
 				config.ContainerProxyConfigPath = envoyConfigDir
 			}
@@ -875,7 +871,7 @@ var _ = Describe("InstanceIdentity", func() {
 				if runtime.GOOS == "windows" {
 					Skip("TODO: figure out a way to create .exe or .bat file that emulates the slep behavior in windows")
 				}
-				sleepyEnvoyDir = createSleepyEnvoy(tmpDir)
+				sleepyEnvoyDir = createSleepyEnvoy(suiteTempDir)
 
 				setSleepEnvoy := func(config *config.RepConfig) {
 					config.ContainerProxyPath = sleepyEnvoyDir

@@ -603,7 +603,7 @@ func (maker commonComponentMaker) grootfsConfigPath(grootfsConfig GrootFSConfig)
 }
 
 func (maker commonComponentMaker) networkPluginConfigPath(networkPluginConfig NetworkPluginConfig) string {
-	configFile, err := ioutil.TempFile("", "network-plugin-config")
+	configFile, err := ioutil.TempFile(TempDirWithParent(maker.tmpDir, "network-plugin"), "network-plugin-config")
 	Expect(err).NotTo(HaveOccurred())
 	defer configFile.Close()
 	data, err := json.Marshal(&networkPluginConfig)
@@ -778,7 +778,7 @@ func (maker commonComponentMaker) Locket(modifyConfigFuncs ...func(*locketconfig
 func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routeemitterconfig.RouteEmitterConfig)) ifrit.Runner {
 	name := "route-emitter-" + strconv.Itoa(n)
 
-	configFile, err := ioutil.TempFile("", "file-server-config")
+	configFile, err := ioutil.TempFile(TempDirWithParent(maker.tmpDir, "file-server"), "file-server-config")
 	Expect(err).NotTo(HaveOccurred())
 
 	cfg := routeemitterconfig.RouteEmitterConfig{
