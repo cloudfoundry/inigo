@@ -3,7 +3,6 @@ package executor_test
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -28,10 +27,11 @@ var (
 
 	gardenProcess ifrit.Process
 	gardenClient  garden.Client
-	certDepot     string
+	suiteTempDir  string
 )
 
 var _ = SynchronizedBeforeSuite(func() []byte {
+	suiteTempDir = world.TempDir("before-suite")
 	payload, err := json.Marshal(world.BuiltArtifacts{
 		Executables: CompileTestedExecutables(),
 	})
@@ -74,8 +74,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	allocator, err := portauthority.New(startPort, endPort)
 	Expect(err).NotTo(HaveOccurred())
 
-	certDepot, err = ioutil.TempDir("", "cert-depot")
-	Expect(err).NotTo(HaveOccurred())
+	certDepot := world.TempDirWithParent(suiteTempDir, "cert-depot")
 
 	certAuthority, err := certauthority.NewCertAuthority(certDepot, "ca")
 	Expect(err).NotTo(HaveOccurred())
@@ -85,8 +84,10 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 })
 
 var _ = AfterSuite(func() {
-	Expect(os.RemoveAll(certDepot)).To(Succeed())
 	componentMaker.Teardown()
+
+	deleteSuiteTempDir := func() error { return os.RemoveAll(suiteTempDir) }
+	Eventually(deleteSuiteTempDir).Should(Succeed())
 })
 
 var _ = BeforeEach(func() {

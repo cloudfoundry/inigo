@@ -3,7 +3,6 @@ package cell_test
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -41,7 +40,7 @@ var (
 	bbsClient                           bbs.InternalClient
 	bbsServiceClient                    serviceclient.ServiceClient
 	lgr                                 lager.Logger
-	certDepot                           string
+	suiteTempDir                        string
 )
 
 func overrideConvergenceRepeatInterval(conf *bbsconfig.BBSConfig) {
@@ -49,13 +48,14 @@ func overrideConvergenceRepeatInterval(conf *bbsconfig.BBSConfig) {
 }
 
 var _ = SynchronizedBeforeSuite(func() []byte {
+	suiteTempDir = world.TempDir("before-suite")
 	artifacts := world.BuiltArtifacts{
 		Lifecycles: world.BuiltLifecycles{},
 	}
 
-	artifacts.Lifecycles.BuildLifecycles("dockerapplifecycle")
+	artifacts.Lifecycles.BuildLifecycles("dockerapplifecycle", suiteTempDir)
 	artifacts.Executables = CompileTestedExecutables()
-	artifacts.Healthcheck = CompileHealthcheckExecutable()
+	artifacts.Healthcheck = CompileHealthcheckExecutable(suiteTempDir)
 
 	payload, err := json.Marshal(artifacts)
 	Expect(err).NotTo(HaveOccurred())
@@ -97,8 +97,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	allocator, err := portauthority.New(startPort, endPort)
 	Expect(err).NotTo(HaveOccurred())
 
-	certDepot, err = ioutil.TempDir("", "cert-depot")
-	Expect(err).NotTo(HaveOccurred())
+	certDepot := world.TempDirWithParent(suiteTempDir, "cert-depot")
 
 	certAuthority, err := certauthority.NewCertAuthority(certDepot, "ca")
 	Expect(err).NotTo(HaveOccurred())
@@ -108,11 +107,12 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 })
 
 var _ = AfterSuite(func() {
-	removeAll := func() error { return os.RemoveAll(certDepot) }
-	Eventually(removeAll).Should(Succeed())
 	if componentMaker != nil {
 		componentMaker.Teardown()
 	}
+
+	deleteSuiteTempDir := func() error { return os.RemoveAll(suiteTempDir) }
+	Eventually(deleteSuiteTempDir).Should(Succeed())
 })
 
 var _ = BeforeEach(func() {
@@ -162,8 +162,8 @@ func TestCell(t *testing.T) {
 	RunSpecs(t, "Cell Integration Suite")
 }
 
-func CompileHealthcheckExecutable() string {
-	healthcheckDir := world.TempDir("healthcheck")
+func CompileHealthcheckExecutable(tmpDir string) string {
+	healthcheckDir := world.TempDirWithParent(tmpDir, "healthcheck")
 	healthcheckPath, err := gexec.Build("code.cloudfoundry.org/healthcheck/cmd/healthcheck", "-race")
 	Expect(err).NotTo(HaveOccurred())
 

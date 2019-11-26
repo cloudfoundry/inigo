@@ -176,6 +176,8 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 		Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("%s not a valid duration", timeout))
 	}
 
+	tmpDir := TempDir("component-maker")
+
 	grootfsBinPath := os.Getenv("GROOTFS_BINPATH")
 	grootfsStorePath := os.Getenv("GROOTFS_STORE_PATH")
 	gardenBinPath := os.Getenv("GARDEN_BINPATH")
@@ -183,7 +185,7 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 	gardenGraphPath := os.Getenv("GARDEN_GRAPH_PATH")
 
 	if gardenGraphPath == "" {
-		gardenGraphPath = os.TempDir()
+		gardenGraphPath = TempDirWithParent(tmpDir, "garden-graph")
 	}
 
 	Expect(grootfsBinPath).NotTo(BeEmpty(), "must provide $GROOTFS_BINPATH")
@@ -309,7 +311,7 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 	guid, err := uuid.NewV4()
 	Expect(err).NotTo(HaveOccurred())
 
-	volmanConfigDir := TempDir(guid.String())
+	volmanConfigDir := TempDirWithParent(tmpDir, guid.String())
 
 	dbDriverName, dbBaseConnectionString := DBInfo()
 	return commonComponentMaker{
@@ -333,6 +335,8 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 		portAllocator: allocator,
 
 		startCheckTimeout: startCheckTimeout,
+
+		tmpDir: tmpDir,
 	}
 }
 
@@ -400,6 +404,7 @@ type commonComponentMaker struct {
 	dbBaseConnectionString string
 	portAllocator          portauthority.PortAllocator
 	startCheckTimeout      time.Duration
+	tmpDir                 string
 }
 
 func (maker commonComponentMaker) VolmanDriverConfigDir() string {
@@ -440,6 +445,9 @@ func (maker commonComponentMaker) Teardown() {
 	if runtime.GOOS != "windows" {
 		maker.GrootFSDeleteStore()
 	}
+
+	deleteTmpDir := func() error { return os.RemoveAll(maker.tmpDir) }
+	Eventually(deleteTmpDir).Should(Succeed())
 }
 
 func (maker commonComponentMaker) NATS(argv ...string) ifrit.Runner {
@@ -824,7 +832,7 @@ func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routee
 }
 
 func (maker commonComponentMaker) FileServer() (ifrit.Runner, string) {
-	servedFilesDir := TempDir("file-server-files")
+	servedFilesDir := TempDirWithParent(maker.tmpDir, "file-server-files")
 
 	configFile, err := ioutil.TempFile("", "file-server-config")
 	Expect(err).NotTo(HaveOccurred())
@@ -978,7 +986,7 @@ pid_file: ""
 `
 	routerConfig = fmt.Sprintf(routerConfig, natsHost, uint16(natsPortInt), uint16(routerPortInt))
 
-	configFile, err := ioutil.TempFile(os.TempDir(), "router-config")
+	configFile, err := ioutil.TempFile(TempDirWithParent(maker.tmpDir, "router-config"), "router-config")
 	Expect(err).NotTo(HaveOccurred())
 	defer configFile.Close()
 	_, err = configFile.Write([]byte(routerConfig))
@@ -1241,7 +1249,7 @@ func (maker v0ComponentMaker) RouteEmitter(modifyConfigFuncs ...func(config *rou
 }
 
 func (maker v0ComponentMaker) FileServer() (ifrit.Runner, string) {
-	servedFilesDir := TempDir("file-server-files")
+	servedFilesDir := TempDirWithParent(maker.tmpDir, "file-server-files")
 
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "file-server",
@@ -1339,9 +1347,8 @@ func (maker v0ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 
 	name := "rep-" + strconv.Itoa(n)
 
-	tmpDir := TempDir("executor")
-	cachePath := path.Join(tmpDir, "cache")
-	Expect(os.Mkdir(cachePath, 0777)).To(Succeed())
+	executorTempDir := TempDirWithParent(maker.tmpDir, "executor")
+	cachePath := TempDirWithParent(executorTempDir, "cache")
 
 	cfg := repconfig.RepConfig{
 		SessionName:               name,
@@ -1364,7 +1371,7 @@ func (maker v0ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 			GardenAddr:                   maker.addresses.Garden,
 			GardenHealthcheckProcessUser: "vcap",
 			GardenNetwork:                "tcp",
-			TempDir:                      tmpDir,
+			TempDir:                      executorTempDir,
 			VolmanDriverPaths:            path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
 		},
 		ListenAddr:          fmt.Sprintf("%s:%d", host, offsetPort(port, n)),
@@ -1446,9 +1453,6 @@ func (maker v0ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 			maker.artifacts.Executables["rep"],
 			args...,
 		),
-		Cleanup: func() {
-			os.RemoveAll(tmpDir)
-		},
 	})
 }
 
@@ -1530,9 +1534,8 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 
 	name := "rep-" + strconv.Itoa(n)
 
-	tmpDir := TempDir("executor")
-	cachePath := path.Join(tmpDir, "cache")
-	Expect(os.Mkdir(cachePath, 0777)).To(Succeed())
+	executorTempDir := TempDirWithParent(maker.tmpDir, "executor")
+	cachePath := TempDirWithParent(executorTempDir, "cache")
 
 	// garden 1.16.5 checks the source of the bind mount for mount options.
 	// Furthermore Rep in version 1.25.2 bind mounted the healthcheck binaries
@@ -1540,7 +1543,7 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 	// EnableDeclarativeHealthcheck.  We need to ensure that the source exist.
 	// see
 	// https://github.com/cloudfoundry/guardian/commit/1407257d989b483c64ea7d7cb6ea7d071fa75e84
-	healthcheckDummyDir := TempDir("healthcheck")
+	healthcheckDummyDir := TempDirWithParent(maker.tmpDir, "healthcheck")
 
 	repConfig := repconfig.RepConfig{
 		AdvertiseDomain:           "cell.service.cf.internal",
@@ -1603,7 +1606,7 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 			GardenAddr:                    maker.addresses.Garden,
 			ContainerMaxCpuShares:         1024,
 			CachePath:                     cachePath,
-			TempDir:                       tmpDir,
+			TempDir:                       executorTempDir,
 			GardenHealthcheckProcessUser:  "vcap",
 			VolmanDriverPaths:             path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
 			ContainerOwnerName:            "executor-" + strconv.Itoa(n),
@@ -1629,7 +1632,7 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 		modifyConfig(&repConfig)
 	}
 
-	configFile, err := ioutil.TempFile(os.TempDir(), "rep-config")
+	configFile, err := ioutil.TempFile(TempDirWithParent(maker.tmpDir, "rep-config"), "rep-config")
 	Expect(err).NotTo(HaveOccurred())
 
 	defer configFile.Close()
@@ -1647,12 +1650,6 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 		Command: exec.Command(
 			maker.artifacts.Executables["rep"],
 			"-config", configFile.Name()),
-		Cleanup: func() {
-			deleteTmpDir := func() error { return os.RemoveAll(tmpDir) }
-			Eventually(deleteTmpDir).Should(Succeed())
-			healthcheckDummyDirFunc := func() error { return os.RemoveAll(healthcheckDummyDir) }
-			Eventually(healthcheckDummyDirFunc).Should(Succeed())
-		},
 	})
 }
 
@@ -1691,7 +1688,7 @@ func (maker v1ComponentMaker) Auctioneer(modifyConfigFuncs ...func(cfg *auctione
 		modifyConfig(&auctioneerConfig)
 	}
 
-	configFile, err := ioutil.TempFile(os.TempDir(), "auctioneer-config")
+	configFile, err := ioutil.TempFile(TempDirWithParent(maker.tmpDir, "auctioneer"), "auctioneer-config")
 	Expect(err).NotTo(HaveOccurred())
 
 	err = json.NewEncoder(configFile).Encode(auctioneerConfig)
@@ -1713,7 +1710,7 @@ func (maker v1ComponentMaker) RouteEmitter(modifyConfigFuncs ...func(config *rou
 	return maker.RouteEmitterN(0, modifyConfigFuncs...)
 }
 
-func (blc *BuiltLifecycles) BuildLifecycles(lifeCycle string) {
+func (blc *BuiltLifecycles) BuildLifecycles(lifeCycle string, tmpDir string) {
 	lifeCyclePath := filepath.Join("code.cloudfoundry.org", lifeCycle)
 
 	builderPath, err := gexec.BuildIn(os.Getenv("APP_LIFECYCLE_GOPATH"), filepath.Join(lifeCyclePath, "builder"), "-race")
@@ -1730,7 +1727,7 @@ func (blc *BuiltLifecycles) BuildLifecycles(lifeCycle string) {
 	os.Unsetenv("CGO_ENABLED")
 	Expect(err).NotTo(HaveOccurred())
 
-	lifecycleDir := TempDir(lifeCycle)
+	lifecycleDir := TempDirWithParent(tmpDir, lifeCycle)
 
 	err = os.Rename(builderPath, filepath.Join(lifecycleDir, "builder"))
 	Expect(err).NotTo(HaveOccurred())

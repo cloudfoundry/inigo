@@ -53,7 +53,7 @@ const GraceBusyboxImageURL = "docker:///cfdiegodocker/grace"
 
 var _ = Describe("InstanceIdentity", func() {
 	var (
-		credDir                                     string
+		tmpDir                                      string
 		validityPeriod                              time.Duration
 		cellProcess                                 ifrit.Process
 		fileServerStaticDir                         string
@@ -65,6 +65,7 @@ var _ = Describe("InstanceIdentity", func() {
 		organizationalUnit                          []string
 		rep, fileServer, metronAgent                ifrit.Runner
 		logger                                      lager.Logger
+		configRepCerts                              func(cfg *config.RepConfig)
 	)
 
 	BeforeEach(func() {
@@ -74,7 +75,8 @@ var _ = Describe("InstanceIdentity", func() {
 		organizationalUnit = []string{"jim:radical"}
 
 		var err error
-		credDir = world.TempDir("instance-creds")
+		tmpDir = world.TempDir("tmp-instance-identity-test")
+		credDir := world.TempDirWithParent(tmpDir, "instance-creds")
 
 		// Hack to set MaxPathLenZero to false on the internal package authTemplate
 		dummyCsr := pkix.CertificateSigningRequest{}
@@ -94,7 +96,7 @@ var _ = Describe("InstanceIdentity", func() {
 
 		validityPeriod = time.Minute
 
-		configRepCerts := func(cfg *config.RepConfig) {
+		configRepCerts = func(cfg *config.RepConfig) {
 			cfg.InstanceIdentityCredDir = credDir
 			cfg.InstanceIdentityCAPath = intermediateCACertPath
 			cfg.InstanceIdentityPrivateKeyPath = intermediateKeyPath
@@ -169,7 +171,7 @@ var _ = Describe("InstanceIdentity", func() {
 
 	AfterEach(func() {
 		helpers.StopProcesses(cellProcess)
-		deletedfunc := func() error { return os.RemoveAll(credDir) }
+		deletedfunc := func() error { return os.RemoveAll(tmpDir) }
 		Eventually(deletedfunc).Should(Succeed())
 	})
 
@@ -352,29 +354,21 @@ var _ = Describe("InstanceIdentity", func() {
 	Context("when running with envoy proxy", func() {
 		var (
 			address              string
-			configRepCerts       func(cfg *config.RepConfig)
 			enableContainerProxy func(cfg *config.RepConfig)
 			loggregatorConfig    func(cfg *config.RepConfig)
 			testIngressServer    *testhelpers.TestIngressServer
-			tmpdir               string
 		)
 
 		BeforeEach(func() {
-			configRepCerts = func(cfg *config.RepConfig) {
-				cfg.InstanceIdentityCredDir = credDir
-				cfg.InstanceIdentityCAPath = intermediateCACertPath
-				cfg.InstanceIdentityPrivateKeyPath = intermediateKeyPath
-				cfg.InstanceIdentityValidityPeriod = durationjson.Duration(validityPeriod)
-			}
 
 			enableContainerProxy = func(config *config.RepConfig) {
 				config.EnableContainerProxy = true
 				config.EnvoyConfigRefreshDelay = durationjson.Duration(time.Second)
 				config.ContainerProxyPath = os.Getenv("ENVOY_PATH")
 
-				tmpdir = world.TempDir("envoy_config")
+				envoyConfigDir := world.TempDirWithParent(tmpDir, "envoy_config")
 
-				config.ContainerProxyConfigPath = tmpdir
+				config.ContainerProxyConfigPath = envoyConfigDir
 			}
 
 			fixturesPath := path.Join(os.Getenv("GOPATH"), "src/code.cloudfoundry.org/inigo/fixtures/certs")
@@ -427,9 +421,6 @@ var _ = Describe("InstanceIdentity", func() {
 
 		AfterEach(func() {
 			testIngressServer.Stop()
-			if tmpdir != "" {
-				Expect(os.RemoveAll(tmpdir)).To(Succeed())
-			}
 		})
 
 		connect := func() error {
@@ -878,21 +869,16 @@ var _ = Describe("InstanceIdentity", func() {
 		})
 
 		Context("and envoy takes longer to start", func() {
-			var dir string
+			var sleepyEnvoyDir string
+
 			BeforeEach(func() {
 				if runtime.GOOS == "windows" {
 					Skip("TODO: figure out a way to create .exe or .bat file that emulates the slep behavior in windows")
 				}
-				dir = createSleepyEnvoy()
+				sleepyEnvoyDir = createSleepyEnvoy(tmpDir)
 
-				enableContainerProxy = func(config *config.RepConfig) {
-					config.EnableContainerProxy = true
-					config.EnvoyConfigRefreshDelay = durationjson.Duration(time.Second)
-					config.ContainerProxyPath = dir
-
-					tmpdir = world.TempDir("envoy_config")
-
-					config.ContainerProxyConfigPath = tmpdir
+				setSleepEnvoy := func(config *config.RepConfig) {
+					config.ContainerProxyPath = sleepyEnvoyDir
 				}
 
 				enableDeclarativeHealthChecks := func(config *config.RepConfig) {
@@ -901,12 +887,7 @@ var _ = Describe("InstanceIdentity", func() {
 					config.HealthCheckWorkPoolSize = 1
 				}
 
-				rep = componentMaker.Rep(configRepCerts, enableContainerProxy, loggregatorConfig, enableDeclarativeHealthChecks)
-			})
-
-			AfterEach(func() {
-				deletedfunc := func() error { return os.RemoveAll(dir) }
-				Eventually(deletedfunc).Should(Succeed())
+				rep = componentMaker.Rep(configRepCerts, enableContainerProxy, setSleepEnvoy, loggregatorConfig, enableDeclarativeHealthChecks)
 			})
 
 			JustBeforeEach(func() {
@@ -1083,42 +1064,10 @@ func verifyCertificateIsSignedBy(cert, parentCert *x509.Certificate) {
 	Expect(certs[0]).To(ContainElement(parentCert))
 }
 
-// func createSleepyEnvoyWindows() string {
-// 	envoyPath := filepath.Join(os.Getenv("ENVOY_PATH"), "envoy.exe")
-//
-// 	dir := world.TempDir("envoy")
-//
-// 	copyFile := func(dst, src string) {
-// 		dstFile, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
-// 		Expect(err).NotTo(HaveOccurred())
-// 		defer dstFile.Close()
-// 		srcFile, err := os.Open(src)
-// 		Expect(err).NotTo(HaveOccurred())
-// 		defer srcFile.Close()
-// 		_, err = io.Copy(dstFile, srcFile)
-// 		Expect(err).NotTo(HaveOccurred())
-// 	}
-//
-// 	copyFile(filepath.Join(dir, "orig_envoy.exe"), envoyPath)
-//
-// 	newEnvoy, err := os.OpenFile(filepath.Join(dir, "envoy.bat"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
-// 	Expect(err).NotTo(HaveOccurred())
-// 	defer newEnvoy.Close()
-// 	fmt.Fprintf(newEnvoy, `@ECHO OFF
-// timeout 5
-// pushd %sdp0
-// set script_dir=%s
-// popd
-// start %s\orig_envoy.exe %s`, "%~", "%CD%", "%script_dir%", "%*")
-// 	// Expect(os.Remove(filepath.Join(dir, "envoy.exe"))).To(Succeed())
-// 	return dir
-// }
-//
-
-func createSleepyEnvoy() string {
+func createSleepyEnvoy(parentDir string) string {
 	envoyPath := filepath.Join(os.Getenv("ENVOY_PATH"), "envoy")
 
-	dir := world.TempDir("envoy")
+	dir := world.TempDirWithParent(parentDir, "sleepy-envoy")
 
 	copyFile := func(dst, src string) {
 		dstFile, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
