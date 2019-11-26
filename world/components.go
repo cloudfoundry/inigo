@@ -834,7 +834,7 @@ func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routee
 func (maker commonComponentMaker) FileServer() (ifrit.Runner, string) {
 	servedFilesDir := TempDirWithParent(maker.tmpDir, "file-server-files")
 
-	configFile, err := ioutil.TempFile("", "file-server-config")
+	configFile, err := ioutil.TempFile(TempDirWithParent(maker.tmpDir, "file-server"), "file-server-config")
 	Expect(err).NotTo(HaveOccurred())
 
 	cfg := fileserverconfig.FileServerConfig{
@@ -891,11 +891,9 @@ func (maker commonComponentMaker) FileServer() (ifrit.Runner, string) {
 			"-config", configFile.Name(),
 		),
 		Cleanup: func() {
-			err := os.RemoveAll(servedFilesDir)
-			Expect(err).NotTo(HaveOccurred())
+			os.RemoveAll(servedFilesDir)
 			configFile.Close()
-			err = os.RemoveAll(configFile.Name())
-			Expect(err).NotTo(HaveOccurred())
+			os.RemoveAll(configFile.Name())
 		},
 	}), servedFilesDir
 }
