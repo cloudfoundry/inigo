@@ -778,8 +778,9 @@ func (maker commonComponentMaker) Locket(modifyConfigFuncs ...func(*locketconfig
 func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routeemitterconfig.RouteEmitterConfig)) ifrit.Runner {
 	name := "route-emitter-" + strconv.Itoa(n)
 
-	configFile, err := ioutil.TempFile(TempDirWithParent(maker.tmpDir, "file-server"), "file-server-config")
+	configFile, err := ioutil.TempFile(TempDirWithParent(maker.tmpDir, "route-emitter"), "route-emitter-config")
 	Expect(err).NotTo(HaveOccurred())
+	defer configFile.Close()
 
 	cfg := routeemitterconfig.RouteEmitterConfig{
 		ConsulEnabled:                      true,
@@ -825,7 +826,6 @@ func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routee
 			"-config", configFile.Name(),
 		),
 		Cleanup: func() {
-			configFile.Close()
 			os.RemoveAll(configFile.Name())
 		},
 	})
@@ -836,6 +836,7 @@ func (maker commonComponentMaker) FileServer() (ifrit.Runner, string) {
 
 	configFile, err := ioutil.TempFile(TempDirWithParent(maker.tmpDir, "file-server"), "file-server-config")
 	Expect(err).NotTo(HaveOccurred())
+	defer configFile.Close()
 
 	cfg := fileserverconfig.FileServerConfig{
 		ServerAddress: maker.addresses.FileServer,
@@ -892,7 +893,6 @@ func (maker commonComponentMaker) FileServer() (ifrit.Runner, string) {
 		),
 		Cleanup: func() {
 			os.RemoveAll(servedFilesDir)
-			configFile.Close()
 			os.RemoveAll(configFile.Name())
 		},
 	}), servedFilesDir
