@@ -6,6 +6,10 @@ Inigo is the integration test suite for Diego, the new container management
 system for Cloud Foundry. Learn more about Diego and its components at
 [diego-design-notes](https://github.com/cloudfoundry/diego-design-notes)
 
+## Reporting issues and requesting features
+
+Please report all issues and feature requests in [cloudfoundry/diego-release](https://github.com/cloudfoundry/diego-release/issues).
+
 These instructions are for Mac OS X and Linux.
 
 
