@@ -912,7 +912,7 @@ var _ = Describe("InstanceIdentity", func() {
 							Expect(len(lrps)).To(Equal(1))
 							return lrps[0]
 						}).Should(gstruct.PointTo(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
-							"CrashReason": ContainSubstring("Instance never healthy after 3s: instance proxy failed to start"),
+							"CrashReason": MatchRegexp("Instance never healthy after .*: instance proxy failed to start"),
 						})))
 					})
 				})
