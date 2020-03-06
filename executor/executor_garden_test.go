@@ -21,7 +21,6 @@ import (
 	"code.cloudfoundry.org/inigo/world"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
-	"github.com/cloudfoundry-incubator/cf-test-helpers/generator"
 	uuid "github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -49,6 +48,10 @@ var _ = Describe("Executor/Garden", func() {
 
 	BeforeEach(func() {
 		gardenHealthcheckRootFS = ""
+
+		randomName, err := uuid.NewV4()
+		Expect(err).NotTo(HaveOccurred())
+
 		config = executorinit.ExecutorConfig{
 			GardenNetwork:                      "unix",
 			GardenAddr:                         "/tmp/garden.sock",
@@ -98,7 +101,7 @@ var _ = Describe("Executor/Garden", func() {
 
 		cachePath = world.TempDir("executor-tmp")
 
-		ownerName = "executor" + generator.RandomName()
+		ownerName = "executor" + randomName.String()
 
 		config.CachePath = cachePath
 		config.ContainerOwnerName = ownerName

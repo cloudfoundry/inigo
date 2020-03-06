@@ -23,7 +23,6 @@ import (
 	"code.cloudfoundry.org/inigo/world"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
-	"github.com/cloudfoundry-incubator/cf-test-helpers/generator"
 	. "github.com/onsi/ginkgo"
 	ginkgoconfig "github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
@@ -63,6 +62,9 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		env = driverhttp.NewHttpDriverEnv(logger, ctx)
 
 		cachePath = world.TempDir("executor-tmp")
+
+		randomName, err := uuid.NewV4()
+		Expect(err).NotTo(HaveOccurred())
 
 		config = executorinit.ExecutorConfig{
 			GardenNetwork:                      "unix",
@@ -104,7 +106,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 		config.GardenAddr = componentMaker.Addresses().Garden
 		config.HealthyMonitoringInterval = durationjson.Duration(time.Second)
 		config.UnhealthyMonitoringInterval = durationjson.Duration(100 * time.Millisecond)
-		config.ContainerOwnerName = "executor" + generator.RandomName()
+		config.ContainerOwnerName = "executor" + randomName.String()
 		config.GardenHealthcheckProcessPath = "/bin/sh"
 		config.GardenHealthcheckProcessArgs = []string{"-c", "echo", "checking health"}
 		config.GardenHealthcheckProcessUser = "vcap"
