@@ -124,18 +124,29 @@ func (c certAuthority) GenerateSelfSignedCertAndKey(commonName string, sans []st
 }
 
 func generateCAAndKey(depotDir, commonName string) (string, string, error) {
-	key, err := pkix.CreateRSAKey(4096)
-	if err != nil {
-		return handleError(err)
-	}
-
-	keyBytes, err := key.ExportPrivate()
+	caKey, err := pkix.CreateRSAKey(4096)
 	if err != nil {
 		return handleError(err)
 	}
 
 	caLock.Lock()
-	crt, err := pkix.CreateCertificateAuthority(key, "", time.Now().AddDate(1, 0, 0), "", "", "", "", commonName)
+	ca, err := pkix.CreateCertificateAuthority(caKey, "", time.Now().AddDate(1, 0, 0), "", "", "", "", commonName)
+	if err != nil {
+		caLock.Unlock()
+		return handleError(err)
+	}
+
+	crtKey, err := pkix.CreateRSAKey(4096)
+	if err != nil {
+		return handleError(err)
+	}
+
+	csr, err := pkix.CreateCertificateSigningRequest(crtKey, "", nil, nil, nil, "", "", "", "", commonName)
+	if err != nil {
+		return handleError(err)
+	}
+
+	crt, err := pkix.CreateIntermediateCertificateAuthority(ca, crtKey, csr, time.Now().AddDate(1, 0, 0))
 	if err != nil {
 		caLock.Unlock()
 		return handleError(err)
@@ -143,6 +154,11 @@ func generateCAAndKey(depotDir, commonName string) (string, string, error) {
 	caLock.Unlock()
 
 	crtBytes, err := crt.Export()
+	if err != nil {
+		return handleError(err)
+	}
+
+	keyBytes, err := crtKey.ExportPrivate()
 	if err != nil {
 		return handleError(err)
 	}

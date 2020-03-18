@@ -43,7 +43,6 @@ import (
 	"github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/matchers"
 	"github.com/onsi/gomega/types"
-	"github.com/square/certstrap/pkix"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
@@ -75,10 +74,6 @@ var _ = Describe("InstanceIdentity", func() {
 
 		var err error
 		credDir := world.TempDirWithParent(suiteTempDir, "instance-creds")
-
-		// Hack to set MaxPathLenZero to false on the internal package authTemplate
-		dummyCsr := pkix.CertificateSigningRequest{}
-		_, _ = pkix.CreateIntermediateCertificateAuthority(nil, nil, &dummyCsr, time.Now())
 
 		certAuthority, err := certauthority.NewCertAuthority(credDir, "ca-with-no-max-path-length")
 		Expect(err).NotTo(HaveOccurred())
