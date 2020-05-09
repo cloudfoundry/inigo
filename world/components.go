@@ -1,9 +1,6 @@
 package world
 
 import (
-	"crypto/tls"
-	"crypto/x509"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -23,6 +20,7 @@ import (
 	"code.cloudfoundry.org/bbs"
 	bbsconfig "code.cloudfoundry.org/bbs/cmd/bbs/config"
 	bbsrunner "code.cloudfoundry.org/bbs/cmd/bbs/testrunner"
+	"code.cloudfoundry.org/bbs/db/sqldb/helpers"
 	"code.cloudfoundry.org/bbs/encryption"
 	"code.cloudfoundry.org/bbs/serviceclient"
 	"code.cloudfoundry.org/bbs/test_helpers"
@@ -47,6 +45,7 @@ import (
 	"code.cloudfoundry.org/inigo/helpers/portauthority"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
+	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/locket"
 	locketconfig "code.cloudfoundry.org/locket/cmd/locket/config"
 	locketrunner "code.cloudfoundry.org/locket/cmd/locket/testrunner"
@@ -58,10 +57,6 @@ import (
 	routingapiconfig "code.cloudfoundry.org/routing-api/config"
 	"code.cloudfoundry.org/volman"
 	volmanclient "code.cloudfoundry.org/volman/vollocal"
-	"github.com/go-sql-driver/mysql"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/lib/pq"
-	_ "github.com/lib/pq"
 	uuid "github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/config"
@@ -472,9 +467,10 @@ func (maker commonComponentMaker) NATS(argv ...string) ifrit.Runner {
 func (maker commonComponentMaker) SQL(argv ...string) ifrit.Runner {
 	return ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
 		defer GinkgoRecover()
-		dbConnectionString := appendExtraConnectionStringParam(maker.dbDriverName, maker.dbBaseConnectionString, maker.sqlCACertFile)
 
-		db, err := sql.Open(maker.dbDriverName, dbConnectionString)
+		logger := lagertest.NewTestLogger("component-maker")
+
+		db, err := helpers.Connect(logger, maker.dbDriverName, maker.dbBaseConnectionString, "", false)
 		Expect(err).NotTo(HaveOccurred())
 		defer db.Close()
 
@@ -485,8 +481,8 @@ func (maker commonComponentMaker) SQL(argv ...string) ifrit.Runner {
 		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", sqlDBName))
 		Expect(err).NotTo(HaveOccurred())
 
-		dbWithDatabaseNameConnectionString := appendExtraConnectionStringParam(maker.dbDriverName, fmt.Sprintf("%s%s", maker.dbBaseConnectionString, sqlDBName), maker.sqlCACertFile)
-		db, err = sql.Open(maker.dbDriverName, dbWithDatabaseNameConnectionString)
+		dbWithDatabaseNameConnectionString := fmt.Sprintf("%s%s", maker.dbBaseConnectionString, sqlDBName)
+		db, err = helpers.Connect(logger, maker.dbDriverName, dbWithDatabaseNameConnectionString, "", false)
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(db.Ping).Should(Succeed())
 
@@ -496,7 +492,7 @@ func (maker commonComponentMaker) SQL(argv ...string) ifrit.Runner {
 
 		select {
 		case <-signals:
-			db, err := sql.Open(maker.dbDriverName, dbConnectionString)
+			db, err := helpers.Connect(logger, maker.dbDriverName, maker.dbBaseConnectionString, "", false)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(db.Ping).ShouldNot(HaveOccurred())
 
@@ -1753,45 +1749,6 @@ func (blc *BuiltLifecycles) BuildLifecycles(lifeCycle string, tmpDir string) {
 // that it does not interfere with the ginkgo parallel node offest in the base port.
 func offsetPort(basePort, offset int) int {
 	return basePort + (10 * offset)
-}
-
-func appendExtraConnectionStringParam(driverName, databaseConnectionString, sqlCACertFile string) string {
-	switch driverName {
-	case "mysql":
-		cfg, err := mysql.ParseDSN(databaseConnectionString)
-		Expect(err).NotTo(HaveOccurred())
-
-		if sqlCACertFile != "" {
-			certBytes, err := ioutil.ReadFile(sqlCACertFile)
-			Expect(err).NotTo(HaveOccurred())
-
-			caCertPool := x509.NewCertPool()
-			Expect(caCertPool.AppendCertsFromPEM(certBytes)).To(BeTrue())
-
-			tlsConfig := &tls.Config{
-				InsecureSkipVerify: false,
-				RootCAs:            caCertPool,
-			}
-
-			mysql.RegisterTLSConfig("bbs-tls", tlsConfig)
-			cfg.TLSConfig = "bbs-tls"
-		}
-		cfg.Timeout = 10 * time.Minute
-		cfg.ReadTimeout = 10 * time.Minute
-		cfg.WriteTimeout = 10 * time.Minute
-		databaseConnectionString = cfg.FormatDSN()
-	case "postgres":
-		var err error
-		databaseConnectionString, err = pq.ParseURL(databaseConnectionString)
-		Expect(err).NotTo(HaveOccurred())
-		if sqlCACertFile == "" {
-			databaseConnectionString = databaseConnectionString + " sslmode=disable"
-		} else {
-			databaseConnectionString = fmt.Sprintf("%s sslmode=verify-ca sslrootcert=%s", databaseConnectionString, sqlCACertFile)
-		}
-	}
-
-	return databaseConnectionString
 }
 
 func intPtr(i int) *int {
