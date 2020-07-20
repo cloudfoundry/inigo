@@ -26,6 +26,7 @@ func main() {
 	http.HandleFunc("/cf-instance-cert", cfInstanceCert)
 	http.HandleFunc("/cf-instance-key", cfInstanceKey)
 	http.HandleFunc("/cat", catFile)
+	http.HandleFunc("/envoy-config", envoyConfig)
 
 	if memoryAllocated != nil {
 		someGarbage = make([]uint8, *memoryAllocated*1024*1024)
@@ -170,4 +171,24 @@ func catFile(res http.ResponseWriter, req *http.Request) {
 	}
 
 	res.Write(data)
+}
+
+func envoyConfig(res http.ResponseWriter, req *http.Request) {
+	resp, err := http.Get("http://localhost:61003/config_dump")
+	if err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+		res.Write([]byte(err.Error()))
+		return
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+		res.Write([]byte(err.Error()))
+		return
+	}
+
+	res.Write(body)
 }

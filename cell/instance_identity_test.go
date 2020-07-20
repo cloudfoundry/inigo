@@ -457,6 +457,21 @@ var _ = Describe("InstanceIdentity", func() {
 				Eventually(connect, 10*time.Second).Should(Succeed())
 			})
 
+			It("should not use deprecated envoy fields", func() {
+				Eventually(connect, 10*time.Second).Should(Succeed())
+
+				resp, err := client.Get(fmt.Sprintf("https://%s/envoy-config", address))
+				Expect(err).NotTo(HaveOccurred())
+				defer resp.Body.Close()
+
+				Expect(resp.StatusCode).To(Equal(http.StatusOK))
+
+				envoyConfig, err := ioutil.ReadAll(resp.Body)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(string(envoyConfig)).NotTo(ContainSubstring("hidden_envoy_deprecated_"))
+			})
+
 			Context("when rep is configured for mutual tls", func() {
 				var (
 					caCertContent   []byte
