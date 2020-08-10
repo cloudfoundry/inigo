@@ -224,7 +224,11 @@ var _ = Describe("Evacuation", func() {
 			index := int32(0)
 			lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: lrp.ProcessGuid, Index: &index, CellID: cellAID})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(lrps)).To(Equal(1))
+			// This list of LRPs can have one or both of an EVACUATING LRP and an ORDINARY LRP (if we
+			// happen to catch the BBS before it has transitioned the ORDINARY one to UNCLAIMED). We don't
+			// really care which one we get the keys from as they should be identical so just ensure there
+			// is at least one.
+			Expect(lrps).NotTo(BeEmpty())
 
 			// the following requests will hang since garden is stuck trying to destroy the containers
 			go func() {
