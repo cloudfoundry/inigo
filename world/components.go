@@ -216,15 +216,15 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 	}
 
 	_, caCert := certAuthority.CAAndKey()
-	bbsServerKey, bbsServerCert, err := certAuthority.GenerateSelfSignedCertAndKey("bbs_server", nil, false)
+	bbsServerKey, bbsServerCert, err := certAuthority.GenerateSelfSignedCertAndKey("bbs_server", []string{"bbs_server"}, false)
 	Expect(err).NotTo(HaveOccurred())
 	repServerKey, repServerCert, err := certAuthority.GenerateSelfSignedCertAndKey("rep_server", []string{"cell.service.cf.internal", "*.cell.service.cf.internal"}, false)
 	Expect(err).NotTo(HaveOccurred())
-	auctioneerServerKey, auctioneerServerCert, err := certAuthority.GenerateSelfSignedCertAndKey("auctioneer_server", nil, false)
+	auctioneerServerKey, auctioneerServerCert, err := certAuthority.GenerateSelfSignedCertAndKey("auctioneer_server", []string{"auctioneer_server"}, false)
 	Expect(err).NotTo(HaveOccurred())
-	routingAPIKey, routingAPICert, err := certAuthority.GenerateSelfSignedCertAndKey("routing_api_server", nil, false)
+	routingAPIKey, routingAPICert, err := certAuthority.GenerateSelfSignedCertAndKey("routing_api_server", []string{"routing_api_server"}, false)
 	Expect(err).NotTo(HaveOccurred())
-	clientKey, clientCert, err := certAuthority.GenerateSelfSignedCertAndKey("client", nil, false)
+	clientKey, clientCert, err := certAuthority.GenerateSelfSignedCertAndKey("client", []string{"client"}, false)
 	Expect(err).NotTo(HaveOccurred())
 
 	sqlCACert := filepath.Join(os.Getenv("GOPATH"), "src", "code.cloudfoundry.org", "inigo", "fixtures", "certs", "sql-certs", "server-ca.crt")

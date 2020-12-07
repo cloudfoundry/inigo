@@ -26,9 +26,9 @@ mv -f out/* ./certs/
 rm -rf out
 
 certstrap init --common-name "CA" --passphrase ""
-certstrap request-cert --common-name "metron" --passphrase ""
+certstrap request-cert --common-name "metron" --domain "metron" --passphrase ""
 certstrap sign metron --CA "CA"
-certstrap request-cert --common-name "client" --passphrase ""
+certstrap request-cert --common-name "client" --domain "client" --passphrase ""
 certstrap sign client --CA "CA"
 
 mv -f out/* ./certs/metron

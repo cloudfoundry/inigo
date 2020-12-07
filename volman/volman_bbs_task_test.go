@@ -2,6 +2,7 @@ package volman_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"time"
 
@@ -67,7 +68,7 @@ var _ = Describe("Tasks", func() {
 			BeforeEach(func() {
 				guid = helpers.GenerateGuid()
 
-				fileName = "testfile-" + string(time.Now().UnixNano()) + ".txt"
+				fileName = fmt.Sprintf("testfile-%d.txt", time.Now().UnixNano())
 				expectedTask := helpers.TaskCreateRequest(
 					guid,
 					&models.RunAction{
@@ -186,7 +187,7 @@ var _ = Describe("Tasks", func() {
 })
 
 func generateVolumeObject(driver string) *models.VolumeMount {
-	volumeId := "some-volumeID-" + string(time.Now().UnixNano())
+	volumeId := fmt.Sprintf("some-volumeID-%d", time.Now().UnixNano())
 	someConfig := map[string]interface{}{"volume_id": volumeId}
 	jsonSomeConfig, err := json.Marshal(someConfig)
 	Expect(err).NotTo(HaveOccurred())

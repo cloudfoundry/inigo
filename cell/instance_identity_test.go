@@ -79,7 +79,7 @@ var _ = Describe("InstanceIdentity", func() {
 		Expect(err).NotTo(HaveOccurred())
 		_, caCertPath := certAuthority.CAAndKey()
 
-		intermediateKeyPath, intermediateCACertPath, err = certAuthority.GenerateSelfSignedCertAndKey("instance-identity", []string{}, true)
+		intermediateKeyPath, intermediateCACertPath, err = certAuthority.GenerateSelfSignedCertAndKey("instance-identity", []string{"instance-identity"}, true)
 		Expect(err).NotTo(HaveOccurred())
 		caCertContent, err := ioutil.ReadFile(caCertPath)
 		Expect(err).NotTo(HaveOccurred())
@@ -554,8 +554,7 @@ var _ = Describe("InstanceIdentity", func() {
 					})
 
 					It("should fail to connect with the wrong server cert", func() {
-						// this is a TLS 1.3 alert code
-						Eventually(connect, 10*time.Second).Should(MatchError(ContainSubstring("tls: alert(116)")))
+						Eventually(connect, 10*time.Second).Should(MatchError(ContainSubstring("tls: certificate required")))
 					})
 				})
 
@@ -581,8 +580,7 @@ var _ = Describe("InstanceIdentity", func() {
 					})
 
 					It("should fail to connect", func() {
-						// this is a TLS 1.3 alert code
-						Eventually(connect, 10*time.Second).Should(MatchError(ContainSubstring("tls: alert(116)")))
+						Eventually(connect, 10*time.Second).Should(MatchError(ContainSubstring("tls: certificate required")))
 					})
 				})
 			})
