@@ -762,7 +762,8 @@ func (maker commonComponentMaker) Locket(modifyConfigFuncs ...func(*locketconfig
 		cfg.ListenAddress = maker.addresses.Locket
 		cfg.SQLCACertFile = maker.sqlCACertFile
 		cfg.LagerConfig = lagerflags.LagerConfig{
-			LogLevel: "debug",
+			LogLevel:   "debug",
+			TimeFormat: lagerflags.FormatRFC3339,
 		}
 
 		for _, modifyConfig := range modifyConfigFuncs {
@@ -779,13 +780,16 @@ func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routee
 	defer configFile.Close()
 
 	cfg := routeemitterconfig.RouteEmitterConfig{
-		ConsulEnabled:                      true,
-		ConsulSessionName:                  name,
-		NATSAddresses:                      maker.addresses.NATS,
-		BBSAddress:                         maker.BBSURL(),
-		LockRetryInterval:                  durationjson.Duration(time.Second),
-		ConsulCluster:                      maker.ConsulCluster(),
-		LagerConfig:                        lagerflags.LagerConfig{LogLevel: "debug"},
+		ConsulEnabled:     true,
+		ConsulSessionName: name,
+		NATSAddresses:     maker.addresses.NATS,
+		BBSAddress:        maker.BBSURL(),
+		LockRetryInterval: durationjson.Duration(time.Second),
+		ConsulCluster:     maker.ConsulCluster(),
+		LagerConfig: lagerflags.LagerConfig{
+			LogLevel:   "debug",
+			TimeFormat: lagerflags.FormatRFC3339,
+		},
 		BBSClientCertFile:                  maker.bbsSSL.ClientCert,
 		BBSClientKeyFile:                   maker.bbsSSL.ClientKey,
 		BBSCACertFile:                      maker.bbsSSL.CACert,
@@ -839,7 +843,7 @@ func (maker commonComponentMaker) FileServer() (ifrit.Runner, string) {
 		ConsulCluster: maker.ConsulCluster(),
 		LagerConfig: lagerflags.LagerConfig{
 			LogLevel:   "debug",
-			TimeFormat: lagerflags.FormatUnixEpoch,
+			TimeFormat: lagerflags.FormatRFC3339,
 		},
 		StaticDirectory: servedFilesDir,
 	}
@@ -1014,7 +1018,8 @@ func (maker commonComponentMaker) SSHProxy(modifyConfigFuncs ...func(*sshproxyco
 		EnableDiegoAuth:    true,
 		HostKey:            maker.sshConfig.HostKeyPem,
 		LagerConfig: lagerflags.LagerConfig{
-			LogLevel: "debug",
+			LogLevel:   "debug",
+			TimeFormat: lagerflags.FormatRFC3339,
 		},
 		CommunicationTimeout:     durationjson.Duration(10 * time.Second),
 		ConnectToInstanceAddress: false,
@@ -1164,7 +1169,8 @@ func (maker v0ComponentMaker) Auctioneer(modifyConfigFuncs ...func(*auctioneerco
 		ListenAddress:     maker.addresses.Auctioneer,
 		LockRetryInterval: durationjson.Duration(1 * time.Second),
 		LagerConfig: lagerflags.LagerConfig{
-			LogLevel: "debug",
+			LogLevel:   "debug",
+			TimeFormat: lagerflags.FormatRFC3339,
 		},
 		RepCACert:               maker.repSSL.CACert,
 		RepClientCert:           maker.repSSL.ClientCert,
@@ -1213,7 +1219,8 @@ func (maker v0ComponentMaker) RouteEmitter(modifyConfigFuncs ...func(config *rou
 		LockRetryInterval: durationjson.Duration(1 * time.Second),
 		ConsulCluster:     maker.ConsulCluster(),
 		LagerConfig: lagerflags.LagerConfig{
-			LogLevel: "debug",
+			LogLevel:   "debug",
+			TimeFormat: lagerflags.FormatRFC3339,
 		},
 	}
 
@@ -1283,7 +1290,8 @@ func (maker v0ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig
 		HealthAddress: maker.addresses.Health,
 		ListenAddress: maker.addresses.BBS,
 		LagerConfig: lagerflags.LagerConfig{
-			LogLevel: "debug",
+			LogLevel:   "debug",
+			TimeFormat: lagerflags.FormatRFC3339,
 		},
 		RepCACert:     maker.repSSL.CACert,
 		RepClientCert: maker.repSSL.ClientCert,
@@ -1374,7 +1382,8 @@ func (maker v0ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 		LockTTL:             durationjson.Duration(10 * time.Second),
 		ClientLocketConfig:  locket.ClientLocketConfig{},
 		LagerConfig: lagerflags.LagerConfig{
-			LogLevel: "debug",
+			LogLevel:   "debug",
+			TimeFormat: lagerflags.FormatRFC3339,
 		},
 		PollingInterval:    durationjson.Duration(1 * time.Second),
 		ReportInterval:     durationjson.Duration(1 * time.Minute),
@@ -1480,7 +1489,8 @@ func (maker v1ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig
 			},
 		},
 		LagerConfig: lagerflags.LagerConfig{
-			LogLevel: "debug",
+			LogLevel:   "debug",
+			TimeFormat: lagerflags.FormatRFC3339,
 		},
 		LocksLocketEnabled:             true,
 		CellRegistrationsLocketEnabled: true,
@@ -1610,7 +1620,8 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 			PathToTLSCACert:               maker.repSSL.CACert,
 		},
 		LagerConfig: lagerflags.LagerConfig{
-			LogLevel: "debug",
+			LogLevel:   "debug",
+			TimeFormat: lagerflags.FormatRFC3339,
 		},
 	}
 
@@ -1671,7 +1682,8 @@ func (maker v1ComponentMaker) Auctioneer(modifyConfigFuncs ...func(cfg *auctione
 		ServerCertFile:          maker.auctioneerSSL.ServerCert,
 		ServerKeyFile:           maker.auctioneerSSL.ServerKey,
 		LagerConfig: lagerflags.LagerConfig{
-			LogLevel: "debug",
+			LogLevel:   "debug",
+			TimeFormat: lagerflags.FormatRFC3339,
 		},
 		LocksLocketEnabled: true,
 		ClientLocketConfig: maker.locketClientConfig(),
