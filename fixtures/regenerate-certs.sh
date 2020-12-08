@@ -34,7 +34,7 @@ certstrap sign client --CA "CA"
 mv -f out/* ./certs/metron
 
 certstrap init --common-name "server-ca" --passphrase ""
-certstrap request-cert --common-name "localhost" --passphrase ""
+certstrap request-cert --common-name "localhost" --domain "localhost" --passphrase ""
 certstrap sign localhost --CA "server-ca"
 
 mv -f out/localhost.crt ./certs/sql-certs/server.crt
