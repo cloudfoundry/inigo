@@ -421,7 +421,8 @@ echo should have died by now
 
 				Expect(task.Failed).To(BeTrue())
 
-				Expect(task.FailureReason).To(ContainSubstring("too many open files"))
+				// when sh can't open another file the exec exits 2
+				Expect(task.FailureReason).To(ContainSubstring("status 2"))
 			})
 		})
 
