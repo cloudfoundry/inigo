@@ -120,7 +120,7 @@ func CompileTestedExecutables() world.BuiltExecutables {
 
 	builtExecutables := world.BuiltExecutables{}
 
-	builtExecutables["garden"], err = gexec.BuildIn(os.Getenv("GARDEN_GOPATH"), "code.cloudfoundry.org/guardian/cmd/gdn", "-race", "-a", "-tags", "daemon")
+	builtExecutables["garden"], err = gexec.BuildIn(os.Getenv("GARDEN_GOPATH"), "guardian/cmd/gdn", "-race", "-a", "-tags", "daemon")
 	Expect(err).NotTo(HaveOccurred())
 
 	return builtExecutables
