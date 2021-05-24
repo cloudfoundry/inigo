@@ -178,33 +178,39 @@ func CompileTestedExecutables() world.BuiltExecutables {
 
 	builtExecutables := world.BuiltExecutables{}
 
-	builtExecutables["garden"], err = gexec.BuildIn(os.Getenv("GARDEN_GOPATH"), "guardian/cmd/gdn", "-race", "-a", "-tags", "daemon")
+	cwd, err := os.Getwd()
+	Expect(err).NotTo(HaveOccurred())
+	Expect(os.Chdir(os.Getenv("GARDEN_GOPATH"))).To(Succeed())
+	builtExecutables["garden"], err = gexec.Build("./cmd/gdn", "-race", "-a", "-tags", "daemon")
+	Expect(err).NotTo(HaveOccurred())
+	Expect(os.Chdir(cwd)).To(Succeed())
+
+	builtExecutables["auctioneer"], err = gexec.Build("code.cloudfoundry.org/auctioneer/cmd/auctioneer", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	builtExecutables["auctioneer"], err = gexec.BuildIn(os.Getenv("AUCTIONEER_GOPATH"), "code.cloudfoundry.org/auctioneer/cmd/auctioneer", "-race")
+	builtExecutables["rep"], err = gexec.Build("code.cloudfoundry.org/rep/cmd/rep", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	builtExecutables["rep"], err = gexec.BuildIn(os.Getenv("REP_GOPATH"), "code.cloudfoundry.org/rep/cmd/rep", "-race")
+	builtExecutables["bbs"], err = gexec.Build("code.cloudfoundry.org/bbs/cmd/bbs", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	builtExecutables["bbs"], err = gexec.BuildIn(os.Getenv("BBS_GOPATH"), "code.cloudfoundry.org/bbs/cmd/bbs", "-race")
+	builtExecutables["locket"], err = gexec.Build("code.cloudfoundry.org/locket/cmd/locket", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	builtExecutables["locket"], err = gexec.BuildIn(os.Getenv("LOCKET_GOPATH"), "code.cloudfoundry.org/locket/cmd/locket", "-race")
+	builtExecutables["file-server"], err = gexec.Build("code.cloudfoundry.org/fileserver/cmd/file-server", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	builtExecutables["file-server"], err = gexec.BuildIn(os.Getenv("FILE_SERVER_GOPATH"), "code.cloudfoundry.org/fileserver/cmd/file-server", "-race")
-	Expect(err).NotTo(HaveOccurred())
-
-	builtExecutables["route-emitter"], err = gexec.BuildIn(os.Getenv("ROUTE_EMITTER_GOPATH"), "code.cloudfoundry.org/route-emitter/cmd/route-emitter", "-race")
+	builtExecutables["route-emitter"], err = gexec.Build("code.cloudfoundry.org/route-emitter/cmd/route-emitter", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	if runtime.GOOS != "windows" {
+		Expect(os.Chdir(os.Getenv("ROUTER_GOPATH"))).To(Succeed())
 		builtExecutables["router"], err = gexec.BuildIn(os.Getenv("ROUTER_GOPATH"), "code.cloudfoundry.org/gorouter", "-race")
 		Expect(err).NotTo(HaveOccurred())
+		Expect(os.Chdir(cwd)).To(Succeed())
 	}
 
-	builtExecutables["routing-api"], err = gexec.BuildIn(os.Getenv("ROUTING_API_GOPATH"), "code.cloudfoundry.org/routing-api/cmd/routing-api", "-race")
+	builtExecutables["routing-api"], err = gexec.Build("code.cloudfoundry.org/routing-api/cmd/routing-api", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	builtExecutables["ssh-proxy"], err = gexec.Build("code.cloudfoundry.org/diego-ssh/cmd/ssh-proxy", "-race")

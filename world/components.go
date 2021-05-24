@@ -1719,10 +1719,10 @@ func (maker v1ComponentMaker) RouteEmitter(modifyConfigFuncs ...func(config *rou
 func (blc *BuiltLifecycles) BuildLifecycles(lifeCycle string, tmpDir string) {
 	lifeCyclePath := filepath.Join("code.cloudfoundry.org", lifeCycle)
 
-	builderPath, err := gexec.BuildIn(os.Getenv("APP_LIFECYCLE_GOPATH"), filepath.Join(lifeCyclePath, "builder"), "-race")
+	builderPath, err := gexec.Build(filepath.Join(lifeCyclePath, "builder"), "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	launcherPath, err := gexec.BuildIn(os.Getenv("APP_LIFECYCLE_GOPATH"), filepath.Join(lifeCyclePath, "launcher"), "-race")
+	launcherPath, err := gexec.Build(filepath.Join(lifeCyclePath, "launcher"), "-race")
 	Expect(err).NotTo(HaveOccurred())
 
 	healthcheckPath, err := gexec.Build("code.cloudfoundry.org/healthcheck/cmd/healthcheck", "-race")
