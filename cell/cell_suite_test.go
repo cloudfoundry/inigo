@@ -204,10 +204,12 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	Expect(err).NotTo(HaveOccurred())
 
 	if runtime.GOOS != "windows" {
+		Expect(os.Setenv("GO111MODULE", "auto")).To(Succeed())
 		Expect(os.Chdir(os.Getenv("ROUTER_GOPATH"))).To(Succeed())
 		builtExecutables["router"], err = gexec.BuildIn(os.Getenv("ROUTER_GOPATH"), "code.cloudfoundry.org/gorouter", "-race")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(os.Chdir(cwd)).To(Succeed())
+		Expect(os.Setenv("GO111MODULE", "")).To(Succeed())
 	}
 
 	builtExecutables["routing-api"], err = gexec.Build("code.cloudfoundry.org/routing-api/cmd/routing-api", "-race")
