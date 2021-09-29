@@ -139,6 +139,7 @@ type ComponentAddresses struct {
 	Rep                 string
 	FileServer          string
 	Router              string
+	RouterStatus        string
 	Garden              string
 	Auctioneer          string
 	SSHProxy            string
@@ -905,6 +906,12 @@ func (maker commonComponentMaker) Router() ifrit.Runner {
 	routerPortInt, err := strconv.Atoi(routerPort)
 	Expect(err).NotTo(HaveOccurred())
 
+	_, routerStatusPort, err := net.SplitHostPort(maker.addresses.RouterStatus)
+	Expect(err).NotTo(HaveOccurred())
+
+	routerStatusPortInt, err := strconv.Atoi(routerStatusPort)
+	Expect(err).NotTo(HaveOccurred())
+
 	natsHost, natsPort, err := net.SplitHostPort(maker.addresses.NATS)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -913,7 +920,7 @@ func (maker commonComponentMaker) Router() ifrit.Runner {
 
 	routerConfig := `
 status:
-  port: 0
+  port: %d
   user: ""
   pass: ""
 nats:
@@ -983,7 +990,7 @@ token_fetcher_retry_interval: 0s
 token_fetcher_expiration_buffer_time: 0
 pid_file: ""
 `
-	routerConfig = fmt.Sprintf(routerConfig, natsHost, uint16(natsPortInt), uint16(routerPortInt))
+	routerConfig = fmt.Sprintf(routerConfig, uint16(routerStatusPortInt), natsHost, uint16(natsPortInt), uint16(routerPortInt))
 
 	configFile, err := ioutil.TempFile(TempDirWithParent(maker.tmpDir, "router-config"), "router-config")
 	Expect(err).NotTo(HaveOccurred())

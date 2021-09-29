@@ -79,6 +79,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		Rep:                 fmt.Sprintf("127.0.0.1:%d", 14000+ginkgoconfig.GinkgoConfig.ParallelNode),
 		FileServer:          fmt.Sprintf("%s:%d", localIP, 17000+ginkgoconfig.GinkgoConfig.ParallelNode),
 		Router:              fmt.Sprintf("127.0.0.1:%d", 18000+ginkgoconfig.GinkgoConfig.ParallelNode),
+		RouterStatus:        fmt.Sprintf("127.0.0.1:%d", 18100+ginkgoconfig.GinkgoConfig.ParallelNode),
 		BBS:                 fmt.Sprintf("127.0.0.1:%d", 20500+ginkgoconfig.GinkgoConfig.ParallelNode*2),
 		Health:              fmt.Sprintf("127.0.0.1:%d", 20500+ginkgoconfig.GinkgoConfig.ParallelNode*2+1),
 		Auctioneer:          fmt.Sprintf("127.0.0.1:%d", 23000+ginkgoconfig.GinkgoConfig.ParallelNode),
