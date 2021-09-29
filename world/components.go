@@ -917,8 +917,9 @@ status:
   user: ""
   pass: ""
 nats:
-- host: %s
-  port: %d
+  hosts:
+  - hostname: %s
+    port: %d
   user: ""
   pass: ""
 logging:

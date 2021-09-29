@@ -19,7 +19,7 @@ import (
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	routeemitterconfig "code.cloudfoundry.org/route-emitter/cmd/route-emitter/config"
 	routingapihelpers "code.cloudfoundry.org/route-emitter/cmd/route-emitter/runners"
-	"code.cloudfoundry.org/routing-api"
+	routing_api "code.cloudfoundry.org/routing-api"
 	"code.cloudfoundry.org/routing-info/cfroutes"
 	"code.cloudfoundry.org/routing-info/tcp_routes"
 	"code.cloudfoundry.org/tlsconfig"
