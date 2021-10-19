@@ -159,7 +159,7 @@ var _ = Describe("InstanceIdentity", func() {
 		}
 		cellProcess = ginkgomon.Invoke(grouper.NewParallel(terminationSignal, cellGroup))
 
-		Eventually(func() (models.CellSet, error) { return bbsServiceClient.Cells(lgr) }).Should(HaveLen(1))
+		Eventually(func() (models.CellSet, error) { return bbsServiceClient.Cells(lgr) }, 5*time.Second).Should(HaveLen(1))
 	})
 
 	AfterEach(func() {
