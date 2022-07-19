@@ -252,7 +252,7 @@ func replaceGrootFSWithHangingVersion() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(f.Chmod(0755)).To(Succeed())
 	path := filepath.Join(os.Getenv("GROOTFS_BINPATH"), "grootfs")
-	os.Remove(fmt.Sprintf("/tmp/image_plugin_sleep_%d", GinkgoParallelNode()))
+	os.Remove(fmt.Sprintf("/tmp/image_plugin_sleep_%d", GinkgoParallelProcess()))
 	fmt.Fprintf(f, `#!/usr/bin/env bash
 echo $(date +%%s) "$@" >> /tmp/image_plugin_trace
 lock_file=/tmp/image_plugin_sleep_%d
@@ -262,7 +262,7 @@ if [[ "x$3" == "xdelete" && ! ( "$4" =~ .*healthcheck.* ) && ! -f $lock_file ]];
   sleep 10
 fi
 %s "$@"
-`, GinkgoParallelNode(), path)
+`, GinkgoParallelProcess(), path)
 	Expect(f.Close()).To(Succeed())
 	ginkgomon.Interrupt(gardenProcess)
 	gardenProcess = ginkgomon.Invoke(componentMaker.Garden(func(config *runner.GdnRunnerConfig) {

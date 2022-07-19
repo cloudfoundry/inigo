@@ -90,7 +90,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		SQL:                 fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, ginkgoconfig.GinkgoConfig.ParallelNode),
 	}
 
-	node := GinkgoParallelNode()
+	node := GinkgoParallelProcess()
 	startPort := 1000 * node
 	portRange := 950
 	endPort := startPort + portRange

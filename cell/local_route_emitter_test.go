@@ -145,7 +145,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 			)
 
 			BeforeEach(func() {
-				sqlRunner := test_helpers.NewSQLRunner(fmt.Sprintf("routingapi_%d", GinkgoParallelNode()))
+				sqlRunner := test_helpers.NewSQLRunner(fmt.Sprintf("routingapi_%d", GinkgoParallelProcess()))
 				sqlProcess = ginkgomon.Invoke(sqlRunner)
 				routingAPI = componentMaker.RoutingAPI()
 				routeEmitterConfigs = append(routeEmitterConfigs, func(cfg *routeemitterconfig.RouteEmitterConfig) {

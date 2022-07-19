@@ -271,7 +271,7 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 	storeTimestamp := time.Now().UnixNano()
 
 	unprivilegedGrootfsConfig := GrootFSConfig{
-		StorePath: fmt.Sprintf("/mnt/garden-storage/unprivileged-%d-%d", GinkgoParallelNode(), storeTimestamp),
+		StorePath: fmt.Sprintf("/mnt/garden-storage/unprivileged-%d-%d", GinkgoParallelProcess(), storeTimestamp),
 		DraxBin:   "/usr/local/bin/drax",
 		LogLevel:  "debug",
 	}
@@ -281,7 +281,7 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 	unprivilegedGrootfsConfig.Create.SkipLayerValidation = true
 
 	privilegedGrootfsConfig := GrootFSConfig{
-		StorePath: fmt.Sprintf("/mnt/garden-storage/privileged-%d-%d", GinkgoParallelNode(), storeTimestamp),
+		StorePath: fmt.Sprintf("/mnt/garden-storage/privileged-%d-%d", GinkgoParallelProcess(), storeTimestamp),
 		DraxBin:   "/usr/local/bin/drax",
 		LogLevel:  "debug",
 	}
@@ -477,7 +477,7 @@ func (maker commonComponentMaker) SQL(argv ...string) ifrit.Runner {
 
 		Eventually(db.Ping).Should(Succeed())
 
-		sqlDBName := fmt.Sprintf("diego_%d", GinkgoParallelNode())
+		sqlDBName := fmt.Sprintf("diego_%d", GinkgoParallelProcess())
 		db.Exec(fmt.Sprintf("DROP DATABASE %s", sqlDBName))
 		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", sqlDBName))
 		Expect(err).NotTo(HaveOccurred())
@@ -715,7 +715,7 @@ func (maker commonComponentMaker) RoutingAPI(modifyConfigFuncs ...func(*routinga
 
 	sqlConfig := routingapi.SQLConfig{
 		DriverName: maker.dbDriverName,
-		DBName:     fmt.Sprintf("routingapi_%d", GinkgoParallelNode()),
+		DBName:     fmt.Sprintf("routingapi_%d", GinkgoParallelProcess()),
 	}
 
 	port, err := maker.portAllocator.ClaimPorts(2)
@@ -1369,7 +1369,7 @@ func (maker v0ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 		CaCertFile:                maker.repSSL.CACert,
 		ServerCertFile:            maker.repSSL.ServerCert,
 		ServerKeyFile:             maker.repSSL.ServerKey,
-		CellID:                    "cell_z1" + "-" + strconv.Itoa(n) + "-" + strconv.Itoa(GinkgoParallelNode()),
+		CellID:                    "cell_z1" + "-" + strconv.Itoa(n) + "-" + strconv.Itoa(GinkgoParallelProcess()),
 		Zone:                      "z1",
 		ConsulCluster:             maker.ConsulCluster(),
 		EvacuationPollingInterval: durationjson.Duration(1 * time.Second),
@@ -1570,7 +1570,7 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 		BBSClientKeyFile:          maker.bbsSSL.ClientKey,
 		BBSCACertFile:             maker.bbsSSL.CACert,
 		ListenAddr:                fmt.Sprintf("%s:%d", host, offsetPort(port, n)),
-		CellID:                    "the-cell-id-" + strconv.Itoa(GinkgoParallelNode()) + "-" + strconv.Itoa(n),
+		CellID:                    "the-cell-id-" + strconv.Itoa(GinkgoParallelProcess()) + "-" + strconv.Itoa(n),
 		PollingInterval:           durationjson.Duration(1 * time.Second),
 		ReportInterval:            durationjson.Duration(1 * time.Minute),
 		EvacuationPollingInterval: durationjson.Duration(1 * time.Second),
