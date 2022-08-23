@@ -941,7 +941,9 @@ var _ = Describe("Executor/Garden", func() {
 						User: "vcap",
 					}, garden.ProcessIO{})
 					Expect(err).NotTo(HaveOccurred())
-					Expect(process.Wait()).To(Equal(0))
+					statusCode, err := process.Wait()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(statusCode).To(Equal(0))
 
 					stream, streamErr = executorClient.GetFiles(logger, guid, "/home/vcap/some/path")
 				})
