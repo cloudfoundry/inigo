@@ -594,7 +594,7 @@ var _ = Describe("Executor/Garden", func() {
 							Context("when monitoring succeeds and then fails", func() {
 								BeforeEach(func() {
 									runInfo.Monitor = models.WrapAction(&models.RunAction{
-										User: "vcap",
+										User: "root",
 										Path: "sh",
 										Args: []string{
 											"-c",
@@ -937,8 +937,8 @@ var _ = Describe("Executor/Garden", func() {
 
 					process, err := container.Run(garden.ProcessSpec{
 						Path: "sh",
-						Args: []string{"-c", `mkdir some`},
-						User: "vcap",
+						Args: []string{"-c", `mkdir -p /home/vcap/some; echo hello > /home/vcap/some/path`},
+						User: "root",
 					}, garden.ProcessIO{})
 					Expect(err).NotTo(HaveOccurred())
 					statusCode, err := process.Wait()
