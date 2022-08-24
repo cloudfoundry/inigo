@@ -61,7 +61,7 @@ var _ = Describe("Tasks", func() {
 			guid = helpers.GenerateGuid()
 		})
 
-		FIt("runs the command with the provided environment", func() {
+		It("runs the command with the provided environment", func() {
 			expectedTask := helpers.TaskCreateRequest(
 				guid,
 				&models.RunAction{
