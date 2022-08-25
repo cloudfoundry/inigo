@@ -183,9 +183,9 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 				guid,
 				models.Serial(
 					&models.RunAction{
-						User: "vcap",
+						User: "root",
 						Path: "sh",
-						Args: []string{"-c", "echo tasty thingy > thingy"},
+						Args: []string{"-c", "echo tasty thingy > /home/vcap/thingy"},
 					},
 					&models.UploadAction{
 						From: "thingy",
