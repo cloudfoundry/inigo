@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"code.cloudfoundry.org/consuladapter/consulrunner"
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/localip"
@@ -75,7 +74,6 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	addresses := world.ComponentAddresses{
 		Garden:              fmt.Sprintf("127.0.0.1:%d", 10000+ginkgoconfig.GinkgoConfig.ParallelNode),
 		NATS:                fmt.Sprintf("127.0.0.1:%d", 11000+ginkgoconfig.GinkgoConfig.ParallelNode),
-		Consul:              fmt.Sprintf("127.0.0.1:%d", 12750+ginkgoconfig.GinkgoConfig.ParallelNode*consulrunner.PortOffsetLength),
 		Rep:                 fmt.Sprintf("127.0.0.1:%d", 14000+ginkgoconfig.GinkgoConfig.ParallelNode),
 		FileServer:          fmt.Sprintf("%s:%d", localIP, 17000+ginkgoconfig.GinkgoConfig.ParallelNode),
 		Router:              fmt.Sprintf("127.0.0.1:%d", 18000+ginkgoconfig.GinkgoConfig.ParallelNode),
@@ -121,14 +119,12 @@ var _ = BeforeEach(func() {
 		{"initial-services", grouper.NewParallel(os.Kill, grouper.Members{
 			{"sql", componentMaker.SQL()},
 			{"nats", componentMaker.NATS()},
-			{"consul", componentMaker.Consul()},
 		})},
 		{"locket", componentMaker.Locket()},
 	}))
 	gardenProcess = ginkgomon.Invoke(componentMaker.Garden())
 	bbsProcess = ginkgomon.Invoke(componentMaker.BBS())
 
-	helpers.ConsulWaitUntilReady(componentMaker.Addresses())
 	lgr = lager.NewLogger("test")
 	lgr.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 

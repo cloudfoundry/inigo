@@ -25,9 +25,6 @@ import (
 	"code.cloudfoundry.org/bbs/serviceclient"
 	"code.cloudfoundry.org/bbs/test_helpers"
 	cfhttp "code.cloudfoundry.org/cfhttp/v2"
-	"code.cloudfoundry.org/clock"
-	"code.cloudfoundry.org/consuladapter"
-	"code.cloudfoundry.org/consuladapter/consulrunner"
 	loggingclient "code.cloudfoundry.org/diego-logging-client"
 	sshproxyconfig "code.cloudfoundry.org/diego-ssh/cmd/ssh-proxy/config"
 	"code.cloudfoundry.org/diego-ssh/keys"
@@ -51,7 +48,6 @@ import (
 	locketrunner "code.cloudfoundry.org/locket/cmd/locket/testrunner"
 	"code.cloudfoundry.org/rep"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
-	"code.cloudfoundry.org/rep/maintain"
 	routeemitterconfig "code.cloudfoundry.org/route-emitter/cmd/route-emitter/config"
 	routingapi "code.cloudfoundry.org/route-emitter/cmd/route-emitter/runners"
 	routingapiconfig "code.cloudfoundry.org/routing-api/config"
@@ -133,7 +129,6 @@ type GrootFSConfig struct {
 
 type ComponentAddresses struct {
 	NATS                string
-	Consul              string
 	BBS                 string
 	Health              string
 	Rep                 string
@@ -357,8 +352,6 @@ type ComponentMaker interface {
 	BBSServiceClient(logger lager.Logger) serviceclient.ServiceClient
 	BBSURL() string
 	BBSSSLConfig() SSLConfig
-	Consul(argv ...string) ifrit.Runner
-	ConsulCluster() string
 	DefaultStack() string
 	FileServer() (ifrit.Runner, string)
 	Garden(fs ...func(*runner.GdnRunnerConfig)) ifrit.Runner
@@ -499,44 +492,6 @@ func (maker commonComponentMaker) SQL(argv ...string) ifrit.Runner {
 
 			_, err = db.Exec(fmt.Sprintf("DROP DATABASE %s", sqlDBName))
 			Expect(err).NotTo(HaveOccurred())
-		}
-
-		return nil
-	})
-}
-
-func (maker commonComponentMaker) Consul(argv ...string) ifrit.Runner {
-	_, port, err := net.SplitHostPort(maker.addresses.Consul)
-	Expect(err).NotTo(HaveOccurred())
-	httpPort, err := strconv.Atoi(port)
-	Expect(err).NotTo(HaveOccurred())
-
-	startingPort := httpPort - consulrunner.PortOffsetHTTP
-
-	clusterRunner := consulrunner.NewClusterRunner(
-		consulrunner.ClusterRunnerConfig{
-			StartingPort: startingPort,
-			NumNodes:     1,
-			Scheme:       "http",
-		},
-	)
-	return ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
-		defer GinkgoRecover()
-
-		done := make(chan struct{})
-		go func() {
-			defer GinkgoRecover()
-			clusterRunner.Start()
-			close(done)
-		}()
-
-		Eventually(done, 10).Should(BeClosed())
-
-		close(ready)
-
-		select {
-		case <-signals:
-			clusterRunner.Stop()
 		}
 
 		return nil
@@ -757,7 +712,6 @@ func (maker commonComponentMaker) Locket(modifyConfigFuncs ...func(*locketconfig
 		cfg.CertFile = maker.locketSSL.ServerCert
 		cfg.KeyFile = maker.locketSSL.ServerKey
 		cfg.CaFile = maker.locketSSL.CACert
-		cfg.ConsulCluster = maker.ConsulCluster()
 		cfg.DatabaseConnectionString = maker.addresses.SQL
 		cfg.DatabaseDriver = maker.dbDriverName
 		cfg.ListenAddress = maker.addresses.Locket
@@ -781,32 +735,28 @@ func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routee
 	defer configFile.Close()
 
 	cfg := routeemitterconfig.RouteEmitterConfig{
-		ConsulEnabled:     true,
-		ConsulSessionName: name,
 		NATSAddresses:     maker.addresses.NATS,
 		BBSAddress:        maker.BBSURL(),
 		LockRetryInterval: durationjson.Duration(time.Second),
-		ConsulCluster:     maker.ConsulCluster(),
 		LagerConfig: lagerflags.LagerConfig{
 			LogLevel:   "debug",
 			TimeFormat: lagerflags.FormatRFC3339,
 		},
-		BBSClientCertFile:                  maker.bbsSSL.ClientCert,
-		BBSClientKeyFile:                   maker.bbsSSL.ClientKey,
-		BBSCACertFile:                      maker.bbsSSL.CACert,
-		CommunicationTimeout:               durationjson.Duration(30 * time.Second),
-		ConsulDownModeNotificationInterval: durationjson.Duration(time.Minute),
-		LockTTL:                            durationjson.Duration(locket.DefaultSessionTTL),
-		NATSUsername:                       "nats",
-		NATSPassword:                       "nats",
-		RouteEmittingWorkers:               20,
-		SyncInterval:                       durationjson.Duration(time.Minute),
-		TCPRouteTTL:                        durationjson.Duration(2 * time.Minute),
-		UnregistrationInterval:             durationjson.Duration(30 * time.Second),
-		UnregistrationSendCount:            20,
-		EnableTCPEmitter:                   false,
-		EnableInternalEmitter:              false,
-		RegisterDirectInstanceRoutes:       false,
+		BBSClientCertFile:            maker.bbsSSL.ClientCert,
+		BBSClientKeyFile:             maker.bbsSSL.ClientKey,
+		BBSCACertFile:                maker.bbsSSL.CACert,
+		CommunicationTimeout:         durationjson.Duration(30 * time.Second),
+		LockTTL:                      durationjson.Duration(locket.DefaultSessionTTL),
+		NATSUsername:                 "nats",
+		NATSPassword:                 "nats",
+		RouteEmittingWorkers:         20,
+		SyncInterval:                 durationjson.Duration(time.Minute),
+		TCPRouteTTL:                  durationjson.Duration(2 * time.Minute),
+		UnregistrationInterval:       durationjson.Duration(30 * time.Second),
+		UnregistrationSendCount:      20,
+		EnableTCPEmitter:             false,
+		EnableInternalEmitter:        false,
+		RegisterDirectInstanceRoutes: false,
 	}
 
 	for _, f := range fs {
@@ -841,7 +791,6 @@ func (maker commonComponentMaker) FileServer() (ifrit.Runner, string) {
 
 	cfg := fileserverconfig.FileServerConfig{
 		ServerAddress: maker.addresses.FileServer,
-		ConsulCluster: maker.ConsulCluster(),
 		LagerConfig: lagerflags.LagerConfig{
 			LogLevel:   "debug",
 			TimeFormat: lagerflags.FormatRFC3339,
@@ -1022,7 +971,6 @@ func (maker commonComponentMaker) SSHProxy(modifyConfigFuncs ...func(*sshproxyco
 		BBSCACert:          maker.bbsSSL.CACert,
 		BBSClientCert:      maker.bbsSSL.ClientCert,
 		BBSClientKey:       maker.bbsSSL.ClientKey,
-		ConsulCluster:      maker.ConsulCluster(),
 		EnableDiegoAuth:    true,
 		HostKey:            maker.sshConfig.HostKeyPem,
 		LagerConfig: lagerflags.LagerConfig{
@@ -1099,21 +1047,13 @@ func (maker commonComponentMaker) RepClientFactory() rep.ClientFactory {
 }
 
 func (maker commonComponentMaker) BBSServiceClient(logger lager.Logger) serviceclient.ServiceClient {
-	client, err := consuladapter.NewClientFromUrl(maker.ConsulCluster())
-	Expect(err).NotTo(HaveOccurred())
-
-	cellPresenceClient := maintain.NewCellPresenceClient(client, clock.NewClock())
 	locketClient := serviceclient.NewNoopLocketClient()
 
-	return serviceclient.NewServiceClient(cellPresenceClient, locketClient)
+	return serviceclient.NewServiceClient(locketClient)
 }
 
 func (maker commonComponentMaker) BBSURL() string {
 	return "https://" + maker.addresses.BBS
-}
-
-func (maker commonComponentMaker) ConsulCluster() string {
-	return "http://" + maker.addresses.Consul
 }
 
 func (maker commonComponentMaker) VolmanClient(logger lager.Logger) (volman.Manager, ifrit.Runner) {
@@ -1173,7 +1113,6 @@ func (maker v0ComponentMaker) Auctioneer(modifyConfigFuncs ...func(*auctioneerco
 		BBSCACertFile:     maker.bbsSSL.CACert,
 		BBSClientCertFile: maker.bbsSSL.ClientCert,
 		BBSClientKeyFile:  maker.bbsSSL.ClientKey,
-		ConsulCluster:     maker.ConsulCluster(),
 		ListenAddress:     maker.addresses.Auctioneer,
 		LockRetryInterval: durationjson.Duration(1 * time.Second),
 		LagerConfig: lagerflags.LagerConfig{
@@ -1195,7 +1134,6 @@ func (maker v0ComponentMaker) Auctioneer(modifyConfigFuncs ...func(*auctioneerco
 		"-bbsCACert", cfg.BBSCACertFile,
 		"-bbsClientCert", cfg.BBSClientCertFile,
 		"-bbsClientKey", cfg.BBSClientKeyFile,
-		"-consulCluster", cfg.ConsulCluster,
 		"-listenAddr", cfg.ListenAddress,
 		"-lockRetryInterval", time.Duration(cfg.LockRetryInterval).String(),
 		"-logLevel", cfg.LagerConfig.LogLevel,
@@ -1225,7 +1163,6 @@ func (maker v0ComponentMaker) RouteEmitter(modifyConfigFuncs ...func(config *rou
 		BBSClientKeyFile:  maker.bbsSSL.ClientKey,
 		BBSCACertFile:     maker.bbsSSL.CACert,
 		LockRetryInterval: durationjson.Duration(1 * time.Second),
-		ConsulCluster:     maker.ConsulCluster(),
 		LagerConfig: lagerflags.LagerConfig{
 			LogLevel:   "debug",
 			TimeFormat: lagerflags.FormatRFC3339,
@@ -1247,7 +1184,6 @@ func (maker v0ComponentMaker) RouteEmitter(modifyConfigFuncs ...func(config *rou
 				"-natsAddresses", cfg.NATSAddresses,
 				"-bbsAddress", cfg.BBSAddress,
 				"-lockRetryInterval", time.Duration(cfg.LockRetryInterval).String(),
-				"-consulCluster", cfg.ConsulCluster,
 				"-logLevel", cfg.LogLevel,
 				"-bbsClientCert", cfg.BBSClientCertFile,
 				"-bbsClientKey", cfg.BBSClientKeyFile,
@@ -1269,7 +1205,6 @@ func (maker v0ComponentMaker) FileServer() (ifrit.Runner, string) {
 			maker.artifacts.Executables["file-server"],
 			[]string{
 				"-address", maker.addresses.FileServer,
-				"-consulCluster", maker.ConsulCluster(),
 				"-logLevel", "debug",
 				"-staticDirectory", servedFilesDir,
 			}...,
@@ -1288,7 +1223,6 @@ func (maker v0ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig
 		CaFile:                   maker.bbsSSL.CACert,
 		CertFile:                 maker.bbsSSL.ServerCert,
 		KeyFile:                  maker.bbsSSL.ServerKey,
-		ConsulCluster:            maker.ConsulCluster(),
 		DatabaseConnectionString: maker.addresses.SQL,
 		DatabaseDriver:           maker.dbDriverName,
 		EncryptionConfig: encryption.EncryptionConfig{
@@ -1320,7 +1254,6 @@ func (maker v0ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig
 		"-caFile", cfg.CaFile,
 		"-certFile", cfg.CertFile,
 		"-keyFile", cfg.KeyFile,
-		"-consulCluster", cfg.ConsulCluster,
 		"-databaseConnectionString", cfg.DatabaseConnectionString,
 		"-databaseDriver", cfg.DatabaseDriver,
 		"-encryptionKey", encryptionKey,
@@ -1371,7 +1304,6 @@ func (maker v0ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 		ServerKeyFile:             maker.repSSL.ServerKey,
 		CellID:                    "cell_z1" + "-" + strconv.Itoa(n) + "-" + strconv.Itoa(GinkgoParallelProcess()),
 		Zone:                      "z1",
-		ConsulCluster:             maker.ConsulCluster(),
 		EvacuationPollingInterval: durationjson.Duration(1 * time.Second),
 		EvacuationTimeout:         durationjson.Duration(10 * time.Second),
 		ExecutorConfig: executorinit.ExecutorConfig{
@@ -1426,7 +1358,6 @@ func (maker v0ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 		"-cachePath", cfg.CachePath,
 		"-cellID", cfg.CellID,
 		"--zone", cfg.Zone,
-		"-consulCluster", cfg.ConsulCluster,
 		"-containerMaxCpuShares", strconv.FormatUint(cfg.ContainerMaxCpuShares, 10),
 		"-enableLegacyApiServer=false",
 		"-evacuationPollingInterval", time.Duration(cfg.EvacuationPollingInterval).String(),
@@ -1469,27 +1400,25 @@ func (maker v0ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 
 func (maker v1ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig)) ifrit.Runner {
 	config := bbsconfig.BBSConfig{
-		SessionName:                     "bbs",
-		CommunicationTimeout:            durationjson.Duration(10 * time.Second),
-		DesiredLRPCreationTimeout:       durationjson.Duration(1 * time.Minute),
-		ExpireCompletedTaskDuration:     durationjson.Duration(2 * time.Minute),
-		ExpirePendingTaskDuration:       durationjson.Duration(30 * time.Minute),
-		EnableConsulServiceRegistration: false,
-		ConvergeRepeatInterval:          durationjson.Duration(30 * time.Second),
-		KickTaskDuration:                durationjson.Duration(30 * time.Second),
-		LockTTL:                         durationjson.Duration(locket.DefaultSessionTTL),
-		LockRetryInterval:               durationjson.Duration(locket.RetryInterval),
-		ReportInterval:                  durationjson.Duration(1 * time.Minute),
-		ConvergenceWorkers:              20,
-		UpdateWorkers:                   1000,
-		TaskCallbackWorkers:             1000,
-		MaxOpenDatabaseConnections:      200,
-		MaxIdleDatabaseConnections:      200,
-		RepClientSessionCacheSize:       0,
-		RepRequireTLS:                   false,
+		SessionName:                 "bbs",
+		CommunicationTimeout:        durationjson.Duration(10 * time.Second),
+		DesiredLRPCreationTimeout:   durationjson.Duration(1 * time.Minute),
+		ExpireCompletedTaskDuration: durationjson.Duration(2 * time.Minute),
+		ExpirePendingTaskDuration:   durationjson.Duration(30 * time.Minute),
+		ConvergeRepeatInterval:      durationjson.Duration(30 * time.Second),
+		KickTaskDuration:            durationjson.Duration(30 * time.Second),
+		LockTTL:                     durationjson.Duration(locket.DefaultSessionTTL),
+		LockRetryInterval:           durationjson.Duration(locket.RetryInterval),
+		ReportInterval:              durationjson.Duration(1 * time.Minute),
+		ConvergenceWorkers:          20,
+		UpdateWorkers:               1000,
+		TaskCallbackWorkers:         1000,
+		MaxOpenDatabaseConnections:  200,
+		MaxIdleDatabaseConnections:  200,
+		RepClientSessionCacheSize:   0,
+		RepRequireTLS:               false,
 
-		AdvertiseURL:  maker.BBSURL(),
-		ConsulCluster: maker.ConsulCluster(),
+		AdvertiseURL: maker.BBSURL(),
 		EncryptionConfig: encryption.EncryptionConfig{
 			ActiveKeyLabel: "secure-key-1",
 			EncryptionKeys: map[string]string{
@@ -1500,28 +1429,25 @@ func (maker v1ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig
 			LogLevel:   "debug",
 			TimeFormat: lagerflags.FormatRFC3339,
 		},
-		LocksLocketEnabled:             true,
-		CellRegistrationsLocketEnabled: true,
-		AuctioneerAddress:              "https://" + maker.addresses.Auctioneer,
-		ListenAddress:                  maker.addresses.BBS,
-		HealthAddress:                  maker.addresses.Health,
-		RequireSSL:                     true,
-		CertFile:                       maker.bbsSSL.ServerCert,
-		KeyFile:                        maker.bbsSSL.ServerKey,
-		CaFile:                         maker.bbsSSL.CACert,
-		RepCACert:                      maker.repSSL.CACert,
-		RepClientCert:                  maker.repSSL.ClientCert,
-		RepClientKey:                   maker.repSSL.ClientKey,
-		AuctioneerCACert:               maker.auctioneerSSL.CACert,
-		AuctioneerClientCert:           maker.auctioneerSSL.ClientCert,
-		AuctioneerClientKey:            maker.auctioneerSSL.ClientKey,
-		DatabaseConnectionString:       maker.addresses.SQL,
-		DatabaseDriver:                 maker.dbDriverName,
-		DetectConsulCellRegistrations:  true,
-		AuctioneerRequireTLS:           true,
-		SQLCACertFile:                  maker.sqlCACertFile,
-		ClientLocketConfig:             maker.locketClientConfig(),
-		UUID:                           "bbs-inigo-lock-owner",
+		AuctioneerAddress:        "https://" + maker.addresses.Auctioneer,
+		ListenAddress:            maker.addresses.BBS,
+		HealthAddress:            maker.addresses.Health,
+		RequireSSL:               true,
+		CertFile:                 maker.bbsSSL.ServerCert,
+		KeyFile:                  maker.bbsSSL.ServerKey,
+		CaFile:                   maker.bbsSSL.CACert,
+		RepCACert:                maker.repSSL.CACert,
+		RepClientCert:            maker.repSSL.ClientCert,
+		RepClientKey:             maker.repSSL.ClientKey,
+		AuctioneerCACert:         maker.auctioneerSSL.CACert,
+		AuctioneerClientCert:     maker.auctioneerSSL.ClientCert,
+		AuctioneerClientKey:      maker.auctioneerSSL.ClientKey,
+		DatabaseConnectionString: maker.addresses.SQL,
+		DatabaseDriver:           maker.dbDriverName,
+		AuctioneerRequireTLS:     true,
+		SQLCACertFile:            maker.sqlCACertFile,
+		ClientLocketConfig:       maker.locketClientConfig(),
+		UUID:                     "bbs-inigo-lock-owner",
 	}
 
 	for _, modifyConfig := range modifyConfigFuncs {
@@ -1577,7 +1503,6 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 		EvacuationTimeout:         durationjson.Duration(1 * time.Second),
 		LockTTL:                   durationjson.Duration(10 * time.Second),
 		LockRetryInterval:         durationjson.Duration(1 * time.Second),
-		ConsulCluster:             maker.ConsulCluster(),
 		ServerCertFile:            maker.repSSL.ServerCert,
 		ServerKeyFile:             maker.repSSL.ServerKey,
 		CertFile:                  maker.repSSL.ServerCert,
@@ -1678,7 +1603,6 @@ func (maker v1ComponentMaker) Auctioneer(modifyConfigFuncs ...func(cfg *auctione
 		BBSAddress:              maker.BBSURL(),
 		ListenAddress:           maker.addresses.Auctioneer,
 		LockRetryInterval:       durationjson.Duration(time.Second),
-		ConsulCluster:           maker.ConsulCluster(),
 		BBSClientCertFile:       maker.bbsSSL.ClientCert,
 		BBSClientKeyFile:        maker.bbsSSL.ClientKey,
 		BBSCACertFile:           maker.bbsSSL.CACert,
@@ -1693,7 +1617,6 @@ func (maker v1ComponentMaker) Auctioneer(modifyConfigFuncs ...func(cfg *auctione
 			LogLevel:   "debug",
 			TimeFormat: lagerflags.FormatRFC3339,
 		},
-		LocksLocketEnabled: true,
 		ClientLocketConfig: maker.locketClientConfig(),
 		UUID:               "auctioneer-inigo-lock-owner",
 	}

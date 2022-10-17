@@ -35,13 +35,10 @@ var _ = Describe("Tasks", func() {
 		plumbing = ginkgomon.Invoke(grouper.NewOrdered(os.Kill, grouper.Members{
 			{"initial-services", grouper.NewParallel(os.Kill, grouper.Members{
 				{"sql", componentMaker.SQL()},
-				{"consul", componentMaker.Consul()},
 			})},
 			{"locket", componentMaker.Locket()},
 			{"bbs", componentMaker.BBS()},
 		}))
-
-		helpers.ConsulWaitUntilReady(componentMaker.Addresses())
 
 		cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, grouper.Members{
 			{"file-server", fileServerRunner},

@@ -40,13 +40,11 @@ var _ = Describe("LRPs with volume mounts", func() {
 			{"initial-services", grouper.NewParallel(os.Kill, grouper.Members{
 				{"sql", componentMaker.SQL()},
 				{"nats", componentMaker.NATS()},
-				{"consul", componentMaker.Consul()},
 			})},
 			{"locket", componentMaker.Locket()},
 			{"bbs", componentMaker.BBS()},
 		}))
 
-		helpers.ConsulWaitUntilReady(componentMaker.Addresses())
 		logger = lager.NewLogger("test")
 		logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 
