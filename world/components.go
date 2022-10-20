@@ -735,6 +735,7 @@ func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routee
 	defer configFile.Close()
 
 	cfg := routeemitterconfig.RouteEmitterConfig{
+		LocketSessionName: name,
 		NATSAddresses:     maker.addresses.NATS,
 		BBSAddress:        maker.BBSURL(),
 		LockRetryInterval: durationjson.Duration(time.Second),
@@ -757,6 +758,7 @@ func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routee
 		EnableTCPEmitter:             false,
 		EnableInternalEmitter:        false,
 		RegisterDirectInstanceRoutes: false,
+		ClientLocketConfig:           maker.locketClientConfig(),
 	}
 
 	for _, f := range fs {
@@ -1047,7 +1049,8 @@ func (maker commonComponentMaker) RepClientFactory() rep.ClientFactory {
 }
 
 func (maker commonComponentMaker) BBSServiceClient(logger lager.Logger) serviceclient.ServiceClient {
-	locketClient := serviceclient.NewNoopLocketClient()
+	locketClient, err := locket.NewClient(logger, maker.locketClientConfig())
+	Expect(err).NotTo(HaveOccurred())
 
 	return serviceclient.NewServiceClient(locketClient)
 }
@@ -1320,7 +1323,6 @@ func (maker v0ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 		ListenAddrSecurable: fmt.Sprintf("%s:%d", host, offsetPort(port+100, n)),
 		LockRetryInterval:   durationjson.Duration(1 * time.Second),
 		LockTTL:             durationjson.Duration(10 * time.Second),
-		ClientLocketConfig:  locket.ClientLocketConfig{},
 		LagerConfig: lagerflags.LagerConfig{
 			LogLevel:   "debug",
 			TimeFormat: lagerflags.FormatRFC3339,
@@ -1510,6 +1512,7 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 		CaCertFile:                maker.repSSL.CACert,
 		ListenAddrSecurable:       fmt.Sprintf("%s:%d", host, offsetPort(port+100, n)),
 		PreloadedRootFS:           maker.rootFSes,
+		ClientLocketConfig:        maker.locketClientConfig(),
 		ExecutorConfig: executorinit.ExecutorConfig{
 			MemoryMB:                           configuration.Automatic,
 			DiskMB:                             configuration.Automatic,
