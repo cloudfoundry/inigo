@@ -24,7 +24,7 @@ To run Inigo, follow the instructions in Diego Release's
 
 #### The `inigo-ci` docker image
 
-Inigo runs inside a container, using the `cloudfoundry/inigo-ci` Docker image.
+Inigo runs inside a container, using the `cloudfoundry/diego-inigo-ci` Docker image.
 This docker image contains *within it* a rootfs which Garden will use by
 default.
 
