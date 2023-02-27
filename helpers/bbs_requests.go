@@ -91,6 +91,8 @@ func lrpCreateRequest(
 		Action:        action,
 		Monitor:       monitor,
 		PlacementTags: placementTags,
+
+		MetricTags: &map[string]*MetricTagValue{"source_id": {"static": processGuid}},
 	}
 }
 
