@@ -114,7 +114,6 @@ var _ = Describe("InstanceIdentity", func() {
 			CacheKey:  "lrp-cache-key",
 			LogSource: "APP",
 		}}
-		lrp.MetricsGuid = processGUID
 		lrp.Ports = []uint32{8080, 8081}
 		lrp.Action = models.WrapAction(&models.RunAction{
 			User: "vcap",
@@ -822,7 +821,6 @@ var _ = Describe("InstanceIdentity", func() {
 							)
 
 							lrp = helpers.DockerLRPCreateRequest(componentMaker.Addresses(), processGUID)
-							lrp.MetricsGuid = processGUID
 							lrp.MemoryMb = int32(memoryLimit)
 						})
 
@@ -841,7 +839,6 @@ var _ = Describe("InstanceIdentity", func() {
 								Skip("TODO: use buildpack LRP. docker lrp is not supported on windows")
 							}
 							lrp = helpers.DockerLRPCreateRequest(componentMaker.Addresses(), processGUID)
-							lrp.MetricsGuid = processGUID
 							lrp.MemoryMb = int32(memoryLimit)
 						})
 
