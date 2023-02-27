@@ -92,7 +92,7 @@ func lrpCreateRequest(
 		Monitor:       monitor,
 		PlacementTags: placementTags,
 
-		MetricTags: &map[string]*MetricTagValue{"source_id": {"static": processGuid}},
+		MetricTags: map[string]*models.MetricTagValue{"source_id": {Static: processGuid}},
 	}
 }
 
