@@ -157,6 +157,7 @@ var _ = Describe("SSH", func() {
 				routes.DIEGO_SSH: &sshRouteMessage,
 			},
 			EnvironmentVariables: envVars,
+			MetricTags:           map[string]*models.MetricTagValue{"source_id": {Static: processGuid}},
 		}
 	})
 
