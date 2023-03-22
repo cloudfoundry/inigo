@@ -16,14 +16,14 @@ import (
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
-	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

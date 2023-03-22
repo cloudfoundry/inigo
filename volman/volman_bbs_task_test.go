@@ -10,13 +10,13 @@ import (
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/inigo/helpers"
-	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager/v3/lagertest"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
 )
 

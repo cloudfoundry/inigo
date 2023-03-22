@@ -15,7 +15,7 @@ import (
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	routeemitterconfig "code.cloudfoundry.org/route-emitter/cmd/route-emitter/config"
 	routingapihelpers "code.cloudfoundry.org/route-emitter/cmd/route-emitter/runners"
@@ -23,10 +23,10 @@ import (
 	"code.cloudfoundry.org/routing-info/cfroutes"
 	"code.cloudfoundry.org/routing-info/tcp_routes"
 	"code.cloudfoundry.org/tlsconfig"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
 )
 

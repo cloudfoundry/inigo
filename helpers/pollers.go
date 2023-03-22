@@ -5,7 +5,7 @@ import (
 
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/bbs/models"
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 
 	. "github.com/onsi/gomega"
 )

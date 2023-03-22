@@ -12,7 +12,7 @@ import (
 
 	"code.cloudfoundry.org/archiver/extractor/test_helper"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
 
 	"code.cloudfoundry.org/bbs/models"
@@ -20,7 +20,7 @@ import (
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/inigo/inigo_announcement_server"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
 )

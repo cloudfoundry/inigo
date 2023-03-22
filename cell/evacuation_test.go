@@ -18,10 +18,10 @@ import (
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	"code.cloudfoundry.org/tlsconfig"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

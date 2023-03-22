@@ -29,22 +29,22 @@ import (
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/inigo/helpers/certauthority"
 	"code.cloudfoundry.org/inigo/world"
-	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/rep/cmd/rep/config"
 
 	"crypto/tls"
 	"crypto/x509"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
 	"github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/matchers"
 	"github.com/onsi/gomega/types"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
 )
 

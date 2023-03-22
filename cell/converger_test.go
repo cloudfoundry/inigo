@@ -9,11 +9,11 @@ import (
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
 
 	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
