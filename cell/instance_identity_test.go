@@ -119,8 +119,8 @@ var _ = Describe("InstanceIdentity", func() {
 			User: "vcap",
 			Path: "/tmp/diego/go-server",
 			Env: []*models.EnvironmentVariable{
-				{"PORT", "8080"},
-				{"HTTPS_PORT", "8081"},
+				{Name: "PORT", Value: "8080"},
+				{Name: "HTTPS_PORT", Value: "8081"},
 			},
 		})
 		lrp.CertificateProperties = &models.CertificateProperties{
@@ -147,10 +147,10 @@ var _ = Describe("InstanceIdentity", func() {
 
 	JustBeforeEach(func() {
 		cellGroup := grouper.Members{
-			{"metron-agent", metronAgent},
-			{"file-server", fileServer},
-			{"rep", rep},
-			{"auctioneer", componentMaker.Auctioneer()},
+			{Name: "metron-agent", Runner: metronAgent},
+			{Name: "file-server", Runner: fileServer},
+			{Name: "rep", Runner: rep},
+			{Name: "auctioneer", Runner: componentMaker.Auctioneer()},
 		}
 		terminationSignal := os.Interrupt
 		if runtime.GOOS == "windows" {
@@ -678,8 +678,8 @@ var _ = Describe("InstanceIdentity", func() {
 						User: "vcap",
 						Path: "/go-server",
 						Env: []*models.EnvironmentVariable{
-							{"PORT", "8080"},
-							{"HTTPS_PORT", "8081"},
+							{Name: "PORT", Value: "8080"},
+							{Name: "HTTPS_PORT", Value: "8081"},
 						},
 					})
 				})

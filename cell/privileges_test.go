@@ -26,11 +26,11 @@ var _ = Describe("Privileges", func() {
 		}
 		fileServer, fileServerStaticDir := componentMaker.FileServer()
 		ifritRuntime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"router", componentMaker.Router()},
-			{"file-server", fileServer},
-			{"rep", componentMaker.Rep()},
-			{"auctioneer", componentMaker.Auctioneer()},
-			{"route-emitter", componentMaker.RouteEmitter()},
+			{Name: "router", Runner: componentMaker.Router()},
+			{Name: "file-server", Runner: fileServer},
+			{Name: "rep", Runner: componentMaker.Rep()},
+			{Name: "auctioneer", Runner: componentMaker.Auctioneer()},
+			{Name: "route-emitter", Runner: componentMaker.RouteEmitter()},
 		}))
 
 		test_helper.CreateZipArchive(
@@ -101,7 +101,7 @@ var _ = Describe("Privileges", func() {
 			lrpRequest.Action = models.WrapAction(&models.RunAction{
 				User: "root",
 				Path: "/tmp/diego/go-server",
-				Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
+				Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 			})
 		})
 

@@ -115,11 +115,11 @@ var _ = AfterSuite(func() {
 
 var _ = BeforeEach(func() {
 	plumbing = ginkgomon.Invoke(grouper.NewOrdered(os.Kill, grouper.Members{
-		{"initial-services", grouper.NewParallel(os.Kill, grouper.Members{
-			{"sql", componentMaker.SQL()},
-			{"nats", componentMaker.NATS()},
+		{Name: "initial-services", Runner: grouper.NewParallel(os.Kill, grouper.Members{
+			{Name: "sql", Runner: componentMaker.SQL()},
+			{Name: "nats", Runner: componentMaker.NATS()},
 		})},
-		{"locket", componentMaker.Locket()},
+		{Name: "locket", Runner: componentMaker.Locket()},
 	}))
 	gardenProcess = ginkgomon.Invoke(componentMaker.Garden())
 	bbsProcess = ginkgomon.Invoke(componentMaker.BBS())

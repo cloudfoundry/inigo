@@ -103,12 +103,12 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 		})
 
 		ifritRuntime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"router", componentMaker.Router()},
-			{"file-server", fileServer},
-			{"metron-agent", metronAgent},
-			{"rep", componentMaker.Rep(turnOnLongRunningHealthchecks, loggregatorConfig)},
-			{"auctioneer", componentMaker.Auctioneer()},
-			{"route-emitter", componentMaker.RouteEmitter()},
+			{Name: "router", Runner: componentMaker.Router()},
+			{Name: "file-server", Runner: fileServer},
+			{Name: "metron-agent", Runner: metronAgent},
+			{Name: "rep", Runner: componentMaker.Rep(turnOnLongRunningHealthchecks, loggregatorConfig)},
+			{Name: "auctioneer", Runner: componentMaker.Auctioneer()},
+			{Name: "route-emitter", Runner: componentMaker.RouteEmitter()},
 		}))
 
 		archiveFiles = fixtures.GoServerApp()

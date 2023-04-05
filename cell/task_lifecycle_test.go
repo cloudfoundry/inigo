@@ -53,7 +53,7 @@ var _ = Describe("Task Lifecycle", func() {
 		BeforeEach(func() {
 
 			cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-				{"rep", componentMaker.Rep(func(config *repconfig.RepConfig) {
+				{Name: "rep", Runner: componentMaker.Rep(func(config *repconfig.RepConfig) {
 					config.MemoryMB = "1024"
 				})},
 			}))
@@ -301,7 +301,7 @@ exit 0
 			))
 
 			cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, grouper.Members{
-				{"rep", componentMaker.Rep()},
+				{Name: "rep", Runner: componentMaker.Rep()},
 			}))
 		})
 

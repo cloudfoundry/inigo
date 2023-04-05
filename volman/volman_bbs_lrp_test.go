@@ -37,23 +37,23 @@ var _ = Describe("LRPs with volume mounts", func() {
 		var fileServerRunner ifrit.Runner
 		fileServerRunner, fileServerStaticDir = componentMaker.FileServer()
 		plumbing = ginkgomon.Invoke(grouper.NewOrdered(os.Kill, grouper.Members{
-			{"initial-services", grouper.NewParallel(os.Kill, grouper.Members{
-				{"sql", componentMaker.SQL()},
-				{"nats", componentMaker.NATS()},
+			{Name: "initial-services", Runner: grouper.NewParallel(os.Kill, grouper.Members{
+				{Name: "sql", Runner: componentMaker.SQL()},
+				{Name: "nats", Runner: componentMaker.NATS()},
 			})},
-			{"locket", componentMaker.Locket()},
-			{"bbs", componentMaker.BBS()},
+			{Name: "locket", Runner: componentMaker.Locket()},
+			{Name: "bbs", Runner: componentMaker.BBS()},
 		}))
 
 		logger = lager.NewLogger("test")
 		logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 
 		cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"router", componentMaker.Router()},
-			{"file-server", fileServerRunner},
-			{"rep", componentMaker.Rep()},
-			{"auctioneer", componentMaker.Auctioneer()},
-			{"route-emitter", componentMaker.RouteEmitter()},
+			{Name: "router", Runner: componentMaker.Router()},
+			{Name: "file-server", Runner: fileServerRunner},
+			{Name: "rep", Runner: componentMaker.Rep()},
+			{Name: "auctioneer", Runner: componentMaker.Auctioneer()},
+			{Name: "route-emitter", Runner: componentMaker.RouteEmitter()},
 		}))
 
 		bbsServiceClient := componentMaker.BBSServiceClient(logger)
@@ -121,8 +121,8 @@ var _ = Describe("LRPs with volume mounts", func() {
 				User: "vcap",
 				Path: "/tmp/diego/go-server",
 				Env: []*models.EnvironmentVariable{
-					{"PORT", "8080"},
-					{"MOUNT_POINT_DIR", "/testmount"},
+					{Name: "PORT", Value: "8080"},
+					{Name: "MOUNT_POINT_DIR", Value: "/testmount"},
 				},
 			})
 		})

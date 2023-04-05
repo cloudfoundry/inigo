@@ -33,17 +33,17 @@ var _ = Describe("Tasks", func() {
 		fileServerRunner, _ = componentMaker.FileServer()
 
 		plumbing = ginkgomon.Invoke(grouper.NewOrdered(os.Kill, grouper.Members{
-			{"initial-services", grouper.NewParallel(os.Kill, grouper.Members{
-				{"sql", componentMaker.SQL()},
+			{Name: "initial-services", Runner: grouper.NewParallel(os.Kill, grouper.Members{
+				{Name: "sql", Runner: componentMaker.SQL()},
 			})},
-			{"locket", componentMaker.Locket()},
-			{"bbs", componentMaker.BBS()},
+			{Name: "locket", Runner: componentMaker.Locket()},
+			{Name: "bbs", Runner: componentMaker.BBS()},
 		}))
 
 		cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, grouper.Members{
-			{"file-server", fileServerRunner},
-			{"rep", componentMaker.Rep(func(config *repconfig.RepConfig) { config.MemoryMB = "1024" })},
-			{"auctioneer", componentMaker.Auctioneer()},
+			{Name: "file-server", Runner: fileServerRunner},
+			{Name: "rep", Runner: componentMaker.Rep(func(config *repconfig.RepConfig) { config.MemoryMB = "1024" })},
+			{Name: "auctioneer", Runner: componentMaker.Auctioneer()},
 		}))
 
 		bbsServiceClient := componentMaker.BBSServiceClient(logger)

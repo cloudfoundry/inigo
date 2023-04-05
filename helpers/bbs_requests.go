@@ -37,7 +37,7 @@ func defaultSetup(addresses world.ComponentAddresses) *models.Action {
 var defaultAction = models.WrapAction(&models.RunAction{
 	User: "vcap",
 	Path: "/tmp/diego/go-server",
-	Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
+	Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 })
 
 var defaultMonitor = models.WrapAction(&models.RunAction{
@@ -119,7 +119,7 @@ func DockerLRPCreateRequest(addresses world.ComponentAddresses, processGuid stri
 	action := models.WrapAction(&models.RunAction{
 		User: "vcap",
 		Path: "dockerapp",
-		Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
+		Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 	})
 
 	return lrpCreateRequest(addresses, processGuid, defaultLogGuid, dockerRootFS, 1, nil, action, dockerMonitor)

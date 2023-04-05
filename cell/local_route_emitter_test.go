@@ -63,9 +63,9 @@ var _ = Describe("LocalRouteEmitter", func() {
 		cellBRepAddr = fmt.Sprintf("0.0.0.0:%d", cellBPort)
 
 		ifritRuntime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"router", componentMaker.Router()},
-			{"file-server", fileServer},
-			{"auctioneer", componentMaker.Auctioneer()},
+			{Name: "router", Runner: componentMaker.Router()},
+			{Name: "file-server", Runner: fileServer},
+			{Name: "auctioneer", Runner: componentMaker.Auctioneer()},
 		}))
 
 		archiveFiles = fixtures.GoServerApp()
@@ -93,16 +93,16 @@ var _ = Describe("LocalRouteEmitter", func() {
 			config.CellID = cellAID
 		})
 		cellAProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"rep-a", repA},
-			{"route-emitter-a", componentMaker.RouteEmitterN(1, routeEmitterAConfigs...)},
+			{Name: "rep-a", Runner: repA},
+			{Name: "route-emitter-a", Runner: componentMaker.RouteEmitterN(1, routeEmitterAConfigs...)},
 		}))
 		routeEmitterBConfigs := append(routeEmitterConfigs, func(config *routeemitterconfig.RouteEmitterConfig) {
 			config.SyncInterval = durationjson.Duration(time.Hour)
 			config.CellID = cellBID
 		})
 		cellBProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"rep-b", repB},
-			{"route-emitter-b", componentMaker.RouteEmitterN(1, routeEmitterBConfigs...)},
+			{Name: "rep-b", Runner: repB},
+			{Name: "route-emitter-b", Runner: componentMaker.RouteEmitterN(1, routeEmitterBConfigs...)},
 		}))
 
 		archive_helper.CreateZipArchive(
@@ -367,7 +367,7 @@ func createDesiredLRP(processGuid string) *models.DesiredLRP {
 	lrp.Action = models.WrapAction(&models.RunAction{
 		User: "vcap",
 		Path: "/tmp/diego/go-server",
-		Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
+		Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 	})
 	routes := cfroutes.CFRoutes{{Hostnames: []string{helpers.DefaultHost}, Port: 8080}}.RoutingInfo()
 	lrp.Routes = &routes

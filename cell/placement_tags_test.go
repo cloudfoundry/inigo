@@ -38,9 +38,9 @@ var _ = Describe("Placement Tags", func() {
 			config.OptionalPlacementTags = []string{"inigo-optional-tag"}
 		}
 		ifritRuntime = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, grouper.Members{
-			{"file-server", fileServer},
-			{"rep-with-tag", componentMaker.Rep(modifyRepConfig)},
-			{"auctioneer", componentMaker.Auctioneer()},
+			{Name: "file-server", Runner: fileServer},
+			{Name: "rep-with-tag", Runner: componentMaker.Rep(modifyRepConfig)},
+			{Name: "auctioneer", Runner: componentMaker.Auctioneer()},
 		}))
 
 		archive_helper.CreateZipArchive(

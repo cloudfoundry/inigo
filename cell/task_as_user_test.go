@@ -27,9 +27,9 @@ var _ = Describe("Tasks as specific user", func() {
 		fileServerRunner, _ = componentMaker.FileServer()
 
 		cellGroup := grouper.Members{
-			{"file-server", fileServerRunner},
-			{"rep", componentMaker.Rep(func(config *repconfig.RepConfig) { config.MemoryMB = "1024" })},
-			{"auctioneer", componentMaker.Auctioneer()},
+			{Name: "file-server", Runner: fileServerRunner},
+			{Name: "rep", Runner: componentMaker.Rep(func(config *repconfig.RepConfig) { config.MemoryMB = "1024" })},
+			{Name: "auctioneer", Runner: componentMaker.Auctioneer()},
 		}
 		cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, cellGroup))
 

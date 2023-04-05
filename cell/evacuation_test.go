@@ -65,10 +65,10 @@ var _ = Describe("Evacuation", func() {
 		))
 
 		ifritRuntime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"router", componentMaker.Router()},
-			{"file-server", fileServer},
-			{"auctioneer", componentMaker.Auctioneer()},
-			{"route-emitter", componentMaker.RouteEmitter()},
+			{Name: "router", Runner: componentMaker.Router()},
+			{Name: "file-server", Runner: fileServer},
+			{Name: "auctioneer", Runner: componentMaker.Auctioneer()},
+			{Name: "route-emitter", Runner: componentMaker.RouteEmitter()},
 		}))
 
 		cellAID = "cell-a"
