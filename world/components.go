@@ -40,9 +40,9 @@ import (
 	"code.cloudfoundry.org/guardian/gqt/runner"
 	"code.cloudfoundry.org/inigo/helpers/certauthority"
 	"code.cloudfoundry.org/inigo/helpers/portauthority"
-	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagerflags"
-	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager/v3/lagerflags"
+	"code.cloudfoundry.org/lager/v3/lagertest"
 	"code.cloudfoundry.org/locket"
 	locketconfig "code.cloudfoundry.org/locket/cmd/locket/config"
 	locketrunner "code.cloudfoundry.org/locket/cmd/locket/testrunner"
@@ -54,12 +54,11 @@ import (
 	"code.cloudfoundry.org/volman"
 	volmanclient "code.cloudfoundry.org/volman/vollocal"
 	uuid "github.com/nu7hatch/gouuid"
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/config"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
 	"golang.org/x/crypto/ssh"
 )
@@ -1061,7 +1060,7 @@ func (maker commonComponentMaker) BBSURL() string {
 
 func (maker commonComponentMaker) VolmanClient(logger lager.Logger) (volman.Manager, ifrit.Runner) {
 	driverConfig := volmanclient.NewDriverConfig()
-	driverConfig.DriverPaths = []string{path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode))}
+	driverConfig.DriverPaths = []string{path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("node-%d", GinkgoParallelProcess()))}
 
 	metronClient, err := loggingclient.NewIngressClient(loggingclient.Config{})
 	Expect(err).NotTo(HaveOccurred())
@@ -1080,7 +1079,7 @@ func (maker commonComponentMaker) VolmanDriver(logger lager.Logger) (ifrit.Runne
 			"-debugAddr", debugServerAddress,
 			"-mountDir", maker.volmanDriverConfigDir,
 			"-logLevel", "debug",
-			"-driversPath", path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
+			"-driversPath", path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("node-%d", GinkgoParallelProcess())),
 			"-transport", "tcp-json",
 			"-uniqueVolumeIds",
 		),
@@ -1317,7 +1316,7 @@ func (maker v0ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 			GardenHealthcheckProcessUser: "vcap",
 			GardenNetwork:                "tcp",
 			TempDir:                      executorTempDir,
-			VolmanDriverPaths:            path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
+			VolmanDriverPaths:            path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("node-%d", GinkgoParallelProcess())),
 		},
 		ListenAddr:          fmt.Sprintf("%s:%d", host, offsetPort(port, n)),
 		ListenAddrSecurable: fmt.Sprintf("%s:%d", host, offsetPort(port+100, n)),
@@ -1548,7 +1547,7 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 			CachePath:                     cachePath,
 			TempDir:                       executorTempDir,
 			GardenHealthcheckProcessUser:  "vcap",
-			VolmanDriverPaths:             path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("node-%d", config.GinkgoConfig.ParallelNode)),
+			VolmanDriverPaths:             path.Join(maker.volmanDriverConfigDir, fmt.Sprintf("node-%d", GinkgoParallelProcess())),
 			ContainerOwnerName:            "executor-" + strconv.Itoa(n),
 			HealthCheckContainerOwnerName: "executor-health-check-" + strconv.Itoa(n),
 			PathToTLSCert:                 maker.repSSL.ServerCert,

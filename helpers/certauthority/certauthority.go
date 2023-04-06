@@ -85,7 +85,7 @@ func (c certAuthority) GenerateSelfSignedCertAndKey(commonName string, sans []st
 	caLock.Lock()
 	var crt *pkix.Certificate
 	if intermediateCA {
-		crt, err = pkix.CreateIntermediateCertificateAuthority(ca, caKey, csr, time.Now().AddDate(1, 0, 0))
+		crt, err = pkix.CreateIntermediateCertificateAuthorityWithOptions(ca, caKey, csr, time.Now().AddDate(1, 0, 0), pkix.WithPathlenOption(1, false))
 	} else {
 		crt, err = pkix.CreateCertificateHost(ca, caKey, csr, time.Now().AddDate(1, 0, 0))
 	}
@@ -130,7 +130,7 @@ func generateCAAndKey(depotDir, commonName string) (string, string, error) {
 	}
 
 	caLock.Lock()
-	ca, err := pkix.CreateCertificateAuthority(caKey, "", time.Now().AddDate(1, 0, 0), "", "", "", "", commonName)
+	ca, err := pkix.CreateCertificateAuthority(caKey, "", time.Now().AddDate(1, 0, 0), "", "", "", "", commonName, nil)
 	if err != nil {
 		caLock.Unlock()
 		return handleError(err)
@@ -146,7 +146,7 @@ func generateCAAndKey(depotDir, commonName string) (string, string, error) {
 		return handleError(err)
 	}
 
-	crt, err := pkix.CreateIntermediateCertificateAuthority(ca, caKey, csr, time.Now().AddDate(1, 0, 0))
+	crt, err := pkix.CreateIntermediateCertificateAuthorityWithOptions(ca, caKey, csr, time.Now().AddDate(1, 0, 0), pkix.WithPathlenOption(1, false))
 	if err != nil {
 		caLock.Unlock()
 		return handleError(err)

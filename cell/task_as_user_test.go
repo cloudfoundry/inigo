@@ -5,13 +5,13 @@ import (
 	"runtime"
 
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
 
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/inigo/helpers"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -27,9 +27,9 @@ var _ = Describe("Tasks as specific user", func() {
 		fileServerRunner, _ = componentMaker.FileServer()
 
 		cellGroup := grouper.Members{
-			{"file-server", fileServerRunner},
-			{"rep", componentMaker.Rep(func(config *repconfig.RepConfig) { config.MemoryMB = "1024" })},
-			{"auctioneer", componentMaker.Auctioneer()},
+			{Name: "file-server", Runner: fileServerRunner},
+			{Name: "rep", Runner: componentMaker.Rep(func(config *repconfig.RepConfig) { config.MemoryMB = "1024" })},
+			{Name: "auctioneer", Runner: componentMaker.Auctioneer()},
 		}
 		cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, cellGroup))
 

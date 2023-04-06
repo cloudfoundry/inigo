@@ -2,6 +2,7 @@ package executor_test
 
 import (
 	"archive/tar"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -19,14 +20,14 @@ import (
 	"code.cloudfoundry.org/executor/initializer/configuration"
 	"code.cloudfoundry.org/garden"
 	"code.cloudfoundry.org/inigo/world"
-	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager/v3/lagertest"
 	uuid "github.com/nu7hatch/gouuid"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
 )
 
@@ -664,14 +665,18 @@ var _ = Describe("Executor/Garden", func() {
 
 					Context("after running succeeds", func() {
 						Describe("deleting the container", func() {
-							It("works", func(done Done) {
-								defer close(done)
+							It("works", func(ctx context.Context) {
+								done := make(chan interface{})
+								defer GinkgoRecover()
+								go func() {
+									Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
 
-								Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
-
-								err := executorClient.DeleteContainer(logger, guid)
-								Expect(err).NotTo(HaveOccurred())
-							}, 5)
+									err := executorClient.DeleteContainer(logger, guid)
+									Expect(err).NotTo(HaveOccurred())
+									close(done)
+								}()
+								Eventually(done, 5*time.Second).Should(BeClosed())
+							})
 						})
 					})
 

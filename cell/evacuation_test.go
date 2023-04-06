@@ -18,10 +18,10 @@ import (
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
 	"code.cloudfoundry.org/tlsconfig"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -65,10 +65,10 @@ var _ = Describe("Evacuation", func() {
 		))
 
 		ifritRuntime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"router", componentMaker.Router()},
-			{"file-server", fileServer},
-			{"auctioneer", componentMaker.Auctioneer()},
-			{"route-emitter", componentMaker.RouteEmitter()},
+			{Name: "router", Runner: componentMaker.Router()},
+			{Name: "file-server", Runner: fileServer},
+			{Name: "auctioneer", Runner: componentMaker.Auctioneer()},
+			{Name: "route-emitter", Runner: componentMaker.RouteEmitter()},
 		}))
 
 		cellAID = "cell-a"

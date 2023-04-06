@@ -8,7 +8,7 @@ import (
 	"code.cloudfoundry.org/garden"
 	"github.com/onsi/gomega/gbytes"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -113,7 +113,7 @@ func createContainerTestFileIn(container garden.Container, filePath string) {
 		Path: "touch",
 		Args: []string{filePath},
 		User: "root",
-	}, garden.ProcessIO{nil, os.Stdout, os.Stderr})
+	}, garden.ProcessIO{Stdin: nil, Stdout: os.Stdout, Stderr: os.Stderr})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(process.Wait()).To(Equal(0))
 
@@ -121,7 +121,7 @@ func createContainerTestFileIn(container garden.Container, filePath string) {
 		Path: "chmod",
 		Args: []string{"0777", filePath},
 		User: "root",
-	}, garden.ProcessIO{nil, os.Stdout, os.Stderr})
+	}, garden.ProcessIO{Stdin: nil, Stdout: os.Stdout, Stderr: os.Stderr})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(process.Wait()).To(Equal(0))
 
@@ -135,7 +135,7 @@ func expectContainerTestFileExists(container garden.Container, filePath string) 
 		Path: "ls",
 		Args: []string{filePath},
 		User: "root",
-	}, garden.ProcessIO{nil, out, out})
+	}, garden.ProcessIO{Stdin: nil, Stdout: out, Stderr: out})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(proc.Wait()).To(Equal(0))
 	Expect(out).To(gbytes.Say(filePath))

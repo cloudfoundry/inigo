@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"code.cloudfoundry.org/inigo/helpers/certauthority"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

@@ -18,14 +18,14 @@ import (
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/inigo/world"
-	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager/v3/lagertest"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
 	"golang.org/x/crypto/ssh"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -71,12 +71,12 @@ var _ = Describe("SSH", func() {
 		var fileServer ifrit.Runner
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
 		ifritRuntime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"router", componentMaker.Router()},
-			{"file-server", fileServer},
-			{"rep", componentMaker.Rep()},
-			{"auctioneer", componentMaker.Auctioneer()},
-			{"route-emitter", componentMaker.RouteEmitter()},
-			{"ssh-proxy", componentMaker.SSHProxy()},
+			{Name: "router", Runner: componentMaker.Router()},
+			{Name: "file-server", Runner: fileServer},
+			{Name: "rep", Runner: componentMaker.Rep()},
+			{Name: "auctioneer", Runner: componentMaker.Auctioneer()},
+			{Name: "route-emitter", Runner: componentMaker.RouteEmitter()},
+			{Name: "ssh-proxy", Runner: componentMaker.SSHProxy()},
 		}))
 
 		tgCompressor := compressor.NewTgz()
@@ -140,7 +140,7 @@ var _ = Describe("SSH", func() {
 				&models.RunAction{
 					User: "root",
 					Path: "/tmp/diego/go-server",
-					Env:  []*models.EnvironmentVariable{{"PORT", "9999"}},
+					Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "9999"}},
 				},
 			)),
 			Monitor: models.WrapAction(&models.RunAction{

@@ -15,10 +15,10 @@ import (
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
 )
 
@@ -42,11 +42,11 @@ var _ = Describe("Network Environment Variables", func() {
 
 	JustBeforeEach(func() {
 		ifritRuntime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"rep", componentMaker.Rep(modifyRepConfig)},
-			{"auctioneer", componentMaker.Auctioneer()},
-			{"router", componentMaker.Router()},
-			{"route-emitter", componentMaker.RouteEmitter()},
-			{"file-server", fileServer},
+			{Name: "rep", Runner: componentMaker.Rep(modifyRepConfig)},
+			{Name: "auctioneer", Runner: componentMaker.Auctioneer()},
+			{Name: "router", Runner: componentMaker.Router()},
+			{Name: "route-emitter", Runner: componentMaker.RouteEmitter()},
+			{Name: "file-server", Runner: fileServer},
 		}))
 	})
 
@@ -110,7 +110,7 @@ var _ = Describe("Network Environment Variables", func() {
 			lrp.Action = models.WrapAction(&models.RunAction{
 				User: "vcap",
 				Path: "/tmp/diego/go-server",
-				Env:  []*models.EnvironmentVariable{{"PORT", "8080"}},
+				Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 			})
 
 			err := bbsClient.DesireLRP(lgr, lrp)

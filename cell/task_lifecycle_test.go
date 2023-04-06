@@ -13,10 +13,10 @@ import (
 	"code.cloudfoundry.org/inigo/inigo_announcement_server"
 
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
 )
 
@@ -53,7 +53,7 @@ var _ = Describe("Task Lifecycle", func() {
 		BeforeEach(func() {
 
 			cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-				{"rep", componentMaker.Rep(func(config *repconfig.RepConfig) {
+				{Name: "rep", Runner: componentMaker.Rep(func(config *repconfig.RepConfig) {
 					config.MemoryMB = "1024"
 				})},
 			}))
@@ -301,7 +301,7 @@ exit 0
 			))
 
 			cellProcess = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, grouper.Members{
-				{"rep", componentMaker.Rep()},
+				{Name: "rep", Runner: componentMaker.Rep()},
 			}))
 		})
 

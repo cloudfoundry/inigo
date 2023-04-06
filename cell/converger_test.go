@@ -9,11 +9,11 @@ import (
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
 
 	archive_helper "code.cloudfoundry.org/archiver/extractor/test_helper"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -38,9 +38,9 @@ var _ = Describe("Convergence to desired state", func() {
 		fileServer, fileServerStaticDir := componentMaker.FileServer()
 
 		ifritRuntime = ginkgomon.Invoke(grouper.NewParallel(os.Kill, grouper.Members{
-			{"file-server", fileServer},
-			{"route-emitter", componentMaker.RouteEmitter()},
-			{"router", componentMaker.Router()},
+			{Name: "file-server", Runner: fileServer},
+			{Name: "route-emitter", Runner: componentMaker.RouteEmitter()},
+			{Name: "router", Runner: componentMaker.Router()},
 		}))
 
 		archive_helper.CreateZipArchive(

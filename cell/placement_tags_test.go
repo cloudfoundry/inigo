@@ -9,13 +9,13 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 
 	repconfig "code.cloudfoundry.org/rep/cmd/rep/config"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
 )
 
@@ -38,9 +38,9 @@ var _ = Describe("Placement Tags", func() {
 			config.OptionalPlacementTags = []string{"inigo-optional-tag"}
 		}
 		ifritRuntime = ginkgomon.Invoke(grouper.NewParallel(os.Interrupt, grouper.Members{
-			{"file-server", fileServer},
-			{"rep-with-tag", componentMaker.Rep(modifyRepConfig)},
-			{"auctioneer", componentMaker.Auctioneer()},
+			{Name: "file-server", Runner: fileServer},
+			{Name: "rep-with-tag", Runner: componentMaker.Rep(modifyRepConfig)},
+			{Name: "auctioneer", Runner: componentMaker.Auctioneer()},
 		}))
 
 		archive_helper.CreateZipArchive(

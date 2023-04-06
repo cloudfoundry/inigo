@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/nu7hatch/gouuid"
+	uuid "github.com/nu7hatch/gouuid"
 
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/clock"
@@ -21,13 +21,12 @@ import (
 	executorinit "code.cloudfoundry.org/executor/initializer"
 	"code.cloudfoundry.org/executor/initializer/configuration"
 	"code.cloudfoundry.org/inigo/world"
-	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagertest"
-	. "github.com/onsi/ginkgo"
-	ginkgoconfig "github.com/onsi/ginkgo/config"
+	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager/v3/lagertest"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
+	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
 	"github.com/tedsuo/ifrit/grouper"
 )
 
@@ -101,7 +100,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 			EnvoyConfigRefreshDelay:            durationjson.Duration(time.Second),
 			EnvoyDrainTimeout:                  durationjson.Duration(15 * time.Minute),
 		}
-		config.VolmanDriverPaths = path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("node-%d", ginkgoconfig.GinkgoConfig.ParallelNode))
+		config.VolmanDriverPaths = path.Join(componentMaker.VolmanDriverConfigDir(), fmt.Sprintf("node-%d", GinkgoParallelProcess()))
 		config.GardenNetwork = "tcp"
 		config.GardenAddr = componentMaker.Addresses().Garden
 		config.HealthyMonitoringInterval = durationjson.Duration(time.Second)

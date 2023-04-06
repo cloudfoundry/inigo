@@ -2,7 +2,7 @@ package portauthority_test
 
 import (
 	"code.cloudfoundry.org/inigo/helpers/portauthority"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
