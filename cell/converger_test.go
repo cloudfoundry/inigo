@@ -95,7 +95,7 @@ var _ = Describe("Convergence to desired state", func() {
 				))
 
 				By("creating and ActualLRP")
-				err := bbsClient.DesireLRP(lgr, helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, appId, 2))
+				err := bbsClient.DesireLRP(lgr, "", helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, appId, 2))
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(runningLRPsPoller).Should(HaveLen(2))
 				Eventually(helloWorldInstancePoller).Should(Equal([]string{"0", "1"}))
@@ -170,7 +170,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
-					err := bbsClient.DesireLRP(lgr, helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, appId, 1))
+					err := bbsClient.DesireLRP(lgr, "", helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, appId, 1))
 					Expect(err).NotTo(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
@@ -207,7 +207,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
-					err := bbsClient.DesireLRP(lgr, helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, appId, 1))
+					err := bbsClient.DesireLRP(lgr, "", helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, appId, 1))
 					Expect(err).NotTo(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())
@@ -234,7 +234,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 			Context("and an LRP is desired", func() {
 				BeforeEach(func() {
-					err := bbsClient.DesireLRP(lgr, helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, appId, 1))
+					err := bbsClient.DesireLRP(lgr, "", helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, appId, 1))
 					Expect(err).NotTo(HaveOccurred())
 
 					Consistently(runningLRPsPoller).Should(BeEmpty())

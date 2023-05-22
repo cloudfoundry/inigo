@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/durationjson"
+	"code.cloudfoundry.org/guardian/gqt/runner"
 	"code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/localip"
 	. "github.com/onsi/ginkgo/v2"
@@ -37,6 +38,8 @@ var (
 	gardenClient                        garden.Client
 	bbsClient                           bbs.InternalClient
 	bbsServiceClient                    serviceclient.ServiceClient
+	bbsRunner                           *ginkgomon.Runner
+	gardenRunner                        *runner.GardenRunner
 	lgr                                 lager.Logger
 	suiteTempDir                        string
 )
@@ -121,8 +124,10 @@ var _ = BeforeEach(func() {
 		})},
 		{Name: "locket", Runner: componentMaker.Locket()},
 	}))
-	gardenProcess = ginkgomon.Invoke(componentMaker.Garden())
-	bbsProcess = ginkgomon.Invoke(componentMaker.BBS())
+	gardenRunner = componentMaker.Garden()
+	gardenProcess = ginkgomon.Invoke(gardenRunner)
+	bbsRunner = componentMaker.BBS()
+	bbsProcess = ginkgomon.Invoke(bbsRunner)
 
 	lgr = lager.NewLogger("test")
 	lgr.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))

@@ -54,7 +54,7 @@ var _ = Describe("Placement Tags", func() {
 	})
 
 	It("advertises placement tags in the cell presence", func() {
-		presences, err := bbsClient.Cells(lgr)
+		presences, err := bbsClient.Cells(lgr, "")
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(presences).To(HaveLen(1))
@@ -62,7 +62,7 @@ var _ = Describe("Placement Tags", func() {
 	})
 
 	It("advertises optional placement tags in the cell presence", func() {
-		presences, err := bbsClient.Cells(lgr)
+		presences, err := bbsClient.Cells(lgr, "")
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(presences).To(HaveLen(1))
@@ -73,7 +73,7 @@ var _ = Describe("Placement Tags", func() {
 		var lrp *models.DesiredLRP
 
 		JustBeforeEach(func() {
-			err := bbsClient.DesireLRP(lgr, lrp)
+			err := bbsClient.DesireLRP(lgr, "", lrp)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -84,7 +84,7 @@ var _ = Describe("Placement Tags", func() {
 
 			It("succeeds and is running on correct cell", func() {
 				lrpFunc := func() string {
-					lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: guid})
+					lrps, err := bbsClient.ActualLRPs(lgr, "", models.ActualLRPFilter{ProcessGuid: guid})
 					Expect(err).NotTo(HaveOccurred())
 					if len(lrps) == 0 {
 						return ""
@@ -103,7 +103,7 @@ var _ = Describe("Placement Tags", func() {
 
 			It("succeeds and is running on correct cell", func() {
 				lrpFunc := func() string {
-					lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: guid})
+					lrps, err := bbsClient.ActualLRPs(lgr, "", models.ActualLRPFilter{ProcessGuid: guid})
 					Expect(err).NotTo(HaveOccurred())
 					if len(lrps) == 0 {
 						return ""
@@ -122,7 +122,7 @@ var _ = Describe("Placement Tags", func() {
 
 			It("fails and sets a placement error", func() {
 				lrpFunc := func() string {
-					lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: guid})
+					lrps, err := bbsClient.ActualLRPs(lgr, "", models.ActualLRPFilter{ProcessGuid: guid})
 					Expect(err).NotTo(HaveOccurred())
 					if len(lrps) == 0 {
 						return ""
@@ -170,7 +170,7 @@ var _ = Describe("Placement Tags", func() {
 		})
 
 		JustBeforeEach(func() {
-			err := bbsClient.DesireTask(lgr, task.TaskGuid, task.Domain, task.TaskDefinition)
+			err := bbsClient.DesireTask(lgr, "", task.TaskGuid, task.Domain, task.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -180,7 +180,7 @@ var _ = Describe("Placement Tags", func() {
 				Eventually(func() interface{} {
 					var err error
 
-					completedTask, err = bbsClient.TaskByGuid(lgr, guid)
+					completedTask, err = bbsClient.TaskByGuid(lgr, "", guid)
 					Expect(err).NotTo(HaveOccurred())
 
 					return completedTask.State
@@ -213,7 +213,7 @@ var _ = Describe("Placement Tags", func() {
 
 			It("fails and sets a placement error", func() {
 				taskFunc := func() string {
-					t, err := bbsClient.TaskByGuid(lgr, task.TaskGuid)
+					t, err := bbsClient.TaskByGuid(lgr, "", task.TaskGuid)
 					Expect(err).NotTo(HaveOccurred())
 					return t.FailureReason
 				}

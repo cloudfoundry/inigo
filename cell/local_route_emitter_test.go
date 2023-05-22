@@ -124,7 +124,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 
 		JustBeforeEach(func() {
 			lrp.Instances = instances
-			err := bbsClient.DesireLRP(lgr, lrp)
+			err := bbsClient.DesireLRP(lgr, "", lrp)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 		})
@@ -230,7 +230,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 
 			Context("and the app is deleted", func() {
 				JustBeforeEach(func() {
-					err := bbsClient.RemoveDesiredLRP(lgr, processGuid)
+					err := bbsClient.RemoveDesiredLRP(lgr, "", processGuid)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
@@ -253,7 +253,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 				})
 
 				JustBeforeEach(func() {
-					err := bbsClient.UpdateDesiredLRP(lgr, processGuid, desiredLRPUdate)
+					err := bbsClient.UpdateDesiredLRP(lgr, "", processGuid, desiredLRPUdate)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
@@ -312,7 +312,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 			JustBeforeEach(func() {
 				dlu := &models.DesiredLRPUpdate{}
 				dlu.SetInstances(newInstances)
-				err := bbsClient.UpdateDesiredLRP(lgr, processGuid, dlu)
+				err := bbsClient.UpdateDesiredLRP(lgr, "", processGuid, dlu)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -383,7 +383,7 @@ func evacuateARep(
 	cellAPort, cellBPort uint16,
 ) {
 	By("finding rep with one instance running")
-	lrps, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: processGuid})
+	lrps, err := bbsClient.ActualLRPs(logger, "", models.ActualLRPFilter{ProcessGuid: processGuid})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(lrps).To(HaveLen(3))
 	instancePerRepCount := map[string]int{}

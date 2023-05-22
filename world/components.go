@@ -59,7 +59,6 @@ import (
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
-	"github.com/tedsuo/ifrit/grouper"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -344,8 +343,8 @@ type ComponentMaker interface {
 	Artifacts() BuiltArtifacts
 	PortAllocator() portauthority.PortAllocator
 	Addresses() ComponentAddresses
-	Auctioneer(modifyConfigFuncs ...func(cfg *auctioneerconfig.AuctioneerConfig)) ifrit.Runner
-	BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig)) ifrit.Runner
+	Auctioneer(modifyConfigFuncs ...func(cfg *auctioneerconfig.AuctioneerConfig)) *ginkgomon.Runner
+	BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig)) *ginkgomon.Runner
 	BBSClient() bbs.InternalClient
 	RepClientFactory() rep.ClientFactory
 	BBSServiceClient(logger lager.Logger) serviceclient.ServiceClient
@@ -353,7 +352,7 @@ type ComponentMaker interface {
 	BBSSSLConfig() SSLConfig
 	DefaultStack() string
 	FileServer() (ifrit.Runner, string)
-	Garden(fs ...func(*runner.GdnRunnerConfig)) ifrit.Runner
+	Garden(fs ...func(*runner.GdnRunnerConfig)) *runner.GardenRunner
 	GardenClient() garden.Client
 	GardenWithoutDefaultStack() ifrit.Runner
 	GrootFSDeleteStore()
@@ -363,9 +362,9 @@ type ComponentMaker interface {
 	Rep(modifyConfigFuncs ...func(*repconfig.RepConfig)) *ginkgomon.Runner
 	RepN(n int, modifyConfigFuncs ...func(*repconfig.RepConfig)) *ginkgomon.Runner
 	RepSSLConfig() SSLConfig
-	RouteEmitter(fs ...func(config *routeemitterconfig.RouteEmitterConfig)) ifrit.Runner
-	RouteEmitterN(n int, fs ...func(config *routeemitterconfig.RouteEmitterConfig)) ifrit.Runner
-	Router() ifrit.Runner
+	RouteEmitter(fs ...func(config *routeemitterconfig.RouteEmitterConfig)) *ginkgomon.Runner
+	RouteEmitterN(n int, fs ...func(config *routeemitterconfig.RouteEmitterConfig)) *ginkgomon.Runner
+	Router() *ginkgomon.Runner
 	RoutingAPI(modifyConfigFuncs ...func(*routingapi.Config)) *routingapi.RoutingAPIRunner
 	SQL(argv ...string) ifrit.Runner
 	SSHProxy(modifyConfigFuncs ...func(*sshproxyconfig.SSHProxyConfig)) ifrit.Runner
@@ -569,17 +568,15 @@ func (maker commonComponentMaker) GardenWithoutDefaultStack() ifrit.Runner {
 	return maker.garden(false)
 }
 
-func (maker commonComponentMaker) Garden(fs ...func(*runner.GdnRunnerConfig)) ifrit.Runner {
+func (maker commonComponentMaker) Garden(fs ...func(*runner.GdnRunnerConfig)) *runner.GardenRunner {
 	return maker.garden(true, fs...)
 }
 
-func (maker commonComponentMaker) garden(includeDefaultStack bool, fs ...func(*runner.GdnRunnerConfig)) ifrit.Runner {
+func (maker commonComponentMaker) garden(includeDefaultStack bool, fs ...func(*runner.GdnRunnerConfig)) *runner.GardenRunner {
 	defaultRootFS := ""
 	if includeDefaultStack {
 		defaultRootFS = maker.rootFSes.StackPathMap()[maker.DefaultStack()]
 	}
-
-	members := []grouper.Member{}
 
 	config := runner.DefaultGdnRunnerConfig(runner.Binaries{
 		Tardis: filepath.Join(maker.gardenConfig.GardenBinPath, "tardis"),
@@ -659,9 +656,7 @@ func (maker commonComponentMaker) garden(includeDefaultStack bool, fs ...func(*r
 	gardenRunner.Runner.StartCheck = "guardian.started"
 	gardenRunner.Runner.StartCheckTimeout = maker.startCheckTimeout
 
-	members = append(members, grouper.Member{Name: "garden", Runner: gardenRunner})
-
-	return grouper.NewOrdered(os.Interrupt, members)
+	return gardenRunner
 }
 
 func (maker commonComponentMaker) RoutingAPI(modifyConfigFuncs ...func(*routingapi.Config)) *routingapi.RoutingAPIRunner {
@@ -726,7 +721,7 @@ func (maker commonComponentMaker) Locket(modifyConfigFuncs ...func(*locketconfig
 	})
 }
 
-func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routeemitterconfig.RouteEmitterConfig)) ifrit.Runner {
+func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routeemitterconfig.RouteEmitterConfig)) *ginkgomon.Runner {
 	name := "route-emitter-" + strconv.Itoa(n)
 
 	configFile, err := ioutil.TempFile(TempDirWithParent(maker.tmpDir, "route-emitter"), "route-emitter-config")
@@ -849,7 +844,7 @@ func (maker commonComponentMaker) FileServer() (ifrit.Runner, string) {
 	}), servedFilesDir
 }
 
-func (maker commonComponentMaker) Router() ifrit.Runner {
+func (maker commonComponentMaker) Router() *ginkgomon.Runner {
 	_, routerPort, err := net.SplitHostPort(maker.addresses.Router)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -1109,7 +1104,7 @@ type v0ComponentMaker struct {
 	commonComponentMaker
 }
 
-func (maker v0ComponentMaker) Auctioneer(modifyConfigFuncs ...func(*auctioneerconfig.AuctioneerConfig)) ifrit.Runner {
+func (maker v0ComponentMaker) Auctioneer(modifyConfigFuncs ...func(*auctioneerconfig.AuctioneerConfig)) *ginkgomon.Runner {
 	cfg := auctioneerconfig.AuctioneerConfig{
 		BBSAddress:        maker.BBSURL(),
 		BBSCACertFile:     maker.bbsSSL.CACert,
@@ -1157,7 +1152,7 @@ func (maker v0ComponentMaker) Auctioneer(modifyConfigFuncs ...func(*auctioneerco
 	})
 }
 
-func (maker v0ComponentMaker) RouteEmitter(modifyConfigFuncs ...func(config *routeemitterconfig.RouteEmitterConfig)) ifrit.Runner {
+func (maker v0ComponentMaker) RouteEmitter(modifyConfigFuncs ...func(config *routeemitterconfig.RouteEmitterConfig)) *ginkgomon.Runner {
 	cfg := routeemitterconfig.RouteEmitterConfig{
 		NATSAddresses:     maker.addresses.NATS,
 		BBSAddress:        maker.BBSURL(),
@@ -1218,7 +1213,7 @@ func (maker v0ComponentMaker) FileServer() (ifrit.Runner, string) {
 	}), servedFilesDir
 }
 
-func (maker v0ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig)) ifrit.Runner {
+func (maker v0ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig)) *ginkgomon.Runner {
 	cfg := bbsconfig.BBSConfig{
 		AdvertiseURL:             maker.BBSURL(),
 		AuctioneerAddress:        "http://" + maker.addresses.Auctioneer,
@@ -1399,7 +1394,7 @@ func (maker v0ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 	})
 }
 
-func (maker v1ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig)) ifrit.Runner {
+func (maker v1ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig)) *ginkgomon.Runner {
 	config := bbsconfig.BBSConfig{
 		SessionName:                 "bbs",
 		CommunicationTimeout:        durationjson.Duration(10 * time.Second),
@@ -1593,7 +1588,7 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 	})
 }
 
-func (maker v1ComponentMaker) Auctioneer(modifyConfigFuncs ...func(cfg *auctioneerconfig.AuctioneerConfig)) ifrit.Runner {
+func (maker v1ComponentMaker) Auctioneer(modifyConfigFuncs ...func(cfg *auctioneerconfig.AuctioneerConfig)) *ginkgomon.Runner {
 	auctioneerConfig := auctioneerconfig.AuctioneerConfig{
 		AuctionRunnerWorkers:          1000,
 		CellStateTimeout:              durationjson.Duration(1 * time.Second),
@@ -1645,7 +1640,7 @@ func (maker v1ComponentMaker) Auctioneer(modifyConfigFuncs ...func(cfg *auctione
 	})
 }
 
-func (maker v1ComponentMaker) RouteEmitter(modifyConfigFuncs ...func(config *routeemitterconfig.RouteEmitterConfig)) ifrit.Runner {
+func (maker v1ComponentMaker) RouteEmitter(modifyConfigFuncs ...func(config *routeemitterconfig.RouteEmitterConfig)) *ginkgomon.Runner {
 	return maker.RouteEmitterN(0, modifyConfigFuncs...)
 }
 

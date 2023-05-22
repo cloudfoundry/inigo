@@ -134,7 +134,7 @@ var _ = Describe("Evacuation", func() {
 
 	It("handles evacuation", func() {
 		By("desiring an LRP")
-		err := bbsClient.DesireLRP(lgr, lrp)
+		err := bbsClient.DesireLRP(lgr, "", lrp)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("running an actual LRP instance")
@@ -142,7 +142,7 @@ var _ = Describe("Evacuation", func() {
 		Eventually(helpers.ResponseCodeFromHostPoller(componentMaker.Addresses().Router, helpers.DefaultHost)).Should(Equal(http.StatusOK))
 
 		index := int32(0)
-		lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid, Index: &index})
+		lrps, err := bbsClient.ActualLRPs(lgr, "", models.ActualLRPFilter{ProcessGuid: processGuid, Index: &index})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(len(lrps)).To(Equal(1))
 		Expect(lrps[0].Presence).NotTo(Equal(models.ActualLRP_Evacuating))
@@ -201,7 +201,7 @@ var _ = Describe("Evacuation", func() {
 		It("shuts down gracefully after the evacuation timeout", func() {
 			time.Sleep(time.Minute)
 
-			err := bbsClient.DesireLRP(lgr, lrp)
+			err := bbsClient.DesireLRP(lgr, "", lrp)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("running an actual LRP instance")
@@ -218,11 +218,11 @@ var _ = Describe("Evacuation", func() {
 			addr := fmt.Sprintf("https://%s.cell.service.cf.internal:%d", cellAID, cellPortsStart)
 			secureAddr := fmt.Sprintf("https://%s.cell.service.cf.internal:%d", cellAID, cellPortsStart+1)
 			// NewClientFactory <<- tls
-			client, err := factory.CreateClient(addr, secureAddr)
+			client, err := factory.CreateClient(addr, secureAddr, "")
 			Expect(err).NotTo(HaveOccurred())
 
 			index := int32(0)
-			lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: lrp.ProcessGuid, Index: &index, CellID: cellAID})
+			lrps, err := bbsClient.ActualLRPs(lgr, "", models.ActualLRPFilter{ProcessGuid: lrp.ProcessGuid, Index: &index, CellID: cellAID})
 			Expect(err).NotTo(HaveOccurred())
 			// This list of LRPs can have one or both of an EVACUATING LRP and an ORDINARY LRP (if we
 			// happen to catch the BBS before it has transitioned the ORDINARY one to UNCLAIMED). We don't

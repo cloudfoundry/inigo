@@ -11,7 +11,7 @@ import (
 )
 
 func filteredActualLRPs(logger lager.Logger, client bbs.InternalClient, processGuid string, filter func(lrp *models.ActualLRP) bool) []models.ActualLRP {
-	lrps, err := client.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: processGuid})
+	lrps, err := client.ActualLRPs(logger, "", models.ActualLRPFilter{ProcessGuid: processGuid})
 	Expect(err).NotTo(HaveOccurred())
 
 	startedLRPs := make([]models.ActualLRP, 0, len(lrps))
@@ -38,7 +38,7 @@ func RunningActualLRPs(logger lager.Logger, client bbs.InternalClient, processGu
 
 func TaskStatePoller(logger lager.Logger, client bbs.InternalClient, taskGuid string, task *models.Task) func() models.Task_State {
 	return func() models.Task_State {
-		rTask, err := client.TaskByGuid(logger, taskGuid)
+		rTask, err := client.TaskByGuid(logger, "", taskGuid)
 		Expect(err).NotTo(HaveOccurred())
 
 		if task != nil {
@@ -51,7 +51,7 @@ func TaskStatePoller(logger lager.Logger, client bbs.InternalClient, taskGuid st
 
 func TaskFailedPoller(logger lager.Logger, client bbs.InternalClient, taskGuid string, task *models.Task) func() bool {
 	return func() bool {
-		rTask, err := client.TaskByGuid(logger, taskGuid)
+		rTask, err := client.TaskByGuid(logger, "", taskGuid)
 		Expect(err).NotTo(HaveOccurred())
 
 		if task != nil {
@@ -66,9 +66,9 @@ func LRPStatePoller(logger lager.Logger, client bbs.InternalClient, processGuid 
 	return func() string {
 		var foundLRP *models.ActualLRP
 
-		lrps, err := client.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: processGuid})
+		lrps, err := client.ActualLRPs(logger, "", models.ActualLRPFilter{ProcessGuid: processGuid})
 		if err != nil && strings.Contains(err.Error(), "Invalid Response with status code: 404") {
-			lrpGroups, err := client.ActualLRPGroupsByProcessGuid(logger, processGuid)
+			lrpGroups, err := client.ActualLRPGroupsByProcessGuid(logger, "", processGuid)
 			Expect(err).NotTo(HaveOccurred())
 			if len(lrpGroups) == 0 {
 				return ""
@@ -93,9 +93,9 @@ func LRPInstanceStatePoller(logger lager.Logger, client bbs.InternalClient, proc
 	return func() string {
 		i := int32(index)
 		var foundLRP *models.ActualLRP
-		lrps, err := client.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: processGuid, Index: &i})
+		lrps, err := client.ActualLRPs(logger, "", models.ActualLRPFilter{ProcessGuid: processGuid, Index: &i})
 		if err != nil && strings.Contains(err.Error(), "Invalid Response with status code: 404") {
-			lrpGroup, err := client.ActualLRPGroupByProcessGuidAndIndex(logger, processGuid, index)
+			lrpGroup, err := client.ActualLRPGroupByProcessGuidAndIndex(logger, "", processGuid, index)
 			Expect(err).NotTo(HaveOccurred())
 			foundLRP, _, err = lrpGroup.Resolve()
 			Expect(err).NotTo(HaveOccurred())

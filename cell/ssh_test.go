@@ -165,11 +165,11 @@ var _ = Describe("SSH", func() {
 		logger := lagertest.NewTestLogger("test")
 		logger.Info("desired-ssh-lrp", lager.Data{"lrp": lrp})
 
-		err := bbsClient.DesireLRP(logger, &lrp)
+		err := bbsClient.DesireLRP(logger, "", &lrp)
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(func() []*models.ActualLRP {
-			lrps, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: processGuid})
+			lrps, err := bbsClient.ActualLRPs(logger, "", models.ActualLRPFilter{ProcessGuid: processGuid})
 			Expect(err).NotTo(HaveOccurred())
 			return lrps
 		}).Should(HaveLen(2))

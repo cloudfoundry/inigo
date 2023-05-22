@@ -100,7 +100,7 @@ var _ = Describe("Task Lifecycle", func() {
 			})
 
 			theFailureReason := func() string {
-				taskAfterCancel, err := bbsClient.TaskByGuid(lgr, taskGuid)
+				taskAfterCancel, err := bbsClient.TaskByGuid(lgr, "", taskGuid)
 				if err != nil {
 					return ""
 				}
@@ -117,7 +117,7 @@ var _ = Describe("Task Lifecycle", func() {
 			}
 
 			JustBeforeEach(func() {
-				err := bbsClient.DesireTask(lgr, taskToCreate.TaskGuid, taskToCreate.Domain, taskToCreate.TaskDefinition)
+				err := bbsClient.DesireTask(lgr, "", taskToCreate.TaskGuid, taskToCreate.Domain, taskToCreate.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -174,12 +174,12 @@ var _ = Describe("Task Lifecycle", func() {
 				JustBeforeEach(func() {
 					Eventually(inigo_announcement_server.Announcements).Should(ContainElement(taskGuid))
 
-					err := bbsClient.CancelTask(lgr, taskGuid)
+					err := bbsClient.CancelTask(lgr, "", taskGuid)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("marks the task as complete, failed and cancelled", func() {
-					taskAfterCancel, err := bbsClient.TaskByGuid(lgr, taskGuid)
+					taskAfterCancel, err := bbsClient.TaskByGuid(lgr, "", taskGuid)
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(taskAfterCancel.State).To(Equal(models.Task_Completed))
@@ -214,7 +214,7 @@ var _ = Describe("Task Lifecycle", func() {
 							Eventually(func() interface{} {
 								var err error
 
-								completedTask, err = bbsClient.TaskByGuid(lgr, taskGuid)
+								completedTask, err = bbsClient.TaskByGuid(lgr, "", taskGuid)
 								Expect(err).NotTo(HaveOccurred())
 
 								return completedTask.State
@@ -254,7 +254,7 @@ exit 0
 			})
 
 			JustBeforeEach(func() {
-				err := bbsClient.DesireTask(lgr, taskToCreate.TaskGuid, taskToCreate.Domain, taskToCreate.TaskDefinition)
+				err := bbsClient.DesireTask(lgr, "", taskToCreate.TaskGuid, taskToCreate.Domain, taskToCreate.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -319,7 +319,7 @@ exit 0
 						Args: []string{inigo_announcement_server.AnnounceURL(taskGuid)},
 					},
 				)
-				err := bbsClient.DesireTask(lgr, taskToDesire.TaskGuid, taskToDesire.Domain, taskToDesire.TaskDefinition)
+				err := bbsClient.DesireTask(lgr, "", taskToDesire.TaskGuid, taskToDesire.Domain, taskToDesire.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -364,7 +364,7 @@ exit 0
 					},
 				)
 
-				err := bbsClient.DesireTask(lgr, taskToDesire.TaskGuid, taskToDesire.Domain, taskToDesire.TaskDefinition)
+				err := bbsClient.DesireTask(lgr, "", taskToDesire.TaskGuid, taskToDesire.Domain, taskToDesire.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -373,7 +373,7 @@ exit 0
 				Eventually(func() interface{} {
 					var err error
 
-					completedTask, err = bbsClient.TaskByGuid(lgr, taskGuid)
+					completedTask, err = bbsClient.TaskByGuid(lgr, "", taskGuid)
 					Expect(err).NotTo(HaveOccurred())
 
 					return completedTask.State
@@ -393,7 +393,7 @@ func pollTaskStatus(taskGuid string, result string) {
 	Eventually(func() interface{} {
 		var err error
 
-		completedTask, err = bbsClient.TaskByGuid(lgr, taskGuid)
+		completedTask, err = bbsClient.TaskByGuid(lgr, "", taskGuid)
 		Expect(err).NotTo(HaveOccurred())
 
 		return completedTask.State

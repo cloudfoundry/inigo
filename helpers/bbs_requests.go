@@ -63,7 +63,7 @@ var dockerMonitor = models.WrapAction(&models.RunAction{
 })
 
 func UpsertInigoDomain(logger lager.Logger, bbsClient bbs.InternalClient) {
-	err := bbsClient.UpsertDomain(logger, defaultDomain, 0)
+	err := bbsClient.UpsertDomain(logger, "", defaultDomain, 0)
 	Expect(err).NotTo(HaveOccurred())
 }
 
