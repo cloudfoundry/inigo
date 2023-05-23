@@ -192,7 +192,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 				allocationRequest = executor.NewAllocationRequest(guid, &executor.Resource{}, tags)
 
-				allocationFailures = executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest})
+				allocationFailures = executorClient.AllocateContainers(logger, "", []executor.AllocationRequest{allocationRequest})
 				Expect(allocationFailures).To(BeEmpty())
 			})
 
@@ -213,7 +213,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 				})
 
 				It("container start should succeed", func() {
-					err := executorClient.RunContainer(logger, &runReq)
+					err := executorClient.RunContainer(logger, "", &runReq)
 					Expect(err).NotTo(HaveOccurred())
 					Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
 					Expect(getContainer(guid).RunResult.Failed).Should(BeFalse())
@@ -263,7 +263,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 					allocationRequest = executor.NewAllocationRequest(guid, &executor.Resource{}, tags)
 
-					allocationFailures = executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest})
+					allocationFailures = executorClient.AllocateContainers(logger, "", []executor.AllocationRequest{allocationRequest})
 					Expect(allocationFailures).To(BeEmpty())
 				})
 
@@ -297,14 +297,14 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 					Context("when successfully mounting a RW Mode volume", func() {
 						BeforeEach(func() {
-							err := executorClient.RunContainer(logger, &runReq)
+							err := executorClient.RunContainer(logger, "", &runReq)
 							Expect(err).NotTo(HaveOccurred())
 							Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
 							Expect(getContainer(guid).RunResult.Failed).Should(BeFalse())
 						})
 
 						AfterEach(func() {
-							err := executorClient.DeleteContainer(logger, guid)
+							err := executorClient.DeleteContainer(logger, "", guid)
 							Expect(err).NotTo(HaveOccurred())
 
 							err = os.RemoveAll(path.Join(componentMaker.VolmanDriverConfigDir(), "_volumes", volumeId))
@@ -338,7 +338,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 								tags := executor.Tags{"some-tag": "some-value"}
 								allocationRequest2 := executor.NewAllocationRequest(guid2, &executor.Resource{}, tags)
-								allocationFailures := executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest2})
+								allocationFailures := executorClient.AllocateContainers(logger, "", []executor.AllocationRequest{allocationRequest2})
 								Expect(allocationFailures).To(BeEmpty())
 
 								fileName2 = fmt.Sprintf("testfile2-%d.txt", time.Now().UnixNano())
@@ -352,11 +352,11 @@ var _ = Describe("Executor/Garden/Volman", func() {
 									}),
 								}
 								runReq2 = executor.NewRunRequest(guid2, &runInfo, executor.Tags{})
-								err = executorClient.RunContainer(logger, &runReq2)
+								err = executorClient.RunContainer(logger, "", &runReq2)
 								Expect(err).NotTo(HaveOccurred())
 								Eventually(containerStatePoller(guid2)).Should(Equal(executor.StateCompleted))
 								Expect(getContainer(guid2).RunResult.Failed).Should(BeFalse())
-								err = executorClient.DeleteContainer(logger, guid2)
+								err = executorClient.DeleteContainer(logger, "", guid2)
 								Expect(err).NotTo(HaveOccurred())
 							})
 

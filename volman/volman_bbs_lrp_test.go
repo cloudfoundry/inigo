@@ -128,7 +128,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 		})
 
 		JustBeforeEach(func() {
-			err := bbsClient.DesireLRP(logger, lrp)
+			err := bbsClient.DesireLRP(logger, "", lrp)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -152,7 +152,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 				var actualLRP *models.ActualLRP
 				Eventually(func() interface{} {
 					index := int32(0)
-					lrps, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: processGuid, Index: &index})
+					lrps, err := bbsClient.ActualLRPs(logger, "", models.ActualLRPFilter{ProcessGuid: processGuid, Index: &index})
 					Expect(err).NotTo(HaveOccurred())
 					Expect(len(lrps)).To(Equal(1))
 					Expect(lrps[0].Presence).NotTo(Equal(models.ActualLRP_Evacuating))
@@ -175,7 +175,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 				var actualLRP *models.ActualLRP
 				Eventually(func() interface{} {
 					index := int32(0)
-					lrps, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: processGuid, Index: &index})
+					lrps, err := bbsClient.ActualLRPs(logger, "", models.ActualLRPFilter{ProcessGuid: processGuid, Index: &index})
 					Expect(err).NotTo(HaveOccurred())
 					Expect(len(lrps)).To(Equal(1))
 					Expect(lrps[0].Presence).NotTo(Equal(models.ActualLRP_Evacuating))
@@ -198,7 +198,7 @@ var _ = Describe("LRPs with volume mounts", func() {
 				var actualLRP *models.ActualLRP
 				Eventually(func() interface{} {
 					index := int32(0)
-					lrps, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: processGuid, Index: &index})
+					lrps, err := bbsClient.ActualLRPs(logger, "", models.ActualLRPFilter{ProcessGuid: processGuid, Index: &index})
 					Expect(err).NotTo(HaveOccurred())
 					Expect(lrps[0].Presence).NotTo(Equal(models.ActualLRP_Evacuating))
 					actualLRP = lrps[0]

@@ -89,7 +89,7 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 			tlsFileServer.StartTLS()
 
 			lrp = helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, "log-guid", 1)
-			err := bbsClient.DesireLRP(lgr, lrp)
+			err := bbsClient.DesireLRP(lgr, "", lrp)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -195,7 +195,7 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 				),
 			)
 
-			err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+			err := bbsClient.DesireTask(lgr, "", expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(gotRequest).Should(BeClosed())

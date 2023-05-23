@@ -254,7 +254,7 @@ var _ = Describe("InstanceIdentity", func() {
 		var address, ipAddress string
 
 		JustBeforeEach(func() {
-			err := bbsClient.DesireLRP(lgr, lrp)
+			err := bbsClient.DesireLRP(lgr, "", lrp)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
 
@@ -280,7 +280,7 @@ var _ = Describe("InstanceIdentity", func() {
 		var address string
 
 		JustBeforeEach(func() {
-			err := bbsClient.DesireLRP(lgr, lrp)
+			err := bbsClient.DesireLRP(lgr, "", lrp)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
 
@@ -428,7 +428,7 @@ var _ = Describe("InstanceIdentity", func() {
 
 		Context("and the app starts successfully", func() {
 			JustBeforeEach(func() {
-				err := bbsClient.DesireLRP(lgr, lrp)
+				err := bbsClient.DesireLRP(lgr, "", lrp)
 				Expect(err).NotTo(HaveOccurred())
 				Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGUID, nil)).Should(Equal(models.ActualLRPStateRunning))
 
@@ -641,7 +641,7 @@ var _ = Describe("InstanceIdentity", func() {
 					Context("and is killed", func() {
 						JustBeforeEach(func() {
 							Eventually(connect, 10*time.Second).Should(Succeed())
-							err := bbsClient.RemoveDesiredLRP(lgr, lrp.ProcessGuid)
+							err := bbsClient.RemoveDesiredLRP(lgr, "", lrp.ProcessGuid)
 							Expect(err).NotTo(HaveOccurred())
 						})
 
@@ -733,7 +733,7 @@ var _ = Describe("InstanceIdentity", func() {
 				JustBeforeEach(func() {
 					containerMutex.Lock()
 					defer containerMutex.Unlock()
-					actualLRPs, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: processGUID})
+					actualLRPs, err := bbsClient.ActualLRPs(logger, "", models.ActualLRPFilter{ProcessGuid: processGUID})
 					Expect(err).NotTo(HaveOccurred())
 					actualLRP := actualLRPs[0]
 					container, err = gardenClient.Lookup(actualLRP.InstanceGuid)
@@ -877,7 +877,7 @@ var _ = Describe("InstanceIdentity", func() {
 			})
 
 			JustBeforeEach(func() {
-				err := bbsClient.DesireLRP(lgr, lrp)
+				err := bbsClient.DesireLRP(lgr, "", lrp)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -897,7 +897,7 @@ var _ = Describe("InstanceIdentity", func() {
 					It("crashes the lrp with a descriptive error", func() {
 						Eventually(func() *models.ActualLRP {
 							index := int32(0)
-							lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGUID, Index: &index})
+							lrps, err := bbsClient.ActualLRPs(lgr, "", models.ActualLRPFilter{ProcessGuid: processGUID, Index: &index})
 							Expect(err).NotTo(HaveOccurred())
 							Expect(len(lrps)).To(Equal(1))
 							return lrps[0]
@@ -960,7 +960,7 @@ func memoryInBytes(memoryMb uint64) uint64 {
 
 func getContainerInternalAddress(client bbs.Client, processGuid string, port uint32, tls bool) string {
 	By("getting the internal ip address of the container")
-	lrps, err := client.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
+	lrps, err := client.ActualLRPs(lgr, "", models.ActualLRPFilter{ProcessGuid: processGuid})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(lrps).To(HaveLen(1))
 	netInfo := lrps[0].ActualLRPNetInfo
@@ -1009,14 +1009,14 @@ func runTaskAndGetCommandOutput(command string, organizationalUnits []string) st
 	)
 	expectedTask.ResultFile = resultFile
 
-	err := bbsClient.DesireTask(lgr, expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
+	err := bbsClient.DesireTask(lgr, "", expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 	Expect(err).NotTo(HaveOccurred())
 
 	var task *models.Task
 	Eventually(func() interface{} {
 		var err error
 
-		task, err = bbsClient.TaskByGuid(lgr, guid)
+		task, err = bbsClient.TaskByGuid(lgr, "", guid)
 		Expect(err).NotTo(HaveOccurred())
 
 		return task.State

@@ -64,7 +64,7 @@ var _ = Describe("Privileges", func() {
 		})
 
 		JustBeforeEach(func() {
-			err := bbsClient.DesireTask(lgr, taskToDesire.TaskGuid, taskToDesire.Domain, taskToDesire.TaskDefinition)
+			err := bbsClient.DesireTask(lgr, "", taskToDesire.TaskGuid, taskToDesire.Domain, taskToDesire.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -106,7 +106,7 @@ var _ = Describe("Privileges", func() {
 		})
 
 		JustBeforeEach(func() {
-			err := bbsClient.DesireLRP(lgr, lrpRequest)
+			err := bbsClient.DesireLRP(lgr, "", lrpRequest)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(helpers.LRPStatePoller(lgr, bbsClient, lrpRequest.ProcessGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 		})

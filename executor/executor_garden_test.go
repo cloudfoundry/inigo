@@ -151,7 +151,7 @@ var _ = Describe("Executor/Garden", func() {
 		container.Guid = generateGuid()
 
 		request := executor.NewAllocationRequest(container.Guid, &container.Resource, container.Tags)
-		failures := executorClient.AllocateContainers(logger, []executor.AllocationRequest{request})
+		failures := executorClient.AllocateContainers(logger, "", []executor.AllocationRequest{request})
 		Expect(failures).To(BeEmpty())
 
 		return request.Guid
@@ -376,7 +376,7 @@ var _ = Describe("Executor/Garden", func() {
 			})
 
 			JustBeforeEach(func() {
-				allocationFailures = executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest})
+				allocationFailures = executorClient.AllocateContainers(logger, "", []executor.AllocationRequest{allocationRequest})
 			})
 
 			It("returns an empty error map", func() {
@@ -426,7 +426,7 @@ var _ = Describe("Executor/Garden", func() {
 
 			Context("when the guid is already taken", func() {
 				JustBeforeEach(func() {
-					allocationFailures = executorClient.AllocateContainers(logger, []executor.AllocationRequest{allocationRequest})
+					allocationFailures = executorClient.AllocateContainers(logger, "", []executor.AllocationRequest{allocationRequest})
 				})
 
 				It("returns an error", func() {
@@ -489,7 +489,7 @@ var _ = Describe("Executor/Garden", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					runReq = executor.NewRunRequest(guid, &runInfo, executor.Tags{})
-					runErr = executorClient.RunContainer(logger, &runReq)
+					runErr = executorClient.RunContainer(logger, "", &runReq)
 				})
 
 				AfterEach(func() {
@@ -671,7 +671,7 @@ var _ = Describe("Executor/Garden", func() {
 								go func() {
 									Eventually(containerStatePoller(guid)).Should(Equal(executor.StateCompleted))
 
-									err := executorClient.DeleteContainer(logger, guid)
+									err := executorClient.DeleteContainer(logger, "", guid)
 									Expect(err).NotTo(HaveOccurred())
 									close(done)
 								}()
@@ -735,7 +735,7 @@ var _ = Describe("Executor/Garden", func() {
 		Describe("running a bogus guid", func() {
 			It("returns an error", func() {
 				runReq := executor.NewRunRequest("bogus", &executor.RunInfo{}, executor.Tags{})
-				err := executorClient.RunContainer(logger, &runReq)
+				err := executorClient.RunContainer(logger, "", &runReq)
 				Expect(err).To(Equal(executor.ErrContainerNotFound))
 			})
 		})
@@ -754,7 +754,7 @@ var _ = Describe("Executor/Garden", func() {
 
 			Describe("deleting it", func() {
 				It("makes the previously allocated resources available again", func() {
-					err := executorClient.DeleteContainer(logger, guid)
+					err := executorClient.DeleteContainer(logger, "", guid)
 					Expect(err).NotTo(HaveOccurred())
 
 					Eventually(func() (executor.ExecutorResources, error) { return executorClient.RemainingResources(logger) }).Should(Equal(executor.ExecutorResources{
@@ -797,7 +797,7 @@ var _ = Describe("Executor/Garden", func() {
 					}),
 				}, executor.Tags{})
 
-				err := executorClient.RunContainer(logger, &runRequest)
+				err := executorClient.RunContainer(logger, "", &runRequest)
 				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(containerStatePoller(guid)).Should(Equal(executor.StateRunning))
@@ -805,12 +805,12 @@ var _ = Describe("Executor/Garden", func() {
 
 			Describe("StopContainer", func() {
 				It("does not return an error", func() {
-					err := executorClient.StopContainer(logger, guid)
+					err := executorClient.StopContainer(logger, "", guid)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("stops the container but does not delete it", func() {
-					err := executorClient.StopContainer(logger, guid)
+					err := executorClient.StopContainer(logger, "", guid)
 					Expect(err).NotTo(HaveOccurred())
 
 					var container executor.Container
@@ -829,7 +829,7 @@ var _ = Describe("Executor/Garden", func() {
 
 			Describe("DeleteContainer", func() {
 				It("deletes the container", func() {
-					err := executorClient.DeleteContainer(logger, guid)
+					err := executorClient.DeleteContainer(logger, "", guid)
 					Expect(err).NotTo(HaveOccurred())
 
 					Eventually(func() error {
@@ -866,7 +866,7 @@ var _ = Describe("Executor/Garden", func() {
 						findGardenContainer(guid)
 
 						// delete it
-						err := executorClient.DeleteContainer(logger, guid)
+						err := executorClient.DeleteContainer(logger, "", guid)
 						Expect(err).NotTo(HaveOccurred())
 
 						Eventually(func() (executor.ExecutorResources, error) { return executorClient.RemainingResources(logger) }).Should(
@@ -935,7 +935,7 @@ var _ = Describe("Executor/Garden", func() {
 						}),
 					}, executor.Tags{})
 
-					err := executorClient.RunContainer(logger, &runRequest)
+					err := executorClient.RunContainer(logger, "", &runRequest)
 					Expect(err).NotTo(HaveOccurred())
 
 					container = findGardenContainer(guid)
@@ -969,7 +969,7 @@ var _ = Describe("Executor/Garden", func() {
 
 		Describe("pruning the registry", func() {
 			It("continously prunes the registry", func() {
-				failures := executorClient.AllocateContainers(logger, []executor.AllocationRequest{{
+				failures := executorClient.AllocateContainers(logger, "", []executor.AllocationRequest{{
 					Guid: "some-handle",
 					Resource: executor.Resource{
 						MemoryMB: 1024,
@@ -1043,7 +1043,7 @@ var _ = Describe("Executor/Garden", func() {
 						}),
 					}, executor.Tags{})
 
-					err := executorClient.RunContainer(logger, &runRequest)
+					err := executorClient.RunContainer(logger, "", &runRequest)
 					Expect(err).NotTo(HaveOccurred())
 
 					Eventually(containerStatePoller(guid)).Should(Equal(executor.StateRunning))

@@ -152,7 +152,7 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 		})
 
 		JustBeforeEach(func() {
-			err := bbsClient.DesireLRP(lgr, lrp)
+			err := bbsClient.DesireLRP(lgr, "", lrp)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -177,7 +177,7 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 				Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 				dlu := &models.DesiredLRPUpdate{}
 				dlu.SetInstances(2)
-				bbsClient.UpdateDesiredLRP(lgr, processGuid, dlu)
+				bbsClient.UpdateDesiredLRP(lgr, "", processGuid, dlu)
 			})
 
 			It("eventually runs", func() {

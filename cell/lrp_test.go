@@ -112,7 +112,7 @@ var _ = Describe("LRP", func() {
 		})
 
 		JustBeforeEach(func() {
-			err := bbsClient.DesireLRP(lgr, lrp)
+			err := bbsClient.DesireLRP(lgr, "", lrp)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -275,7 +275,7 @@ var _ = Describe("LRP", func() {
 			It("passes them to garden", func() {
 				Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 
-				lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
+				lrps, err := bbsClient.ActualLRPs(lgr, "", models.ActualLRPFilter{ProcessGuid: processGuid})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(len(lrps)).To(BeNumerically(">", 0))
 
@@ -344,7 +344,7 @@ var _ = Describe("LRP", func() {
 						"processGuid":   processGuid,
 						"updateRequest": desiredUpdate})
 
-					err := bbsClient.UpdateDesiredLRP(logger, processGuid, &desiredUpdate)
+					err := bbsClient.UpdateDesiredLRP(logger, "", processGuid, &desiredUpdate)
 
 					logger.Info("after-update-desired", lager.Data{
 						"error": err,
@@ -369,7 +369,7 @@ var _ = Describe("LRP", func() {
 
 			JustBeforeEach(func() {
 				Eventually(func() []*models.ActualLRP {
-					lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
+					lrps, err := bbsClient.ActualLRPs(lgr, "", models.ActualLRPFilter{ProcessGuid: processGuid})
 					Expect(err).NotTo(HaveOccurred())
 
 					return lrps
@@ -387,7 +387,7 @@ var _ = Describe("LRP", func() {
 				JustBeforeEach(func() {
 					dlu := &models.DesiredLRPUpdate{}
 					dlu.SetInstances(newInstances)
-					err := bbsClient.UpdateDesiredLRP(lgr, processGuid, dlu)
+					err := bbsClient.UpdateDesiredLRP(lgr, "", processGuid, dlu)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
@@ -398,7 +398,7 @@ var _ = Describe("LRP", func() {
 
 					It("scales up to the correct number of instances", func() {
 						Eventually(func() []*models.ActualLRP {
-							lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
+							lrps, err := bbsClient.ActualLRPs(lgr, "", models.ActualLRPFilter{ProcessGuid: processGuid})
 							Expect(err).NotTo(HaveOccurred())
 
 							return lrps
@@ -415,7 +415,7 @@ var _ = Describe("LRP", func() {
 
 					It("scales down to the correct number of instances", func() {
 						Eventually(func() []*models.ActualLRP {
-							lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
+							lrps, err := bbsClient.ActualLRPs(lgr, "", models.ActualLRPFilter{ProcessGuid: processGuid})
 							Expect(err).NotTo(HaveOccurred())
 
 							return lrps
@@ -432,7 +432,7 @@ var _ = Describe("LRP", func() {
 
 					It("scales down to the correct number of instances", func() {
 						Eventually(func() []*models.ActualLRP {
-							lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
+							lrps, err := bbsClient.ActualLRPs(lgr, "", models.ActualLRPFilter{ProcessGuid: processGuid})
 							Expect(err).NotTo(HaveOccurred())
 
 							return lrps
@@ -445,11 +445,11 @@ var _ = Describe("LRP", func() {
 						newInstances := int32(1)
 						dlu := &models.DesiredLRPUpdate{}
 						dlu.SetInstances(newInstances)
-						err := bbsClient.UpdateDesiredLRP(lgr, processGuid, dlu)
+						err := bbsClient.UpdateDesiredLRP(lgr, "", processGuid, dlu)
 						Expect(err).NotTo(HaveOccurred())
 
 						Eventually(func() []*models.ActualLRP {
-							lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
+							lrps, err := bbsClient.ActualLRPs(lgr, "", models.ActualLRPFilter{ProcessGuid: processGuid})
 							Expect(err).NotTo(HaveOccurred())
 
 							return lrps
@@ -462,13 +462,13 @@ var _ = Describe("LRP", func() {
 
 			Describe("deleting it", func() {
 				JustBeforeEach(func() {
-					err := bbsClient.RemoveDesiredLRP(lgr, processGuid)
+					err := bbsClient.RemoveDesiredLRP(lgr, "", processGuid)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("stops all instances", func() {
 					Eventually(func() []*models.ActualLRP {
-						lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
+						lrps, err := bbsClient.ActualLRPs(lgr, "", models.ActualLRPFilter{ProcessGuid: processGuid})
 						Expect(err).NotTo(HaveOccurred())
 
 						return lrps
@@ -545,7 +545,7 @@ var _ = Describe("LRP", func() {
 
 			It("fails and sets a placement error", func() {
 				lrpFunc := func() string {
-					lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
+					lrps, err := bbsClient.ActualLRPs(lgr, "", models.ActualLRPFilter{ProcessGuid: processGuid})
 					Expect(err).NotTo(HaveOccurred())
 					if len(lrps) == 0 {
 						return ""
@@ -564,7 +564,7 @@ var _ = Describe("LRP", func() {
 
 			It("fails and sets a placement error", func() {
 				lrpFunc := func() string {
-					lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
+					lrps, err := bbsClient.ActualLRPs(lgr, "", models.ActualLRPFilter{ProcessGuid: processGuid})
 					Expect(err).NotTo(HaveOccurred())
 					if len(lrps) == 0 {
 						return ""
@@ -586,7 +586,7 @@ var _ = Describe("LRP", func() {
 
 			It("runs", func() {
 				Eventually(func() []*models.ActualLRP {
-					lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid})
+					lrps, err := bbsClient.ActualLRPs(lgr, "", models.ActualLRPFilter{ProcessGuid: processGuid})
 					Expect(err).NotTo(HaveOccurred())
 					return lrps
 				}).Should(HaveLen(1))
@@ -602,7 +602,7 @@ var _ = Describe("LRP", func() {
 		crashCount := func(guid string, index int) func() int32 {
 			return func() int32 {
 				i := int32(index)
-				lrps, err := bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: guid, Index: &i})
+				lrps, err := bbsClient.ActualLRPs(lgr, "", models.ActualLRPFilter{ProcessGuid: guid, Index: &i})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(len(lrps)).To(Equal(1))
 				return lrps[0].CrashCount
@@ -626,7 +626,7 @@ var _ = Describe("LRP", func() {
 				})
 
 				JustBeforeEach(func() {
-					err := bbsClient.DesireLRP(lgr, lrp)
+					err := bbsClient.DesireLRP(lgr, "", lrp)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
@@ -662,7 +662,7 @@ var _ = Describe("LRP", func() {
 				BeforeEach(func() {
 					lrp := helpers.DefaultLRPCreateRequest(componentMaker.Addresses(), processGuid, "log-guid", 1)
 
-					err := bbsClient.DesireLRP(lgr, lrp)
+					err := bbsClient.DesireLRP(lgr, "", lrp)
 					Expect(err).NotTo(HaveOccurred())
 
 					Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
@@ -671,7 +671,7 @@ var _ = Describe("LRP", func() {
 				JustBeforeEach(func() {
 					index := int32(0)
 					var err error
-					lrps, err = bbsClient.ActualLRPs(lgr, models.ActualLRPFilter{ProcessGuid: processGuid, Index: &index})
+					lrps, err = bbsClient.ActualLRPs(lgr, "", models.ActualLRPFilter{ProcessGuid: processGuid, Index: &index})
 					Expect(err).NotTo(HaveOccurred())
 					Expect(len(lrps)).To(Equal(1))
 
@@ -717,7 +717,7 @@ var _ = Describe("LRP", func() {
 				Context("with invalid algorithm", func() {
 					It("eventually crashes", func() {
 						desireLRPWithChecksum("invalid_algorithm")
-						err := bbsClient.DesireLRP(lgr, lrp)
+						err := bbsClient.DesireLRP(lgr, "", lrp)
 						Expect(err).To(HaveOccurred())
 					})
 				})
@@ -727,7 +727,7 @@ var _ = Describe("LRP", func() {
 						BeforeEach(func() {
 							desireLRPWithChecksum("md5")
 
-							err := bbsClient.DesireLRP(lgr, lrp)
+							err := bbsClient.DesireLRP(lgr, "", lrp)
 							Expect(err).NotTo(HaveOccurred())
 						})
 
@@ -740,7 +740,7 @@ var _ = Describe("LRP", func() {
 						BeforeEach(func() {
 							desireLRPWithChecksum("sha1")
 
-							err := bbsClient.DesireLRP(lgr, lrp)
+							err := bbsClient.DesireLRP(lgr, "", lrp)
 							Expect(err).NotTo(HaveOccurred())
 						})
 
@@ -753,7 +753,7 @@ var _ = Describe("LRP", func() {
 						BeforeEach(func() {
 							desireLRPWithChecksum("sha256")
 
-							err := bbsClient.DesireLRP(lgr, lrp)
+							err := bbsClient.DesireLRP(lgr, "", lrp)
 							Expect(err).NotTo(HaveOccurred())
 						})
 
@@ -779,7 +779,7 @@ var _ = Describe("LRP", func() {
 				Context("with md5", func() {
 					BeforeEach(func() {
 						createDownloadActionChecksum("md5")
-						err := bbsClient.DesireLRP(lgr, lrp)
+						err := bbsClient.DesireLRP(lgr, "", lrp)
 						Expect(err).NotTo(HaveOccurred())
 					})
 
@@ -791,7 +791,7 @@ var _ = Describe("LRP", func() {
 				Context("with sha1", func() {
 					BeforeEach(func() {
 						createDownloadActionChecksum("sha1")
-						err := bbsClient.DesireLRP(lgr, lrp)
+						err := bbsClient.DesireLRP(lgr, "", lrp)
 						Expect(err).NotTo(HaveOccurred())
 					})
 
@@ -803,7 +803,7 @@ var _ = Describe("LRP", func() {
 				Context("with sha256", func() {
 					BeforeEach(func() {
 						createDownloadActionChecksum("sha256")
-						err := bbsClient.DesireLRP(lgr, lrp)
+						err := bbsClient.DesireLRP(lgr, "", lrp)
 						Expect(err).NotTo(HaveOccurred())
 					})
 
