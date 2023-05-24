@@ -3,6 +3,7 @@ package cell_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"code.cloudfoundry.org/archiver/extractor/test_helper"
@@ -35,6 +36,9 @@ var _ = Describe("TraceId", func() {
 	)
 
 	BeforeEach(func() {
+		if runtime.GOOS == "windows" {
+			Skip(" not yet supported on windows")
+		}
 		requestId = "0bc29108-c522-4360-93dd-30ca38cce13d"
 		loggedRequestId = strings.ReplaceAll(requestId, "-", "")
 		fileServer, fileServerStaticDir = componentMaker.FileServer()
