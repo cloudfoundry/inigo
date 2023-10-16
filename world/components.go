@@ -221,7 +221,7 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 	clientKey, clientCert, err := certAuthority.GenerateSelfSignedCertAndKey("client", []string{"client"}, false)
 	Expect(err).NotTo(HaveOccurred())
 
-	sqlCACert := filepath.Join(os.Getenv("DIEGO_RELEASE_DIR"), "src", "code.cloudfoundry.org", "inigo", "fixtures", "certs", "sql-certs", "server-ca.crt")
+	sqlCACert := filepath.Join("..", "fixtures", "certs", "sql-certs", "server-ca.crt")
 
 	bbsSSLConfig := SSLConfig{
 		ServerCert: bbsServerCert,
