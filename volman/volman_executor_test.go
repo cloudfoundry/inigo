@@ -190,7 +190,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 				tags := executor.Tags{"some-tag": "some-value"}
 
-				allocationRequest = executor.NewAllocationRequest(guid, &executor.Resource{}, tags)
+				allocationRequest = executor.NewAllocationRequest(guid, &executor.Resource{}, false, tags)
 
 				allocationFailures = executorClient.AllocateContainers(logger, "", []executor.AllocationRequest{allocationRequest})
 				Expect(allocationFailures).To(BeEmpty())

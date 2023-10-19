@@ -150,7 +150,7 @@ var _ = Describe("Executor/Garden", func() {
 	allocNewContainer := func(container executor.Container) string {
 		container.Guid = generateGuid()
 
-		request := executor.NewAllocationRequest(container.Guid, &container.Resource, container.Tags)
+		request := executor.NewAllocationRequest(container.Guid, &container.Resource, false, container.Tags)
 		failures := executorClient.AllocateContainers(logger, "", []executor.AllocationRequest{request})
 		Expect(failures).To(BeEmpty())
 
