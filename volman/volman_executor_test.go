@@ -261,7 +261,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 
 					tags := executor.Tags{"some-tag": "some-value"}
 
-					allocationRequest = executor.NewAllocationRequest(guid, &executor.Resource{}, tags)
+					allocationRequest = executor.NewAllocationRequest(guid, &executor.Resource{}, false, tags)
 
 					allocationFailures = executorClient.AllocateContainers(logger, "", []executor.AllocationRequest{allocationRequest})
 					Expect(allocationFailures).To(BeEmpty())
@@ -337,7 +337,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 								guid2 = id.String()
 
 								tags := executor.Tags{"some-tag": "some-value"}
-								allocationRequest2 := executor.NewAllocationRequest(guid2, &executor.Resource{}, tags)
+								allocationRequest2 := executor.NewAllocationRequest(guid2, &executor.Resource{}, false, tags)
 								allocationFailures := executorClient.AllocateContainers(logger, "", []executor.AllocationRequest{allocationRequest2})
 								Expect(allocationFailures).To(BeEmpty())
 

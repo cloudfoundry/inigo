@@ -372,7 +372,7 @@ var _ = Describe("Executor/Garden", func() {
 			BeforeEach(func() {
 				guid = generateGuid()
 				tags := executor.Tags{"some-tag": "some-value"}
-				allocationRequest = executor.NewAllocationRequest(guid, &executor.Resource{}, tags)
+				allocationRequest = executor.NewAllocationRequest(guid, &executor.Resource{}, false, tags)
 			})
 
 			JustBeforeEach(func() {
