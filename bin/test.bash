@@ -4,8 +4,8 @@ set -eu
 set -o pipefail
 
 function install_dependencies() {
-  apt update
-  apt install -y dnsmasq
+  DEBIAN_FRONTEND=noninteractive apt -qq update
+  DEBIAN_FRONTEND=noninteractive apt-get install -yq dnsmasq libseccomp-dev xfsprogs
 }
 
 # Setup DNS for *.service.cf.internal, used by the Diego components, and
@@ -81,7 +81,6 @@ function create_garden_storage() {
 
 build_grootfs () {
   echo "Building grootfs..."
-  export GARDEN_RUNC_RELEASE_PATH=${PWD}/garden-runc-release
   export GROOTFS_BINPATH=${GARDEN_RUNC_RELEASE_PATH}/bin
   mkdir -p ${GROOTFS_BINPATH}
 
@@ -104,58 +103,26 @@ build_grootfs () {
   popd
 }
 
-set_garden_rootfs () {
-  # use the 1.29 version of tar that's installed in the inigo-ci docker image
-  ln -sf /usr/local/bin/tar "${GARDEN_BINPATH}"
-
-  tar cpf /tmp/rootfs.tar -C /opt/inigo/rootfs .
-  export GARDEN_ROOTFS=/tmp/rootfs.tar
-}
-
-setup_gopath() {
-  pushd $1
+setup_diego_release() {
+  pushd ${DIEGO_RELEASE_PATH}
 
   bosh sync-blobs
-
-
-  if [ -d "$1/blobs/proxy" ]; then
+  if [ -d "./blobs/proxy" ]; then
     tmpdir=$(mktemp -d)
     tar -C "$tmpdir" -xf blobs/proxy/envoy*.tgz
     export ENVOY_PATH="$tmpdir"
     chmod 777 $ENVOY_PATH
   fi
 
-  export GOPATH_ROOT=$PWD
-
   export CODE_CLOUDFOUNDRY_ORG_MODULE="$PWD/src/code.cloudfoundry.org"
   export GUARDIAN_MODULE="$PWD/src/guardian"
-
-  export GOPATH=${GOPATH_ROOT}
-  export GOBIN="${GOPATH_ROOT}/bin"
-  mkdir -p "$GOBIN"
-  export PATH=${GOBIN}:${PATH}
-
   popd
 }
 
-function initialize_mysql {
-  cat << EOF > /etc/my.cnf
-[mysqld]
-sql_mode=NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES
-EOF
-  datadir=/mysql-datadir
-  escaped_datadir=${datadir/\//\\\/}
-  mkdir $datadir
-  mount -t tmpfs -o size=2g tmpfs $datadir
-  rsync -av --progress /var/lib/mysql/ $datadir
-  sed -i "s/#datadir.*/datadir=${escaped_datadir}/g" /etc/mysql/mysql.conf.d/mysqld.cnf
-  service mysql start
-}
-
 setup_database() {
-  orig_ca_file="${GOPATH_ROOT}/src/code.cloudfoundry.org/inigo/fixtures/certs/sql-certs/server-ca.crt"
-  orig_cert_file="${GOPATH_ROOT}/src/code.cloudfoundry.org/inigo/fixtures/certs/sql-certs/server.crt"
-  orig_key_file="${GOPATH_ROOT}/src/code.cloudfoundry.org/inigo/fixtures/certs/sql-certs/server.key"
+  orig_ca_file="${DIEGO_RELEASE_PATH}/src/code.cloudfoundry.org/inigo/fixtures/certs/sql-certs/server-ca.crt"
+  orig_cert_file="${DIEGO_RELEASE_PATH}/src/code.cloudfoundry.org/inigo/fixtures/certs/sql-certs/server.crt"
+  orig_key_file="${DIEGO_RELEASE_PATH}/src/code.cloudfoundry.org/inigo/fixtures/certs/sql-certs/server.key"
 
   ca_file="/tmp/server-ca.crt"
   cert_file="/tmp/server.crt"
@@ -170,19 +137,30 @@ setup_database() {
   chmod 0600 "$cert_file"
   chmod 0600 "$key_file"
 
-  if [ "${SQL_FLAVOR}" = "mysql" ]; then
+  if [ "${DB}" = "mysql" ]; then
+    pkill mysqld
+
     chown mysql:mysql "$ca_file"
     chown mysql:mysql "$cert_file"
     chown mysql:mysql "$key_file"
 
-    server_cnf_path="/etc/mysql/mysql.conf.d/mysqld.cnf"
-
+    local server_cnf_path="/etc/mysql/conf.d/docker.cnf"
     sed -i 's/# max_connections.*= 151/max_connections = 2000/g' "${server_cnf_path}"
     echo "ssl-cert = $cert_file" >> "${server_cnf_path}"
     echo "ssl-key = $key_file" >> "${server_cnf_path}"
     echo "ssl-ca = $ca_file" >> "${server_cnf_path}"
 
-    initialize_mysql
+  cat << EOF > /etc/my.cnf
+[mysqld]
+sql_mode=NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES
+EOF
+  local datadir=/mysql-datadir
+  local escaped_datadir=${datadir/\//\\\/}
+  mkdir $datadir
+  mount -t tmpfs -o size=2g tmpfs $datadir
+  rsync -av --progress /var/lib/mysql/ $datadir
+  sed -i "s/#datadir.*/datadir=${escaped_datadir}/g" "${server_cnf_path}"
+
   else
     sed -i 's/max_connections = 100/max_connections = 2000/g' /etc/postgresql/9.4/main/postgresql.conf
 
@@ -194,9 +172,9 @@ setup_database() {
     sed -i "s%ssl_cert_file = '/etc/ssl/certs/ssl-cert-snakeoil.pem'%ssl_cert_file = '$cert_file'%g" /etc/postgresql/9.4/main/postgresql.conf
     sed -i "s%ssl_key_file = '/etc/ssl/private/ssl-cert-snakeoil.key'%ssl_key_file = '$key_file'%g" /etc/postgresql/9.4/main/postgresql.conf
     sed -i "s%#ssl_ca_file = ''%ssl_ca_file = '$ca_file'%g" /etc/postgresql/9.4/main/postgresql.conf
-
-    service postgresql start
   fi
+
+  configure_db "${DB}"
 }
 
 # Update to concourse 2.7.3 and garden-runc 1.4.0 caused inigo to fail since
@@ -212,8 +190,7 @@ build_grootfs
 export ROUTER_GOPATH="$ROUTING_RELEASE_PATH/src/code.cloudfoundry.org"
 export ROUTING_API_GOPATH=${ROUTER_GOPATH}
 
-setup_gopath $PWD/diego-release
-set_garden_rootfs
+setup_diego_release
 
 export APP_LIFECYCLE_GOPATH=${CODE_CLOUDFOUNDRY_ORG_MODULE}
 export AUCTIONEER_GOPATH=${CODE_CLOUDFOUNDRY_ORG_MODULE}
