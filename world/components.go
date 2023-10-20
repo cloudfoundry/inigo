@@ -146,12 +146,25 @@ func DBInfo() (string, string) {
 	var dbBaseConnectionString string
 	var dbDriverName string
 
+	user, ok := os.LookupEnv("DB_USER")
+	if !ok {
+		user = "diego"
+	}
+
 	if test_helpers.UsePostgres() {
 		dbDriverName = "postgres"
-		dbBaseConnectionString = "postgres://diego:diego_pw@127.0.0.1/"
+		password, ok := os.LookupEnv("DB_PASSWORD")
+		if !ok {
+			password = "diego_pw"
+		}
+		dbBaseConnectionString = fmt.Sprintf("postgres://%s:%s@127.0.0.1/", user, password)
 	} else {
 		dbDriverName = "mysql"
-		dbBaseConnectionString = "diego:diego_password@tcp(localhost:3306)/"
+		password, ok := os.LookupEnv("DB_PASSWORD")
+		if !ok {
+			password = "diego_password"
+		}
+		dbBaseConnectionString = fmt.Sprintf("%s:%s@tcp(localhost:3306)/", user, password)
 	}
 
 	return dbDriverName, dbBaseConnectionString
