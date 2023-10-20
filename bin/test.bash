@@ -3,6 +3,11 @@
 set -eu
 set -o pipefail
 
+function install_dependencies() {
+  sudo apt update
+  sudo apt install -y dnsmasq
+}
+
 # Setup DNS for *.service.cf.internal, used by the Diego components, and
 # *.test.internal, used by the collocated DUSTs as a routable domain.
 function setup_dnsmasq() {
@@ -202,6 +207,7 @@ setup_database() {
 # tests were failing because they were unable to resolve DNS names.
 echo "nameserver 8.8.8.8" >> /etc/resolv.conf
 
+install_dependencies
 setup_dnsmasq
 build_gardenrunc $PWD/garden-runc-release
 build_grootfs
