@@ -43,6 +43,9 @@ function build_gardenrunc() {
     pushd $NSTAR_PATH
       make && cp nstar ${GARDEN_BINPATH}
     popd
+
+    ln -sf $(which tar) ${GARDEN_BINPATH}
+
   popd
 }
 
