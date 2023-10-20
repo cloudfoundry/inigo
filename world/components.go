@@ -454,13 +454,19 @@ func (maker commonComponentMaker) NATS(argv ...string) ifrit.Runner {
 	host, port, err := net.SplitHostPort(maker.addresses.NATS)
 	Expect(err).NotTo(HaveOccurred())
 
+	natsServerPath, exists := os.LookupEnv("NATS_SERVER_BINARY")
+	if !exists {
+		fmt.Println("You need nats-server install set NATS_SERVER_BINARY env variable")
+		os.Exit(1)
+	}
+
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "nats-server",
 		AnsiColorCode:     "30m",
 		StartCheck:        "Server is ready",
 		StartCheckTimeout: maker.startCheckTimeout,
 		Command: exec.Command(
-			"nats-server",
+			natsServerPath,
 			append([]string{
 				"--addr", host,
 				"--port", port,
