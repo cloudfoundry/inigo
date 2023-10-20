@@ -168,10 +168,12 @@ EOF
     chown postgres:postgres "$cert_file"
     chown postgres:postgres "$key_file"
 
-    sed -i 's/ssl = false/ssl = true/g' /etc/postgresql/9.4/main/postgresql.conf
-    sed -i "s%ssl_cert_file = '/etc/ssl/certs/ssl-cert-snakeoil.pem'%ssl_cert_file = '$cert_file'%g" /etc/postgresql/9.4/main/postgresql.conf
-    sed -i "s%ssl_key_file = '/etc/ssl/private/ssl-cert-snakeoil.key'%ssl_key_file = '$key_file'%g" /etc/postgresql/9.4/main/postgresql.conf
-    sed -i "s%#ssl_ca_file = ''%ssl_ca_file = '$ca_file'%g" /etc/postgresql/9.4/main/postgresql.conf
+    local pg_conf=$(ls /etc/postgresql/*/main/postgresql.conf)
+
+    sed -i 's/ssl = false/ssl = true/g' "${pg_conf}"
+    sed -i "s%ssl_cert_file = '/etc/ssl/certs/ssl-cert-snakeoil.pem'%ssl_cert_file = '$cert_file'%g" "${pg_conf}"
+    sed -i "s%ssl_key_file = '/etc/ssl/private/ssl-cert-snakeoil.key'%ssl_key_file = '$key_file'%g" "${pg_conf}"
+    sed -i "s%#ssl_ca_file = ''%ssl_ca_file = '$ca_file'%g" "${pg_conf}"
   fi
 
   configure_db "${DB}"
