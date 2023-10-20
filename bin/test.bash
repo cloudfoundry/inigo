@@ -4,8 +4,8 @@ set -eu
 set -o pipefail
 
 function install_dependencies() {
-  sudo apt update
-  sudo apt install -y dnsmasq
+  apt update
+  apt install -y dnsmasq
 }
 
 # Setup DNS for *.service.cf.internal, used by the Diego components, and
