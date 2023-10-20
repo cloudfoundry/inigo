@@ -20,16 +20,16 @@ function setup_dnsmasq() {
 
 function build_gardenrunc() {
   echo "Building garden-runc"
-  export GARDEN_RUNC_PATH=$1
+  export GARDEN_RUNC_RELEASE_PATH=$1
 
-  pushd ${GARDEN_RUNC_PATH}
+  pushd ${GARDEN_RUNC_RELEASE_PATH}
     export PATH=${PWD}/bin:${PATH}
     export GARDEN_BINPATH=${PWD}/bin/
 
-    mkdir -p ${GARDEN_RUNC_PATH}/bin
+    mkdir -p ${GARDEN_RUNC_RELEASE_PATH}/bin
     NSTAR_PATH=src/guardian/rundmc/nstar
 
-    gcc -static -o $GARDEN_BINPATH/init $GARDEN_RUNC_PATH/src/guardian/cmd/init/init.c $GARDEN_RUNC_PATH/src/guardian/cmd/init/ignore_sigchild.c
+    gcc -static -o $GARDEN_BINPATH/init $GARDEN_RUNC_RELEASE_PATH/src/guardian/cmd/init/init.c $GARDEN_RUNC_RELEASE_PATH/src/guardian/cmd/init/ignore_sigchild.c
     pushd ./src/guardian
       go build -mod vendor -o "${GARDEN_BINPATH}/dadoo" ./cmd/dadoo
     popd
@@ -84,11 +84,11 @@ function create_garden_storage() {
 
 build_grootfs () {
   echo "Building grootfs..."
-  export GARDEN_RUNC_PATH=${PWD}/garden-runc-release
-  export GROOTFS_BINPATH=${GARDEN_RUNC_PATH}/bin
+  export GARDEN_RUNC_RELEASE_PATH=${PWD}/garden-runc-release
+  export GROOTFS_BINPATH=${GARDEN_RUNC_RELEASE_PATH}/bin
   mkdir -p ${GROOTFS_BINPATH}
 
-  pushd ${GARDEN_RUNC_PATH}/src/grootfs
+  pushd ${GARDEN_RUNC_RELEASE_PATH}/src/grootfs
     export PATH=${GROOTFS_BINPATH}:${PATH}
 
     # Set up btrfs volume and loopback devices in environment
@@ -212,7 +212,7 @@ setup_dnsmasq
 build_gardenrunc $PWD/garden-runc-release
 build_grootfs
 
-export ROUTER_GOPATH="$PWD/routing-release/src/code.cloudfoundry.org"
+export ROUTER_GOPATH="$ROUTING_RELEASE_PATH/src/code.cloudfoundry.org"
 export ROUTING_API_GOPATH=${ROUTER_GOPATH}
 
 setup_gopath $PWD/diego-release
@@ -249,7 +249,7 @@ if ! grep -qs '/sys' /proc/mounts; then
 fi
 
 # shellcheck source=/dev/null
-source "${GARDEN_RUNC_PATH}/ci/helpers/device-control.bash"
+source "${GARDEN_RUNC_RELEASE_PATH}/ci/helpers/device-control.bash"
 permit_device_control
 create_loop_devices 256
 
