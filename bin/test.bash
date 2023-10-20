@@ -19,9 +19,6 @@ function setup_dnsmasq() {
 }
 
 function build_gardenrunc() {
-  echo "Building garden-runc"
-  export GARDEN_RUNC_RELEASE_PATH=$1
-
   pushd ${GARDEN_RUNC_RELEASE_PATH}
     export PATH=${PWD}/bin:${PATH}
     export GARDEN_BINPATH=${PWD}/bin/
@@ -209,7 +206,7 @@ echo "nameserver 8.8.8.8" >> /etc/resolv.conf
 
 install_dependencies
 setup_dnsmasq
-build_gardenrunc $PWD/garden-runc-release
+build_gardenrunc
 build_grootfs
 
 export ROUTER_GOPATH="$ROUTING_RELEASE_PATH/src/code.cloudfoundry.org"
