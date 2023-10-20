@@ -162,13 +162,13 @@ EOF
   sed -i "s/#datadir.*/datadir=${escaped_datadir}/g" "${server_cnf_path}"
 
   else
-    sed -i 's/max_connections = 100/max_connections = 2000/g' /etc/postgresql/9.4/main/postgresql.conf
+    local pg_conf=$(ls /etc/postgresql/*/main/postgresql.conf)
+    sed -i 's/max_connections = 100/max_connections = 2000/g' "${pg_conf}"
 
     chown postgres:postgres "$ca_file"
     chown postgres:postgres "$cert_file"
     chown postgres:postgres "$key_file"
 
-    local pg_conf=$(ls /etc/postgresql/*/main/postgresql.conf)
 
     sed -i 's/ssl = false/ssl = true/g' "${pg_conf}"
     sed -i "s%ssl_cert_file = '/etc/ssl/certs/ssl-cert-snakeoil.pem'%ssl_cert_file = '$cert_file'%g" "${pg_conf}"
