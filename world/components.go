@@ -629,6 +629,7 @@ func (maker commonComponentMaker) garden(includeDefaultStack bool, fs ...func(*r
 		config.NSTarBin = filepath.Join(maker.gardenConfig.GardenBinPath, "nstar")
 		config.ImagePluginBin = filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs")
 		config.PrivilegedImagePluginBin = filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs")
+		config.Tag = fmt.Sprintf("%d", GinkgoParallelProcess())
 
 		// TODO: this is overriding the guardian runner args, which is fine since we
 		// don't use tardis (tardis is only required for overlay+xfs)
@@ -689,14 +690,27 @@ func (maker commonComponentMaker) RoutingAPI(modifyConfigFuncs ...func(*routinga
 	port, err := maker.portAllocator.ClaimPorts(2)
 	Expect(err).NotTo(HaveOccurred())
 
+	user, ok := os.LookupEnv("DB_USER")
+	if !ok {
+		user = "diego"
+	}
+
 	if maker.dbDriverName == "mysql" {
+		password, ok := os.LookupEnv("DB_PASSWORD")
+		if !ok {
+			password = "diego_password"
+		}
 		sqlConfig.Port = 3306
-		sqlConfig.Username = "diego"
-		sqlConfig.Password = "diego_password"
+		sqlConfig.Username = user
+		sqlConfig.Password = password
 	} else {
+		password, ok := os.LookupEnv("DB_PASSWORD")
+		if !ok {
+			password = "diego_pw"
+		}
 		sqlConfig.Port = 5432
-		sqlConfig.Username = "diego"
-		sqlConfig.Password = "diego_pw"
+		sqlConfig.Username = user
+		sqlConfig.Password = password
 	}
 
 	modifyConfigFuncs = append(modifyConfigFuncs, func(c *routingapi.Config) {
