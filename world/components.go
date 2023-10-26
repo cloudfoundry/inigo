@@ -1223,7 +1223,7 @@ func (maker v0ComponentMaker) RouteEmitter(modifyConfigFuncs ...func(config *rou
 }
 
 func (maker v0ComponentMaker) FileServer() (ifrit.Runner, string) {
-	servedFilesDir := TempDirWithParent(maker.tmpDir, "file-server-files")
+	servedFilesDir := TempDirWithParent(maker.tmpDir, fmt.Sprintf("file-server-files-%d-", GinkgoParallelProcess()))
 
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "file-server",
