@@ -106,6 +106,11 @@ build_grootfs () {
   popd
 }
 
+build_garden_rootfs() {
+  tar cpf /tmp/rootfs.tar -C "$GARDEN_ROOTFS_FILES" .
+  export GARDEN_ROOTFS=/tmp/rootfs.tar
+}
+
 setup_diego_release() {
   pushd ${DIEGO_RELEASE_PATH}
 
@@ -191,6 +196,7 @@ install_dependencies
 setup_dnsmasq
 build_gardenrunc
 build_grootfs
+build_garden_rootfs
 
 export ROUTER_GOPATH="$ROUTING_RELEASE_PATH/src/code.cloudfoundry.org"
 export ROUTING_API_GOPATH=${ROUTER_GOPATH}
