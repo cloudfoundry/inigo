@@ -44,7 +44,7 @@ function build_gardenrunc() {
       make && cp nstar ${GARDEN_BINPATH}
     popd
 
-    ln -sf $(which tar) ${GARDEN_BINPATH}
+    cp "${TAR_BINARY}" "${GARDEN_BINPATH}/tar"
 
   popd
 }
