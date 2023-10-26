@@ -114,14 +114,6 @@ build_garden_rootfs() {
 setup_diego_release() {
   pushd ${DIEGO_RELEASE_PATH}
 
-  bosh sync-blobs
-  if [ -d "./blobs/proxy" ]; then
-    tmpdir=$(mktemp -d)
-    tar -C "$tmpdir" -xf blobs/proxy/envoy*.tgz
-    export ENVOY_PATH="$tmpdir"
-    chmod 777 $ENVOY_PATH
-  fi
-
   export CODE_CLOUDFOUNDRY_ORG_MODULE="$PWD/src/code.cloudfoundry.org"
   export GUARDIAN_MODULE="$PWD/src/guardian"
   popd

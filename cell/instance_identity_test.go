@@ -354,7 +354,7 @@ var _ = Describe("InstanceIdentity", func() {
 			enableContainerProxy = func(config *config.RepConfig) {
 				config.EnableContainerProxy = true
 				config.EnvoyConfigRefreshDelay = durationjson.Duration(time.Second)
-				config.ContainerProxyPath = os.Getenv("ENVOY_PATH")
+				config.ContainerProxyPath = filepath.Dir(os.Getenv("PROXY_BINARY"))
 
 				envoyConfigDir := world.TempDirWithParent(suiteTempDir, "envoy_config")
 
@@ -1051,7 +1051,7 @@ func verifyCertificateIsSignedBy(cert, parentCert *x509.Certificate) {
 }
 
 func createSleepyEnvoy(parentDir string) string {
-	envoyPath := filepath.Join(os.Getenv("ENVOY_PATH"), "envoy")
+	envoyPath := os.Getenv("PROXY_BINARY")
 
 	dir := world.TempDirWithParent(parentDir, "sleepy-envoy")
 
