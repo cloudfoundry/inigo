@@ -629,7 +629,6 @@ func (maker commonComponentMaker) garden(includeDefaultStack bool, fs ...func(*r
 		config.NSTarBin = filepath.Join(maker.gardenConfig.GardenBinPath, "nstar")
 		config.ImagePluginBin = filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs")
 		config.PrivilegedImagePluginBin = filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs")
-		config.Tag = fmt.Sprintf("%d", GinkgoParallelProcess())
 
 		// TODO: this is overriding the guardian runner args, which is fine since we
 		// don't use tardis (tardis is only required for overlay+xfs)
