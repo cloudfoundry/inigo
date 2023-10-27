@@ -553,7 +553,7 @@ func (maker commonComponentMaker) grootfsDeleteStore(grootfsConfig GrootFSConfig
 }
 
 func (maker commonComponentMaker) grootfsRunner(args []string) error {
-	cmd := exec.Command(filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs"), args...)
+	cmd := exec.Command(filepath.Join(maker.gardenConfig.GardenBinPath, "grootfs"), args...)
 	cmd.Stderr = GinkgoWriter
 	cmd.Stdout = GinkgoWriter
 	return cmd.Run()
@@ -608,7 +608,7 @@ func (maker commonComponentMaker) garden(includeDefaultStack bool, fs ...func(*r
 		config.InitBin = filepath.Join(maker.gardenConfig.GardenBinPath, "init.exe")
 		config.RuntimePluginBin = filepath.Join(maker.gardenConfig.GardenBinPath, "winc.exe")
 		config.NSTarBin = filepath.Join(maker.gardenConfig.GardenBinPath, "nstar.exe")
-		config.ImagePluginBin = filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs.exe")
+		config.ImagePluginBin = filepath.Join(maker.gardenConfig.GardenBinPath, "grootfs.exe")
 		config.ImagePluginExtraArgs = []string{
 			"\"--driver-store\"",
 			maker.gardenConfig.GrootFSStorePath,
@@ -627,8 +627,8 @@ func (maker commonComponentMaker) garden(includeDefaultStack bool, fs ...func(*r
 		config.ExecRunnerBin = filepath.Join(maker.gardenConfig.GardenBinPath, "dadoo")
 		config.RuntimePluginBin = filepath.Join(maker.gardenConfig.GardenBinPath, "runc")
 		config.NSTarBin = filepath.Join(maker.gardenConfig.GardenBinPath, "nstar")
-		config.ImagePluginBin = filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs")
-		config.PrivilegedImagePluginBin = filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs")
+		config.ImagePluginBin = filepath.Join(maker.gardenConfig.GardenBinPath, "grootfs")
+		config.PrivilegedImagePluginBin = filepath.Join(maker.gardenConfig.GardenBinPath, "grootfs")
 
 		// TODO: this is overriding the guardian runner args, which is fine since we
 		// don't use tardis (tardis is only required for overlay+xfs)
