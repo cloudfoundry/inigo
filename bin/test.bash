@@ -5,7 +5,7 @@ set -o pipefail
 
 function install_dependencies() {
   DEBIAN_FRONTEND=noninteractive apt -qq update
-  DEBIAN_FRONTEND=noninteractive apt-get install -yq dnsmasq libseccomp-dev xfsprogs uidmap ulogd2 autoconf pkg-config lsb-release btrfs-progs
+  DEBIAN_FRONTEND=noninteractive apt-get install -yq dnsmasq libseccomp-dev xfsprogs
 }
 
 # Setup DNS for *.service.cf.internal, used by the Diego components, and
