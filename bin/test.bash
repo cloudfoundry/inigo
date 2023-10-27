@@ -145,7 +145,7 @@ setup_database() {
     chown mysql:mysql "$key_file"
 
     local server_cnf_path="/etc/mysql/conf.d/docker.cnf"
-    sed -i 's/# max_connections.*= 151/max_connections = 2000/g' "${server_cnf_path}"
+    echo "max_connections = 2000" >> "${server_cnf_path}"
     echo "ssl-cert = $cert_file" >> "${server_cnf_path}"
     echo "ssl-key = $key_file" >> "${server_cnf_path}"
     echo "ssl-ca = $ca_file" >> "${server_cnf_path}"
@@ -168,7 +168,6 @@ EOF
     chown postgres:postgres "$ca_file"
     chown postgres:postgres "$cert_file"
     chown postgres:postgres "$key_file"
-
 
     sed -i 's/ssl = false/ssl = true/g' "${pg_conf}"
     sed -i "s%ssl_cert_file = '/etc/ssl/certs/ssl-cert-snakeoil.pem'%ssl_cert_file = '$cert_file'%g" "${pg_conf}"
