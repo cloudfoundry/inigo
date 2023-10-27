@@ -17,6 +17,7 @@ function setup_gardenrunc() {
   pushd ${GARDEN_RUNC_RELEASE_PATH}
     export PATH=${PWD}/bin:${PATH}
     export GARDEN_BINPATH=${PWD}/bin/
+    export GROOTFS_BINPATH=${PWD}/bin/
 
     mkdir -p ${GARDEN_BINPATH}
     cp "${TAR_BINARY}" "${GARDEN_BINPATH}/tar"
