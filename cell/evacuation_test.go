@@ -251,7 +251,7 @@ func replaceGrootFSWithHangingVersion() {
 	f, err := ioutil.TempFile(os.TempDir(), "image_plugin")
 	Expect(err).NotTo(HaveOccurred())
 	Expect(f.Chmod(0755)).To(Succeed())
-	path := filepath.Join(os.Getenv("GROOTFS_BINPATH"), "grootfs")
+	path := filepath.Join(os.Getenv("GROOTFS_BINARY"), "grootfs")
 	os.Remove(fmt.Sprintf("/tmp/image_plugin_sleep_%d", GinkgoParallelProcess()))
 	fmt.Fprintf(f, `#!/usr/bin/env bash
 echo $(date +%%s) "$@" >> /tmp/image_plugin_trace
