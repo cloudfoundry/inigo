@@ -198,4 +198,5 @@ create_loop_devices 256
 
 # shellcheck disable=SC2068
 # Double-quoting array expansion here causes ginkgo to fail
-go run github.com/onsi/ginkgo/v2/ginkgo ${@}
+echo "Log Dir: /tmp/inigo-logs"
+go run github.com/onsi/ginkgo/v2/ginkgo ${@} --output-dir /tmp/inigo-logs --json-report report.json &> /tmp/inigo-logs/logs.log
