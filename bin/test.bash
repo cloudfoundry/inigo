@@ -13,34 +13,19 @@ function setup_dnsmasq() {
   echo -e "nameserver $host_addr\n$(cat /etc/resolv.conf)" > /etc/resolv.conf
 }
 
-function build_gardenrunc() {
+function setup_gardenrunc() {
   pushd ${GARDEN_RUNC_RELEASE_PATH}
     export PATH=${PWD}/bin:${PATH}
     export GARDEN_BINPATH=${PWD}/bin/
 
-    mkdir -p ${GARDEN_RUNC_RELEASE_PATH}/bin
-    NSTAR_PATH=src/guardian/rundmc/nstar
-
-    gcc -static -o $GARDEN_BINPATH/init $GARDEN_RUNC_RELEASE_PATH/src/guardian/cmd/init/init.c $GARDEN_RUNC_RELEASE_PATH/src/guardian/cmd/init/ignore_sigchild.c
-    pushd ./src/guardian
-      go build -mod vendor -o "${GARDEN_BINPATH}/dadoo" ./cmd/dadoo
-    popd
-    pushd ./src/grootfs
-      go build -mod vendor -o "${GARDEN_BINPATH}/tardis" ./store/filesystems/overlayxfs/tardis
-    popd
-
-    export GOPATH="$PWD/src/gopath"
-    pushd src/guardian/vendor/github.com/opencontainers/runc
-      PKG_CONFIG_PATH=/usr/local/lib/pkgconfig GOPATH=${PWD}/Godeps/_workspace:${GOPATH} BUILDTAGS="seccomp" make static
-      mv runc ${GARDEN_BINPATH}
-    popd
-
-    pushd $NSTAR_PATH
-      make && cp nstar ${GARDEN_BINPATH}
-    popd
-
+    mkdir -p ${GARDEN_BINPATH}
     cp "${TAR_BINARY}" "${GARDEN_BINPATH}/tar"
-
+    cp "${NSTAR_BINARY}" "${GARDEN_BINPATH}/nstar"
+    cp "${RUNC_BINARY}" "${GARDEN_BINPATH}/runc"
+    cp "${DADOO_BINARY}" "${GARDEN_BINPATH}/dadoo"
+    cp "${GROOTFS_BINARY}" "${GARDEN_BINPATH}/grootfs"
+    cp "${GROOTFS_TARDIS_BINARY}" "${GARDEN_BINPATH}/tardis"
+    cp "${INIT_BINARY}" "${GARDEN_BINPATH}/init"
   popd
 }
 
@@ -77,29 +62,16 @@ function create_garden_storage() {
   umount /sys/fs/cgroup/devices
 }
 
-build_grootfs () {
-  echo "Building grootfs..."
-  export GROOTFS_BINPATH=${GARDEN_RUNC_RELEASE_PATH}/bin
-  mkdir -p ${GROOTFS_BINPATH}
-
-  pushd ${GARDEN_RUNC_RELEASE_PATH}/src/grootfs
-    export PATH=${GROOTFS_BINPATH}:${PATH}
-
+setup_grootfs () {
     # Set up btrfs volume and loopback devices in environment
     create_garden_storage
     umount /sys/fs/cgroup
-
-    make
-
-    mv $PWD/build/grootfs $GROOTFS_BINPATH
-    echo "grootfs installed."
 
     groupadd iamgroot -g 4294967294
     useradd iamgroot -u 4294967294 -g 4294967294
     echo "iamgroot:1:4294967293" > /etc/subuid
     echo "iamgroot:1:4294967293" > /etc/subgid
-  popd
-}
+  }
 
 build_garden_rootfs() {
   tar cpf /tmp/rootfs.tar -C "$GARDEN_ROOTFS_FILES" .
@@ -179,8 +151,8 @@ EOF
 echo "nameserver 8.8.8.8" >> /etc/resolv.conf
 
 setup_dnsmasq
-build_gardenrunc
-build_grootfs
+setup_gardenrunc
+setup_grootfs
 build_garden_rootfs
 
 export ROUTER_GOPATH="$ROUTING_RELEASE_PATH/src/code.cloudfoundry.org"
