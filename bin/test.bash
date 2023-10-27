@@ -3,11 +3,6 @@
 set -eu
 set -o pipefail
 
-function install_dependencies() {
-  DEBIAN_FRONTEND=noninteractive apt -qq update
-  DEBIAN_FRONTEND=noninteractive apt-get install -yq dnsmasq libseccomp-dev xfsprogs
-}
-
 # Setup DNS for *.service.cf.internal, used by the Diego components, and
 # *.test.internal, used by the collocated DUSTs as a routable domain.
 function setup_dnsmasq() {
@@ -183,7 +178,6 @@ EOF
 # tests were failing because they were unable to resolve DNS names.
 echo "nameserver 8.8.8.8" >> /etc/resolv.conf
 
-install_dependencies
 setup_dnsmasq
 build_gardenrunc
 build_grootfs
