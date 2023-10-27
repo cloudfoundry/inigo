@@ -180,7 +180,7 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 
 	tmpDir := TempDir("component-maker")
 
-	grootfsBinPath := os.Getenv("GROOTFS_BINARY")
+	grootfsBinPath := os.Getenv("GROOTFS_BINPATH")
 	grootfsStorePath := os.Getenv("GROOTFS_STORE_PATH")
 	gardenBinPath := os.Getenv("GARDEN_BINPATH")
 	gardenRootFSPath := os.Getenv("GARDEN_ROOTFS")
@@ -190,7 +190,7 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 		gardenGraphPath = TempDirWithParent(tmpDir, "garden-graph")
 	}
 
-	Expect(grootfsBinPath).NotTo(BeEmpty(), "must provide $GROOTFS_BINARY")
+	Expect(grootfsBinPath).NotTo(BeEmpty(), "must provide $GROOTFS_BINPATH")
 	if runtime.GOOS == "windows" {
 		Expect(grootfsStorePath).NotTo(BeEmpty(), "must provide $GROOTFS_STORE_PATH")
 	}
