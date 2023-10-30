@@ -154,6 +154,6 @@ $ipAddressObject = Find-NetRoute -RemoteIPAddress "8.8.8.8" | Select-Object IpAd
 $ipAddress = $ipAddressObject.IpAddress
 $env:EXTERNAL_ADDRESS="$ipAddress".Trim()
 
-echo "Log Dir: /tmp/inigo-logs"
-mkdir /tmp/inigo-logs
-go run github.com/onsi/ginkgo/v2/ginkgo ${@} --output-dir /tmp/inigo-logs --json-report report.json &> /tmp/inigo-logs/logs.log
+echo "Log Dir: $env:TMP/inigo-logs"
+mkdir "$env:TMP/inigo-logs"
+go run github.com/onsi/ginkgo/v2/ginkgo ${@} --output-dir "$env:TMP/inigo-logs" --json-report report.json
