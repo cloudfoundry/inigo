@@ -125,7 +125,6 @@ max_connections=1000"
 }
 
 Setup-GardenRunc
-Setup-Winc "$env:WINC_RELEASE_PATH"
 Setup-Envoy "$env:ENVOY_NGINX_RELEASE_PATH"
 Setup-GardenRootfs
 Setup-ContainerNetworking
