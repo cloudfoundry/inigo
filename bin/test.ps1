@@ -45,12 +45,12 @@ function Setup-ContainerNetworking() {
         "gateway_address": "172.30.0.1"
     }'
 
-  & "$env:WINC_NETWORK_BINARY" --debug --log-format json --action delete --configFile "C:\var\vcap\data\winc-network.json"
+  & "$env:WINC_NETWORK_BINARY" --action delete --configFile "C:\var\vcap\data\winc-network.json"
     if ($LASTEXITCODE -ne 0) {
       throw "Deleting container network returned error code: $LastExitCode"
     }
 
-  & "$env:WINC_NETWORK_BINARY" --debug --log-format json --action create --configFile "C:\var\vcap\data\winc-network.json"
+  & "$env:WINC_NETWORK_BINARY" --action create --configFile "C:\var\vcap\data\winc-network.json"
     if ($LASTEXITCODE -ne 0) {
       throw "Creating container network returned error code: $LastExitCode"
     }
@@ -67,6 +67,8 @@ cp "$env:GROOT_BINARY" "$env:GARDEN_BINPATH/grootfs.exe"
 cp "$env:GROOT_QUOTA_DLL" "$env:GARDEN_BINPATH/quota.dll"
 cp "$env:WINC_BINARY" "$env:GARDEN_BINPATH/winc.exe"
 cp "$env:WINC_NETWORK_BINARY" "$env:GARDEN_BINPATH/winc-network.exe"
+$tarPath = (Get-Command tar).Source
+cp "${tarPath}" "${env:GARDEN_BINPATH}/tar.exe"
 }
 
 function Setup-Envoy() {
