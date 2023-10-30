@@ -97,9 +97,9 @@ function Setup-Envoy() {
 function Setup-Database() {
   Write-Host "Setup-Database"
 
-  $origCaFile="$env:GOPATH_ROOT\src\code.cloudfoundry.org\inigo\fixtures\certs\sql-certs\server-ca.crt"
-  $origCertFile="$env:GOPATH_ROOT\src\code.cloudfoundry.org\inigo\fixtures\certs\sql-certs\server.crt"
-  $origKeyFile="$env:GOPATH_ROOT\src\code.cloudfoundry.org\inigo\fixtures\certs\sql-certs\server.key"
+  $origCaFile="$env:DIEGO_RELEASE_PATH\src\code.cloudfoundry.org\inigo\fixtures\certs\sql-certs\server-ca.crt"
+  $origCertFile="$env:DIEGO_RELEASE_PATH\src\code.cloudfoundry.org\inigo\fixtures\certs\sql-certs\server.crt"
+  $origKeyFile="$env:DIEGO_RELEASE_PATH\src\code.cloudfoundry.org\inigo\fixtures\certs\sql-certs\server.key"
 
   $mysqlCertsDir = "$env:TEMP\mysql-certs" -replace '\\','\\'
   mkdir -Force $mysqlCertsDir
