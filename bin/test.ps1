@@ -124,9 +124,6 @@ max_connections=1000"
   Restart-Service Mysql
 }
 
-Remove-Item -Recurse -Force -ErrorAction Ignore $env:DIEGO_RELEASE_PATH/src/code.cloudfoundry.org/guardian/vendor/github.com/onsi/ginkgo
-Remove-Item -Recurse -Force -ErrorAction Ignore $env:DIEGO_RELEASE_PATH/diego-release/src/code.cloudfoundry.org/guardian/vendor/github.com/onsi/gomega
-
 Setup-GardenRunc
 Setup-Winc "$env:WINC_RELEASE_PATH"
 Setup-Envoy "$env:ENVOY_NGINX_RELEASE_PATH"
