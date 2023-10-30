@@ -45,7 +45,7 @@ function Setup-ContainerNetworking() {
         "gateway_address": "172.30.0.1"
     }'
 
-  & "$env:WINC_BINARY" --debug --log-format json --action delete --configFile "C:\var\vcap\data\winc-network.json"
+  & "$env:WINC_NETWORK_BINARY" --debug --log-format json --action delete --configFile "C:\var\vcap\data\winc-network.json"
     if ($LASTEXITCODE -ne 0) {
       throw "Deleting container network returned error code: $LastExitCode"
     }
