@@ -29,8 +29,9 @@ function Setup-GardenRootfs() {
     if (-not (Test-Path 'env:GARDEN_ROOTFS')) {
       throw "Please set GARDEN_ROOTFS environment variable"
     }
-  $env:GROOTFS_STORE_PATH="C:\var\vcap\data\grootfs-store"
-    & "$env:GROOTFS_BINPATH\grootfs.exe" --driver-store "$env:GROOTFS_STORE_PATH" pull "$env:GARDEN_ROOTFS"
+  $env:GROOTFS_BINPATH="$env:GARDEN_BINPATH"
+  $env:GROOTFS_STORE_PATH="$env:GROOT_IMAGE_STORE"
+    & "$env:GROOT_BINARY" --driver-store "$env:GROOTFS_STORE_PATH" pull "$env:GARDEN_ROOTFS"
     if ($LastExitCode -ne 0) {
       throw "Pulling $env:GARDEN_ROOTFS returned error code: $LastExitCode"
     }
@@ -44,12 +45,12 @@ function Setup-ContainerNetworking() {
         "gateway_address": "172.30.0.1"
     }'
 
-  & "$env:GARDEN_BINPATH\winc-network.exe" --debug --log-format json --action delete --configFile "C:\var\vcap\data\winc-network.json"
+  & "$env:WINC_BINARY" --debug --log-format json --action delete --configFile "C:\var\vcap\data\winc-network.json"
     if ($LASTEXITCODE -ne 0) {
       throw "Deleting container network returned error code: $LastExitCode"
     }
 
-  & "$env:GARDEN_BINPATH\winc-network.exe" --debug --log-format json --action create --configFile "C:\var\vcap\data\winc-network.json"
+  & "$env:WINC_NETWORK_BINARY" --debug --log-format json --action create --configFile "C:\var\vcap\data\winc-network.json"
     if ($LASTEXITCODE -ne 0) {
       throw "Creating container network returned error code: $LastExitCode"
     }
