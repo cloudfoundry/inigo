@@ -156,4 +156,7 @@ $env:EXTERNAL_ADDRESS="$ipAddress".Trim()
 
 echo "Log Dir: $env:TMP/inigo-logs"
 mkdir "$env:TMP/inigo-logs"
-go run github.com/onsi/ginkgo/v2/ginkgo ${@} --output-dir "$env:TMP/inigo-logs" --json-report report.json
+Invoke-Expression "go run github.com/onsi/ginkgo/v2/ginkgo $args --output-dir $env:TMP/inigo-logs --json-report report.json"
+if ($LastExitCode -ne 0) {
+  throw "tests failed"
+}
