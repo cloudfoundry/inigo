@@ -71,33 +71,6 @@ $tarPath = (Get-Command tar).Source
 cp "${tarPath}" "${env:GARDEN_BINPATH}/tar.exe"
 }
 
-function Setup-Envoy() {
- param([string] $envoyReleaseDir)
-
-  Write-Host "Setup-Envoy"
-  Push-Location $envoyReleaseDir
-    bosh sync-blobs
-    if ($LastExitCode -ne 0) {
-      throw "Syncing envoy bosh blobs returned error code: $LastExitCode"
-    }
-
-    $env:ENVOY_PATH="$env:TEMP\envoy"
-    mkdir -Force "$env:ENVOY_PATH"
-
-    Expand-Archive -Force -Path "blobs\envoy-nginx\envoy-nginx*.zip" -DestinationPath "$env:ENVOY_PATH"
-
-    push-location "src/code.cloudfoundry.org/envoy-nginx"
-    go build -o "$env:ENVOY_PATH\envoy.exe" .
-    if ($LastExitCode -ne 0) {
-      throw "Building envoy.exe process returned error code: $LastExitCode"
-    }
-    pop-location
-
-    $env:PROXY_BINARY="$env:ENVOY_PATH\envoy.exe"
-
-  Pop-Location
-}
-
 function Setup-Database() {
   Write-Host "Setup-Database"
 
@@ -130,7 +103,6 @@ max_connections=1000"
 }
 
 Setup-GardenRunc
-Setup-Envoy "$env:ENVOY_NGINX_RELEASE_PATH"
 Setup-GardenRootfs
 Setup-ContainerNetworking
 Setup-Database
@@ -158,9 +130,12 @@ $ipAddressObject = Find-NetRoute -RemoteIPAddress "8.8.8.8" | Select-Object IpAd
 $ipAddress = $ipAddressObject.IpAddress
 $env:EXTERNAL_ADDRESS="$ipAddress".Trim()
 
-echo "Log Dir: $env:TMP/inigo-logs"
-mkdir -Force "$env:TMP/inigo-logs"
-Invoke-Expression "go run github.com/onsi/ginkgo/v2/ginkgo $args --output-dir $env:TMP/inigo-logs --json-report report.json"
+$timestamp="$((get-date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss:fffffff00Z')): $_"
+$logsDir="$env:TMP/inigo-logs-$timestamp"
+echo "Log Dir: $logsDir"
+
+mkdir -Force "$logsDir"
+Invoke-Expression "go run github.com/onsi/ginkgo/v2/ginkgo $args --output-dir $logsDir --json-report report.json | Out-File $logsDir/logs.txt"
 if ($LastExitCode -ne 0) {
   throw "tests failed"
 }
