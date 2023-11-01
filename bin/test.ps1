@@ -93,6 +93,8 @@ function Setup-Envoy() {
     }
     pop-location
 
+    $env:PROXY_BINARY="$env:ENVOY_PATH\envoy.exe"
+
   Pop-Location
 }
 
