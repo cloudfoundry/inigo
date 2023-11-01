@@ -452,7 +452,7 @@ var _ = Describe("InstanceIdentity", func() {
 				})
 			})
 
-			FIt("should have a container with envoy enabled on it", func() {
+			It("should have a container with envoy enabled on it", func() {
 				Eventually(connect, 10*time.Second).Should(Succeed())
 			})
 
