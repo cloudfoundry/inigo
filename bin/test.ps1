@@ -102,6 +102,11 @@ max_connections=1000"
   Restart-Service Mysql
 }
 
+$timestamp="$((get-date).ToUniversalTime().ToString('yyyy-MM-ddTHH-mm-ss'))"
+$logsDir="$env:TMP/inigo-logs-$timestamp"
+echo "Log Dir: $logsDir"
+mkdir -Force "$logsDir"
+
 Setup-GardenRunc
 Setup-GardenRootfs
 Setup-ContainerNetworking
@@ -130,13 +135,7 @@ $ipAddressObject = Find-NetRoute -RemoteIPAddress "8.8.8.8" | Select-Object IpAd
 $ipAddress = $ipAddressObject.IpAddress
 $env:EXTERNAL_ADDRESS="$ipAddress".Trim()
 
-$timestamp="$((get-date).ToUniversalTime().ToString('yyyy-MM-ddTHH-mm-ss'))"
-$logsDir="$env:TMP/inigo-logs-$timestamp"
-echo "Log Dir: $logsDir"
-
-mkdir -Force "$logsDir"
-echo "Runing ginkgo in the background. Output will be at $logsDir/logs.txt"
-Invoke-Expression "go run github.com/onsi/ginkgo/v2/ginkgo $args --output-dir $logsDir --json-report report.json" | Out-File "$logsDir/logs.txt" -Encoding ASCII -Width 1000
+Invoke-Expression "go run github.com/onsi/ginkgo/v2/ginkgo $args --output-dir $logsDir --json-report report.json"
 if ($LastExitCode -ne 0) {
   throw "tests failed"
 }
