@@ -130,7 +130,7 @@ $ipAddressObject = Find-NetRoute -RemoteIPAddress "8.8.8.8" | Select-Object IpAd
 $ipAddress = $ipAddressObject.IpAddress
 $env:EXTERNAL_ADDRESS="$ipAddress".Trim()
 
-$timestamp="$((get-date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss:fffffff00Z')): $_"
+$timestamp="$((get-date).ToUniversalTime().ToString('yyyy-MM-ddTHH-mm-ss')) $_"
 $logsDir="$env:TMP/inigo-logs-$timestamp"
 echo "Log Dir: $logsDir"
 
