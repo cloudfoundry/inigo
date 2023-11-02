@@ -442,12 +442,14 @@ func (maker commonComponentMaker) Setup() {
 }
 
 func (maker commonComponentMaker) Teardown() {
+	deleteTmpDir := func() error { return os.RemoveAll(maker.tmpDir) }
 	if runtime.GOOS != "windows" {
 		maker.GrootFSDeleteStore()
+		//auctioneer is not getting stopped on windows. This will cause the test to fail.
+		deleteTmpDir()
+	} else {
+		Eventually(deleteTmpDir, time.Minute).Should(Succeed())
 	}
-
-	deleteTmpDir := func() error { return os.RemoveAll(maker.tmpDir) }
-	Eventually(deleteTmpDir, time.Minute).Should(Succeed())
 }
 
 func (maker commonComponentMaker) NATS(argv ...string) ifrit.Runner {
