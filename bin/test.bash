@@ -182,10 +182,6 @@ setup_database
 # display ginkgo dots properly
 export LESSCHARSET=utf-8
 
-export GARDEN_GRAPH_PATH=/tmp/aufs_mount
-mkdir -p "${GARDEN_GRAPH_PATH}"
-mount -t tmpfs tmpfs "${GARDEN_GRAPH_PATH}"
-
 # workaround until Concourse's garden sets this up for us
 if ! grep -qs '/sys' /proc/mounts; then
   mount -t sysfs sysfs /sys
