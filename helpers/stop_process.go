@@ -21,7 +21,7 @@ func StopProcesses(processes ...ifrit.Process) {
 			}
 
 			if runtime.GOOS == "windows" {
-				process.Signal(syscall.SIGINT)
+				process.Signal(syscall.SIGKILL)
 			} else {
 				process.Signal(syscall.SIGTERM)
 			}
