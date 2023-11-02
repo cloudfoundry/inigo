@@ -9,11 +9,11 @@ $env:TEMP = "C:\var\vcap\data\tmp"
 function Setup-DnsNames() {
   Write-Host "Setup-DnsNames"
     Add-Content -Path "C:\Windows\System32\Drivers\etc\hosts" -Encoding ASCII -Value "
-    127.0.0.1 the-cell-id-1-0.cell.service.cf.internal
-    127.0.0.1 the-cell-id-2-0.cell.service.cf.internal
-    127.0.0.1 the-cell-id-3-0.cell.service.cf.internal
-    127.0.0.1 the-cell-id-4-0.cell.service.cf.internal
-    "
+127.0.0.1 the-cell-id-1-0.cell.service.cf.internal
+127.0.0.1 the-cell-id-2-0.cell.service.cf.internal
+127.0.0.1 the-cell-id-3-0.cell.service.cf.internal
+127.0.0.1 the-cell-id-4-0.cell.service.cf.internal
+"
 }
 
 function Setup-TempDirContainerAccess() {

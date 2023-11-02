@@ -445,10 +445,10 @@ func (maker commonComponentMaker) Teardown() {
 	deleteTmpDir := func() error { return os.RemoveAll(maker.tmpDir) }
 	if runtime.GOOS != "windows" {
 		maker.GrootFSDeleteStore()
+		Eventually(deleteTmpDir, time.Minute).Should(Succeed())
+	} else {
 		//auctioneer is not getting stopped on windows. This will cause the test to fail.
 		deleteTmpDir()
-	} else {
-		Eventually(deleteTmpDir, time.Minute).Should(Succeed())
 	}
 }
 
