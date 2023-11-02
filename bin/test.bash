@@ -3,6 +3,9 @@
 set -eu
 set -o pipefail
 
+source "$CI_DIR/shared/helpers/filesystem-helpers.bash"
+source "$CI_DIR/shared/helpers/helpers.bash"
+
 # Setup DNS for *.service.cf.internal, used by the Diego components, and
 # *.test.internal, used by the collocated DUSTs as a routable domain.
 function setup_dnsmasq() {
@@ -183,14 +186,9 @@ setup_database
 export LESSCHARSET=utf-8
 
 # workaround until Concourse's garden sets this up for us
-if ! grep -qs '/sys' /proc/mounts; then
-  mount -t sysfs sysfs /sys
-fi
-
-# shellcheck source=/dev/null
-source "${GARDEN_RUNC_RELEASE_PATH}/ci/helpers/device-control.bash"
-permit_device_control
-create_loop_devices 256
+filesystem_mount_sysfs
+filesystem_permit_device_control
+filesystem_create_loop_devices 256
 
 # shellcheck disable=SC2068
 # Double-quoting array expansion here causes ginkgo to fail
