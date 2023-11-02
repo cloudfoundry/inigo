@@ -126,7 +126,7 @@ EOF
   local escaped_datadir=${datadir/\//\\\/}
   mkdir $datadir
   mount -t tmpfs -o size=2g tmpfs $datadir
-  rsync -aq /var/lib/mysql/ $datadir
+  retry_command "rsync -aq /var/lib/mysql/ $datadir"
   sed -i "s/#datadir.*/datadir=${escaped_datadir}/g" "${server_cnf_path}"
 
   else
