@@ -356,8 +356,6 @@ var _ = Describe("InstanceIdentity", func() {
 				config.EnvoyConfigRefreshDelay = durationjson.Duration(time.Second)
 				config.ContainerProxyPath = filepath.Dir(os.Getenv("PROXY_BINARY"))
 
-				fmt.Printf("Container Proxy Path: %s\n", config.ContainerProxyPath)
-
 				envoyConfigDir := world.TempDirWithParent(suiteTempDir, "envoy_config")
 
 				config.ContainerProxyConfigPath = envoyConfigDir

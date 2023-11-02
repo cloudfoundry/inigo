@@ -447,7 +447,7 @@ func (maker commonComponentMaker) Teardown() {
 	}
 
 	deleteTmpDir := func() error { return os.RemoveAll(maker.tmpDir) }
-	Eventually(deleteTmpDir).Should(Succeed())
+	Eventually(deleteTmpDir, time.Minute).Should(Succeed())
 }
 
 func (maker commonComponentMaker) NATS(argv ...string) ifrit.Runner {
@@ -1654,7 +1654,7 @@ func (maker v1ComponentMaker) Auctioneer(modifyConfigFuncs ...func(cfg *auctione
 		modifyConfig(&auctioneerConfig)
 	}
 
-	configFile, err := ioutil.TempFile(TempDirWithParent(maker.tmpDir, "auctioneer"), "auctioneer-config")
+	configFile, err := os.CreateTemp(TempDirWithParent(maker.tmpDir, "auctioneer-"), "auctioneer-config-")
 	Expect(err).NotTo(HaveOccurred())
 
 	err = json.NewEncoder(configFile).Encode(auctioneerConfig)
