@@ -106,7 +106,7 @@ setup_database() {
   chmod 0600 "$key_file"
 
   if [ "${DB}" = "mysql" ]; then
-    pkill mysqld
+    pkill mysqld && while pgrep -l mysqld; do sleep 1;done;
 
     chown mysql:mysql "$ca_file"
     chown mysql:mysql "$cert_file"
@@ -126,7 +126,7 @@ EOF
   local escaped_datadir=${datadir/\//\\\/}
   mkdir $datadir
   mount -t tmpfs -o size=2g tmpfs $datadir
-  rsync -av --progress /var/lib/mysql/ $datadir
+  rsync -aq /var/lib/mysql/ $datadir
   sed -i "s/#datadir.*/datadir=${escaped_datadir}/g" "${server_cnf_path}"
 
   else
