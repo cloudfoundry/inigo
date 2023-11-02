@@ -24,42 +24,11 @@ function Setup-TempDirContainerAccess() {
     Set-Acl "$env:TEMP" $acl
 }
 
-function Setup-GardenRootfs() {
-  Write-Host "Set-GardenRootfs"
-    if (-not (Test-Path 'env:GARDEN_ROOTFS')) {
-      throw "Please set GARDEN_ROOTFS environment variable"
-    }
-  $env:GROOTFS_BINPATH="$env:GARDEN_BINPATH"
-  $env:GROOTFS_STORE_PATH="$env:GROOT_IMAGE_STORE"
-    & "$env:GROOT_BINARY" --driver-store "$env:GROOTFS_STORE_PATH" pull "$env:GARDEN_ROOTFS"
-    if ($LastExitCode -ne 0) {
-      throw "Pulling $env:GARDEN_ROOTFS returned error code: $LastExitCode"
-    }
-}
-
-function Setup-ContainerNetworking() {
-  Write-Host "Setup-ContainerNetworking"
-    Set-Content -Path "C:\var\vcap\data\winc-network.json" -Value '{
-      "network_name": "winc-nat",
-        "subnet_range": "172.30.0.0/22",
-        "gateway_address": "172.30.0.1"
-    }'
-
-  & "$env:WINC_NETWORK_BINARY" --action delete --configFile "C:\var\vcap\data\winc-network.json"
-    if ($LASTEXITCODE -ne 0) {
-      throw "Deleting container network returned error code: $LastExitCode"
-    }
-
-  & "$env:WINC_NETWORK_BINARY" --action create --configFile "C:\var\vcap\data\winc-network.json"
-    if ($LASTEXITCODE -ne 0) {
-      throw "Creating container network returned error code: $LastExitCode"
-    }
-
-  Set-NetFirewallProfile -All -DefaultInboundAction Block -DefaultOutboundAction Allow -Enabled True
-}
-
 function Setup-GardenRunc() {
 $env:GARDEN_BINPATH="$env:GARDEN_RUNC_RELEASE_PATH/bin"
+$env:GROOTFS_BINPATH="$env:GARDEN_BINPATH"
+$env:GROOTFS_STORE_PATH="$env:GROOT_IMAGE_STORE"
+
 mkdir -Force "$env:GARDEN_BINPATH"
 cp "$env:WINIT_BINARY" "$env:GARDEN_BINPATH/init.exe"
 cp "$env:NSTAR_BINARY" "$env:GARDEN_BINPATH/nstar.exe"
@@ -108,8 +77,10 @@ echo "Log Dir: $logsDir"
 mkdir -Force "$logsDir"
 
 Setup-GardenRunc
-Setup-GardenRootfs
-Setup-ContainerNetworking
+Configure-Groot "$env:GARDEN_ROOTFS"
+Configure-Winc-Network "delete"
+Configure-Winc-Network "create"
+Set-NetFirewallProfile -All -DefaultInboundAction Block -DefaultOutboundAction Allow -Enabled True
 Setup-Database
 Setup-DnsNames
 Setup-TempDirContainerAccess
