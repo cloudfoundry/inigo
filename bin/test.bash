@@ -196,4 +196,4 @@ create_loop_devices 256
 # Double-quoting array expansion here causes ginkgo to fail
 echo "Log Dir: /tmp/inigo-logs"
 mkdir /tmp/inigo-logs
-go run github.com/onsi/ginkgo/v2/ginkgo ${@} --output-dir /tmp/inigo-logs --json-report report.json &> /tmp/inigo-logs/logs.log
+go run github.com/onsi/ginkgo/v2/ginkgo ${@} --output-dir /tmp/inigo-logs --json-report report.json
