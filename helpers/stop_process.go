@@ -28,7 +28,7 @@ func StopProcesses(processes ...ifrit.Process) {
 
 			select {
 			case <-process.Wait():
-			case <-time.After(20 * time.Second):
+			case <-time.After(time.Minute):
 				fmt.Fprintf(GinkgoWriter, "!!!!!!!!!!!!!!!! STOP TIMEOUT !!!!!!!!!!!!!!!!")
 
 				process.Signal(syscall.SIGQUIT)
