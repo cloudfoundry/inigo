@@ -3,6 +3,7 @@ package certauthority
 import (
 	"io/ioutil"
 	"net"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -164,13 +165,13 @@ func generateCAAndKey(depotDir, commonName string) (string, string, error) {
 	}
 
 	keyFile := filepath.Join(depotDir, commonName+".key")
-	err = ioutil.WriteFile(keyFile, keyBytes, 0655)
+	err = os.WriteFile(keyFile, keyBytes, 0655)
 	if err != nil {
 		return handleError(err)
 	}
 
 	crtFile := filepath.Join(depotDir, commonName+".crt")
-	err = ioutil.WriteFile(crtFile, crtBytes, 0655)
+	err = os.WriteFile(crtFile, crtBytes, 0655)
 	if err != nil {
 		return handleError(err)
 	}
