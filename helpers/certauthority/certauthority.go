@@ -1,7 +1,6 @@
 package certauthority
 
 import (
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -63,7 +62,7 @@ func (c certAuthority) GenerateSelfSignedCertAndKey(commonName string, sans []st
 	}
 	csrLock.Unlock()
 
-	caBytes, err := ioutil.ReadFile(c.caCert)
+	caBytes, err := os.ReadFile(c.caCert)
 	if err != nil {
 		return handleError(err)
 	}
@@ -73,7 +72,7 @@ func (c certAuthority) GenerateSelfSignedCertAndKey(commonName string, sans []st
 		return handleError(err)
 	}
 
-	caKeyBytes, err := ioutil.ReadFile(c.caKey)
+	caKeyBytes, err := os.ReadFile(c.caKey)
 	if err != nil {
 		return handleError(err)
 	}
@@ -101,22 +100,22 @@ func (c certAuthority) GenerateSelfSignedCertAndKey(commonName string, sans []st
 		return handleError(err)
 	}
 
-	keyFile, err := ioutil.TempFile(c.depotDir, commonName)
+	keyFile, err := os.CreateTemp(c.depotDir, commonName)
 	if err != nil {
 		return handleError(err)
 	}
 	defer keyFile.Close()
-	err = ioutil.WriteFile(keyFile.Name(), keyBytes, 0655)
+	err = os.WriteFile(keyFile.Name(), keyBytes, 0655)
 	if err != nil {
 		return handleError(err)
 	}
 
-	crtFile, err := ioutil.TempFile(c.depotDir, commonName)
+	crtFile, err := os.CreateTemp(c.depotDir, commonName)
 	if err != nil {
 		return handleError(err)
 	}
 	defer crtFile.Close()
-	err = ioutil.WriteFile(crtFile.Name(), crtBytes, 0655)
+	err = os.WriteFile(crtFile.Name(), crtBytes, 0655)
 	if err != nil {
 		return handleError(err)
 	}
@@ -139,11 +138,13 @@ func generateCAAndKey(depotDir, commonName string) (string, string, error) {
 
 	crtKey, err := pkix.CreateRSAKey(4096)
 	if err != nil {
+		caLock.Unlock()
 		return handleError(err)
 	}
 
 	csr, err := pkix.CreateCertificateSigningRequest(crtKey, "", nil, nil, nil, "", "", "", "", commonName)
 	if err != nil {
+		caLock.Unlock()
 		return handleError(err)
 	}
 
