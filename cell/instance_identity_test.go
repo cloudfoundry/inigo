@@ -354,14 +354,14 @@ var _ = Describe("InstanceIdentity", func() {
 			enableContainerProxy = func(config *config.RepConfig) {
 				config.EnableContainerProxy = true
 				config.EnvoyConfigRefreshDelay = durationjson.Duration(time.Second)
-				config.ContainerProxyPath = os.Getenv("ENVOY_PATH")
+				config.ContainerProxyPath = filepath.Dir(os.Getenv("PROXY_BINARY"))
 
 				envoyConfigDir := world.TempDirWithParent(suiteTempDir, "envoy_config")
 
 				config.ContainerProxyConfigPath = envoyConfigDir
 			}
 
-			fixturesPath := path.Join(os.Getenv("DIEGO_RELEASE_DIR"), "src/code.cloudfoundry.org/inigo/fixtures/certs")
+			fixturesPath := path.Join("..", "fixtures", "certs")
 			metronCAFile := path.Join(fixturesPath, "metron", "CA.crt")
 			metronClientCertFile := path.Join(fixturesPath, "metron", "client.crt")
 			metronClientKeyFile := path.Join(fixturesPath, "metron", "client.key")
@@ -1051,7 +1051,7 @@ func verifyCertificateIsSignedBy(cert, parentCert *x509.Certificate) {
 }
 
 func createSleepyEnvoy(parentDir string) string {
-	envoyPath := filepath.Join(os.Getenv("ENVOY_PATH"), "envoy")
+	envoyPath := os.Getenv("PROXY_BINARY")
 
 	dir := world.TempDirWithParent(parentDir, "sleepy-envoy")
 

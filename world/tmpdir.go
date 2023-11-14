@@ -1,14 +1,13 @@
 package world
 
 import (
-	"io/ioutil"
 	"os"
 
 	. "github.com/onsi/gomega"
 )
 
 func TempDir(prefix string) string {
-	tmpDir, err := ioutil.TempDir(os.TempDir(), prefix)
+	tmpDir, err := os.MkdirTemp(os.TempDir(), prefix)
 	Expect(err).NotTo(HaveOccurred())
 
 	err = os.Chmod(tmpDir, 0777)
@@ -18,7 +17,7 @@ func TempDir(prefix string) string {
 }
 
 func TempDirWithParent(parentDir string, prefix string) string {
-	tmpDir, err := ioutil.TempDir(parentDir, prefix)
+	tmpDir, err := os.MkdirTemp(parentDir, prefix)
 	Expect(err).NotTo(HaveOccurred())
 
 	err = os.Chmod(tmpDir, 0777)

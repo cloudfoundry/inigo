@@ -146,12 +146,25 @@ func DBInfo() (string, string) {
 	var dbBaseConnectionString string
 	var dbDriverName string
 
+	user, ok := os.LookupEnv("DB_USER")
+	if !ok {
+		user = "diego"
+	}
+
 	if test_helpers.UsePostgres() {
 		dbDriverName = "postgres"
-		dbBaseConnectionString = "postgres://diego:diego_pw@127.0.0.1/"
+		password, ok := os.LookupEnv("DB_PASSWORD")
+		if !ok {
+			password = "diego_pw"
+		}
+		dbBaseConnectionString = fmt.Sprintf("postgres://%s:%s@127.0.0.1/", user, password)
 	} else {
 		dbDriverName = "mysql"
-		dbBaseConnectionString = "diego:diego_password@tcp(localhost:3306)/"
+		password, ok := os.LookupEnv("DB_PASSWORD")
+		if !ok {
+			password = "diego_password"
+		}
+		dbBaseConnectionString = fmt.Sprintf("%s:%s@tcp(localhost:3306)/", user, password)
 	}
 
 	return dbDriverName, dbBaseConnectionString
@@ -221,7 +234,7 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 	clientKey, clientCert, err := certAuthority.GenerateSelfSignedCertAndKey("client", []string{"client"}, false)
 	Expect(err).NotTo(HaveOccurred())
 
-	sqlCACert := filepath.Join(os.Getenv("DIEGO_RELEASE_DIR"), "src", "code.cloudfoundry.org", "inigo", "fixtures", "certs", "sql-certs", "server-ca.crt")
+	sqlCACert := filepath.Join("..", "fixtures", "certs", "sql-certs", "server-ca.crt")
 
 	bbsSSLConfig := SSLConfig{
 		ServerCert: bbsServerCert,
@@ -429,17 +442,25 @@ func (maker commonComponentMaker) Setup() {
 }
 
 func (maker commonComponentMaker) Teardown() {
+	deleteTmpDir := func() error { return os.RemoveAll(maker.tmpDir) }
 	if runtime.GOOS != "windows" {
 		maker.GrootFSDeleteStore()
+		Eventually(deleteTmpDir, time.Minute).Should(Succeed())
+	} else {
+		//auctioneer is not getting stopped on windows. This will cause the test to fail.
+		deleteTmpDir()
 	}
-
-	deleteTmpDir := func() error { return os.RemoveAll(maker.tmpDir) }
-	Eventually(deleteTmpDir).Should(Succeed())
 }
 
 func (maker commonComponentMaker) NATS(argv ...string) ifrit.Runner {
 	host, port, err := net.SplitHostPort(maker.addresses.NATS)
 	Expect(err).NotTo(HaveOccurred())
+
+	natsServerPath, exists := os.LookupEnv("NATS_SERVER_BINARY")
+	if !exists {
+		fmt.Println("You need nats-server install set NATS_SERVER_BINARY env variable")
+		os.Exit(1)
+	}
 
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "nats-server",
@@ -447,7 +468,7 @@ func (maker commonComponentMaker) NATS(argv ...string) ifrit.Runner {
 		StartCheck:        "Server is ready",
 		StartCheckTimeout: maker.startCheckTimeout,
 		Command: exec.Command(
-			"nats-server",
+			natsServerPath,
 			append([]string{
 				"--addr", host,
 				"--port", port,
@@ -534,7 +555,7 @@ func (maker commonComponentMaker) grootfsDeleteStore(grootfsConfig GrootFSConfig
 }
 
 func (maker commonComponentMaker) grootfsRunner(args []string) error {
-	cmd := exec.Command(filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs"), args...)
+	cmd := exec.Command(filepath.Join(maker.gardenConfig.GardenBinPath, "grootfs"), args...)
 	cmd.Stderr = GinkgoWriter
 	cmd.Stdout = GinkgoWriter
 	return cmd.Run()
@@ -589,7 +610,7 @@ func (maker commonComponentMaker) garden(includeDefaultStack bool, fs ...func(*r
 		config.InitBin = filepath.Join(maker.gardenConfig.GardenBinPath, "init.exe")
 		config.RuntimePluginBin = filepath.Join(maker.gardenConfig.GardenBinPath, "winc.exe")
 		config.NSTarBin = filepath.Join(maker.gardenConfig.GardenBinPath, "nstar.exe")
-		config.ImagePluginBin = filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs.exe")
+		config.ImagePluginBin = filepath.Join(maker.gardenConfig.GardenBinPath, "grootfs.exe")
 		config.ImagePluginExtraArgs = []string{
 			"\"--driver-store\"",
 			maker.gardenConfig.GrootFSStorePath,
@@ -608,8 +629,8 @@ func (maker commonComponentMaker) garden(includeDefaultStack bool, fs ...func(*r
 		config.ExecRunnerBin = filepath.Join(maker.gardenConfig.GardenBinPath, "dadoo")
 		config.RuntimePluginBin = filepath.Join(maker.gardenConfig.GardenBinPath, "runc")
 		config.NSTarBin = filepath.Join(maker.gardenConfig.GardenBinPath, "nstar")
-		config.ImagePluginBin = filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs")
-		config.PrivilegedImagePluginBin = filepath.Join(maker.gardenConfig.GrootFSBinPath, "grootfs")
+		config.ImagePluginBin = filepath.Join(maker.gardenConfig.GardenBinPath, "grootfs")
+		config.PrivilegedImagePluginBin = filepath.Join(maker.gardenConfig.GardenBinPath, "grootfs")
 
 		// TODO: this is overriding the guardian runner args, which is fine since we
 		// don't use tardis (tardis is only required for overlay+xfs)
@@ -670,14 +691,27 @@ func (maker commonComponentMaker) RoutingAPI(modifyConfigFuncs ...func(*routinga
 	port, err := maker.portAllocator.ClaimPorts(2)
 	Expect(err).NotTo(HaveOccurred())
 
+	user, ok := os.LookupEnv("DB_USER")
+	if !ok {
+		user = "diego"
+	}
+
 	if maker.dbDriverName == "mysql" {
+		password, ok := os.LookupEnv("DB_PASSWORD")
+		if !ok {
+			password = "diego_password"
+		}
 		sqlConfig.Port = 3306
-		sqlConfig.Username = "diego"
-		sqlConfig.Password = "diego_password"
+		sqlConfig.Username = user
+		sqlConfig.Password = password
 	} else {
+		password, ok := os.LookupEnv("DB_PASSWORD")
+		if !ok {
+			password = "diego_pw"
+		}
 		sqlConfig.Port = 5432
-		sqlConfig.Username = "diego"
-		sqlConfig.Password = "diego_pw"
+		sqlConfig.Username = user
+		sqlConfig.Password = password
 	}
 
 	modifyConfigFuncs = append(modifyConfigFuncs, func(c *routingapi.Config) {
@@ -1191,7 +1225,7 @@ func (maker v0ComponentMaker) RouteEmitter(modifyConfigFuncs ...func(config *rou
 }
 
 func (maker v0ComponentMaker) FileServer() (ifrit.Runner, string) {
-	servedFilesDir := TempDirWithParent(maker.tmpDir, "file-server-files")
+	servedFilesDir := TempDirWithParent(maker.tmpDir, fmt.Sprintf("file-server-files-%d-", GinkgoParallelProcess()))
 
 	return ginkgomon.New(ginkgomon.Config{
 		Name:              "file-server",
@@ -1622,7 +1656,7 @@ func (maker v1ComponentMaker) Auctioneer(modifyConfigFuncs ...func(cfg *auctione
 		modifyConfig(&auctioneerConfig)
 	}
 
-	configFile, err := ioutil.TempFile(TempDirWithParent(maker.tmpDir, "auctioneer"), "auctioneer-config")
+	configFile, err := os.CreateTemp(TempDirWithParent(maker.tmpDir, "auctioneer-"), "auctioneer-config-")
 	Expect(err).NotTo(HaveOccurred())
 
 	err = json.NewEncoder(configFile).Encode(auctioneerConfig)
