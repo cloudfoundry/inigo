@@ -75,7 +75,7 @@ setup_grootfs () {
     useradd iamgroot -u 4294967294 -g 4294967294
     echo "iamgroot:1:4294967293" > /etc/subuid
     echo "iamgroot:1:4294967293" > /etc/subgid
-  }
+}
 
 setup_diego_release() {
   pushd ${DIEGO_RELEASE_PATH}
@@ -152,7 +152,6 @@ echo "nameserver 8.8.8.8" >> /etc/resolv.conf
 setup_dnsmasq
 setup_gardenrunc
 setup_grootfs
-build_garden_rootfs
 
 export ROUTER_GOPATH="$ROUTING_RELEASE_PATH/src/code.cloudfoundry.org"
 export ROUTING_API_GOPATH=${ROUTER_GOPATH}

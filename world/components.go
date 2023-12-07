@@ -133,6 +133,7 @@ type ComponentAddresses struct {
 	FileServer          string
 	Router              string
 	RouterStatus        string
+	RouterRoutes        string
 	Garden              string
 	Auctioneer          string
 	SSHProxy            string
@@ -891,6 +892,12 @@ func (maker commonComponentMaker) Router() *ginkgomon.Runner {
 	routerStatusPortInt, err := strconv.Atoi(routerStatusPort)
 	Expect(err).NotTo(HaveOccurred())
 
+	_, routerRoutesPort, err := net.SplitHostPort(maker.addresses.RouterRoutes)
+	Expect(err).NotTo(HaveOccurred())
+
+	routerRoutesPortInt, err := strconv.Atoi(routerRoutesPort)
+	Expect(err).NotTo(HaveOccurred())
+
 	natsHost, natsPort, err := net.SplitHostPort(maker.addresses.NATS)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -902,6 +909,8 @@ status:
   port: %d
   user: ""
   pass: ""
+  routes:
+    port: %d
 nats:
   hosts:
   - hostname: %s
@@ -969,7 +978,7 @@ token_fetcher_retry_interval: 0s
 token_fetcher_expiration_buffer_time: 0
 pid_file: ""
 `
-	routerConfig = fmt.Sprintf(routerConfig, uint16(routerStatusPortInt), natsHost, uint16(natsPortInt), uint16(routerPortInt))
+	routerConfig = fmt.Sprintf(routerConfig, uint16(routerStatusPortInt), uint16(routerRoutesPortInt), natsHost, uint16(natsPortInt), uint16(routerPortInt))
 
 	configFile, err := ioutil.TempFile(TempDirWithParent(maker.tmpDir, "router-config"), "router-config")
 	Expect(err).NotTo(HaveOccurred())
