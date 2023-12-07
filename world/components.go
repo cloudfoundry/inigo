@@ -183,7 +183,7 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 	grootfsBinPath := os.Getenv("GROOTFS_BINPATH")
 	grootfsStorePath := os.Getenv("GROOTFS_STORE_PATH")
 	gardenBinPath := os.Getenv("GARDEN_BINPATH")
-	gardenRootFSPath := os.Getenv("GARDEN_ROOTFS")
+	gardenRootFSPath := os.Getenv("GARDEN_TEST_ROOTFS")
 	gardenGraphPath := os.Getenv("GARDEN_GRAPH_PATH")
 
 	if gardenGraphPath == "" {
@@ -195,7 +195,7 @@ func makeCommonComponentMaker(builtArtifacts BuiltArtifacts, worldAddresses Comp
 		Expect(grootfsStorePath).NotTo(BeEmpty(), "must provide $GROOTFS_STORE_PATH")
 	}
 	Expect(gardenBinPath).NotTo(BeEmpty(), "must provide $GARDEN_BINPATH")
-	Expect(gardenRootFSPath).NotTo(BeEmpty(), "must provide $GARDEN_ROOTFS")
+	Expect(gardenRootFSPath).NotTo(BeEmpty(), "must provide $GARDEN_TEST_ROOTFS")
 
 	// tests depend on this env var to be set
 	externalAddress := os.Getenv("EXTERNAL_ADDRESS")

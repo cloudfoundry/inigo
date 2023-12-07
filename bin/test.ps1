@@ -77,7 +77,7 @@ echo "Log Dir: $logsDir"
 mkdir -Force "$logsDir"
 
 Setup-GardenRunc
-Configure-Groot "$env:GARDEN_ROOTFS"
+Configure-Groot "$env:GARDEN_TEST_ROOTFS"
 Configure-Winc-Network "delete"
 Configure-Winc-Network "create"
 Set-NetFirewallProfile -All -DefaultInboundAction Block -DefaultOutboundAction Allow -Enabled True

@@ -77,11 +77,6 @@ setup_grootfs () {
     echo "iamgroot:1:4294967293" > /etc/subgid
   }
 
-build_garden_rootfs() {
-  tar cpf /tmp/rootfs.tar -C "$GARDEN_ROOTFS_FILES" .
-  export GARDEN_ROOTFS=/tmp/rootfs.tar
-}
-
 setup_diego_release() {
   pushd ${DIEGO_RELEASE_PATH}
 
