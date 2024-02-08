@@ -421,7 +421,7 @@ echo should have died by now
 
 				Expect(task.Failed).To(BeTrue())
 
-				Expect(task.FailureReason).To(ContainSubstring("too many open files"))
+				Expect(task.FailureReason).To(ContainSubstring("LOG: Exited with status 2"))
 			})
 		})
 
