@@ -504,15 +504,13 @@ func (maker commonComponentMaker) SQL(argv ...string) ifrit.Runner {
 
 		close(ready)
 
-		select {
-		case <-signals:
-			db, err := helpers.Connect(logger, maker.dbDriverName, maker.dbBaseConnectionString, "", false)
-			Expect(err).NotTo(HaveOccurred())
-			Eventually(db.Ping).ShouldNot(HaveOccurred())
+		<-signals
+		db, err = helpers.Connect(logger, maker.dbDriverName, maker.dbBaseConnectionString, "", false)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(db.Ping).ShouldNot(HaveOccurred())
 
-			_, err = db.Exec(fmt.Sprintf("DROP DATABASE %s", sqlDBName))
-			Expect(err).NotTo(HaveOccurred())
-		}
+		_, err = db.Exec(fmt.Sprintf("DROP DATABASE %s", sqlDBName))
+		Expect(err).NotTo(HaveOccurred())
 
 		return nil
 	})
