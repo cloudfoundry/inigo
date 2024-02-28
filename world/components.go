@@ -1038,9 +1038,9 @@ func (maker commonComponentMaker) SSHProxy(modifyConfigFuncs ...func(*sshproxyco
 		StartCheckTimeout: maker.startCheckTimeout,
 		Command: exec.Command(
 			maker.artifacts.Executables["ssh-proxy"],
-			append([]string{
+			[]string{
 				"-config", configFile.Name(),
-			})...,
+			}...,
 		),
 	})
 }
