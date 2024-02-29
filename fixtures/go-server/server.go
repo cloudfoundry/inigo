@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -75,7 +74,7 @@ func write(res http.ResponseWriter, req *http.Request) {
 	mountPointPath := os.Getenv("MOUNT_POINT_DIR") + "/test.txt"
 
 	d1 := []byte("Hello Persistant World!\n")
-	err := ioutil.WriteFile(mountPointPath, d1, 0644)
+	err := os.WriteFile(mountPointPath, d1, 0644)
 	if err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
 		res.Write([]byte(err.Error()))
@@ -83,7 +82,7 @@ func write(res http.ResponseWriter, req *http.Request) {
 	}
 
 	res.WriteHeader(http.StatusOK)
-	body, err := ioutil.ReadFile(mountPointPath)
+	body, err := os.ReadFile(mountPointPath)
 	if err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
 		res.Write([]byte(err.Error()))
@@ -134,7 +133,7 @@ func privileged(res http.ResponseWriter, req *http.Request) {
 func cfInstanceCert(res http.ResponseWriter, req *http.Request) {
 	path := os.Getenv("CF_INSTANCE_CERT")
 
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
 		return
@@ -146,7 +145,7 @@ func cfInstanceCert(res http.ResponseWriter, req *http.Request) {
 func cfInstanceKey(res http.ResponseWriter, req *http.Request) {
 	path := os.Getenv("CF_INSTANCE_KEY")
 
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
 		return
@@ -159,7 +158,7 @@ func catFile(res http.ResponseWriter, req *http.Request) {
 	param := req.URL.Query()
 	fileToCat := param["file"][0]
 
-	data, err := ioutil.ReadFile(fileToCat)
+	data, err := os.ReadFile(fileToCat)
 	if os.IsNotExist(err) {
 		res.WriteHeader(http.StatusNotFound)
 		return

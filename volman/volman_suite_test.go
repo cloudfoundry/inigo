@@ -2,7 +2,6 @@ package volman_test
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -91,7 +90,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	allocator, err := portauthority.New(startPort, endPort)
 	Expect(err).NotTo(HaveOccurred())
 
-	certDepot, err = ioutil.TempDir("", "cert-depot")
+	certDepot, err = os.MkdirTemp("", "cert-depot")
 	Expect(err).NotTo(HaveOccurred())
 
 	certAuthority, err := certauthority.NewCertAuthority(certDepot, "ca")

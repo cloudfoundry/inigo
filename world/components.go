@@ -3,7 +3,6 @@ package world
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
@@ -561,7 +560,7 @@ func (maker commonComponentMaker) grootfsRunner(args []string) error {
 }
 
 func (maker commonComponentMaker) grootfsConfigPath(grootfsConfig GrootFSConfig) string {
-	configFile, err := ioutil.TempFile("", "grootfs-config")
+	configFile, err := os.CreateTemp("", "grootfs-config")
 	Expect(err).NotTo(HaveOccurred())
 	defer configFile.Close()
 	data, err := yaml.Marshal(&grootfsConfig)
@@ -573,7 +572,7 @@ func (maker commonComponentMaker) grootfsConfigPath(grootfsConfig GrootFSConfig)
 }
 
 func (maker commonComponentMaker) networkPluginConfigPath(networkPluginConfig NetworkPluginConfig) string {
-	configFile, err := ioutil.TempFile(TempDirWithParent(maker.tmpDir, "network-plugin"), "network-plugin-config")
+	configFile, err := os.CreateTemp(TempDirWithParent(maker.tmpDir, "network-plugin"), "network-plugin-config")
 	Expect(err).NotTo(HaveOccurred())
 	defer configFile.Close()
 	data, err := json.Marshal(&networkPluginConfig)
@@ -757,7 +756,7 @@ func (maker commonComponentMaker) Locket(modifyConfigFuncs ...func(*locketconfig
 func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routeemitterconfig.RouteEmitterConfig)) *ginkgomon.Runner {
 	name := "route-emitter-" + strconv.Itoa(n)
 
-	configFile, err := ioutil.TempFile(TempDirWithParent(maker.tmpDir, "route-emitter"), "route-emitter-config")
+	configFile, err := os.CreateTemp(TempDirWithParent(maker.tmpDir, "route-emitter"), "route-emitter-config")
 	Expect(err).NotTo(HaveOccurred())
 	defer configFile.Close()
 
@@ -814,7 +813,7 @@ func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routee
 func (maker commonComponentMaker) FileServer() (ifrit.Runner, string) {
 	servedFilesDir := TempDirWithParent(maker.tmpDir, "file-server-files")
 
-	configFile, err := ioutil.TempFile(TempDirWithParent(maker.tmpDir, "file-server"), "file-server-config")
+	configFile, err := os.CreateTemp(TempDirWithParent(maker.tmpDir, "file-server"), "file-server-config")
 	Expect(err).NotTo(HaveOccurred())
 	defer configFile.Close()
 
@@ -978,7 +977,7 @@ pid_file: ""
 `
 	routerConfig = fmt.Sprintf(routerConfig, uint16(routerStatusPortInt), uint16(routerRoutesPortInt), natsHost, uint16(natsPortInt), uint16(routerPortInt))
 
-	configFile, err := ioutil.TempFile(TempDirWithParent(maker.tmpDir, "router-config"), "router-config")
+	configFile, err := os.CreateTemp(TempDirWithParent(maker.tmpDir, "router-config"), "router-config")
 	Expect(err).NotTo(HaveOccurred())
 	defer configFile.Close()
 	_, err = configFile.Write([]byte(routerConfig))
@@ -1023,7 +1022,7 @@ func (maker commonComponentMaker) SSHProxy(modifyConfigFuncs ...func(*sshproxyco
 		f(&sshProxyConfig)
 	}
 
-	configFile, err := ioutil.TempFile("", "ssh-proxy-config")
+	configFile, err := os.CreateTemp("", "ssh-proxy-config")
 	Expect(err).NotTo(HaveOccurred())
 	defer configFile.Close()
 
@@ -1608,7 +1607,7 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 		modifyConfig(&repConfig)
 	}
 
-	configFile, err := ioutil.TempFile(TempDirWithParent(maker.tmpDir, "rep-config"), "rep-config")
+	configFile, err := os.CreateTemp(TempDirWithParent(maker.tmpDir, "rep-config"), "rep-config")
 	Expect(err).NotTo(HaveOccurred())
 
 	defer configFile.Close()

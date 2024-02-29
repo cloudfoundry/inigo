@@ -3,7 +3,7 @@ package cell_test
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -215,7 +215,7 @@ var _ = Describe("SSH", func() {
 			defer resp.Body.Close()
 			Expect(resp.StatusCode).To(Equal(http.StatusOK))
 
-			contents, err := ioutil.ReadAll(resp.Body)
+			contents, err := io.ReadAll(resp.Body)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(contents).To(ContainSubstring("sup dawg"))
 		})
@@ -283,7 +283,7 @@ var _ = Describe("SSH", func() {
 				defer resp.Body.Close()
 				Expect(resp.StatusCode).To(Equal(http.StatusOK))
 
-				contents, err := ioutil.ReadAll(resp.Body)
+				contents, err := io.ReadAll(resp.Body)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(contents).To(ContainSubstring("sup dawg"))
 			})

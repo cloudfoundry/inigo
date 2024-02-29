@@ -2,7 +2,6 @@ package cell_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -248,7 +247,7 @@ var _ = Describe("Evacuation", func() {
 })
 
 func replaceGrootFSWithHangingVersion() {
-	f, err := ioutil.TempFile(os.TempDir(), "image_plugin")
+	f, err := os.CreateTemp(os.TempDir(), "image_plugin")
 	Expect(err).NotTo(HaveOccurred())
 	Expect(f.Chmod(0755)).To(Succeed())
 	path := filepath.Join(os.Getenv("GARDEN_BINPATH"), "grootfs")
