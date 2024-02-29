@@ -39,8 +39,7 @@ var (
 	localDriverRunner   ifrit.Runner
 	localDriverProcess  ifrit.Process
 
-	driverClient    dockerdriver.Driver
-	localNodeClient volman.Plugin
+	driverClient dockerdriver.Driver
 
 	logger lager.Logger
 
