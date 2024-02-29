@@ -13,7 +13,8 @@ import (
 
 var (
 	memoryAllocated = flag.Uint("allocate-memory-b", 0, "allocate this much memory (in mb) on the heap and do not release it")
-	someGarbage     []uint8
+	//lint:ignore U1000 - we want this to allocate memory that we never release when configured as such
+	someGarbage []uint8
 )
 
 func main() {
