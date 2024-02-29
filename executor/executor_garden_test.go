@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"time"
@@ -962,7 +961,7 @@ var _ = Describe("Executor/Garden", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(header.FileInfo().Name()).To(Equal("path"))
-					Expect(ioutil.ReadAll(tarReader)).To(Equal([]byte("hello\n")))
+					Expect(io.ReadAll(tarReader)).To(Equal([]byte("hello\n")))
 				})
 			})
 		})
@@ -1060,7 +1059,7 @@ var _ = Describe("Executor/Garden", func() {
 						return err
 					}).ShouldNot(HaveOccurred())
 
-					containerResponse, err = ioutil.ReadAll(conn)
+					containerResponse, err = io.ReadAll(conn)
 					Expect(err).NotTo(HaveOccurred())
 				})
 

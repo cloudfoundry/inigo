@@ -2,7 +2,6 @@ package cell_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -171,7 +170,7 @@ var _ = Describe("LRP", func() {
 					archiveFilePath,
 					archiveFiles,
 				)
-				content, err := ioutil.ReadFile(archiveFilePath)
+				content, err := os.ReadFile(archiveFilePath)
 				Expect(err).NotTo(HaveOccurred())
 				checksumValue, err = helpers.HexValueForByteArray(algorithm, content)
 				Expect(err).NotTo(HaveOccurred())

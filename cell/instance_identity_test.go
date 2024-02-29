@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"net"
 	"net/http"
@@ -81,7 +80,7 @@ var _ = Describe("InstanceIdentity", func() {
 
 		intermediateKeyPath, intermediateCACertPath, err = certAuthority.GenerateSelfSignedCertAndKey("instance-identity", []string{"instance-identity"}, true)
 		Expect(err).NotTo(HaveOccurred())
-		caCertContent, err := ioutil.ReadFile(caCertPath)
+		caCertContent, err := os.ReadFile(caCertPath)
 		Expect(err).NotTo(HaveOccurred())
 		caCert := parseCertificate(caCertContent, true)
 		rootCAs = x509.NewCertPool()
@@ -185,7 +184,7 @@ var _ = Describe("InstanceIdentity", func() {
 		Expect(cert.Subject.OrganizationalUnit).To(Equal(organizationalUnit))
 		Expect(cert.NotAfter.Sub(cert.NotBefore)).To(Equal(validityPeriod))
 
-		caCertContent, err := ioutil.ReadFile(intermediateCACertPath)
+		caCertContent, err := os.ReadFile(intermediateCACertPath)
 		Expect(err).NotTo(HaveOccurred())
 
 		caCert := parseCertificate(caCertContent, true)
@@ -216,7 +215,7 @@ var _ = Describe("InstanceIdentity", func() {
 
 		Expect(resp.StatusCode).To(Equal(http.StatusOK))
 
-		certData, err := ioutil.ReadAll(resp.Body)
+		certData, err := io.ReadAll(resp.Body)
 		Expect(err).NotTo(HaveOccurred())
 
 		resp, err = client.Get(fmt.Sprintf("https://%s:8081/cf-instance-key", ipAddress))
@@ -225,7 +224,7 @@ var _ = Describe("InstanceIdentity", func() {
 
 		Expect(resp.StatusCode).To(Equal(http.StatusOK))
 
-		keyData, err := ioutil.ReadAll(resp.Body)
+		keyData, err := io.ReadAll(resp.Body)
 		Expect(err).NotTo(HaveOccurred())
 
 		data := append(certData, keyData...)
@@ -293,7 +292,7 @@ var _ = Describe("InstanceIdentity", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusOK))
 				defer resp.Body.Close()
-				body, err := ioutil.ReadAll(resp.Body)
+				body, err := io.ReadAll(resp.Body)
 				Expect(err).NotTo(HaveOccurred())
 				ipAddress, _, err := net.SplitHostPort(address)
 				Expect(err).NotTo(HaveOccurred())
@@ -469,7 +468,7 @@ var _ = Describe("InstanceIdentity", func() {
 					Expect(err).NotTo(HaveOccurred())
 					serverKey, err := filepath.Abs("../fixtures/certs/server/server.key")
 					Expect(err).NotTo(HaveOccurred())
-					caCertContent, err = ioutil.ReadFile(serverCaCertPath)
+					caCertContent, err = os.ReadFile(serverCaCertPath)
 					Expect(err).NotTo(HaveOccurred())
 
 					tlsCert, err := tls.LoadX509KeyPair(string(serverCert), string(serverKey))
@@ -542,7 +541,7 @@ var _ = Describe("InstanceIdentity", func() {
 						}
 						serverCaCertPath, err := filepath.Abs("../fixtures/certs/server/wrong-ca.crt")
 						Expect(err).NotTo(HaveOccurred())
-						caCertContent, err = ioutil.ReadFile(serverCaCertPath)
+						caCertContent, err = os.ReadFile(serverCaCertPath)
 						Expect(err).NotTo(HaveOccurred())
 
 						mutualTLSConfig = func(cfg *config.RepConfig) {

@@ -1,7 +1,7 @@
 package helpers
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"sort"
@@ -49,7 +49,7 @@ func ResponseBodyAndStatusCodeFromHost(routerAddr string, host string, pathEleme
 	}
 	defer response.Body.Close()
 
-	contents, err := ioutil.ReadAll(response.Body)
+	contents, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, 0, err
 	}

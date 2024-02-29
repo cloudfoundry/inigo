@@ -1,7 +1,6 @@
 package fixtures
 
 import (
-	"io/ioutil"
 	"os"
 	"runtime"
 
@@ -20,7 +19,7 @@ func GoServerApp() []archive_helper.ArchiveFile {
 
 	Expect(err).NotTo(HaveOccurred())
 
-	contents, err := ioutil.ReadFile(serverPath)
+	contents, err := os.ReadFile(serverPath)
 	Expect(err).NotTo(HaveOccurred())
 	return []archive_helper.ArchiveFile{
 		{

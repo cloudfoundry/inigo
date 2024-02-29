@@ -2,7 +2,7 @@ package cell_test
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -584,7 +584,7 @@ echo should have died by now
 								Mode: 0755,
 							},
 						})
-						content, err := ioutil.ReadFile(archiveFilePath)
+						content, err := os.ReadFile(archiveFilePath)
 						Expect(err).NotTo(HaveOccurred())
 						checksumValue, err = helpers.HexValueForByteArray(algorithm, content)
 						Expect(err).NotTo(HaveOccurred())
@@ -704,7 +704,7 @@ echo should have died by now
 								Mode: 0755,
 							},
 						})
-						content, err := ioutil.ReadFile(archiveFilePath)
+						content, err := os.ReadFile(archiveFilePath)
 						Expect(err).NotTo(HaveOccurred())
 						checksumValue, err = helpers.HexValueForByteArray(algorithm, content)
 						Expect(err).NotTo(HaveOccurred())
@@ -793,7 +793,7 @@ echo should have died by now
 			server, uploadAddr = helpers.Callback(os.Getenv("EXTERNAL_ADDRESS"), ghttp.CombineHandlers(
 				ghttp.VerifyRequest("POST", "/thingy"),
 				func(w http.ResponseWriter, r *http.Request) {
-					contents, err := ioutil.ReadAll(r.Body)
+					contents, err := io.ReadAll(r.Body)
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(string(contents)).To(Equal("tasty thingy\n"))

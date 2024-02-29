@@ -3,7 +3,7 @@ package cell_test
 import (
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -148,7 +148,7 @@ var _ = Describe("Secure Downloading and Uploading", func() {
 			server, _ = helpers.Callback(os.Getenv("EXTERNAL_ADDRESS"), ghttp.CombineHandlers(
 				ghttp.VerifyRequest("POST", "/thingy"),
 				func(w http.ResponseWriter, r *http.Request) {
-					contents, err := ioutil.ReadAll(r.Body)
+					contents, err := io.ReadAll(r.Body)
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(string(contents)).To(Equal("tasty thingy\n"))
