@@ -6,7 +6,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Portallocator", func() {
+var _ = Describe("PortAllocator", func() {
 	var (
 		allocator portauthority.PortAllocator
 		port      uint16
@@ -14,7 +14,7 @@ var _ = Describe("Portallocator", func() {
 	)
 
 	BeforeEach(func() {
-		allocator, err = portauthority.New(30, 65355)
+		allocator, err = portauthority.New("0.0.0.0", 30, 65355)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -32,7 +32,7 @@ var _ = Describe("Portallocator", func() {
 
 	Context("when the allocator runs out of ports in the range", func() {
 		BeforeEach(func() {
-			allocator, err = portauthority.New(30, 30)
+			allocator, err = portauthority.New("127.0.0.1", 30, 30)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -73,9 +73,23 @@ var _ = Describe("Portallocator", func() {
 	})
 
 	Context("when a range outside the port spec is requested", func() {
+		It("errors for an invalid starting port", func() {
+			allocator, err = portauthority.New("127.0.0.1", -1, 65535)
+			Expect(err).To(MatchError("Invalid starting port requested. Ports can only be numbers between 0-65535"))
+		})
+		It("errors for an invalid ending port", func() {
+			allocator, err = portauthority.New("127.0.0.1", 30, 65536)
+			Expect(err).To(MatchError("Invalid ending port requested. Ports can only be numbers between 0-65535"))
+		})
+	})
+
+	Context("when a port is unavailable", func() {
 		It("errors", func() {
-			allocator, err = portauthority.New(30, 65536)
-			Expect(err).To(MatchError("Invalid port range requested. Ports can only be numbers between 0-65535"))
+			allocator, err = portauthority.New("127.0.0.1", 80, 80)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = allocator.ClaimPorts(1)
+			Expect(err).Should(HavePrefix("port 80 is not available"))
 		})
 	})
 })
