@@ -73,7 +73,7 @@ var _ = Describe("LRP", func() {
 
 	JustBeforeEach(func() {
 		var err error
-		eventSource, err = bbsClient.SubscribeToEvents(lgr)
+		eventSource, err = bbsClient.SubscribeToInstanceEvents(lgr)
 		Expect(err).NotTo(HaveOccurred())
 		go func() {
 			defer GinkgoRecover()
@@ -122,9 +122,9 @@ var _ = Describe("LRP", func() {
 
 		It("should send events as the LRP goes through its lifecycle ", func() {
 			Eventually(getEvents).Should(ContainElement(MatchDesiredLRPCreatedEvent(processGuid)))
-			Eventually(getEvents).Should(ContainElement(MatchActualLRPCreatedEvent(processGuid, 0)))
-			Eventually(getEvents).Should(ContainElement(MatchActualLRPChangedEvent(processGuid, 0, models.ActualLRPStateClaimed)))
-			Eventually(getEvents).Should(ContainElement(MatchActualLRPChangedEvent(processGuid, 0, models.ActualLRPStateRunning)))
+			Eventually(getEvents).Should(ContainElement(MatchActualLRPInstanceCreatedEvent(processGuid, 0)))
+			Eventually(getEvents).Should(ContainElement(MatchActualLRPInstanceChangedEvent(processGuid, 0, models.ActualLRPStateClaimed)))
+			Eventually(getEvents).Should(ContainElement(MatchActualLRPInstanceChangedEvent(processGuid, 0, models.ActualLRPStateRunning)))
 		})
 
 		Context("when using a private image", func() {

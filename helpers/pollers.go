@@ -73,6 +73,7 @@ func LRPStatePoller(logger lager.Logger, client bbs.InternalClient, processGuid 
 			if len(lrpGroups) == 0 {
 				return ""
 			}
+			//lint:ignore SA1019 - inigo needs to process deprecated ActualLRP data until it is removed from BBS
 			foundLRP, _, err = lrpGroups[0].Resolve()
 			Expect(err).NotTo(HaveOccurred())
 		} else {
@@ -97,6 +98,7 @@ func LRPInstanceStatePoller(logger lager.Logger, client bbs.InternalClient, proc
 		if err != nil && strings.Contains(err.Error(), "Invalid Response with status code: 404") {
 			lrpGroup, err := client.ActualLRPGroupByProcessGuidAndIndex(logger, "", processGuid, index)
 			Expect(err).NotTo(HaveOccurred())
+			//lint:ignore SA1019 - inigo needs to process deprecated ActualLRP data until it is removed from BBS
 			foundLRP, _, err = lrpGroup.Resolve()
 			Expect(err).NotTo(HaveOccurred())
 		} else {

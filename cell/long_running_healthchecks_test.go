@@ -122,7 +122,7 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 
 	JustBeforeEach(func() {
 		var err error
-		eventSource, err = bbsClient.SubscribeToEvents(lgr)
+		eventSource, err = bbsClient.SubscribeToInstanceEvents(lgr)
 		Expect(err).NotTo(HaveOccurred())
 		go func() {
 			defer GinkgoRecover()
