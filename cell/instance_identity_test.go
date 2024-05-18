@@ -23,7 +23,7 @@ import (
 	"code.cloudfoundry.org/diego-logging-client/testhelpers"
 	"code.cloudfoundry.org/durationjson"
 	"code.cloudfoundry.org/garden"
-	"code.cloudfoundry.org/go-loggregator/v8/rpc/loggregator_v2"
+	"code.cloudfoundry.org/go-loggregator/v9/rpc/loggregator_v2"
 	"code.cloudfoundry.org/inigo/fixtures"
 	"code.cloudfoundry.org/inigo/helpers"
 	"code.cloudfoundry.org/inigo/helpers/certauthority"
