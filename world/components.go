@@ -447,7 +447,7 @@ func (maker commonComponentMaker) Teardown() {
 		maker.GrootFSDeleteStore()
 		Eventually(deleteTmpDir, time.Minute).Should(Succeed())
 	} else {
-		//auctioneer is not getting stopped on windows. This will cause the test to fail.
+		// #nosec G104 - auctioneer is not getting stopped on windows. Catching error will cause the test to fail.
 		deleteTmpDir()
 	}
 }
@@ -490,6 +490,7 @@ func (maker commonComponentMaker) SQL(argv ...string) ifrit.Runner {
 		Eventually(db.Ping).Should(Succeed())
 
 		sqlDBName := fmt.Sprintf("diego_%d", GinkgoParallelProcess())
+		// #nosec G104 - ignore errors dropping databases that don't exist, we just want a clean slate
 		db.Exec(fmt.Sprintf("DROP DATABASE %s", sqlDBName))
 		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", sqlDBName))
 		Expect(err).NotTo(HaveOccurred())
@@ -805,7 +806,8 @@ func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routee
 			"-config", configFile.Name(),
 		),
 		Cleanup: func() {
-			os.RemoveAll(configFile.Name())
+			err := os.RemoveAll(configFile.Name())
+			Expect(err).ToNot(HaveOccurred())
 		},
 	})
 }
@@ -870,8 +872,10 @@ func (maker commonComponentMaker) FileServer() (ifrit.Runner, string) {
 			"-config", configFile.Name(),
 		),
 		Cleanup: func() {
-			os.RemoveAll(servedFilesDir)
-			os.RemoveAll(configFile.Name())
+			err := os.RemoveAll(servedFilesDir)
+			Expect(err).ToNot(HaveOccurred())
+			err = os.RemoveAll(configFile.Name())
+			Expect(err).ToNot(HaveOccurred())
 		},
 	}), servedFilesDir
 }
@@ -1696,7 +1700,9 @@ func (blc *BuiltLifecycles) BuildLifecycles(lifeCycle string, tmpDir string) {
 	healthcheckPath, err := gexec.Build("code.cloudfoundry.org/healthcheck/cmd/healthcheck", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	os.Setenv("CGO_ENABLED", "0")
+	err = os.Setenv("CGO_ENABLED", "0")
+	Expect(err).ToNot(HaveOccurred())
+
 	diegoSSHPath, err := gexec.Build("code.cloudfoundry.org/diego-ssh/cmd/sshd", "-a", "-installsuffix", "static")
 	os.Unsetenv("CGO_ENABLED")
 	Expect(err).NotTo(HaveOccurred())

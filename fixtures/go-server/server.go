@@ -77,6 +77,7 @@ func write(res http.ResponseWriter, req *http.Request) {
 	err := os.WriteFile(mountPointPath, d1, 0644)
 	if err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
+		// #nosec G104 - ignore errors when writing HTTP responses so we don't spam our logs during a DoS
 		res.Write([]byte(err.Error()))
 		return
 	}
@@ -85,9 +86,11 @@ func write(res http.ResponseWriter, req *http.Request) {
 	body, err := os.ReadFile(mountPointPath)
 	if err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
+		// #nosec G104 - ignore errors when writing HTTP responses so we don't spam our logs during a DoS
 		res.Write([]byte(err.Error()))
 		return
 	}
+	// #nosec G104 - ignore errors when writing HTTP responses so we don't spam our logs during a DoS
 	res.Write(body)
 }
 
@@ -138,7 +141,7 @@ func cfInstanceCert(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
+	// #nosec G104 - ignore errors when writing HTTP responses so we don't spam our logs during a DoS
 	res.Write(data)
 }
 
@@ -151,6 +154,7 @@ func cfInstanceKey(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// #nosec G104 - ignore errors when writing HTTP responses so we don't spam our logs during a DoS
 	res.Write(data)
 }
 
@@ -169,5 +173,6 @@ func catFile(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// #nosec G104 - ignore errors when writing HTTP responses so we don't spam our logs during a DoS
 	res.Write(data)
 }

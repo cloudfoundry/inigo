@@ -28,6 +28,7 @@ func Start(externalAddress string) {
 			lock.Unlock()
 		case "/announcements":
 			lock.RLock()
+			// #nosec G104 - ignore errors when writing HTTP responses so we don't spam our logs during a DoS
 			json.NewEncoder(w).Encode(registered)
 			lock.RUnlock()
 		default:
