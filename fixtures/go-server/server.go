@@ -47,8 +47,11 @@ func main() {
 		}
 		addr += ":" + port
 		go func(addr string) {
-			println(addr)
-			errCh <- http.ListenAndServe(addr, nil)
+			server := &http.Server{
+				Addr:    addr,
+				Handler: nil,
+			}
+			errCh <- server.ListenAndServe()
 		}(addr)
 	}
 
@@ -56,7 +59,11 @@ func main() {
 		go func() {
 			instanceCertPath := os.Getenv("CF_INSTANCE_CERT")
 			instanceKeyPath := os.Getenv("CF_INSTANCE_KEY")
-			errCh <- http.ListenAndServeTLS(":"+httpsPort, instanceCertPath, instanceKeyPath, nil)
+			server := &http.Server{
+				Addr:    fmt.Sprintf(":%s", httpsPort),
+				Handler: nil,
+			}
+			errCh <- server.ListenAndServeTLS(instanceCertPath, instanceKeyPath)
 		}()
 	}
 
@@ -73,7 +80,7 @@ func hello(res http.ResponseWriter, req *http.Request) {
 func write(res http.ResponseWriter, req *http.Request) {
 	mountPointPath := os.Getenv("MOUNT_POINT_DIR") + "/test.txt"
 
-	d1 := []byte("Hello Persistant World!\n")
+	d1 := []byte("Hello Persistent World!\n")
 	err := os.WriteFile(mountPointPath, d1, 0644)
 	if err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
