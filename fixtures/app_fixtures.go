@@ -11,12 +11,13 @@ import (
 
 func GoServerApp() []archive_helper.ArchiveFile {
 	originalCGOValue := os.Getenv("CGO_ENABLED")
-	os.Setenv("CGO_ENABLED", "0")
+	err := os.Setenv("CGO_ENABLED", "0")
+	Expect(err).NotTo(HaveOccurred())
 
 	serverPath, err := gexec.Build("code.cloudfoundry.org/inigo/fixtures/go-server")
+	Expect(err).NotTo(HaveOccurred())
 
-	os.Setenv("CGO_ENABLED", originalCGOValue)
-
+	err = os.Setenv("CGO_ENABLED", originalCGOValue)
 	Expect(err).NotTo(HaveOccurred())
 
 	contents, err := os.ReadFile(serverPath)
