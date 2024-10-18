@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
+	"time"
 )
 
 var (
@@ -48,8 +49,9 @@ func main() {
 		addr += ":" + port
 		go func(addr string) {
 			server := &http.Server{
-				Addr:    addr,
-				Handler: nil,
+				Addr:              addr,
+				Handler:           nil,
+				ReadHeaderTimeout: 5 * time.Second,
 			}
 			errCh <- server.ListenAndServe()
 		}(addr)
@@ -60,8 +62,9 @@ func main() {
 			instanceCertPath := os.Getenv("CF_INSTANCE_CERT")
 			instanceKeyPath := os.Getenv("CF_INSTANCE_KEY")
 			server := &http.Server{
-				Addr:    fmt.Sprintf(":%s", httpsPort),
-				Handler: nil,
+				Addr:              fmt.Sprintf(":%s", httpsPort),
+				Handler:           nil,
+				ReadHeaderTimeout: 5 * time.Second,
 			}
 			errCh <- server.ListenAndServeTLS(instanceCertPath, instanceKeyPath)
 		}()
