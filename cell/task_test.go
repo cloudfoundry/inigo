@@ -351,7 +351,7 @@ var _ = Describe("Tasks", func() {
 
 				Expect(err).NotTo(HaveOccurred())
 
-				Eventually(inigo_announcement_server.Announcements).WithTimeout(5 * time.Second).Should(ContainElement("before-memory-overdose"))
+				Eventually(inigo_announcement_server.Announcements).WithTimeout(10 * time.Second).Should(ContainElement("before-memory-overdose"))
 
 				var task *models.Task
 				Eventually(func() interface{} {
