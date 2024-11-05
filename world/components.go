@@ -719,10 +719,10 @@ func (maker commonComponentMaker) RoutingAPI(modifyConfigFuncs ...func(*routinga
 
 	modifyConfigFuncs = append(modifyConfigFuncs, func(c *routingapi.Config) {
 		c.API = routingapiconfig.APIConfig{
-			ListenPort:  int(port),
+			ListenPort:  port,
 			HTTPEnabled: true,
 
-			MTLSListenPort:     int(port + 2),
+			MTLSListenPort:     port + 2,
 			MTLSClientCAPath:   maker.routingAPISSL.CACert,
 			MTLSServerCertPath: maker.routingAPISSL.ServerCert,
 			MTLSServerKeyPath:  maker.routingAPISSL.ServerKey,
