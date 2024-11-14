@@ -133,6 +133,7 @@ type ComponentAddresses struct {
 	Router              string
 	RouterStatus        string
 	RouterRoutes        string
+	RouterRouteServices string
 	Garden              string
 	Auctioneer          string
 	SSHProxy            string
@@ -899,6 +900,11 @@ func (maker commonComponentMaker) Router() *ginkgomon.Runner {
 	routerRoutesPortInt, err := strconv.Atoi(routerRoutesPort)
 	Expect(err).NotTo(HaveOccurred())
 
+	_, routerRouteServicesPort, err := net.SplitHostPort(maker.addresses.RouterRoutes)
+	Expect(err).NotTo(HaveOccurred())
+
+	routerRouteServicesPortInt, err := strconv.Atoi(routerRouteServicesPort)
+	Expect(err).NotTo(HaveOccurred())
 	natsHost, natsPort, err := net.SplitHostPort(maker.addresses.NATS)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -970,6 +976,7 @@ routing_api:
   uri: ""
   port: 0
   auth_disabled: false
+route_services_internal_server_port: %d
 route_services_secret: ""
 route_services_secret_decrypt_only: ""
 route_services_recommend_https: false
@@ -979,7 +986,7 @@ token_fetcher_retry_interval: 0s
 token_fetcher_expiration_buffer_time: 0
 pid_file: ""
 `
-	routerConfig = fmt.Sprintf(routerConfig, uint16(routerStatusPortInt), uint16(routerRoutesPortInt), natsHost, uint16(natsPortInt), uint16(routerPortInt))
+	routerConfig = fmt.Sprintf(routerConfig, uint16(routerStatusPortInt), uint16(routerRoutesPortInt), natsHost, uint16(natsPortInt), uint16(routerPortInt), uint16(routerRouteServicesPortInt))
 
 	configFile, err := os.CreateTemp(TempDirWithParent(maker.tmpDir, "router-config"), "router-config")
 	Expect(err).NotTo(HaveOccurred())

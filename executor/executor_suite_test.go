@@ -48,21 +48,22 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	Expect(err).NotTo(HaveOccurred())
 
 	addresses := world.ComponentAddresses{
-		Garden:              fmt.Sprintf("127.0.0.1:%d", 10000+GinkgoParallelProcess()),
-		NATS:                fmt.Sprintf("127.0.0.1:%d", 11000+GinkgoParallelProcess()),
-		Rep:                 fmt.Sprintf("127.0.0.1:%d", 14000+GinkgoParallelProcess()),
-		FileServer:          fmt.Sprintf("%s:%d", localIP, 17000+GinkgoParallelProcess()),
-		Router:              fmt.Sprintf("127.0.0.1:%d", 18000+GinkgoParallelProcess()),
-		RouterStatus:        fmt.Sprintf("127.0.0.1:%d", 18100+GinkgoParallelProcess()),
-		RouterRoutes:        fmt.Sprintf("127.0.0.1:%d", 18200+GinkgoParallelProcess()),
-		BBS:                 fmt.Sprintf("127.0.0.1:%d", 20500+GinkgoParallelProcess()*2),
-		Health:              fmt.Sprintf("127.0.0.1:%d", 20500+GinkgoParallelProcess()*2+1),
-		Auctioneer:          fmt.Sprintf("127.0.0.1:%d", 23000+GinkgoParallelProcess()),
-		SSHProxy:            fmt.Sprintf("127.0.0.1:%d", 23500+GinkgoParallelProcess()),
-		SSHProxyHealthCheck: fmt.Sprintf("127.0.0.1:%d", 24500+GinkgoParallelProcess()),
-		FakeVolmanDriver:    fmt.Sprintf("127.0.0.1:%d", 25500+GinkgoParallelProcess()),
-		Locket:              fmt.Sprintf("127.0.0.1:%d", 26500+GinkgoParallelProcess()),
-		SQL:                 fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, GinkgoParallelProcess()),
+		Garden:                  fmt.Sprintf("127.0.0.1:%d", 10000+GinkgoParallelProcess()),
+		NATS:                    fmt.Sprintf("127.0.0.1:%d", 11000+GinkgoParallelProcess()),
+		Rep:                     fmt.Sprintf("127.0.0.1:%d", 14000+GinkgoParallelProcess()),
+		FileServer:              fmt.Sprintf("%s:%d", localIP, 17000+GinkgoParallelProcess()),
+		Router:                  fmt.Sprintf("127.0.0.1:%d", 18000+GinkgoParallelProcess()),
+		RouterStatus:            fmt.Sprintf("127.0.0.1:%d", 18100+GinkgoParallelProcess()),
+		RouterRoutes:            fmt.Sprintf("127.0.0.1:%d", 18200+GinkgoParallelProcess()),
+		RouterRouteServices: fmt.Sprintf("127.0.0.1:%d", 18300+GinkgoParallelProcess()),
+		BBS:                     fmt.Sprintf("127.0.0.1:%d", 20500+GinkgoParallelProcess()*2),
+		Health:                  fmt.Sprintf("127.0.0.1:%d", 20500+GinkgoParallelProcess()*2+1),
+		Auctioneer:              fmt.Sprintf("127.0.0.1:%d", 23000+GinkgoParallelProcess()),
+		SSHProxy:                fmt.Sprintf("127.0.0.1:%d", 23500+GinkgoParallelProcess()),
+		SSHProxyHealthCheck:     fmt.Sprintf("127.0.0.1:%d", 24500+GinkgoParallelProcess()),
+		FakeVolmanDriver:        fmt.Sprintf("127.0.0.1:%d", 25500+GinkgoParallelProcess()),
+		Locket:                  fmt.Sprintf("127.0.0.1:%d", 26500+GinkgoParallelProcess()),
+		SQL:                     fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, GinkgoParallelProcess()),
 	}
 
 	node := GinkgoParallelProcess()
