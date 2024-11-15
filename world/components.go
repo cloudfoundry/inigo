@@ -900,7 +900,7 @@ func (maker commonComponentMaker) Router() *ginkgomon.Runner {
 	routerRoutesPortInt, err := strconv.Atoi(routerRoutesPort)
 	Expect(err).NotTo(HaveOccurred())
 
-	_, routerRouteServicesPort, err := net.SplitHostPort(maker.addresses.RouterRoutes)
+	_, routerRouteServicesPort, err := net.SplitHostPort(maker.addresses.RouterRouteServices)
 	Expect(err).NotTo(HaveOccurred())
 
 	routerRouteServicesPortInt, err := strconv.Atoi(routerRouteServicesPort)
