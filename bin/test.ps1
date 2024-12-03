@@ -14,6 +14,7 @@ function Setup-DnsNames() {
 127.0.0.1 the-cell-id-3-0.cell.service.cf.internal
 127.0.0.1 the-cell-id-4-0.cell.service.cf.internal
 "
+  ipconfig /flushdns
 }
 
 function Setup-TempDirContainerAccess() {
