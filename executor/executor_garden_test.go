@@ -115,7 +115,7 @@ var _ = Describe("Executor/Garden", func() {
 		metronClient, err := loggingclient.NewIngressClient(loggingclient.Config{})
 		Expect(err).NotTo(HaveOccurred())
 
-		rootFSes := map[string]string{"somestack": gardenHealthcheckRootFS}
+		rootFSes := []string{gardenHealthcheckRootFS}
 
 		executorClient, _, executorMembers, err = executorinit.Initialize(logger, config, "", "", rootFSes, metronClient, clock.NewClock())
 		Expect(err).NotTo(HaveOccurred())
@@ -968,12 +968,14 @@ var _ = Describe("Executor/Garden", func() {
 
 		Describe("pruning the registry", func() {
 			It("continously prunes the registry", func() {
-				failures := executorClient.AllocateContainers(logger, "", []executor.AllocationRequest{{
-					Guid: "some-handle",
-					Resource: executor.Resource{
-						MemoryMB: 1024,
-						DiskMB:   1024,
-					}},
+				failures := executorClient.AllocateContainers(logger, "", []executor.AllocationRequest{
+					{
+						Guid: "some-handle",
+						Resource: executor.Resource{
+							MemoryMB: 1024,
+							DiskMB:   1024,
+						},
+					},
 				})
 				Expect(failures).To(BeEmpty())
 
