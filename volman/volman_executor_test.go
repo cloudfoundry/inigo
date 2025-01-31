@@ -197,9 +197,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 			})
 
 			Context("when running the container", func() {
-				var (
-					runReq executor.RunRequest
-				)
+				var runReq executor.RunRequest
 
 				BeforeEach(func() {
 					runInfo := executor.RunInfo{
@@ -282,7 +280,7 @@ var _ = Describe("Executor/Garden/Volman", func() {
 						uniqueVolumeId := dockerdriverutils.NewVolumeId(volumeId, guid)
 						volumeDirectoryName = uniqueVolumeId.GetUniqueId()
 						someConfig := map[string]interface{}{"volume_id": volumeId}
-						volumeMounts = []executor.VolumeMount{executor.VolumeMount{ContainerPath: "/testmount", Driver: "localdriver", VolumeId: volumeId, Config: someConfig, Mode: executor.BindMountModeRW}}
+						volumeMounts = []executor.VolumeMount{{ContainerPath: "/testmount", Driver: "localdriver", VolumeId: volumeId, Config: someConfig, Mode: executor.BindMountModeRW}}
 						runInfo := executor.RunInfo{
 							VolumeMounts: volumeMounts,
 							Privileged:   true,
@@ -381,8 +379,8 @@ func initializeExecutor(logger lager.Logger, config executorinit.ExecutorConfig)
 	defaultRootFS := ""
 	metronClient, err := loggingclient.NewIngressClient(loggingclient.Config{})
 	Expect(err).NotTo(HaveOccurred())
-	rootFSes := map[string]string{
-		"somestack": defaultRootFS,
+	rootFSes := []string{
+		defaultRootFS,
 	}
 	executorClient, _, executorMembers, err = executorinit.Initialize(logger, config, "", "", rootFSes, metronClient, clock.NewClock())
 	Expect(err).NotTo(HaveOccurred())
