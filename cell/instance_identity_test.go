@@ -735,7 +735,7 @@ var _ = Describe("InstanceIdentity", func() {
 					actualLRPs, err := bbsClient.ActualLRPs(logger, "", models.ActualLRPFilter{ProcessGuid: processGUID})
 					Expect(err).NotTo(HaveOccurred())
 					actualLRP := actualLRPs[0]
-					container, err = gardenClient.Lookup(actualLRP.InstanceGuid)
+					container, err = gardenClient.Lookup(actualLRP.ActualLrpInstanceKey.InstanceGuid)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
@@ -962,7 +962,7 @@ func getContainerInternalAddress(client bbs.Client, processGuid string, port uin
 	lrps, err := client.ActualLRPs(lgr, "", models.ActualLRPFilter{ProcessGuid: processGuid})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(lrps).To(HaveLen(1))
-	netInfo := lrps[0].ActualLRPNetInfo
+	netInfo := lrps[0].ActualLrpNetInfo
 	address := netInfo.InstanceAddress
 	for _, mapping := range netInfo.Ports {
 		if mapping.ContainerPort == port {
@@ -1006,7 +1006,7 @@ func runTaskAndGetCommandOutput(command string, organizationalUnits []string) st
 			OrganizationalUnit: organizationalUnits,
 		},
 	)
-	expectedTask.ResultFile = resultFile
+	expectedTask.TaskDefinition.ResultFile = resultFile
 
 	err := bbsClient.DesireTask(lgr, "", expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 	Expect(err).NotTo(HaveOccurred())

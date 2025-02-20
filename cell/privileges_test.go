@@ -70,7 +70,7 @@ var _ = Describe("Privileges", func() {
 
 		Context("when the task is privileged", func() {
 			BeforeEach(func() {
-				taskToDesire.Privileged = true
+				taskToDesire.TaskDefinition.Privileged = true
 			})
 
 			It("succeeds", func() {
@@ -82,7 +82,7 @@ var _ = Describe("Privileges", func() {
 
 		Context("when the task is not privileged", func() {
 			BeforeEach(func() {
-				taskToDesire.Privileged = false
+				taskToDesire.TaskDefinition.Privileged = false
 			})
 
 			It("fails", func() {
