@@ -115,7 +115,7 @@ var _ = Describe("Executor/Garden", func() {
 		metronClient, err := loggingclient.NewIngressClient(loggingclient.Config{})
 		Expect(err).NotTo(HaveOccurred())
 
-		rootFSes := map[string]string{"somestack": gardenHealthcheckRootFS}
+		rootFSes := []string{gardenHealthcheckRootFS}
 
 		executorClient, _, executorMembers, err = executorinit.Initialize(logger, config, "", "", rootFSes, gardenHealthcheckRootFS, metronClient, clock.NewClock())
 		Expect(err).NotTo(HaveOccurred())
