@@ -1548,6 +1548,7 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 		ReportInterval:            durationjson.Duration(1 * time.Minute),
 		EvacuationPollingInterval: durationjson.Duration(1 * time.Second),
 		EvacuationTimeout:         durationjson.Duration(1 * time.Second),
+		ExtraRootfsDir:            filepath.Join("..", "fixtures"),
 		LockTTL:                   durationjson.Duration(10 * time.Second),
 		LockRetryInterval:         durationjson.Duration(1 * time.Second),
 		ServerCertFile:            maker.repSSL.ServerCert,

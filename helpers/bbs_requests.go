@@ -17,6 +17,7 @@ const defaultLogGuid = "logGuid"
 
 var defaultPreloadedRootFS = "preloaded:" + world.DefaultStack
 var SecondaryPreloadedRootFS = "preloaded:" + world.PreloadedStacks[1]
+var ExtraPreloadedRootFs = "preloaded:diego-extra-rootfs"
 
 const BogusPreloadedRootFS = "preloaded:bogus-rootfs"
 const dockerRootFS = "docker:///cloudfoundry/diego-docker-app#latest"
