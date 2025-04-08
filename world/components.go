@@ -1612,6 +1612,7 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 	} else {
 		repConfig.GardenHealthcheckProcessPath = "/bin/sh"
 		repConfig.GardenHealthcheckProcessArgs = []string{"-c", "echo", "foo"}
+		repConfig.ExtraRootfsDir = filepath.Join("..", "fixtures")
 	}
 
 	for _, modifyConfig := range modifyConfigFuncs {

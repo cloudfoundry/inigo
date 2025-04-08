@@ -537,6 +537,16 @@ var _ = Describe("LRP", func() {
 			})
 		})
 
+		Context("Extra preloaded rootfs is requested", func() {
+			BeforeEach(func() {
+				lrp = helpers.LRPCreateRequestWithRootFS(componentMaker.Addresses(), processGuid, helpers.ExtraPreloadedRootFs)
+			})
+
+			It("starts the LRP", func() {
+				Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
+			})
+		})
+
 		Context("Unsupported preloaded rootfs is requested", func() {
 			BeforeEach(func() {
 				lrp = helpers.LRPCreateRequestWithRootFS(componentMaker.Addresses(), processGuid, helpers.BogusPreloadedRootFS)
