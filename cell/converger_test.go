@@ -102,7 +102,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 				By("collecting the ActualLRP instance guids")
 				initialActuals := runningLRPsPoller()
-				initialInstanceGuids = []string{initialActuals[0].InstanceGuid, initialActuals[1].InstanceGuid}
+				initialInstanceGuids = []string{initialActuals[0].ActualLrpInstanceKey.InstanceGuid, initialActuals[1].ActualLrpInstanceKey.InstanceGuid}
 			})
 
 			It("marks the LRPs as Suspect until the rep comes back, and then marks the LRPs as Ordinary", func() {
@@ -120,7 +120,7 @@ var _ = Describe("Convergence to desired state", func() {
 
 				By("Asserting that the LRPs marked as Ordinary")
 				currentActuals := runningLRPsPoller()
-				instanceGuids := []string{currentActuals[0].InstanceGuid, currentActuals[1].InstanceGuid}
+				instanceGuids := []string{currentActuals[0].ActualLrpInstanceKey.InstanceGuid, currentActuals[1].ActualLrpInstanceKey.InstanceGuid}
 				Expect(instanceGuids).NotTo(ContainElement(initialInstanceGuids[0]))
 				Expect(instanceGuids).NotTo(ContainElement(initialInstanceGuids[1]))
 				Eventually(runningLRPsPresencePoller(models.ActualLRP_Ordinary)).Should(HaveLen(2))
@@ -152,8 +152,8 @@ var _ = Describe("Convergence to desired state", func() {
 						if len(secondActualLRPs) != 2 {
 							return false
 						}
-						return secondActualLRPs[0].CellId != firstActualLRPs[0].CellId &&
-							secondActualLRPs[1].CellId != firstActualLRPs[1].CellId
+						return secondActualLRPs[0].ActualLrpInstanceKey.CellId != firstActualLRPs[0].ActualLrpInstanceKey.CellId &&
+							secondActualLRPs[1].ActualLrpInstanceKey.CellId != firstActualLRPs[1].ActualLrpInstanceKey.CellId
 					}).Should(BeTrue())
 				})
 			})

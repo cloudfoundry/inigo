@@ -75,7 +75,7 @@ var _ = Describe("Tasks", func() {
 					},
 				},
 			)
-			expectedTask.Privileged = true
+			expectedTask.TaskDefinition.Privileged = true
 
 			err := bbsClient.DesireTask(lgr, "", expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
@@ -104,7 +104,7 @@ var _ = Describe("Tasks", func() {
 					Dir:  "/tmp",
 				},
 			)
-			expectedTask.Privileged = true
+			expectedTask.TaskDefinition.Privileged = true
 
 			err := bbsClient.DesireTask(lgr, "", expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 
@@ -150,16 +150,16 @@ var _ = Describe("Tasks", func() {
 						Args: []string{"--dockerRef", privateRef, "--dockerUser", privateUser, "--dockerPassword", privatePassword, "--outputMetadataJSONFilename", "/tmp/result.json"},
 					},
 				)
-				expectedTask.CachedDependencies = []*models.CachedDependency{{
+				expectedTask.TaskDefinition.CachedDependencies = []*models.CachedDependency{{
 					From:      fmt.Sprintf("http://%s/v1/static/docker_app_lifecycle/docker_app_lifecycle.tgz", componentMaker.Addresses().FileServer),
 					To:        "/tmp/diego/dockerapplifecycle",
 					Name:      "docker app lifecycle",
 					CacheKey:  "docker-app-lifecycle",
 					LogSource: "docker-app-lifecycle",
 				}}
-				expectedTask.Privileged = true
-				expectedTask.ResultFile = "/tmp/result.json"
-				expectedTask.EgressRules = []*models.SecurityGroupRule{
+				expectedTask.TaskDefinition.Privileged = true
+				expectedTask.TaskDefinition.ResultFile = "/tmp/result.json"
+				expectedTask.TaskDefinition.EgressRules = []*models.SecurityGroupRule{
 					{
 						// allow traffic to the docker registry
 						Protocol:     models.AllProtocol,
@@ -200,10 +200,10 @@ var _ = Describe("Tasks", func() {
 						},
 					},
 				)
-				expectedTask.Privileged = true
-				expectedTask.RootFs = privateDockerRootFSPath
-				expectedTask.ImageUsername = privateUser
-				expectedTask.ImagePassword = privatePassword
+				expectedTask.TaskDefinition.Privileged = true
+				expectedTask.TaskDefinition.RootFs = privateDockerRootFSPath
+				expectedTask.TaskDefinition.ImageUsername = privateUser
+				expectedTask.TaskDefinition.ImagePassword = privatePassword
 
 				err := bbsClient.DesireTask(lgr, "", expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
@@ -249,16 +249,16 @@ var _ = Describe("Tasks", func() {
 						Args: []string{"--dockerRef", imageRef, "--dockerUser", imageUsername, "--dockerPassword", imagePassword, "--outputMetadataJSONFilename", "/tmp/result.json"},
 					},
 				)
-				expectedTask.CachedDependencies = []*models.CachedDependency{{
+				expectedTask.TaskDefinition.CachedDependencies = []*models.CachedDependency{{
 					From:      fmt.Sprintf("http://%s/v1/static/docker_app_lifecycle/docker_app_lifecycle.tgz", componentMaker.Addresses().FileServer),
 					To:        "/tmp/diego/dockerapplifecycle",
 					Name:      "docker app lifecycle",
 					CacheKey:  "docker-app-lifecycle",
 					LogSource: "docker-app-lifecycle",
 				}}
-				expectedTask.Privileged = true
-				expectedTask.ResultFile = "/tmp/result.json"
-				expectedTask.EgressRules = []*models.SecurityGroupRule{
+				expectedTask.TaskDefinition.Privileged = true
+				expectedTask.TaskDefinition.ResultFile = "/tmp/result.json"
+				expectedTask.TaskDefinition.EgressRules = []*models.SecurityGroupRule{
 					{
 						// allow traffic to the docker registry
 						Protocol:     models.AllProtocol,
@@ -299,10 +299,10 @@ var _ = Describe("Tasks", func() {
 						},
 					},
 				)
-				expectedTask.Privileged = true
-				expectedTask.RootFs = imageRootFSPath
-				expectedTask.ImageUsername = imageUsername
-				expectedTask.ImagePassword = imagePassword
+				expectedTask.TaskDefinition.Privileged = true
+				expectedTask.TaskDefinition.RootFs = imageRootFSPath
+				expectedTask.TaskDefinition.ImageUsername = imageUsername
+				expectedTask.TaskDefinition.ImagePassword = imagePassword
 
 				err := bbsClient.DesireTask(lgr, "", expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
@@ -375,7 +375,7 @@ var _ = Describe("Tasks", func() {
 				nofile := uint64(10)
 
 				rl := &models.ResourceLimits{}
-				rl.SetNofile(nofile)
+				rl.SetNofile(&nofile)
 
 				expectedTask := helpers.TaskCreateRequest(
 					guid,
@@ -500,7 +500,7 @@ echo should have died by now
 						},
 					},
 				)
-				expectedTask.Network = &models.Network{
+				expectedTask.TaskDefinition.Network = &models.Network{
 					Properties: map[string]string{
 						"some-key": "some-value",
 					},
@@ -675,11 +675,11 @@ echo should have died by now
 					},
 				)
 
-				expectedTask.CachedDependencies = []*models.CachedDependency{
+				expectedTask.TaskDefinition.CachedDependencies = []*models.CachedDependency{
 					cachedDependency,
 				}
 
-				expectedTask.Privileged = true
+				expectedTask.TaskDefinition.Privileged = true
 			})
 
 			Context("with no checksum", func() {
@@ -850,7 +850,7 @@ echo should have died by now
 					Args: []string{"-c", "echo tasty thingy > thingy"},
 				},
 			)
-			expectedTask.ResultFile = "/home/vcap/thingy"
+			expectedTask.TaskDefinition.ResultFile = "/home/vcap/thingy"
 
 			err := bbsClient.DesireTask(lgr, "", expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
