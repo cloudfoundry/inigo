@@ -537,8 +537,11 @@ var _ = Describe("LRP", func() {
 			})
 		})
 
-		Context("Extra preloaded rootfs is requested", func() {
+		Context("Extra preloaded rootfs is requested on linux", func() {
 			BeforeEach(func() {
+				if runtime.GOOS == "windows" {
+					Skip("Skipping extra preloaded fs on windows")
+				}
 				lrp = helpers.LRPCreateRequestWithRootFS(componentMaker.Addresses(), processGuid, helpers.ExtraPreloadedRootFs)
 			})
 
