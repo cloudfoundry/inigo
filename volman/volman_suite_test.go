@@ -181,7 +181,7 @@ func CompileTestedExecutables() world.BuiltExecutables {
 	Expect(err).NotTo(HaveOccurred())
 
 	Expect(os.Chdir(os.Getenv("ROUTER_GOPATH"))).To(Succeed())
-	builtExecutables["router"], err = gexec.Build("code.cloudfoundry.org/gorouter", "-race")
+	builtExecutables["router"], err = gexec.Build("code.cloudfoundry.org/gorouter/cmd/gorouter", "-race")
 	Expect(err).NotTo(HaveOccurred())
 	Expect(os.Chdir(cwd)).To(Succeed())
 
