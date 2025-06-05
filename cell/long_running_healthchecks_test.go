@@ -53,6 +53,7 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 
 		turnOnLongRunningHealthchecks := func(cfg *config.RepConfig) {
 			cfg.EnableDeclarativeHealthcheck = true
+			cfg.DeclarativeHealthCheckDefaultTimeout = durationjson.Duration(1 * time.Second)
 			cfg.DeclarativeHealthcheckPath = componentMaker.Artifacts().Healthcheck
 			cfg.HealthCheckWorkPoolSize = 1
 		}
