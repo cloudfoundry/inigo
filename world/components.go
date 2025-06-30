@@ -1463,7 +1463,6 @@ func (maker v1ComponentMaker) BBS(modifyConfigFuncs ...func(*bbsconfig.BBSConfig
 		MaxOpenDatabaseConnections:  200,
 		MaxIdleDatabaseConnections:  200,
 		RepClientSessionCacheSize:   0,
-		RepRequireTLS:               false,
 
 		AdvertiseURL: maker.BBSURL(),
 		EncryptionConfig: encryption.EncryptionConfig{

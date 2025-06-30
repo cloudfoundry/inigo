@@ -868,6 +868,7 @@ var _ = Describe("InstanceIdentity", func() {
 
 				enableDeclarativeHealthChecks := func(config *config.RepConfig) {
 					config.EnableDeclarativeHealthcheck = true
+					config.DeclarativeHealthCheckDefaultTimeout = durationjson.Duration(1 * time.Second)
 					config.DeclarativeHealthcheckPath = componentMaker.Artifacts().Healthcheck
 					config.HealthCheckWorkPoolSize = 1
 				}
