@@ -278,7 +278,7 @@ var _ = Describe("LRP", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(len(lrps)).To(BeNumerically(">", 0))
 
-				containerHandle := lrps[0].InstanceGuid
+				containerHandle := lrps[0].ActualLrpInstanceKey.InstanceGuid
 
 				container, err := gardenClient.Lookup(containerHandle)
 				Expect(err).NotTo(HaveOccurred())
@@ -385,7 +385,7 @@ var _ = Describe("LRP", func() {
 
 				JustBeforeEach(func() {
 					dlu := &models.DesiredLRPUpdate{}
-					dlu.SetInstances(newInstances)
+					dlu.SetInstances(&newInstances)
 					err := bbsClient.UpdateDesiredLRP(lgr, "", processGuid, dlu)
 					Expect(err).NotTo(HaveOccurred())
 				})
@@ -443,7 +443,7 @@ var _ = Describe("LRP", func() {
 					It("can be scaled back up", func() {
 						newInstances := int32(1)
 						dlu := &models.DesiredLRPUpdate{}
-						dlu.SetInstances(newInstances)
+						dlu.SetInstances(&newInstances)
 						err := bbsClient.UpdateDesiredLRP(lgr, "", processGuid, dlu)
 						Expect(err).NotTo(HaveOccurred())
 
@@ -687,7 +687,7 @@ var _ = Describe("LRP", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(len(lrps)).To(Equal(1))
 
-					err = gardenClient.Destroy(lrps[0].GetInstanceGuid())
+					err = gardenClient.Destroy(lrps[0].ActualLrpInstanceKey.InstanceGuid)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
@@ -699,8 +699,8 @@ var _ = Describe("LRP", func() {
 				It("contains the instance guid and cell id", func() {
 					Eventually(getEvents).Should(ContainElement(helpers.MatchActualLRPCrashedEvent(
 						processGuid,
-						lrps[0].InstanceGuid,
-						lrps[0].CellId,
+						lrps[0].ActualLrpInstanceKey.InstanceGuid,
+						lrps[0].ActualLrpInstanceKey.CellId,
 						0,
 					)))
 				})

@@ -260,7 +260,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 				Context("to scale the app down", func() {
 					BeforeEach(func() {
 						newInstances := int32(1)
-						desiredLRPUdate.SetInstances(newInstances)
+						desiredLRPUdate.SetInstances(&newInstances)
 					})
 
 					It("eventually extra routes are removed within a second", func() {
@@ -311,7 +311,7 @@ var _ = Describe("LocalRouteEmitter", func() {
 
 			JustBeforeEach(func() {
 				dlu := &models.DesiredLRPUpdate{}
-				dlu.SetInstances(newInstances)
+				dlu.SetInstances(&newInstances)
 				err := bbsClient.UpdateDesiredLRP(lgr, "", processGuid, dlu)
 				Expect(err).NotTo(HaveOccurred())
 			})
@@ -388,7 +388,7 @@ func evacuateARep(
 	Expect(lrps).To(HaveLen(3))
 	instancePerRepCount := map[string]int{}
 	for _, lrp := range lrps {
-		cellID := lrp.ActualLRPInstanceKey.CellId
+		cellID := lrp.ActualLrpInstanceKey.CellId
 		instancePerRepCount[cellID]++
 	}
 	repWithOneInstance := ""
@@ -438,7 +438,7 @@ func evacuateARep(
 		lrps := helpers.RunningActualLRPs(logger, bbsClient, processGuid)
 		cellIDs := map[string]int{}
 		for _, lrp := range lrps {
-			cellIDs[lrp.CellId]++
+			cellIDs[lrp.ActualLrpInstanceKey.CellId]++
 		}
 		return cellIDs
 	}).Should(Equal(map[string]int{otherRepID: 3}))

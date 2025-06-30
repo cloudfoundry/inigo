@@ -89,7 +89,7 @@ var _ = Describe("Placement Tags", func() {
 					if len(lrps) == 0 {
 						return ""
 					}
-					return lrps[0].CellId
+					return lrps[0].ActualLrpInstanceKey.CellId
 				}
 				Eventually(lrpFunc).Should(MatchRegexp("the-cell-id-.*-0"))
 				Eventually(helpers.LRPStatePoller(lgr, bbsClient, guid, nil)).Should(Equal(models.ActualLRPStateRunning))
@@ -108,7 +108,7 @@ var _ = Describe("Placement Tags", func() {
 					if len(lrps) == 0 {
 						return ""
 					}
-					return lrps[0].CellId
+					return lrps[0].ActualLrpInstanceKey.CellId
 				}
 				Eventually(lrpFunc).Should(MatchRegexp("the-cell-id-.*-0"))
 				Eventually(helpers.LRPStatePoller(lgr, bbsClient, guid, nil)).Should(Equal(models.ActualLRPStateRunning))
@@ -127,7 +127,7 @@ var _ = Describe("Placement Tags", func() {
 					if len(lrps) == 0 {
 						return ""
 					}
-					lgr.Info("lrp-cell-id", lager.Data{"cell-id": lrps[0].CellId})
+					lgr.Info("lrp-cell-id", lager.Data{"cell-id": lrps[0].ActualLrpInstanceKey.CellId})
 
 					return lrps[0].PlacementError
 				}

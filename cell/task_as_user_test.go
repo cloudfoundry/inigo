@@ -56,7 +56,7 @@ var _ = Describe("Tasks as specific user", func() {
 					Args: []string{"-c", `[ $(whoami) = testuser ]`},
 				},
 			)
-			expectedTask.Privileged = true
+			expectedTask.TaskDefinition.Privileged = true
 			err := bbsClient.DesireTask(lgr, "", expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
 

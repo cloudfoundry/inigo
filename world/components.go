@@ -730,7 +730,7 @@ func (maker commonComponentMaker) RoutingAPI(modifyConfigFuncs ...func(*routinga
 		}
 	})
 
-	runner, err := routingapi.NewRoutingAPIRunner(binPath, int(port+1), sqlConfig, modifyConfigFuncs...)
+	runner, err := routingapi.NewRoutingAPIRunner(binPath, port+1, sqlConfig, modifyConfigFuncs...)
 	Expect(err).NotTo(HaveOccurred())
 	return runner
 }
