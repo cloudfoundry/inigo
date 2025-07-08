@@ -76,7 +76,6 @@ var _ = Describe("Executor/Garden/Volman", func() {
 			ContainerInodeLimit:                200000,
 			ContainerMaxCpuShares:              0,
 			CachePath:                          "/tmp/cache",
-			EnableDeclarativeHealthcheck:       false,
 			MaxCacheSizeInBytes:                10 * 1024 * 1024 * 1024,
 			SkipCertVerify:                     false,
 			HealthyMonitoringInterval:          durationjson.Duration(30 * time.Second),

@@ -1563,7 +1563,6 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 			ReservedExpirationTime:             durationjson.Duration(time.Minute),
 			ContainerReapInterval:              durationjson.Duration(time.Minute),
 			ContainerInodeLimit:                200000,
-			EnableDeclarativeHealthcheck:       false,
 			DeclarativeHealthcheckPath:         healthcheckDummyDir,
 			MaxCacheSizeInBytes:                10 * 1024 * 1024 * 1024,
 			SkipCertVerify:                     false,
