@@ -787,6 +787,7 @@ func (maker commonComponentMaker) RouteEmitterN(n int, fs ...func(config *routee
 		EnableInternalEmitter:        false,
 		RegisterDirectInstanceRoutes: false,
 		ClientLocketConfig:           maker.locketClientConfig(),
+		UUID:                         "route-emitter-inigo-lock-owner",
 	}
 
 	for _, f := range fs {
