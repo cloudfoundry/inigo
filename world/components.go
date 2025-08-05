@@ -1215,6 +1215,7 @@ func (maker v0ComponentMaker) RouteEmitter(modifyConfigFuncs ...func(config *rou
 			LogLevel:   "debug",
 			TimeFormat: lagerflags.FormatRFC3339,
 		},
+		UUID: "route-emitter-inigo-lock-owner",
 	}
 
 	for _, f := range modifyConfigFuncs {
