@@ -866,13 +866,7 @@ var _ = Describe("InstanceIdentity", func() {
 					config.ContainerProxyPath = sleepyEnvoyDir
 				}
 
-				enableDeclarativeHealthChecks := func(config *config.RepConfig) {
-					config.DeclarativeHealthCheckDefaultTimeout = durationjson.Duration(1 * time.Second)
-					config.DeclarativeHealthcheckPath = componentMaker.Artifacts().Healthcheck
-					config.HealthCheckWorkPoolSize = 1
-				}
-
-				rep = componentMaker.Rep(configRepCerts, enableContainerProxy, setSleepEnvoy, loggregatorConfig, enableDeclarativeHealthChecks)
+				rep = componentMaker.Rep(configRepCerts, enableContainerProxy, setSleepEnvoy, loggregatorConfig)
 			})
 
 			JustBeforeEach(func() {

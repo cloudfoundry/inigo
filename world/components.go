@@ -1523,14 +1523,6 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 	executorTempDir := TempDirWithParent(maker.tmpDir, "executor")
 	cachePath := TempDirWithParent(executorTempDir, "cache")
 
-	// garden 1.16.5 checks the source of the bind mount for mount options.
-	// Furthermore Rep in version 1.25.2 bind mounted the healthcheck binaries
-	// unconditionally without paying attention to
-	// EnableDeclarativeHealthcheck.  We need to ensure that the source exist.
-	// see
-	// https://github.com/cloudfoundry/guardian/commit/1407257d989b483c64ea7d7cb6ea7d071fa75e84
-	healthcheckDummyDir := TempDirWithParent(maker.tmpDir, "healthcheck")
-
 	repConfig := repconfig.RepConfig{
 		AdvertiseDomain:           "cell.service.cf.internal",
 		BBSClientSessionCacheSize: 0,
@@ -1565,7 +1557,7 @@ func (maker v1ComponentMaker) RepN(n int, modifyConfigFuncs ...func(*repconfig.R
 			ReservedExpirationTime:               durationjson.Duration(time.Minute),
 			ContainerReapInterval:                durationjson.Duration(time.Minute),
 			ContainerInodeLimit:                  200000,
-			DeclarativeHealthcheckPath:           healthcheckDummyDir,
+			DeclarativeHealthcheckPath:           maker.Artifacts().Healthcheck,
 			DeclarativeHealthCheckDefaultTimeout: durationjson.Duration(1 * time.Second),
 			MaxCacheSizeInBytes:                  10 * 1024 * 1024 * 1024,
 			SkipCertVerify:                       false,
