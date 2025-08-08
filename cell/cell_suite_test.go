@@ -114,8 +114,7 @@ var _ = AfterSuite(func() {
 		componentMaker.Teardown()
 	}
 
-	deleteSuiteTempDir := func() error { return os.RemoveAll(suiteTempDir) }
-	Eventually(deleteSuiteTempDir).Should(Succeed())
+	os.RemoveAll(suiteTempDir)
 })
 
 var _ = BeforeEach(func() {
