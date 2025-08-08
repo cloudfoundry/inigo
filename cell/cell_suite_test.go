@@ -170,8 +170,13 @@ func CompileHealthcheckExecutable(tmpDir string) string {
 	healthcheckPath, err := gexec.Build("code.cloudfoundry.org/healthcheck/cmd/healthcheck", "-race")
 	Expect(err).NotTo(HaveOccurred())
 
-	err = os.Rename(healthcheckPath, filepath.Join(healthcheckDir, "healthcheck"))
-	Expect(err).NotTo(HaveOccurred())
+	if runtime.GOOS == "windows" {
+		err = os.Rename(healthcheckPath, filepath.Join(healthcheckDir, "healthcheck.exe"))
+		Expect(err).NotTo(HaveOccurred())
+	} else {
+		err = os.Rename(healthcheckPath, filepath.Join(healthcheckDir, "healthcheck"))
+		Expect(err).NotTo(HaveOccurred())
+	}
 
 	return healthcheckDir
 }
