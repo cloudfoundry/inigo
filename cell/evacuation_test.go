@@ -149,7 +149,7 @@ var _ = Describe("Evacuation", func() {
 		var evacuatingRepPort uint16
 		var evacuatingRepRunner *ginkgomon.Runner
 
-		switch lrps[0].CellId {
+		switch lrps[0].ActualLrpInstanceKey.CellId {
 		case cellAID:
 			evacuatingRepRunner = cellARepRunner
 			evacuatingRepPort = cellPortsStart
@@ -232,7 +232,7 @@ var _ = Describe("Evacuation", func() {
 			// the following requests will hang since garden is stuck trying to destroy the containers
 			go func() {
 				for i := 0; i < 100; i++ {
-					err := client.StopLRPInstance(lgr, lrps[0].ActualLRPKey, lrps[0].ActualLRPInstanceKey)
+					err := client.StopLRPInstance(lgr, lrps[0].ActualLrpKey, lrps[0].ActualLrpInstanceKey)
 					if err != nil {
 						return
 					}

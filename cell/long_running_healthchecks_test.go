@@ -176,7 +176,8 @@ var _ = Context("when declarative healthchecks is turned on", func() {
 			JustBeforeEach(func() {
 				Eventually(helpers.LRPStatePoller(lgr, bbsClient, processGuid, nil)).Should(Equal(models.ActualLRPStateRunning))
 				dlu := &models.DesiredLRPUpdate{}
-				dlu.SetInstances(2)
+				instances := int32(2)
+				dlu.SetInstances(&instances)
 				bbsClient.UpdateDesiredLRP(lgr, "", processGuid, dlu)
 			})
 
