@@ -351,7 +351,6 @@ var _ = Describe("InstanceIdentity", func() {
 		BeforeEach(func() {
 
 			enableContainerProxy = func(config *config.RepConfig) {
-				config.EnableContainerProxy = true
 				config.EnvoyConfigRefreshDelay = durationjson.Duration(time.Second)
 				config.ContainerProxyPath = filepath.Dir(os.Getenv("PROXY_BINARY"))
 
