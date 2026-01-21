@@ -378,8 +378,8 @@ func initializeExecutor(logger lager.Logger, config executorinit.ExecutorConfig)
 	defaultRootFS := ""
 	metronClient, err := loggingclient.NewIngressClient(loggingclient.Config{})
 	Expect(err).NotTo(HaveOccurred())
-	rootFSes := map[string]string{
-		"somestack": defaultRootFS,
+	rootFSes := []string{
+		defaultRootFS,
 	}
 	executorClient, _, executorMembers, err = executorinit.Initialize(logger, config, "", "", rootFSes, defaultRootFS, metronClient, clock.NewClock())
 	Expect(err).NotTo(HaveOccurred())
