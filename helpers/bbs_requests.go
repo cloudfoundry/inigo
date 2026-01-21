@@ -159,7 +159,7 @@ func TaskCreateRequest(taskGuid string, action models.ActionInterface) *models.T
 
 func TaskCreateRequestWithTags(taskGuid string, action models.ActionInterface, tags []string) *models.Task {
 	task := taskCreateRequest(taskGuid, defaultPreloadedRootFS, action, 0, 0, nil)
-	task.PlacementTags = tags
+	task.TaskDefinition.PlacementTags = tags
 	return task
 }
 

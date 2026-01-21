@@ -250,7 +250,7 @@ exit 0
 						},
 					},
 				)
-				taskToCreate.ResultFile = "/tmp/result"
+				taskToCreate.TaskDefinition.ResultFile = "/tmp/result"
 			})
 
 			JustBeforeEach(func() {
@@ -267,7 +267,7 @@ exit 0
 
 			Context("with appropriate security group setting", func() {
 				BeforeEach(func() {
-					taskToCreate.EgressRules = []*models.SecurityGroupRule{
+					taskToCreate.TaskDefinition.EgressRules = []*models.SecurityGroupRule{
 						{
 							Protocol:     models.TCPProtocol,
 							Destinations: []string{"9.0.0.0-89.255.255.255", "90.0.0.0-94.0.0.0"},

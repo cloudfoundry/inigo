@@ -31,10 +31,10 @@ func (matcher *ActualLRPCrashedEventMatcher) Match(actual interface{}) (success 
 	if !ok {
 		return false, nil
 	}
-	return event.ProcessGuid == matcher.ProcessGuid &&
-		event.Index == int32(matcher.Index) &&
-		event.CellId == matcher.CellId &&
-		event.InstanceGuid == matcher.InstanceGuid, nil
+	return event.ActualLrpKey.ProcessGuid == matcher.ProcessGuid &&
+		event.ActualLrpKey.Index == int32(matcher.Index) &&
+		event.ActualLrpInstanceKey.CellId == matcher.CellId &&
+		event.ActualLrpInstanceKey.InstanceGuid == matcher.InstanceGuid, nil
 }
 
 func (matcher *ActualLRPCrashedEventMatcher) FailureMessage(actual interface{}) (message string) {

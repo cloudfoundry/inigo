@@ -74,10 +74,10 @@ var _ = Describe("Tasks", func() {
 						Args: []string{"/testmount/" + fileName},
 					},
 				)
-				expectedTask.VolumeMounts = []*models.VolumeMount{
+				expectedTask.TaskDefinition.VolumeMounts = []*models.VolumeMount{
 					generateVolumeObject("localdriver"),
 				}
-				expectedTask.Privileged = true
+				expectedTask.TaskDefinition.Privileged = true
 
 				err := bbsClient.DesireTask(logger, "", expectedTask.TaskGuid, expectedTask.Domain, expectedTask.TaskDefinition)
 				Expect(err).NotTo(HaveOccurred())
@@ -113,10 +113,10 @@ var _ = Describe("Tasks", func() {
 						Args: []string{"-c", "echo 'volman!'"},
 					},
 				)
-				expectedTask.VolumeMounts = []*models.VolumeMount{
+				expectedTask.TaskDefinition.VolumeMounts = []*models.VolumeMount{
 					generateVolumeObject("non-existent-driver"),
 				}
-				expectedTask.Privileged = true
+				expectedTask.TaskDefinition.Privileged = true
 			})
 
 			It("should error placing the task", func() {
@@ -154,12 +154,12 @@ var _ = Describe("Tasks", func() {
 					},
 				)
 
-				expectedTask.VolumeMounts = []*models.VolumeMount{
+				expectedTask.TaskDefinition.VolumeMounts = []*models.VolumeMount{
 					generateVolumeObject("non-existent-driver"),
 					generateVolumeObject("localdriver"),
 				}
 
-				expectedTask.Privileged = true
+				expectedTask.TaskDefinition.Privileged = true
 			})
 
 			It("should error placing the task", func() {

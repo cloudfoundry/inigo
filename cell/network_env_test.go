@@ -66,7 +66,7 @@ var _ = Describe("Network Environment Variables", func() {
 					Args: []string{"-c", "/usr/bin/env | grep 'CF_INSTANCE' > /home/vcap/env"},
 				},
 			)
-			taskToDesire.ResultFile = "/home/vcap/env"
+			taskToDesire.TaskDefinition.ResultFile = "/home/vcap/env"
 
 			err := bbsClient.DesireTask(lgr, "", taskToDesire.TaskGuid, taskToDesire.Domain, taskToDesire.TaskDefinition)
 			Expect(err).NotTo(HaveOccurred())
@@ -132,7 +132,7 @@ var _ = Describe("Network Environment Variables", func() {
 		})
 
 		It("sets the networking environment variables", func() {
-			netInfo := actualLRP.ActualLRPNetInfo
+			netInfo := actualLRP.ActualLrpNetInfo
 			Expect(response).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_ADDR=%s:%d\n", netInfo.Address, netInfo.Ports[0].HostPort)))
 			Expect(response).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_IP=%s\n", os.Getenv("EXTERNAL_ADDRESS"))))
 			Expect(response).To(ContainSubstring(fmt.Sprintf("CF_INSTANCE_INTERNAL_IP=%s\n", netInfo.InstanceAddress)))
